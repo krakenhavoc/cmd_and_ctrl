@@ -10,18 +10,18 @@ import (
 // ability's whole effect (Timin, Youthful Geist; Breath of the Sleepless):
 // zero targets taps nothing, and a target gone by resolution is skipped
 // (CR 608.2b).
-func vowB12TapUpToOneTarget(ctx *Context) error {
-	return TapTarget{Target: firstLegalCardTarget(ctx)}.Apply(ctx)
+func VowB12TapUpToOneTarget(ctx *Context) error {
+	return TapTarget{Target: FirstLegalCardTarget(ctx)}.Apply(ctx)
 }
 
 // vowB12UpToOneCreature is the target clause of both tap abilities.
-func vowB12UpToOneCreature() *game.TargetSpec {
+func VowB12UpToOneCreature() *game.TargetSpec {
 	return TargetCreature("up to one target creature").WithCount(0, 1)
 }
 
 // vowB12SpiritToken is the 1/1 white Spirit with flying every card in the
 // batch makes.
-func vowB12SpiritToken() Applier {
+func VowB12SpiritToken() Applier {
 	return CreateToken{Template: TokenCard("1/1 white Spirit with flying"), N: 1}
 }
 
@@ -30,7 +30,7 @@ func vowB12SpiritToken() Applier {
 // plain prevention over creatures you control, narrowed to the ones that
 // are Spirits as the damage would be dealt (layered subtypes, so a
 // changeling counts).
-func vowB12PreventNoncombatToSpirits(label string) game.ReplacementEffect {
+func VowB12PreventNoncombatToSpirits(label string) game.ReplacementEffect {
 	r := PreventAllDamageDealtTo(PreventionStatic{
 		To:     ToCreaturesYouControl,
 		Damage: NoncombatDamage,
@@ -49,22 +49,22 @@ func vowB12PreventNoncombatToSpirits(label string) game.ReplacementEffect {
 
 // vowB12ControlsAnEnchantment is "Activate only if you control an
 // enchantment" (Heron-Blessed Geist).
-func vowB12ControlsAnEnchantment() ActivationCondition {
+func VowB12ControlsAnEnchantment() ActivationCondition {
 	return func(g *game.Game, controller, _ uuid.UUID) bool {
-		return countControlled(g, controller, game.Card.IsEnchantment) > 0
+		return CountControlled(g, controller, game.Card.IsEnchantment) > 0
 	}
 }
 
 // vowB12OpponentsWithMoreLands counts the opponents who control more
 // lands than `controller` (Priest of the Blessed Graf).
-func vowB12OpponentsWithMoreLands(g *game.Game, controller uuid.UUID) int {
-	mine := b03LandsControlled(g, controller)
+func VowB12OpponentsWithMoreLands(g *game.Game, controller uuid.UUID) int {
+	mine := B03LandsControlled(g, controller)
 	n := 0
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated || p.ID == controller {
 			continue
 		}
-		if b03LandsControlled(g, p.ID) > mine {
+		if B03LandsControlled(g, p.ID) > mine {
 			n++
 		}
 	}
@@ -74,7 +74,7 @@ func vowB12OpponentsWithMoreLands(g *game.Game, controller uuid.UUID) int {
 // vowB12YouCastACreatureSpellOnAnOpponentsTurn is Breath of the Sleepless's
 // condition: a creature spell cast by the source's controller while it is
 // another player's turn.
-func vowB12YouCastACreatureSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+func VowB12YouCastACreatureSpellOnAnOpponentsTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	if !YouCast(Creature())(ev, source, lki, g) {
 		return false
 	}

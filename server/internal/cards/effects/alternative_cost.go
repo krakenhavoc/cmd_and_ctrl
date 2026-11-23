@@ -175,7 +175,7 @@ func Disturb(cost string) game.AlternativeCost {
 func FlashbackSacrifice(n int, label string, preds ...CardPredicate) game.AlternativeCost {
 	ac := Flashback("")
 	ac.Label = "Flashback—Sacrifice " + label
-	ac.Sacrifice = sacrificeSpec(label, preds...).WithCount(n, n)
+	ac.Sacrifice = SacrificeSpec(label, preds...).WithCount(n, n)
 	ac.PayLabel = label
 	return ac
 }
@@ -236,7 +236,7 @@ func SacrificeInstead(n int, label string, life int, preds ...CardPredicate) gam
 		Label:     clause + " rather than pay this spell's mana cost",
 		ManaCost:  "",
 		Life:      life,
-		Sacrifice: sacrificeSpec(label, preds...).WithCount(n, n),
+		Sacrifice: SacrificeSpec(label, preds...).WithCount(n, n),
 		PayLabel:  label,
 	}
 }
@@ -294,14 +294,14 @@ func Miracle(cost string) game.AlternativeCost {
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{Escape("{2}{B}", 4)},
 func Escape(cost string, n int) game.AlternativeCost {
-	clause := "Exile " + numberWord(n) + " other cards from your graveyard"
+	clause := "Exile " + NumberWord(n) + " other cards from your graveyard"
 	return game.AlternativeCost{
 		Key:                "escape",
 		Label:              "Escape—" + cost + ", " + clause,
 		ManaCost:           cost,
 		FromZone:           game.ZoneGraveyard,
 		ExileFromGraveyard: CardsInYourGraveyard(n, clause),
-		PayLabel:           numberWord(n) + " other cards from your graveyard",
+		PayLabel:           NumberWord(n) + " other cards from your graveyard",
 	}
 }
 
@@ -364,7 +364,7 @@ func Retrace(printedCost string) game.AlternativeCost {
 //	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 //	AlternativeCosts: []game.AlternativeCost{CastFromGraveyardByRemovingCounters(...)},
 func CastFromGraveyardByRemovingCounters(printedCost string, n int, label string, preds ...CardPredicate) game.AlternativeCost {
-	what := numberWord(n) + " counters"
+	what := NumberWord(n) + " counters"
 	if n == 1 {
 		what = "a counter"
 	}
@@ -463,7 +463,7 @@ func TapInstead(n int, label string, condition func(g *game.Game, controller uui
 		Label:     "Tap " + label + " rather than pay this spell's mana cost",
 		ManaCost:  "",
 		Condition: condition,
-		TapOthers: tapOthersPrice(n, label, preds...),
+		TapOthers: TapOthersPrice(n, label, preds...),
 		PayLabel:  label,
 	}
 }
@@ -482,7 +482,7 @@ func TapInsteadPaying(mana string, n int, label string, preds ...CardPredicate) 
 		Key:       "tap",
 		Label:     "Pay " + mana + " and tap " + label + " rather than pay this spell's mana cost",
 		ManaCost:  mana,
-		TapOthers: tapOthersPrice(n, label, preds...),
+		TapOthers: TapOthersPrice(n, label, preds...),
 		PayLabel:  label,
 	}
 }
@@ -498,7 +498,7 @@ func TapInsteadPaying(mana string, n int, label string, preds ...CardPredicate) 
 func FlashbackTap(n int, label string, preds ...CardPredicate) game.AlternativeCost {
 	ac := Flashback("")
 	ac.Label = "Flashback—Tap " + label
-	ac.TapOthers = tapOthersPrice(n, label, preds...)
+	ac.TapOthers = TapOthersPrice(n, label, preds...)
 	ac.PayLabel = label
 	return ac
 }
@@ -515,7 +515,7 @@ func FlashbackTap(n int, label string, preds ...CardPredicate) game.AlternativeC
 // revealed with the spell on the stack, and nothing moves or taps. The
 // card file still lists ZoneGraveyard in CastableZones, as for Flashback.
 func FlashbackBehold(mana string, n int, subtype, plural string) game.AlternativeCost {
-	what := numberWord(n) + " " + plural
+	what := NumberWord(n) + " " + plural
 	ac := Flashback(mana)
 	ac.Label = "Flashback—" + mana + ", Behold " + what
 	ac.Behold = &game.RevealCost{Subtype: subtype, Behold: true}
@@ -527,7 +527,7 @@ func FlashbackBehold(mana string, n int, subtype, plural string) game.Alternativ
 // tapOthersPrice is the TapOthers component of a tap alternative cost: n
 // permanents matching the predicates, never the spell itself (it is not on
 // the battlefield, so there is no "another" to say).
-func tapOthersPrice(n int, label string, preds ...CardPredicate) *game.TapOthersCost {
+func TapOthersPrice(n int, label string, preds ...CardPredicate) *game.TapOthersCost {
 	return &game.TapOthersCost{
 		Count:  n,
 		Filter: TargetPermanent(label, preds...),
@@ -578,7 +578,7 @@ func EmergeFrom(quality, cost string, preds ...CardPredicate) game.AlternativeCo
 		Key:                          AltCostKeyEmerge,
 		Label:                        label,
 		ManaCost:                     cost,
-		Sacrifice:                    sacrificeSpec(what, preds...).WithCount(1, 1),
+		Sacrifice:                    SacrificeSpec(what, preds...).WithCount(1, 1),
 		ReducedBySacrificedManaValue: true,
 		PayLabel:                     what,
 	}
@@ -632,7 +632,7 @@ func EscapeWithCounters(cost string, n, counters int) game.AlternativeCost {
 func SacrificeThisUnlessItEscaped(cardName string) game.TriggeredAbility {
 	return WhenThisEnters(cardName+" — sacrifice it unless it escaped", func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
-		if !onBattlefield(g, item.SourceCardID) || ctx.Escaped() {
+		if !OnBattlefield(g, item.SourceCardID) || ctx.Escaped() {
 			return nil
 		}
 		return SacrificePermanent{Target: item.SourceCardID}.Apply(ctx)
@@ -642,7 +642,7 @@ func SacrificeThisUnlessItEscaped(cardName string) game.TriggeredAbility {
 // numberWord spells a small count the way an oracle line does —
 // "five other cards", not "5 other cards". Falls back to digits past
 // the range any printed escape cost uses.
-func numberWord(n int) string {
+func NumberWord(n int) string {
 	words := []string{"zero", "one", "two", "three", "four", "five",
 		"six", "seven", "eight", "nine", "ten"}
 	if n >= 0 && n < len(words) {
@@ -693,7 +693,7 @@ func Spectacle(cost string) game.AlternativeCost {
 		Label:    "Spectacle " + cost,
 		ManaCost: cost,
 		Condition: func(g *game.Game, controller uuid.UUID) bool {
-			return opponentLifeLostThisTurn(g, controller) > 0
+			return OpponentLifeLostThisTurn(g, controller) > 0
 		},
 	}
 }
@@ -725,13 +725,13 @@ func FreeIfYouControlCommander(label string) game.AlternativeCost {
 		Key:       "free",
 		Label:     label,
 		ManaCost:  "",
-		Condition: controlsACommander,
+		Condition: ControlsACommander,
 	}
 }
 
 // controlsACommander is the cycle's condition: the caster controls at
 // least one permanent that is somebody's commander.
-func controlsACommander(g *game.Game, controller uuid.UUID) bool {
+func ControlsACommander(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.IsCommander && c.Controller == controller {
 			return true
@@ -829,7 +829,7 @@ func ReturnInstead(label string, from *game.TargetSpec, payLabel string) game.Al
 func ControlsA(subtype string) func(g *game.Game, controller uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
 		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller == controller && hasSubtype(c, subtype) {
+			if c.Controller == controller && CardHasSubtype(c, subtype) {
 				return true
 			}
 		}
@@ -847,8 +847,8 @@ func AnOpponentControlsAAndYouControlA(theirs, yours string) func(g *game.Game, 
 		opponents, you := false, false
 		for _, c := range g.BattlefieldCardsForEffect() {
 			mine := c.Controller == controller
-			you = you || (mine && hasSubtype(c, yours))
-			opponents = opponents || (!mine && c.Controller != uuid.Nil && hasSubtype(c, theirs))
+			you = you || (mine && CardHasSubtype(c, yours))
+			opponents = opponents || (!mine && c.Controller != uuid.Nil && CardHasSubtype(c, theirs))
 		}
 		return opponents && you
 	}

@@ -25,11 +25,11 @@ import (
 // itself entered this turn, so it can make a Golem the turn it is made.
 //
 // No simplification.
-const mastersGuideMuralOracleID = "2dfdd358-e3cd-4bf5-871b-37689b7951e9"
+const MastersGuideMuralOracleID = "2dfdd358-e3cd-4bf5-871b-37689b7951e9"
 
 func init() {
 	Register(Spec{
-		OracleID:     mastersGuideMuralOracleID,
+		OracleID:     MastersGuideMuralOracleID,
 		Name:         "Master's Guide-Mural",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
@@ -42,14 +42,14 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID:     mastersGuideMuralOracleID + "#1",
+		OracleID:     MastersGuideMuralOracleID + "#1",
 		Name:         "Master's Manufactory",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Create a 4/4 white and blue Golem artifact creature token. Activate only if this artifact or another artifact entered the battlefield under your control this turn.",
 			Cost:      TapCost(),
 			Purpose:   game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
-			Condition: anArtifactEnteredUnderYouThisTurn,
+			Condition: AnArtifactEnteredUnderYouThisTurn,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TokenCard("4/4 white and blue Golem artifact"), N: 1}.Apply(NewContext(g, item))
 			},
@@ -59,6 +59,6 @@ func init() {
 
 // anArtifactEnteredUnderYouThisTurn is "if this artifact or another
 // artifact entered the battlefield under your control this turn".
-func anArtifactEnteredUnderYouThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
+func AnArtifactEnteredUnderYouThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
 	return g.EnteredWithCardTypeThisTurn(controller, "artifact") > 0
 }

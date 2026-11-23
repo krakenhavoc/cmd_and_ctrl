@@ -19,14 +19,14 @@ func init() {
 		OracleID:     "f28b21a6-f7ce-437a-8c5b-0423cb55cefb",
 		Name:         "Banishing Light",
 		Completeness: CompletenessFull,
-		Triggered:    exileUntilThisLeavesTriggers("Banishing Light"),
+		Triggered:    ExileUntilThisLeavesTriggers("Banishing Light"),
 	})
 }
 
 // exileUntilThisLeavesTriggers are the two rows of Banishing Light's text
 // (the exile and the return), labelled with the card's name. Web Up
 // (Marvel Super Heroes, #4455) prints the same text.
-func exileUntilThisLeavesTriggers(name string) []game.TriggeredAbility {
+func ExileUntilThisLeavesTriggers(name string) []game.TriggeredAbility {
 	exileLabel := name + " — exile target nonland permanent an opponent controls"
 	return []game.TriggeredAbility{
 		{
@@ -34,7 +34,7 @@ func exileUntilThisLeavesTriggers(name string) []game.TriggeredAbility {
 			AppliesTo: Self,
 			Targets:   TargetPermanent("target nonland permanent an opponent controls", And(Nonland(), OpponentControls())),
 			Key:       exileLabel,
-			Effect:    exileChosenTargetUntilThisLeaves(name + " — the exiled card returns when " + name + " leaves the battlefield"),
+			Effect:    ExileChosenTargetUntilThisLeaves(name + " — the exiled card returns when " + name + " leaves the battlefield"),
 		},
 		UntilThisLeavesLegacyReturn(name+" — return the exiled card", exileLabel),
 	}

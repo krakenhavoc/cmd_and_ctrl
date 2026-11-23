@@ -13,9 +13,9 @@ import (
 // second card each turn, …": Gixian Puppeteer's trigger condition (the
 // second draw of any turn, never the third; b40IsYourSecondDrawThisTurn)
 // with the card's own effect.
-func trekB31SeekOut(label string, effect Effect) game.TriggeredAbility {
+func TrekB31SeekOut(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return b40IsYourSecondDrawThisTurn(ev, source, g)
+		return B40IsYourSecondDrawThisTurn(ev, source, g)
 	}, label, effect)
 }
 
@@ -26,7 +26,7 @@ func trekB31SeekOut(label string, effect Effect) game.TriggeredAbility {
 // (CR 611.2c), so the two Borg the spell just made are in it. The tail's
 // Word is the colour, its first Words entry the label's card name. An
 // on-disk key: never renamed, never reused.
-var trekB31ArtifactCreaturesProtectionFromChosenColor = CardTail("trek-b31/artifact-creatures-protection-from-chosen-color", func(ctx *Context, o game.TailOutcome) error {
+var TrekB31ArtifactCreaturesProtectionFromChosenColor = CardTail("trek-b31/artifact-creatures-protection-from-chosen-color", func(ctx *Context, o game.TailOutcome) error {
 	token := game.ProtectionFromColor(o.Tail.Word)
 	if token == "" || len(o.Tail.Words) == 0 {
 		return nil
@@ -41,7 +41,7 @@ var trekB31ArtifactCreaturesProtectionFromChosenColor = CardTail("trek-b31/artif
 // trekB31AssimilateFromExileThen is assimilate (trekB11Assimilate's
 // entry) on one card in exile, with `then` run once the card has landed
 // (or at once, when it could not be put).
-func trekB31AssimilateFromExileThen(ctx *Context, card uuid.UUID, label string, then game.KeyedTail) error {
+func TrekB31AssimilateFromExileThen(ctx *Context, card uuid.UUID, label string, then game.KeyedTail) error {
 	var entries []game.BatchEntry
 	if z := ctx.Game.FindCardZoneForEffect(card); z != nil && z.Kind == game.ZoneExile {
 		if c, ok := ctx.Game.LookupCardForEffect(card); ok && !c.IsToken() && c.IsPermanent() {

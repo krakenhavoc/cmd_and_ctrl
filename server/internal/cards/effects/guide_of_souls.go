@@ -2,7 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-var guideOfSoulsPaid = energyPaid("pay-unless/guide-of-souls-angel",
+var guideOfSoulsPaid = EnergyPaid("pay-unless/guide-of-souls-angel",
 	func(g *game.Game, item *game.StackItem) error {
 		return WhenYouDo("Guide of Souls — two +1/+1 counters and a flying counter on target attacking creature; it becomes an Angel",
 			guideOfSoulsAngelBody).Apply(NewContext(g, item))
@@ -32,11 +32,11 @@ func init() {
 		Purpose:      game.Purpose{Energy: 1},
 		Triggered: []game.TriggeredAbility{
 			WheneverAnotherCreatureEntersUnderYourControl("Guide of Souls — you gain 1 life and get {E}",
-				gainLifeAndGetEnergy(1, 1)),
+				GainLifeAndGetEnergy(1, 1)),
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller)
+				return AttackDeclaredByYou(ev, source.Controller)
 			}, "Guide of Souls — you may pay {E}{E}{E}",
-				mayPayEnergyThen("Guide of Souls", 3, "make an attacking creature an Angel", guideOfSoulsPaid))),
+				MayPayEnergyThen("Guide of Souls", 3, "make an attacking creature an Angel", guideOfSoulsPaid))),
 		},
 	})
 }

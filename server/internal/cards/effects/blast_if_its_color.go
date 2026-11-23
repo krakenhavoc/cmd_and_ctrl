@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // counterOrDestroyTheTargetIfItIs is the OnResolve body; `color` is the
 // printed colour's symbol ("U" for Pyroblast, "R" for Hydroblast).
 // Mode 0 counters a spell, mode 1 destroys a permanent.
-func counterOrDestroyTheTargetIfItIs(color string) func(item *game.StackItem, ctx *Context) error {
+func CounterOrDestroyTheTargetIfItIs(color string) func(item *game.StackItem, ctx *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) == 0 {
 			return nil

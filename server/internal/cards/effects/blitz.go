@@ -40,8 +40,8 @@ func init() {
 // keyword's rules give (blitz's draw). Same checks and same map as a
 // Spec.Grants bundle; `owner` names the keyword in a panic.
 func registerSharedGrant(owner string, gr AbilityGrant) {
-	checkGrants(owner, []AbilityGrant{gr})
-	fileDef(game.GrantKey(gr.Key), buildGrantDef(gr))
+	CheckGrants(owner, []AbilityGrant{gr})
+	FileDef(game.GrantKey(gr.Key), BuildGrantDef(gr))
 }
 
 // Blitz is "Blitz {cost}" — CR 702.152a, cast from hand.

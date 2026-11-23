@@ -213,7 +213,7 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 		Label: attackTargetLabel(r),
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.IsCreature() && selfOnly(target, g, source)
+			return target.IsCreature() && SelfOnly(target, g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			r := r
@@ -223,6 +223,7 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 				// its land type in the source's text (CR 612.2).
 				r.DefenderMustControl = game.PermanentQueriesThroughTextOf(r.DefenderMustControl, source)
 				r.ControllerMustControlMore = game.PermanentQueriesThroughTextOf(r.ControllerMustControlMore, source)
+				r.ControllerMustControl = game.PermanentQueriesThroughTextOf(r.ControllerMustControl, source)
 			}
 			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
 		},

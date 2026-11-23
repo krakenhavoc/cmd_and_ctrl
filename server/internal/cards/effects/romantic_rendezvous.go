@@ -19,13 +19,13 @@ func init() {
 				Player: item.Controller,
 				Source: item.SourceCardID,
 				N:      1,
-			}, mscM1RendezvousDraw, nil)
+			}, MscM1RendezvousDraw, nil)
 		},
 	})
 }
 
 // mscM1RendezvousDraw is "then draw two cards", keyed: a table waiting
 // on the discard is a restore point.
-var mscM1RendezvousDraw = game.RegisterDiscardThen("choose-cards/msc-m1-romantic-rendezvous-draw", func(g *game.Game, r game.DiscardsDone) error {
+var MscM1RendezvousDraw = game.RegisterDiscardThen("choose-cards/msc-m1-romantic-rendezvous-draw", func(g *game.Game, r game.DiscardsDone) error {
 	return g.DrawNForEffect(r.Player, 2)
 })

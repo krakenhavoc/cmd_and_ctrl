@@ -37,7 +37,7 @@ import (
 // apply.
 //
 // No simplification.
-const direFlailOracleID = "5a043512-fa56-4361-bb92-0a0f229f34d3"
+const DireFlailOracleID = "5a043512-fa56-4361-bb92-0a0f229f34d3"
 
 // direBlunderbussGrant is the bundle the Blunderbuss gives its creature.
 // An on-disk identity: never renamed.
@@ -45,7 +45,7 @@ const direBlunderbussGrant = "dire-blunderbuss/sacrifice-artifact"
 
 func init() {
 	Register(Spec{
-		OracleID:     direFlailOracleID,
+		OracleID:     DireFlailOracleID,
 		Name:         "Dire Flail",
 		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(2, 0)},
@@ -56,7 +56,7 @@ func init() {
 	})
 
 	Register(Spec{
-		OracleID:     direFlailOracleID + "#1",
+		OracleID:     DireFlailOracleID + "#1",
 		Name:         "Dire Blunderbuss",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
@@ -79,11 +79,11 @@ func init() {
 // direBlunderbussAttacks is the granted trigger's resolution: the
 // optional sacrifice, and the reflexive damage once it happened.
 func direBlunderbussAttacks(g *game.Game, item *game.StackItem) error {
-	exclude := direBlunderbussGrantors(g, item)
+	exclude := DireBlunderbussGrantors(g, item)
 	eligible := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsArtifact() && !exclude[c.InstanceID]
 	}
-	if countControlled(g, item.Controller, func(c game.Card) bool { return eligible(g, item.Controller, c) }) == 0 {
+	if CountControlled(g, item.Controller, func(c game.Card) bool { return eligible(g, item.Controller, c) }) == 0 {
 		return nil
 	}
 	return MayChoice{
@@ -100,7 +100,7 @@ func direBlunderbussAttacks(g *game.Game, item *game.StackItem) error {
 // then every Blunderbuss granting the bundle to the creature is read as
 // it, which is the one reading that never lets a trigger sacrifice its
 // own grantor.
-func direBlunderbussGrantors(g *game.Game, item *game.StackItem) map[uuid.UUID]bool {
+func DireBlunderbussGrantors(g *game.Game, item *game.StackItem) map[uuid.UUID]bool {
 	if item.GrantedBy != uuid.Nil {
 		return map[uuid.UUID]bool{item.GrantedBy: true}
 	}
@@ -136,12 +136,12 @@ func direBlunderbussDamage(g *game.Game, item *game.StackItem) error {
 // (#4291).
 var direBlunderbussAnswer = MayYes("confirm/dire-blunderbuss-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
 	item := ctx.Item
-	exclude := direBlunderbussGrantors(ctx.Game, item)
+	exclude := DireBlunderbussGrantors(ctx.Game, item)
 	eligible := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsArtifact() && !exclude[c.InstanceID]
 	}
 	return ctx.SacrificeThen(item.Controller,
-		sacrificeSpec("an artifact other than Dire Blunderbuss", eligible),
+		SacrificeSpec("an artifact other than Dire Blunderbuss", eligible),
 		"Dire Blunderbuss — sacrifice an artifact",
 		1, direBlunderbussSacrificed)
 })

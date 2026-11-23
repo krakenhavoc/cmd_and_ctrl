@@ -150,6 +150,14 @@ type AbilityGrant struct {
 	// token copy). The recipient is the modifier's source, so "this" is
 	// the recipient; it is read live off the composite key and ends the
 	// pass the grant does.
+	// Replacements are replacement effects the recipient has while it has
+	// the grant, as its own (Master Chef's "enters with an additional +1/+1
+	// counter", Scion of Halaster's "first time you would draw a card each
+	// turn"): the recipient is each one's source, so "this creature" and
+	// "you" are the recipient and its controller. Merged by the composite
+	// definition (game.CardDef.GrantedReplacements).
+	Replacements []game.ReplacementEffect
+
 	CostModifiers   []game.CostModifier
 	CastPermissions []game.CastPermission
 
@@ -204,11 +212,11 @@ func CardsYouOwn(match func(card *game.Card) bool) func(card *game.Card, g *game
 // buildGrantDef projects one bundle into the shape the engine reads.
 // The twin of buildEmblemDef, and like it a *game.CardDef that is not
 // a card's.
-func buildGrantDef(gr AbilityGrant) *game.CardDef {
+func BuildGrantDef(gr AbilityGrant) *game.CardDef {
 	return &game.CardDef{
 		Triggered:     gr.Triggered,
 		Static:        gr.Static,
-		Activated:     activatedShapes(gr.Activated),
+		Activated:     ActivatedShapes(gr.Activated),
 		ManaAbilities: manaShapes(gr.Mana),
 		GrantText:     gr.Text,
 
@@ -226,6 +234,7 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 		AdditionalLandPlays: gr.AdditionalLandPlays,
 		CastPermissions:     standingCastPermissions(gr.CastPermissions),
 		CostModifiers:       gr.CostModifiers,
+		GrantedReplacements: gr.Replacements,
 	}
 }
 
@@ -317,24 +326,24 @@ func GrantAbilitiesToAttached(keys ...string) game.StaticAbility {
 // that is wrong in a way no test of the card would catch — a recipient
 // naming a bundle nobody registered gets a silent no-ability grant — so
 // it fails at boot.
-func checkGrants(name string, grants []AbilityGrant) {
+func CheckGrants(name string, grants []AbilityGrant) {
 	for _, gr := range grants {
 		if gr.Key == "" {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
 			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 &&
-			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
+			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && len(gr.Replacements) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no Text — the recipient has no printing that says what it can now do")
 		}
-		if _, taken := defs[game.GrantKey(gr.Key)]; taken {
+		if _, taken := Defs[game.GrantKey(gr.Key)]; taken {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + ", which is already registered — grant keys are catalog-wide")
 		}
-		checkGrantAbilities(name, gr)
-		checkFixedBundleGrants(name, gr, grants)
+		CheckGrantAbilities(name, gr)
+		CheckFixedBundleGrants(name, gr, grants)
 	}
 }
 
@@ -345,7 +354,7 @@ func checkGrants(name string, grants []AbilityGrant) {
 // catalog-registered, and can grant, remove or borrow nothing.
 // game.GrantedStaticProblem makes the same refusal against the live
 // catalog wherever a grant is applied; this one fails the boot.
-func checkFixedBundleGrants(name string, gr AbilityGrant, siblings []AbilityGrant) {
+func CheckFixedBundleGrants(name string, gr AbilityGrant, siblings []AbilityGrant) {
 	for i, s := range gr.Static {
 		if !s.GrantsFixedBundle {
 			continue
@@ -381,7 +390,7 @@ func checkFixedBundleGrants(name string, gr AbilityGrant, siblings []AbilityGran
 //   - Zones other than the battlefield. The layer pass reaches only
 //     permanents, so a bundle ability that functions from a hand or a
 //     graveyard could never be anywhere it functions.
-func checkGrantAbilities(name string, gr AbilityGrant) {
+func CheckGrantAbilities(name string, gr AbilityGrant) {
 	where := func(kind string, i int) string {
 		return fmt.Sprintf("effects.Register: %q ability grant %s %s %d", name, gr.Key, kind, i)
 	}
@@ -446,7 +455,7 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		if offBattlefield(a.Zones) {
 			panic(where("activated ability", i) + " functions outside the battlefield — a granted ability is a permanent's")
 		}
-		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
+		CheckAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
 		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, false)
 		checkExileGrantor(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, true, gr.Zone)
 	}
@@ -488,7 +497,7 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 		if why := game.AbilityNeedsPermanentSource(a.Cost); why != "" {
 			panic(where("activated ability", i) + " functions from " + string(gr.Zone) + " but declares " + why + " — that component needs a permanent on the battlefield")
 		}
-		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
+		CheckAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
 		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, false)
 		checkExileGrantor(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, true, gr.Zone)
 	}
@@ -498,7 +507,7 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 // layer it belongs to. A grant is an ability-ADDING effect, CR 613.1f's
 // layer 6; declared anywhere else it would sort against the wrong
 // effects and a removal in layer 6 could never reach it.
-func checkStaticGrants(card, what string, statics []game.StaticAbility) {
+func CheckStaticGrants(card, what string, statics []game.StaticAbility) {
 	// ADR 0155: the borrow, the other layer-6 ability-adding declaration,
 	// is held to its layer at every place a grant is.
 	checkStaticBorrows(card, what, statics)

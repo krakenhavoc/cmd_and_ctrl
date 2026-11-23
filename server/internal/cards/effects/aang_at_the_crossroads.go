@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications. Avatar: The Last Airbender (#4459).
 func init() {
 	Register(Spec{
-		OracleID:        aangAtTheCrossroadsOracle,
+		OracleID:        AangAtTheCrossroadsOracle,
 		Name:            "Aang, at the Crossroads",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
@@ -45,7 +45,7 @@ func init() {
 						ThenTail: PutRestOnBottomInRandomOrderTail,
 					}.Apply(ctx)
 				}),
-			On(game.EventLTB, anotherCreatureYouControlLeft,
+			On(game.EventLTB, AnotherCreatureYouControlLeft,
 				"Aang, at the Crossroads — transform Aang at the beginning of the next upkeep",
 				func(g *game.Game, item *game.StackItem) error {
 					return ScheduleDelayedTrigger{
@@ -58,7 +58,7 @@ func init() {
 	})
 }
 
-const aangAtTheCrossroadsOracle = "96e5d4a1-e59f-4140-823f-a17e15ee5d8d"
+const AangAtTheCrossroadsOracle = "96e5d4a1-e59f-4140-823f-a17e15ee5d8d"
 
 // aangAtTheCrossroadsTransformBody is the delayed trigger's "transform
 // Aang". An on-disk key.

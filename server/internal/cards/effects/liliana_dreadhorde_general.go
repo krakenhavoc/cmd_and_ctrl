@@ -69,7 +69,7 @@ func init() {
 
 // apnapLivingSeats lists the players still in the game in APNAP order (CR
 // 101.4), starting with the active player.
-func apnapLivingSeats(g *game.Game) []uuid.UUID {
+func ApnapLivingSeats(g *game.Game) []uuid.UUID {
 	var out []uuid.UUID
 	n := len(g.Seats)
 	for i := 0; i < n; i++ {
@@ -87,7 +87,7 @@ func apnapLivingSeats(g *game.Game) []uuid.UUID {
 // opponent in turn order does the same"). This is the controller's own
 // seat, not the active player's, so it stays right if the ability is ever
 // activated off-turn.
-func opponentsInTurnOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
+func OpponentsInTurnOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	n := len(g.Seats)
 	start := -1
 	for i, p := range g.Seats {
@@ -111,8 +111,8 @@ func opponentsInTurnOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
 func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
 	var legs []game.ChooseCardsPrompt
 	source := item.SourceCardID
-	spec := sacrificeSpec("a creature", Creature())
-	for _, seat := range apnapLivingSeats(g) {
+	spec := SacrificeSpec("a creature", Creature())
+	for _, seat := range ApnapLivingSeats(g) {
 		if !g.CanEffectCauseSacrificeForEffect(seat) {
 			continue
 		}
@@ -136,7 +136,7 @@ func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
 func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error {
 	var legs []game.ChooseCardsPrompt
 	var asked []uuid.UUID
-	for _, seat := range opponentsInTurnOrder(g, item.Controller) {
+	for _, seat := range OpponentsInTurnOrder(g, item.Controller) {
 		if !g.CanEffectCauseSacrificeForEffect(seat) {
 			continue
 		}
@@ -150,8 +150,8 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 				cards = append(cards, c)
 			}
 		}
-		present := permanentTypesAmong(cards)
-		valid := lilianaKeepsOneOfEachType(present)
+		present := PermanentTypesAmong(cards)
+		valid := LilianaKeepsOneOfEachType(present)
 		if valid(cards) {
 			continue
 		}
@@ -186,7 +186,7 @@ var lilianaKeepRest = game.RegisterPromptRunThen("prompt-run/liliana-dreadhorde-
 	}
 	var rest []uuid.UUID
 	for _, seat := range r.Carry {
-		for _, id := range permanentsControlledByMatching(g, seat, nil) {
+		for _, id := range PermanentsControlledByMatching(g, seat, nil) {
 			if !kept[id] {
 				rest = append(rest, id)
 			}
@@ -227,7 +227,7 @@ var lilianaKeepLegs = func() (legs [1 << 6]game.ChooseCardsThen) {
 		}
 		legs[mask] = game.RegisterOrderedPickLegRule(
 			"choose-cards/liliana-dreadhorde-general-keep-"+strings.Join(present, "-"),
-			lilianaKeepsOneOfEachType(present))
+			LilianaKeepsOneOfEachType(present))
 	}
 	return legs
 }()
@@ -236,7 +236,7 @@ var lilianaKeepLegs = func() (legs [1 << 6]game.ChooseCardsThen) {
 var permanentTypeNames = []string{"artifact", "battle", "creature", "enchantment", "land", "planeswalker"}
 
 // permanentTypesOf lists the permanent types card c has.
-func permanentTypesOf(c game.Card) []string {
+func PermanentTypesOf(c game.Card) []string {
 	var out []string
 	for _, t := range permanentTypeNames {
 		if c.HasCardType(t) {
@@ -247,10 +247,10 @@ func permanentTypesOf(c game.Card) []string {
 }
 
 // permanentTypesAmong lists the permanent types any of `cards` has.
-func permanentTypesAmong(cards []game.Card) []string {
+func PermanentTypesAmong(cards []game.Card) []string {
 	seen := map[string]bool{}
 	for _, c := range cards {
-		for _, t := range permanentTypesOf(c) {
+		for _, t := range PermanentTypesOf(c) {
 			seen[t] = true
 		}
 	}
@@ -267,14 +267,14 @@ func permanentTypesAmong(cards []game.Card) []string {
 // permanent types the choosing opponent controls: every type in it is
 // covered by a kept permanent, and the kept permanents can each be
 // assigned a different type they have (each was chosen for something).
-func lilianaKeepsOneOfEachType(present []string) func(picked []game.Card) bool {
+func LilianaKeepsOneOfEachType(present []string) func(picked []game.Card) bool {
 	return func(picked []game.Card) bool {
 		if len(picked) == 0 || len(picked) > len(present) {
 			return false
 		}
 		types := make([][]string, len(picked))
 		for i, c := range picked {
-			types[i] = permanentTypesOf(c)
+			types[i] = PermanentTypesOf(c)
 		}
 		for _, t := range present {
 			covered := false

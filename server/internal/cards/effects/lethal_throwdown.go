@@ -32,11 +32,11 @@ func init() {
 		Completeness: CompletenessFull,
 		AdditionalCost: EitherCost(
 			SacrificeCost("a creature", Creature()).Keyed("creature"),
-			SacrificeCost("a modified creature", Creature(), modifiedCreature).Keyed("modified"),
+			SacrificeCost("a modified creature", Creature(), ModifiedCreature).Keyed("modified"),
 		),
 		Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := destroyTheTargetPermanent(item, ctx); err != nil {
+			if err := DestroyTheTargetPermanent(item, ctx); err != nil {
 				return err
 			}
 			if !ctx.PaidCostBranch("modified") {
@@ -48,6 +48,6 @@ func init() {
 }
 
 // modifiedCreature is b07IsModified as a card predicate.
-func modifiedCreature(g *game.Game, _ uuid.UUID, c game.Card) bool {
-	return b07IsModified(g, c)
+func ModifiedCreature(g *game.Game, _ uuid.UUID, c game.Card) bool {
+	return B07IsModified(g, c)
 }

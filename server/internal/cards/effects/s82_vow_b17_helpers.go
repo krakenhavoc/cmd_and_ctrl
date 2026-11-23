@@ -13,7 +13,7 @@ import (
 // other types": the copiable power and toughness become 1 and 1, and Spirit
 // joins the subtypes. withFlying adds "and it has flying" (Haunting
 // Imitation).
-func vowB17SpiritCopyException(withFlying bool) func(t *game.Card) {
+func VowB17SpiritCopyException(withFlying bool) func(t *game.Card) {
 	return func(t *game.Card) {
 		t.Power, t.Toughness = 1, 1
 		t.VariableToughness = false
@@ -21,7 +21,7 @@ func vowB17SpiritCopyException(withFlying bool) func(t *game.Card) {
 		v := game.PrintedValues{TypeLine: t.TypeLine}
 		v.AddSubtype("Spirit")
 		t.TypeLine = v.TypeLine
-		if withFlying && !hasKeywordWord(t.Keywords, "flying") {
+		if withFlying && !HasKeywordWord(t.Keywords, "flying") {
 			t.Keywords = append(t.Keywords, "flying")
 		}
 	}
@@ -45,7 +45,7 @@ func vowB17PutAttackingThen(ctx *Context, card uuid.UUID, name string, then game
 	options := make([]game.ChoiceOption, len(refs))
 	carry := []uuid.UUID{card}
 	for i, r := range refs {
-		options[i] = game.ChoiceOption{Label: "Attack " + attackTargetName(ctx.Game, r.ID)}
+		options[i] = game.ChoiceOption{Label: "Attack " + AttackTargetName(ctx.Game, r.ID)}
 		if r.Kind != game.AttackTargetPlayer {
 			options[i].Cards = []uuid.UUID{r.ID}
 		}

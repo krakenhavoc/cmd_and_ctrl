@@ -48,7 +48,7 @@ func init() {
 				return target.InstanceID == source.InstanceID && ChosenPlayerOf(g, source.InstanceID) != uuid.Nil
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := cardsInHand(g, ChosenPlayerOf(g, source.InstanceID))
+				n := CardsInHand(g, ChosenPlayerOf(g, source.InstanceID))
 				c.Power = n
 				c.Toughness = n
 			},
@@ -58,7 +58,7 @@ func init() {
 				"Entropic Specter — that player discards a card",
 				func(g *game.Game, item *game.StackItem) error {
 					victim := NewContext(g, item).Trigger().Event.Target
-					return discardOne(g, item, victim)
+					return DiscardOne(g, item, victim)
 				}),
 		},
 	})
@@ -66,8 +66,8 @@ func init() {
 
 // discardOne makes `player` discard a card of their choice — a
 // hellbent player discards nothing.
-func discardOne(g *game.Game, item *game.StackItem, player uuid.UUID) error {
-	if cardsInHand(g, player) == 0 {
+func DiscardOne(g *game.Game, item *game.StackItem, player uuid.UUID) error {
+	if CardsInHand(g, player) == 0 {
 		return nil
 	}
 	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{

@@ -37,7 +37,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(
-				On(game.EventETB, AllOf(Self, weddingRingWasCast),
+				On(game.EventETB, AllOf(Self, WeddingRingWasCast),
 					"Wedding Ring — target opponent creates a token that's a copy of it",
 					weddingRingCopyForOpponent),
 				TargetPlayer("target opponent", Opponent())),
@@ -55,7 +55,7 @@ func init() {
 }
 
 // weddingRingWasCast is the enter trigger's intervening if.
-func weddingRingWasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func WeddingRingWasCast(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source.Provenance.FromZone != ""
 }
 

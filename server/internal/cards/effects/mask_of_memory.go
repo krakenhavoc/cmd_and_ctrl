@@ -37,7 +37,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
+				return AttachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			}, "Mask of Memory — draw two, discard one", maskOfMemoryMayDrawTwo),
 		},
 		Activated: []ActivatedAbility{
@@ -74,12 +74,12 @@ func maskOfMemoryMayDrawTwo(g *game.Game, item *game.StackItem) error {
 // maskOfMemoryDrawThenDiscard is the "if you do" branch.
 //
 // Caller holds g.mu.
-func maskOfMemoryDrawThenDiscard(ctx *Context) error {
-	return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 2, 1, "")
+func MaskOfMemoryDrawThenDiscard(ctx *Context) error {
+	return DrawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 2, 1, "")
 }
 
 // maskOfMemoryAnswer is the "yes": draw two, then discard a card. Keyed
 // (#4291).
 var maskOfMemoryAnswer = MayYes("confirm/mask-of-memory-loot", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return maskOfMemoryDrawThenDiscard(ctx)
+	return MaskOfMemoryDrawThenDiscard(ctx)
 })

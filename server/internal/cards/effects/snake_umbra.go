@@ -16,7 +16,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // does. The "may" is an optional prompt. No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     snakeUmbraOracleID,
+		OracleID:     SnakeUmbraOracleID,
 		Name:         "Snake Umbra",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
@@ -24,7 +24,7 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key: snakeUmbraDraw,
 			Triggered: []game.TriggeredAbility{
-				OptionalDraw(On(game.EventDealDamage, snakeUmbraDealtDamageToOpponent,
+				OptionalDraw(On(game.EventDealDamage, SnakeUmbraDealtDamageToOpponent,
 					"Snake Umbra — draw a card", Do(DrawCards{N: 1})),
 					"Snake Umbra — draw a card?", 1),
 			},
@@ -41,7 +41,7 @@ func init() {
 // snakeUmbraDealtDamageToOpponent reads the granted trigger's condition
 // for the creature that carries it: that creature dealt damage to a
 // player who is not its controller.
-func snakeUmbraDealtDamageToOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SnakeUmbraDealtDamageToOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Source != source.InstanceID {
 		return false
 	}
@@ -50,6 +50,6 @@ func snakeUmbraDealtDamageToOpponent(ev game.Event, source *game.Card, _ game.Ch
 }
 
 const (
-	snakeUmbraOracleID = "70ed2052-f03c-461d-b32a-8835c97c559f"
+	SnakeUmbraOracleID = "70ed2052-f03c-461d-b32a-8835c97c559f"
 	snakeUmbraDraw     = "snake-umbra/draw"
 )

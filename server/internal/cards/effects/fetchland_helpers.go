@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the normal line, not an edge case. A land has no summoning
 // sickness, so the Tap component is payable the turn it is played,
 // which is also correct.
-func fetchlandCost() game.AbilityCost {
+func FetchlandCost() game.AbilityCost {
 	return Plus(TapCost(), PayLife(1), SacrificeThis())
 }
 
@@ -47,7 +47,7 @@ func landWithEitherSubtype(a, b string) func(game.Card) bool {
 // fetchDual is the effect body of a Zendikar / Onslaught fetchland.
 // The land arrives untapped, which is the whole reason these cost a
 // life and Evolving Wilds does not.
-func fetchDual(a, b string) func(*game.Game, *game.StackItem) error {
+func FetchDual(a, b string) func(*game.Game, *game.StackItem) error {
 	pred := landWithEitherSubtype(a, b)
 	return func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{
@@ -66,7 +66,7 @@ func fetchDual(a, b string) func(*game.Game, *game.StackItem) error {
 // Terramorphic Expanse: any basic land, onto the battlefield
 // tapped. The two cards are functionally identical and differ only
 // in name and oracle ID.
-func fetchBasicTapped(g *game.Game, item *game.StackItem) error {
+func FetchBasicTapped(g *game.Game, item *game.StackItem) error {
 	return SearchLibrary{
 		Player:        item.Controller,
 		Predicate:     IsBasicLand,

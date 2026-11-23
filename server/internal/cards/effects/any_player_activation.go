@@ -55,7 +55,7 @@ func checkGrantorOnlyIsGranted(name string, i int, ab ActivatedAbility) {
 //
 // What the row's Purpose may say is checkActivatedPurpose's (purpose.go):
 // ControllerLosesLife only here, on an any-player row.
-func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
+func CheckAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	named := 0
 	for _, b := range []bool{ab.AnyPlayer, ab.OpponentsOnly, ab.OwnerOnly, ab.GrantorOnly} {
 		if b {
@@ -99,7 +99,7 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 // player's permanent is a rule no printed any-player mana ability needs,
 // and a hand ability's CR 108.4a owner rule would silently ignore the
 // permission.
-func checkAnyPlayerManaAbility(name string, i int, ma ManaAbility) {
+func CheckAnyPlayerManaAbility(name string, i int, ma ManaAbility) {
 	if !ma.AnyPlayer {
 		return
 	}

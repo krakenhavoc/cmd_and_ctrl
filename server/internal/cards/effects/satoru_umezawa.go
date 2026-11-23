@@ -40,7 +40,7 @@ func init() {
 			Text:      "Ninjutsu {2}{U}{B}",
 		}},
 		Static: []game.StaticAbility{
-			Labelled(GrantAbilitiesInZone(game.ZoneHand, CardsYouOwn(creatureCard), "satoru-umezawa/ninjutsu"),
+			Labelled(GrantAbilitiesInZone(game.ZoneHand, CardsYouOwn(CreatureCard), "satoru-umezawa/ninjutsu"),
 				"Each creature card in your hand has ninjutsu {2}{U}{B}."),
 		},
 		Triggered: []game.TriggeredAbility{
@@ -53,11 +53,11 @@ func init() {
 // creatureCard is the "creature card" of a zone grant: a card whose
 // printed types include creature. Off the battlefield Effective() is the
 // printed characteristic, so this reads the card as it is in the zone.
-func creatureCard(card *game.Card) bool { return card.IsCreature() }
+func CreatureCard(card *game.Card) bool { return card.IsCreature() }
 
 // satoruFirstThisTurn is "this ability triggers only once each turn".
 func satoruFirstThisTurn(label string) When {
 	return func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return source != nil && !b11TriggeredThisTurn(g, source.InstanceID, label)
+		return source != nil && !B11TriggeredThisTurn(g, source.InstanceID, label)
 	}
 }

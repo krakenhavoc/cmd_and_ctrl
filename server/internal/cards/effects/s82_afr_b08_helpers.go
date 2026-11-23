@@ -9,7 +9,7 @@ import (
 // s82AfrB08EquipmentAttachedTo counts the Equipment attached to a permanent.
 // It runs inside a layer pass that may hold only the read lock, so it walks
 // the battlefield directly (see PumpAttachedPer).
-func s82AfrB08EquipmentAttachedTo(g *game.Game, id uuid.UUID) int {
+func S82AfrB08EquipmentAttachedTo(g *game.Game, id uuid.UUID) int {
 	if g == nil || g.Battlefield == nil {
 		return 0
 	}
@@ -29,7 +29,7 @@ func s82AfrB08EquipmentAttachedTo(g *game.Game, id uuid.UUID) int {
 // for one (CR 303.4f); an Aura that can't legally enchant it stays in hand
 // (CR 303.4i). With no Aura card in hand, or a host that has left the
 // battlefield, nothing is asked.
-func s82AfrB08OfferAuraFromHand(g *game.Game, player, source, host uuid.UUID) error {
+func S82AfrB08OfferAuraFromHand(g *game.Game, player, source, host uuid.UUID) error {
 	if c, ok := g.LookupCardForEffect(host); !ok || !c.IsCreature() {
 		return nil
 	}

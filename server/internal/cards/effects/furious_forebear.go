@@ -32,7 +32,7 @@ func init() {
 				Chooser:  item.Controller,
 				Cost:     "{1}{W}",
 				Question: "Furious Forebear — pay {1}{W} to return it from your graveyard to your hand?",
-				Then:     furiousForebearPaid,
+				Then:     FuriousForebearPaid,
 			}.Apply(NewContext(g, item))
 		})
 	Register(Spec{
@@ -46,13 +46,13 @@ func init() {
 // furiousForebearTriggers is "a creature you control dies" while the card
 // was already in the graveyard.
 func furiousForebearTriggers(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
-	return ACreatureYouControlDied(ev, source, ch, g) && furiousForebearWasInGraveyard(ev, source, ch, g)
+	return ACreatureYouControlDied(ev, source, ch, g) && FuriousForebearWasInGraveyard(ev, source, ch, g)
 }
 
 // furiousForebearWasInGraveyard is "while this card is in your graveyard":
 // the card was already there before the death. It is false for the card's
 // own death and for any death in the batch that put the card there.
-func furiousForebearWasInGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func FuriousForebearWasInGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.CardID == source.InstanceID {
 		return false
 	}
@@ -71,7 +71,7 @@ func furiousForebearWasInGraveyard(ev game.Event, source *game.Card, _ game.Char
 
 // furiousForebearPaid returns the card to its owner's hand if it is still
 // in the graveyard as the object the ability came from. An on-disk key.
-var furiousForebearPaid = PayUnlessBranches("pay-unless/furious-forebear-return",
+var FuriousForebearPaid = PayUnlessBranches("pay-unless/furious-forebear-return",
 	func(ctx *Context, _ game.PayUnlessAnswer) error {
 		self := ctx.Source()
 		z := ctx.Game.FindCardZoneForEffect(self)

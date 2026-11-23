@@ -55,10 +55,10 @@ import (
 // The Ring's four lines (CR 701.54c), each gained at the temptation its
 // number names.
 const (
-	theRingLine1 = "Your Ring-bearer is legendary and can't be blocked by creatures with greater power."
-	theRingLine2 = "Whenever your Ring-bearer attacks, draw a card, then discard a card."
-	theRingLine3 = "Whenever your Ring-bearer becomes blocked by a creature, the blocking creature's controller sacrifices it at end of combat."
-	theRingLine4 = "Whenever your Ring-bearer deals combat damage to a player, each opponent loses 3 life."
+	TheRingLine1 = "Your Ring-bearer is legendary and can't be blocked by creatures with greater power."
+	TheRingLine2 = "Whenever your Ring-bearer attacks, draw a card, then discard a card."
+	TheRingLine3 = "Whenever your Ring-bearer becomes blocked by a creature, the blocking creature's controller sacrifices it at end of combat."
+	TheRingLine4 = "Whenever your Ring-bearer deals combat damage to a player, each opponent loses 3 life."
 )
 
 // The stack labels of the Ring's three triggered lines. Each is also
@@ -66,36 +66,36 @@ const (
 // trigger's restore looks the row up by — an on-disk identity, so
 // never reworded.
 const (
-	theRingLootLabel      = "The Ring — your Ring-bearer attacked: draw a card, then discard a card"
-	theRingSacrificeLabel = "The Ring — your Ring-bearer became blocked: its blocker is sacrificed at end of combat"
-	theRingLoseLifeLabel  = "The Ring — your Ring-bearer dealt combat damage to a player: each opponent loses 3 life"
+	TheRingLootLabel      = "The Ring — your Ring-bearer attacked: draw a card, then discard a card"
+	TheRingSacrificeLabel = "The Ring — your Ring-bearer became blocked: its blocker is sacrificed at end of combat"
+	TheRingLoseLifeLabel  = "The Ring — your Ring-bearer dealt combat damage to a player: each opponent loses 3 life"
 )
 
 // theRingSacrificeBlockerBody is the delayed trigger line 3 creates:
 // at the beginning of the end of combat step (CR 511.2, 603.7), the
 // blocking creature's controller sacrifices it. A registered body (ADR
 // 0041 phase 3), so a table with one waiting is a restore point.
-var theRingSacrificeBlockerBody game.BodyRef
+var TheRingSacrificeBlockerBody game.BodyRef
 
 func init() {
-	theRingSacrificeBlockerBody = game.DelayedBody("the-ring/sacrifice-blocker-at-end-of-combat", theRingSacrificeBlocker)
+	TheRingSacrificeBlockerBody = game.DelayedBody("the-ring/sacrifice-blocker-at-end-of-combat", theRingSacrificeBlocker)
 
 	registerRulesEmblem(game.RingEmblemKey, EmblemSpec{
 		Label: "The Ring",
-		Text:  strings.Join([]string{theRingLine1, theRingLine2, theRingLine3, theRingLine4}, "\n"),
+		Text:  strings.Join([]string{TheRingLine1, TheRingLine2, TheRingLine3, TheRingLine4}, "\n"),
 		Lines: []game.EmblemLine{
-			{Text: theRingLine1, At: 1},
-			{Text: theRingLine2, At: 2},
-			{Text: theRingLine3, At: 3},
-			{Text: theRingLine4, At: 4},
+			{Text: TheRingLine1, At: 1},
+			{Text: TheRingLine2, At: 2},
+			{Text: TheRingLine3, At: 3},
+			{Text: TheRingLine4, At: 4},
 		},
 		Static: []game.StaticAbility{
 			yourRingBearerIsLegendary(),
 		},
 		Triggered: []game.TriggeredAbility{
-			theRingLine(2, On(game.EventAttack, yourRingBearerAttacked, theRingLootLabel, theRingLoot)),
+			theRingLine(2, On(game.EventAttack, yourRingBearerAttacked, TheRingLootLabel, theRingLoot)),
 			theRingLine(3, theRingBlockerTrigger()),
-			theRingLine(4, On(game.EventDealDamage, yourRingBearerDealtCombatDamageToAPlayer, theRingLoseLifeLabel, theRingEachOpponentLosesThree)),
+			theRingLine(4, On(game.EventDealDamage, yourRingBearerDealtCombatDamageToAPlayer, TheRingLoseLifeLabel, theRingEachOpponentLosesThree)),
 		},
 		// The evasion is a CR 509.1b restriction, checked as blockers
 		// are declared (ADR 0114 §5). The emblem exists only once the
@@ -141,7 +141,7 @@ func theRingLine(n int, t game.TriggeredAbility) game.TriggeredAbility {
 // emblem's owner right now (CR 701.54e): on the battlefield, under
 // their control, with the designation.
 func isYourRingBearer(g *game.Game, emblem *game.Card, id uuid.UUID) bool {
-	if emblem == nil || id == uuid.Nil || !onBattlefield(g, id) {
+	if emblem == nil || id == uuid.Nil || !OnBattlefield(g, id) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(id)
@@ -158,7 +158,7 @@ func yourRingBearerAttacked(ev game.Event, source *game.Card, _ game.Characteris
 // theRingLoot is line 2's effect: draw a card, then discard a card. The
 // discard is asked from the hand after the draw.
 func theRingLoot(g *game.Game, item *game.StackItem) error {
-	return lootOne(g, item, 1)
+	return LootOne(g, item, 1)
 }
 
 // yourRingBearerBecameBlocked is line 3's condition: "whenever your
@@ -176,9 +176,9 @@ func yourRingBearerBecameBlocked(ev game.Event, source *game.Card, _ game.Charac
 // the battlefield and comes back is a new object (CR 400.7) and is not
 // sacrificed.
 func theRingBlockerTrigger() game.TriggeredAbility {
-	t := On(game.EventBlock, yourRingBearerBecameBlocked, theRingSacrificeLabel, theRingScheduleBlockerSacrifice)
+	t := On(game.EventBlock, yourRingBearerBecameBlocked, TheRingSacrificeLabel, TheRingScheduleBlockerSacrifice)
 	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-		item := game.NewTriggeredItem(source, theRingSacrificeLabel)
+		item := game.NewTriggeredItem(source, TheRingSacrificeLabel)
 		epoch := -1
 		if c, ok := g.LookupCardForEffect(ev.CardID); ok {
 			epoch = c.ObjectEpoch
@@ -192,7 +192,7 @@ func theRingBlockerTrigger() game.TriggeredAbility {
 // theRingScheduleBlockerSacrifice is line 3's effect: a delayed
 // trigger at the beginning of this combat's end of combat step (CR
 // 511.2, 603.7) that has the blocker's controller sacrifice it.
-func theRingScheduleBlockerSacrifice(g *game.Game, item *game.StackItem) error {
+func TheRingScheduleBlockerSacrifice(g *game.Game, item *game.StackItem) error {
 	blocker := item.Params.Object
 	if blocker.ID == uuid.Nil {
 		return nil
@@ -205,7 +205,7 @@ func theRingScheduleBlockerSacrifice(g *game.Game, item *game.StackItem) error {
 		At:     game.StepEndCombat,
 		Label:  label,
 		Cards:  []uuid.UUID{blocker.ID},
-		Body:   theRingSacrificeBlockerBody,
+		Body:   TheRingSacrificeBlockerBody,
 		Params: game.EffectParams{Object: blocker},
 	}.Apply(NewContext(g, item))
 }
@@ -217,7 +217,7 @@ func theRingScheduleBlockerSacrifice(g *game.Game, item *game.StackItem) error {
 // blocker that changed hands is sacrificed by whoever controls it.
 func theRingSacrificeBlocker(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	c, ok := g.LookupCardForEffect(p.Object.ID)
-	if !ok || c.ObjectEpoch != p.Object.Epoch || !onBattlefield(g, p.Object.ID) {
+	if !ok || c.ObjectEpoch != p.Object.Epoch || !OnBattlefield(g, p.Object.ID) {
 		return nil
 	}
 	return SacrificePermanent{Target: p.Object.ID}.Apply(NewContext(g, item))
@@ -229,14 +229,14 @@ func theRingSacrificeBlocker(g *game.Game, item *game.StackItem, p game.EffectPa
 // actions, so a Ring-bearer that the same combat damage kills still
 // counts.
 func yourRingBearerDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return source != nil && combatDamageToPlayerBy(ev, source.Controller, g) && isYourRingBearer(g, source, ev.Source)
+	return source != nil && CombatDamageToPlayerBy(ev, source.Controller, g) && isYourRingBearer(g, source, ev.Source)
 }
 
 // theRingEachOpponentLosesThree is line 4's effect: each opponent of
 // the emblem's owner loses 3 life — every opponent still in the game,
 // not only the player who was dealt the damage.
 func theRingEachOpponentLosesThree(g *game.Game, item *game.StackItem) error {
-	return eachOpponentLosesLife(g, item, 3)
+	return EachOpponentLosesLifeNow(g, item, 3)
 }
 
 // registerRulesEmblem files an emblem no card creates, under a fixed
@@ -253,13 +253,13 @@ func registerRulesEmblem(key string, e EmblemSpec) {
 	if !strings.HasPrefix(key, game.EmblemKeyPrefix) {
 		panic(fmt.Sprintf("effects.registerRulesEmblem: key %q is not an emblem key", key))
 	}
-	if _, ok := defs[key]; ok {
+	if _, ok := Defs[key]; ok {
 		panic(fmt.Sprintf("effects.registerRulesEmblem: duplicate emblem key %q", key))
 	}
-	checkStaticGrants(e.Label, "emblem static", e.Static)
+	CheckStaticGrants(e.Label, "emblem static", e.Static)
 	checkTriggerZones(e.Label, "emblem trigger", e.Triggered)
-	checkEmblemSpec(e.Label, &e)
-	fileDef(key, buildEmblemDef(e))
+	CheckEmblemSpec(e.Label, &e)
+	FileDef(key, buildEmblemDef(e))
 }
 
 // TheRingTemptsYou is the keyword action "the Ring tempts you"
@@ -354,7 +354,7 @@ func IfYouChoseAnotherRingBearer(t game.TriggeredAbility) game.TriggeredAbility 
 // controls, read with the layers caught up — after a tempt, the new
 // Ring-bearer is legendary through the Ring's layer 4 effect
 // (Ringsight's "a legendary creature you control").
-func legendaryCreaturesYouControl(g *game.Game, player uuid.UUID) []game.Card {
+func LegendaryCreaturesYouControl(g *game.Game, player uuid.UUID) []game.Card {
 	g.RecomputeLayersIfStaleLocked()
 	var out []game.Card
 	for _, c := range g.BattlefieldCardsForEffect() {

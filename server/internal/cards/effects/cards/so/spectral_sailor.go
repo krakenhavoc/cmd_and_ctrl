@@ -1,0 +1,37 @@
+package cardsso
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Spectral Sailor — Creature — Spirit Pirate {U}, 1/1 (EDHREC rank
+// 1948):
+//
+//	"Flash
+//	 Flying
+//	 {3}{U}: Draw a card."
+//
+// The one-drop flash flier that turns spare mana into cards. Two
+// printed keywords and a mana-only activated ability — no tap, so it
+// can be activated any number of times and while summoning sick, as
+// printed.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:        "a8fdbcdf-479d-4582-9ad5-9fbd4c740c29",
+		Name:            "Spectral Sailor",
+		Completeness:    effects.CompletenessFull,
+		PrintedKeywords: []string{"flash", "flying"},
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{3}{U}: Draw a card.",
+			Cost:    effects.ManaCost("{3}{U}"),
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.DrawCards{Player: item.Controller, N: 1}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

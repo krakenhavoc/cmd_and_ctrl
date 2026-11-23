@@ -20,7 +20,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Tap five untapped Clerics you control: You gain 10 life.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
-			Cost:    tapFiveUntapped("five untapped Clerics you control", "Cleric"),
+			Cost:    TapFiveUntapped("five untapped Clerics you control", "Cleric"),
 			Effect:  Do(GainLife{Amount: 10}),
 		}},
 	})
@@ -30,7 +30,7 @@ func init() {
 // a cost, the source included when it has the type: tapTwoUntapped's
 // shape with five (Ancestor's Prophet's Clerics, Catapult Master's
 // Soldiers).
-func tapFiveUntapped(label, creatureType string) game.AbilityCost {
+func TapFiveUntapped(label, creatureType string) game.AbilityCost {
 	return game.AbilityCost{TapOthers: &game.TapOthersCost{
 		Count:  5,
 		Filter: TargetPermanent(label, Creature(), OfCreatureType(creatureType)),

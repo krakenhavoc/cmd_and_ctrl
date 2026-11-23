@@ -15,7 +15,7 @@ import (
 // plusOneCounterPlacementOnYourCreature for "a creature or Vehicle you
 // control" (Caradora, Heart of Alacria): an uncrewed Vehicle is not a
 // creature but is named by the printed text.
-func plusOneCounterPlacementOnYourCreatureOrVehicle(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+func PlusOneCounterPlacementOnYourCreatureOrVehicle(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if ev.Kind != game.RepEventCounter || ev.CounterDelta <= 0 || ev.CounterName != "+1/+1" {
 		return false
 	}
@@ -29,8 +29,8 @@ func plusOneCounterPlacementOnYourCreatureOrVehicle(ev *game.ReplacementEvent, g
 // b13MountOrVehicleCard is "a Mount or Vehicle card" as a search
 // predicate. "Mount" is a word of the searching card's text (CR 612.2),
 // read through the lens SearchLibrary lends.
-func b13MountOrVehicleCard(c game.Card) bool {
-	return containsFoldASCII(c.TypeLine, strings.ToLower(c.LentSubtype("Mount"))) || c.HasSubtype("Vehicle")
+func B13MountOrVehicleCard(c game.Card) bool {
+	return ContainsFoldASCII(c.TypeLine, strings.ToLower(c.LentSubtype("Mount"))) || c.HasSubtype("Vehicle")
 }
 
 // b13CastFromGraveyardPayingLifeAndSacrificing is "You may cast this card
@@ -42,7 +42,7 @@ func b13MountOrVehicleCard(c game.Card) bool {
 // cost, never empty, and claiming it is what opens the graveyard, so the
 // life and the sacrifice are owed exactly on a cast from the graveyard and
 // never on the hand cast of the same card.
-func b13CastFromGraveyardPayingLifeAndSacrificing(mana string, life int, label string, preds ...CardPredicate) game.AlternativeCost {
+func B13CastFromGraveyardPayingLifeAndSacrificing(mana string, life int, label string, preds ...CardPredicate) game.AlternativeCost {
 	ac := SacrificeInstead(1, label, 0, preds...)
 	ac.Key = "graveyard_life_sacrifice"
 	ac.Label = "Cast this card from your graveyard by paying " + mana + ", paying 2 life and sacrificing " + label
@@ -55,22 +55,22 @@ func b13CastFromGraveyardPayingLifeAndSacrificing(mana string, life int, label s
 // artifactOrCreatureCardLeftYourGraveyard is "an artifact and/or creature
 // card leaves your graveyard" (Dredger's Insight), asked of the card as it
 // was in the graveyard (CR 603.10a, wasCardInAGraveyard).
-func artifactOrCreatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	c, ok := cardThatLeftYourGraveyard(ev, source, g)
-	return ok && wasCardInAGraveyard(c, func(c game.Card) bool { return c.IsArtifact() || c.IsCreature() })
+func ArtifactOrCreatureCardLeftYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
+	c, ok := CardThatLeftYourGraveyard(ev, source, g)
+	return ok && WasCardInAGraveyard(c, func(c game.Card) bool { return c.IsArtifact() || c.IsCreature() })
 }
 
 // b13CreatureCardWithNoAbilities is "a creature card with no abilities" as
 // a search predicate: a creature card whose printed text is empty
 // (game.PrintsNoAbilities, stamped from the oracle text on import).
-func b13CreatureCardWithNoAbilities(c game.Card) bool {
+func B13CreatureCardWithNoAbilities(c game.Card) bool {
 	return c.IsCreature() && game.PrintsNoAbilities(c)
 }
 
 // b13NoAbilities is b13CreatureCardWithNoAbilities as a target predicate
 // ("target creature card with no abilities", Rise from the Wreck).
-func b13NoAbilities() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return b13CreatureCardWithNoAbilities(c) }
+func B13NoAbilities() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return B13CreatureCardWithNoAbilities(c) }
 }
 
 // pirateAndVehicleAttacked is "a Pirate and a Vehicle attacked this
@@ -84,7 +84,7 @@ func pirateAndVehicleAttacked(g *game.Game) bool {
 		if !ok {
 			continue
 		}
-		pirate = pirate || isPirate(c)
+		pirate = pirate || IsPirate(c)
 		vehicle = vehicle || c.HasSubtype("Vehicle")
 	}
 	return pirate && vehicle
@@ -99,7 +99,7 @@ func (CondPirateAndVehicleAttacked) Holds(ctx *Context) bool {
 	return pirateAndVehicleAttacked(ctx.Game)
 }
 
-func (CondPirateAndVehicleAttacked) condition() (game.FootprintStep, bool) {
+func (CondPirateAndVehicleAttacked) Condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }
 
@@ -110,7 +110,7 @@ func (CondPirateAndVehicleAttacked) condition() (game.FootprintStep, bool) {
 // in the hand. Archdruid's Charm's shape: a card that passes through the
 // hand on the way is not observable, since nothing happens between the two
 // moves. An on-disk key.
-var thenPutFoundCheapArtifactsOntoBattlefield = game.RegisterTail("then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield",
+var ThenPutFoundCheapArtifactsOntoBattlefield = game.RegisterTail("then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield",
 	func(g *game.Game, o game.TailOutcome) error {
 		for _, id := range o.IDs {
 			c, ok := g.LookupCardForEffect(id)
@@ -134,7 +134,7 @@ var thenPutFoundCheapArtifactsOntoBattlefield = game.RegisterTail("then/put-foun
 // layered view, so a Vehicle that has been crewed counts and one that
 // hasn't doesn't; crew is a layer 4 effect too, and CR 613.8 dependency
 // ordering applies the crew effect first, whatever the timestamps.
-func vehicleCreaturesAreAlsoTheChosenType() game.StaticAbility {
+func VehicleCreaturesAreAlsoTheChosenType() game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Vehicle creatures you control are the chosen creature type in addition to their other types.",
 		Layer: game.Layer4Type,

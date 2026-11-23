@@ -37,7 +37,7 @@ func (e Explores) Apply(ctx *Context) error {
 // targetCreatureYouControlExplores is the resolution of "Target creature
 // you control explores": the chosen target, if it is still legal
 // (CR 608.2b).
-func targetCreatureYouControlExplores(g *game.Game, item *game.StackItem) error {
+func TargetCreatureYouControlExplores(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	t, ok := ctx.ClauseTarget(0)
 	if !ok {
@@ -48,18 +48,18 @@ func targetCreatureYouControlExplores(g *game.Game, item *game.StackItem) error 
 
 // targetCreatureYouControl is the clause every "target creature you
 // control explores" ability targets with.
-func targetCreatureYouControl() *game.TargetSpec {
+func TargetCreatureYouControl() *game.TargetSpec {
 	return TargetPermanent("target creature you control", Creature(), YouControl())
 }
 
 // MapToken — CR 111.10s: "{1}, {T}, Sacrifice this token: Target
 // creature you control explores. Activate only as a sorcery."
-func MapToken() game.Card { return tokenFromCatalog(printedMapToken) }
+func MapToken() game.Card { return TokenFromCatalog(printedMapToken) }
 
 // printedMapToken is the Map as PRINTED — the abilities included. It is
 // the catalog's entry for this token (token_catalog.go).
-func printedMapToken() tokenTemplate {
-	return tokenTemplate{
+func printedMapToken() TokenTemplate {
+	return TokenTemplate{
 		Slug: "map",
 		Card: game.Card{
 			Name:     "Map",
@@ -73,9 +73,9 @@ func printedMapToken() tokenTemplate {
 				SacrificeSelf: true,
 				Mana:          "{1}",
 			},
-			Targets:      targetCreatureYouControl(),
+			Targets:      TargetCreatureYouControl(),
 			SorcerySpeed: true,
-			Effect:       targetCreatureYouControlExplores,
+			Effect:       TargetCreatureYouControlExplores,
 		}},
 	}
 }

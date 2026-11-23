@@ -57,14 +57,14 @@ func faceDownPileSplit(ctx *Context, source string, n int, splitter, chooser uui
 // faceDownPilesToHand moves the taken pile to the controller's hand and
 // the other to their graveyard, the settlement Fact or Fiction uses.
 // "Taken" is the pile the chooser picked, whoever the chooser is.
-func faceDownPilesToHand(ctx *Context, taken, left []uuid.UUID) error {
-	return factOrFictionSettle(ctx.Game, taken, left)
+func FaceDownPilesToHand(ctx *Context, taken, left []uuid.UUID) error {
+	return FactOrFictionSettle(ctx.Game, taken, left)
 }
 
 // faceDownPilesToHandTail is faceDownPilesToHand as a pile split's keyed
 // rest (#4253 slice 10b). An on-disk key: never renamed, never reused.
-var faceDownPilesToHandTail = PileTail("then/face-down-piles-to-hand", func(ctx *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
-	return faceDownPilesToHand(ctx, taken, left)
+var FaceDownPilesToHandTail = PileTail("then/face-down-piles-to-hand", func(ctx *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
+	return FaceDownPilesToHand(ctx, taken, left)
 })
 
 // opponentSeparatesFaceDownPiles is "an opponent looks at the top n
@@ -72,7 +72,7 @@ var faceDownPilesToHandTail = PileTail("then/face-down-piles-to-hand", func(ctx 
 // face-up pile; you take one": the splitter is the opponent, the
 // chooser the controller. With no opponent left nothing is separated
 // and nothing is taken, never more than printed.
-func opponentSeparatesFaceDownPiles(ctx *Context, source string, n int, splitter uuid.UUID, then game.TailRef) error {
+func OpponentSeparatesFaceDownPiles(ctx *Context, source string, n int, splitter uuid.UUID, then game.TailRef) error {
 	if splitter == uuid.Nil {
 		return nil
 	}
@@ -85,7 +85,7 @@ func opponentSeparatesFaceDownPiles(ctx *Context, source string, n int, splitter
 // and a chosen opponent picks a pile without seeing the face-down
 // cards. The pile they pick is the one the controller puts into their
 // hand.
-func youSeparateFaceDownPiles(ctx *Context, source string, n int) error {
+func YouSeparateFaceDownPiles(ctx *Context, source string, n int) error {
 	// The look comes first, as printed; the opponent is named after.
 	chooser, ok := faceDownPilesChoosers[source]
 	if !ok {
@@ -123,14 +123,14 @@ func faceDownPilesChooser(key, source string) game.OptionPickThen {
 			PickQuestion:  source + " — choose a pile; it goes into their hand and the other into their graveyard",
 			Cards:         looked,
 			FaceDown:      true,
-			ThenTail:      ctx.Tail(faceDownPilesToHandTail),
+			ThenTail:      ctx.Tail(FaceDownPilesToHandTail),
 		}.Apply(ctx)
 	})
 }
 
 // opponentTarget is the item's still-legal player target, or uuid.Nil
 // when it has gone (the spell has fizzled and nothing is looked at).
-func opponentTarget(ctx *Context) uuid.UUID {
-	id, _ := firstLegalPlayerTarget(ctx)
+func OpponentTarget(ctx *Context) uuid.UUID {
+	id, _ := FirstLegalPlayerTarget(ctx)
 	return id
 }

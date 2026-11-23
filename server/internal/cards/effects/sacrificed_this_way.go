@@ -24,7 +24,7 @@ import (
 // zero (CR 107.1b), so a creature with negative power deals none. A
 // target that is gone or illegal by resolution is the engine's CR
 // 608.2b re-check, as for every single-target damage spell.
-func damageEqualToSacrificedPower(item *game.StackItem, ctx *Context) error {
+func DamageEqualToSacrificedPower(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}
@@ -37,8 +37,8 @@ func damageEqualToSacrificedPower(item *game.StackItem, ctx *Context) error {
 
 // targetOpponentOrPlaneswalker is "target opponent or planeswalker"
 // (Final Strike): an opponent, or a planeswalker on the battlefield.
-func targetOpponentOrPlaneswalker() *game.TargetSpec {
-	spec := targetPlayerOrPlaneswalker()
+func TargetOpponentOrPlaneswalker() *game.TargetSpec {
+	spec := TargetPlayerOrPlaneswalker()
 	spec.Label = "target opponent or planeswalker"
 	spec.PlayerOK = func(g *game.Game, caster uuid.UUID, p *game.Player) bool {
 		return Opponent()(g, caster, p)
@@ -49,14 +49,14 @@ func targetOpponentOrPlaneswalker() *game.TargetSpec {
 // drawEqualToSacrificedPower is "draw cards equal to the sacrificed
 // creature's power" (Life's Legacy): its last-known power, and none for
 // a power of zero or less (CR 107.1b).
-func drawEqualToSacrificedPower(_ *game.StackItem, ctx *Context) error {
+func DrawEqualToSacrificedPower(_ *game.StackItem, ctx *Context) error {
 	return DrawCards{N: ctx.SacrificedPower()}.Apply(ctx)
 }
 
 // sacrificedManaValue is the sacrificed permanent's mana value as it
 // last existed on the battlefield (Morbid Curiosity, Reckoner's Bargain,
 // Forge Armor): a token that is no copy, or a face-down permanent, is 0.
-func sacrificedManaValue(ctx *Context) int {
+func SacrificedManaValue(ctx *Context) int {
 	info, ok := ctx.SacrificedPermanent()
 	if !ok {
 		return 0
@@ -68,7 +68,7 @@ func sacrificedManaValue(ctx *Context) int {
 // existed on the battlefield, floored at zero (CR 107.1b) — Severed
 // Strands' and Worthy Cause's "life equal to the sacrificed creature's
 // toughness".
-func sacrificedToughness(ctx *Context) int {
+func SacrificedToughness(ctx *Context) int {
 	info, ok := ctx.SacrificedPermanent()
 	if !ok || info.Toughness < 0 {
 		return 0
@@ -79,33 +79,33 @@ func sacrificedToughness(ctx *Context) int {
 // sacrificedHadSupertype reports whether the sacrificed permanent had
 // the supertype as it last existed on the battlefield — Nasty End's "if
 // the sacrificed creature was legendary".
-func sacrificedHadSupertype(ctx *Context, supertype string) bool {
+func SacrificedHadSupertype(ctx *Context, supertype string) bool {
 	info, ok := ctx.SacrificedPermanent()
-	return ok && hasFold(info.Characteristic.Supertypes, supertype)
+	return ok && HasFold(info.Characteristic.Supertypes, supertype)
 }
 
 // sacrificedHadCardType reports whether the sacrificed permanent had the
 // card type as it last existed on the battlefield — Foundry Helix's "if
 // the sacrificed permanent was an artifact".
-func sacrificedHadCardType(ctx *Context, cardType string) bool {
+func SacrificedHadCardType(ctx *Context, cardType string) bool {
 	info, ok := ctx.SacrificedPermanent()
-	return ok && hasFold(info.Characteristic.Types, cardType)
+	return ok && HasFold(info.Characteristic.Types, cardType)
 }
 
 // sacrificedHadSubtype reports whether the sacrificed permanent had the
 // subtype as it last existed on the battlefield — Hellish Sideswipe's
 // "if the sacrificed permanent was a Vehicle".
-func sacrificedHadSubtype(ctx *Context, subtype string) bool {
+func SacrificedHadSubtype(ctx *Context, subtype string) bool {
 	info, ok := ctx.SacrificedPermanent()
-	return ok && hasFold(info.Characteristic.Subtypes, subtype)
+	return ok && HasFold(info.Characteristic.Subtypes, subtype)
 }
 
 // sharesACardTypeWith reports whether `c` shares a card type (CR 205.2a)
 // with the sacrificed permanent as it last existed — Fatal Grudge.
 // Subtypes and supertypes do not count.
-func sharesACardTypeWith(info game.PermanentInfo, c game.Card) bool {
+func SharesACardTypeWith(info game.PermanentInfo, c game.Card) bool {
 	for _, t := range info.Characteristic.Types {
-		if hasFold(cardTypesCR205, t) && c.HasCardType(strings.ToLower(t)) {
+		if HasFold(cardTypesCR205, t) && c.HasCardType(strings.ToLower(t)) {
 			return true
 		}
 	}
@@ -117,7 +117,7 @@ func sharesACardTypeWith(info game.PermanentInfo, c game.Card) bool {
 // same rule as game.SharesCreatureType, read off a last-known record: a
 // changeling on either side shares with anything that has a creature
 // type (CR 702.73a), and land and artifact subtypes never count.
-func sharesACreatureTypeWith(info game.PermanentInfo, c game.Card) bool {
+func SharesACreatureTypeWith(info game.PermanentInfo, c game.Card) bool {
 	theirs := game.CreatureTypesOf(&c)
 	if len(theirs) == 0 {
 		return false
@@ -132,7 +132,7 @@ func sharesACreatureTypeWith(info game.PermanentInfo, c game.Card) bool {
 		return info.Characteristic.AllCreatureTypes || len(mine) > 0
 	}
 	for _, t := range mine {
-		if hasFold(theirs, t) {
+		if HasFold(theirs, t) {
 			return true
 		}
 	}
@@ -144,7 +144,7 @@ func sharesACreatureTypeWith(info game.PermanentInfo, c game.Card) bool {
 // #2097): every sacrificed creature's last-known power summed, the total
 // floored at zero (ctx.SacrificedTotalPower, CR 107.1b), to the first
 // target. Nothing sacrificed is no damage.
-func damageEqualToSacrificedTotalPower(item *game.StackItem, ctx *Context) error {
+func DamageEqualToSacrificedTotalPower(item *game.StackItem, ctx *Context) error {
 	if len(item.Targets) == 0 {
 		return nil
 	}

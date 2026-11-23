@@ -29,7 +29,7 @@ func init() {
 			Triggered: []game.TriggeredAbility{{
 				Watches: []game.EventKind{game.EventDealDamage},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-					return b35SelfWasDealtDamage(ev, source)
+					return B35SelfWasDealtDamage(ev, source)
 				},
 				Key:        "Strength of Will — put that many +1/+1 counters on this creature",
 				AtBatchEnd: ThatMuchDamage(),
@@ -38,7 +38,7 @@ func init() {
 			Text: "Whenever this creature is dealt damage, put that many +1/+1 counters on it.",
 		}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			target, ok := b16FirstLegalTargetCard(ctx)
+			target, ok := B16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
@@ -64,7 +64,7 @@ const strengthOfWillGrant = "strength-of-will/damage-counters"
 // batch's damage total, on the creature that was dealt it while it is still
 // that object on the battlefield.
 func strengthOfWillCounters(g *game.Game, item *game.StackItem) error {
-	if !sourceIsStillThisPermanent(g, item) {
+	if !SourceIsStillThisPermanent(g, item) {
 		return nil
 	}
 	n := NewContext(g, item).Trigger().Event.Amount

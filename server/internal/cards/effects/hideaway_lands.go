@@ -45,21 +45,21 @@ var hideawayLands = []hideawayLand{
 		oracle:    "7cb9e29f-835f-4155-a2a5-4b778866c773",
 		name:      "Mosswort Bridge",
 		color:     "G",
-		condition: creaturesYouControlTotalPowerAtLeast(10),
+		condition: CreaturesYouControlTotalPowerAtLeast(10),
 		clause:    "if creatures you control have total power 10 or greater",
 	},
 	{
 		oracle:    "3589bcfc-42b0-414a-adce-bc690dc631c8",
 		name:      "Windbrisk Heights",
 		color:     "W",
-		condition: attackedWithAtLeastThisTurn(3),
+		condition: AttackedWithAtLeastThisTurn(3),
 		clause:    "if you attacked with three or more creatures this turn",
 	},
 	{
 		oracle:    "690c7f8e-fea2-4920-afa7-02ff120701a1",
 		name:      "Spinerock Knoll",
 		color:     "R",
-		condition: anOpponentWasDealtAtLeastThisTurn(7),
+		condition: AnOpponentWasDealtAtLeastThisTurn(7),
 		clause:    "if an opponent was dealt 7 or more damage this turn",
 	},
 }
@@ -101,7 +101,7 @@ func init() {
 // creaturesYouControlTotalPowerAtLeast is Mosswort Bridge's "creatures
 // you control have total power N or greater" — current power, counters
 // included (CurrentPower, #1281), post-layer.
-func creaturesYouControlTotalPowerAtLeast(n int) func(*game.Game, uuid.UUID) bool {
+func CreaturesYouControlTotalPowerAtLeast(n int) func(*game.Game, uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
 		total := 0
 		for _, c := range g.BattlefieldCardsForEffect() {
@@ -117,11 +117,11 @@ func creaturesYouControlTotalPowerAtLeast(n int) func(*game.Game, uuid.UUID) boo
 // N or more creatures this turn": N DISTINCT creatures `controller`
 // declared as attackers this turn, across every combat — Minas
 // Tirith's reading of the same words.
-func attackedWithAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
+func AttackedWithAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
 		seen := map[uuid.UUID]bool{}
 		for _, ev := range g.EventsThisTurn() {
-			if !attackDeclaredByYou(ev, controller) || ev.CardID == uuid.Nil {
+			if !AttackDeclaredByYou(ev, controller) || ev.CardID == uuid.Nil {
 				continue
 			}
 			seen[ev.CardID] = true
@@ -139,7 +139,7 @@ func attackedWithAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
 // totals N. Damage dealt, not life lost: a Spinerock Knoll does not
 // care about a drain, and a prevented point was never dealt (no
 // EventDealDamage is emitted for it).
-func anOpponentWasDealtAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
+func AnOpponentWasDealtAtLeastThisTurn(n int) func(*game.Game, uuid.UUID) bool {
 	return func(g *game.Game, controller uuid.UUID) bool {
 		dealt := map[uuid.UUID]int{}
 		for _, ev := range g.EventsThisTurn() {

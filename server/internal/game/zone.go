@@ -255,6 +255,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// like the counters themselves — unconditional, so an exit that
 	// keeps no counters also keeps no stamps.
 	c.CounterStampedAt = nil
+	// Counters remain on a card that says so (Skullbriar, the Walking
+	// Grave) as it moves to any zone other than a hand or a library, and
+	// are lost when it goes to one (CR 400.7 for the rest).
+	keepCounters := countersRemainOn(c.OracleID) && dst != nil &&
+		dst.Kind != ZoneHand && dst.Kind != ZoneLibrary
+	savedCounters := c.Counters
 	// Cards leaving the battlefield lose their tapped state and
 	// battlefield-only position by convention; rules-level effects can
 	// re-tap if needed, and positions are re-stamped on re-entry.
@@ -457,6 +463,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if src.Kind == ZoneExile {
 		c.Counters = nil
 	}
+	if keepCounters {
+		c.Counters = savedCounters
+	} else if countersRemainOn(c.OracleID) {
+		c.Counters = nil
+	}
 	// CR 400.7 / CR 708: "face down" is a property of an OBJECT in a
 	// zone, and a card that changes zones is a new object with no
 	// memory of the old one. This is the ONE reset — #697. Before it,
@@ -613,6 +624,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 // amendment (#3769).
 func stampGraveyardArrival(c *Card, from, to ZoneKind) {
 	c.Surveilled = false
+	c.Milled = false
 	if to == ZoneGraveyard {
 		c.PutInGraveyardFrom = from
 		c.PutInGraveyardThisTurn = true
@@ -620,6 +632,13 @@ func stampGraveyardArrival(c *Card, from, to ZoneKind) {
 	}
 	c.PutInGraveyardFrom = ""
 	c.PutInGraveyardThisTurn = false
+}
+
+// PutInGraveyardFromLibraryThisTurn reports whether the card sits in a
+// graveyard now, arrived during the current turn, and came from a library
+// (Kagha, Shadow Archdruid's "put there from your library this turn").
+func (c Card) PutInGraveyardFromLibraryThisTurn() bool {
+	return c.PutInGraveyardThisTurn && c.PutInGraveyardFrom == ZoneLibrary
 }
 
 // PutInGraveyardNotFromBattlefieldThisTurn is the clause "put into a
@@ -630,4 +649,26 @@ func stampGraveyardArrival(c *Card, from, to ZoneKind) {
 // construction.
 func (c Card) PutInGraveyardNotFromBattlefieldThisTurn() bool {
 	return c.PutInGraveyardThisTurn && c.PutInGraveyardFrom != "" && c.PutInGraveyardFrom != ZoneBattlefield
+}
+
+// countersRemainCards are the oracle IDs of cards that read "Counters
+// remain on this creature as it moves to any zone other than a player's
+// hand or library" (Skullbriar, the Walking Grave). Filled at init time by
+// RegisterCountersRemain; read by MoveCard.
+var countersRemainCards = map[string]struct{}{}
+
+// RegisterCountersRemain declares a card whose counters stay on it through
+// every zone change except to a hand or a library. Call it from init only.
+func RegisterCountersRemain(oracleID string) {
+	if oracleID != "" {
+		countersRemainCards[oracleID] = struct{}{}
+	}
+}
+
+func countersRemainOn(oracleID string) bool {
+	if oracleID == "" {
+		return false
+	}
+	_, ok := countersRemainCards[oracleID]
+	return ok
 }

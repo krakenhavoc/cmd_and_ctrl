@@ -26,8 +26,8 @@ func init() {
 		Name:         "Grim Reaper's Scythe",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(OnAny(leftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return creatureCardLeftYourGraveyard(ev, source, g)
+			OncePerBatch(OnAny(LeftGraveyardEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return CreatureCardLeftYourGraveyard(ev, source, g)
 			}, "Grim Reaper's Scythe — create a 2/2 black Zombie",
 				Do(CreateToken{Template: BlackZombieToken(), N: 1}))),
 		},
@@ -36,14 +36,14 @@ func init() {
 			Purpose:      ForTargets(Reanimates(0)),
 			Cost:         Plus(ManaCost("{3}{B}"), TapCost(), SacrificeN(2, "two creatures", Creature())),
 			SorcerySpeed: true,
-			Targets:      targetCreatureInYourGraveyard(),
-			Effect:       grimReapersScytheReturn,
+			Targets:      TargetCreatureInYourGraveyard(),
+			Effect:       GrimReapersScytheReturn,
 		}},
 	})
 }
 
-func grimReapersScytheReturn(g *game.Game, item *game.StackItem) error {
-	ids := legalTargetCardIDs(NewContext(g, item))
+func GrimReapersScytheReturn(g *game.Game, item *game.StackItem) error {
+	ids := LegalTargetCardIDs(NewContext(g, item))
 	if len(ids) == 0 {
 		return nil
 	}

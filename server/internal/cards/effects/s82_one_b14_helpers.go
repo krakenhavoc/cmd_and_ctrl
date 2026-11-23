@@ -11,16 +11,16 @@ import (
 
 // s82OneB14Equipped passes for a creature that has an Equipment attached,
 // read as the effect resolves ("equipped creatures you control").
-func s82OneB14Equipped() CardPredicate {
+func S82OneB14Equipped() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
-		return isEquippedCreature(g, c)
+		return IsEquippedCreature(g, c)
 	}
 }
 
 // s82OneB14LosesIndestructible is "that permanent loses indestructible until
 // end of turn" as a damage continuation, whatever the damage did (Rebel
 // Salvo prints no "dealt damage this way"). An on-disk key.
-var s82OneB14LosesIndestructible = recipientTail("recipient/s82-one-b14-loses-indestructible",
+var S82OneB14LosesIndestructible = RecipientTail("recipient/s82-one-b14-loses-indestructible",
 	func(ctx *Context, target uuid.UUID, _ int, _ game.TailOutcome) error {
-		return g2LosesIndestructibleUntilEOT(ctx, target)
+		return G2LosesIndestructibleUntilEOT(ctx, target)
 	})

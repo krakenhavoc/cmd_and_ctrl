@@ -1,0 +1,34 @@
+package cardsri
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Royal Assassin — Creature — Human Assassin {1}{B}{B}, 1/1 (EDHREC
+// rank 2258):
+//
+//	"{T}: Destroy target tapped creature."
+//
+// The original repeatable removal. A CR 602 activation with a tap
+// cost — summoning sickness applies (CR 302.6), the engine enforces
+// it — targeting a creature that is tapped RIGHT NOW: the Wandering
+// Emperor's tappedPermanent predicate keeps an untapped creature out
+// of the picker, and CR 608.2b re-checks it on resolution, so a
+// creature untapped in response is a fizzle. An attacking creature is
+// tapped by its declaration and is the printed prey; a vigilance
+// attacker is not.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "9ed6f28f-a3db-48c5-9ab0-b90a7fba5f57",
+		Name:         "Royal Assassin",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "{T}: Destroy target tapped creature.",
+			Cost:    effects.TapCost(),
+			Targets: effects.TargetCreature("target tapped creature", effects.TappedPermanent()),
+			Effect:  effects.DestroyFirstLegalTarget,
+		}},
+	})
+}

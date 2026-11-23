@@ -28,12 +28,12 @@ func init() {
 			Label:    "Add one mana of any color",
 		}},
 		Grants: []AbilityGrant{AnyColorManaGrant(chromaticLanternGrant)},
-		Static: []game.StaticAbility{Labelled(GrantAbilities(landsYouControl, chromaticLanternGrant), "Lands you control have \"{T}: Add one mana of any color.\"")},
+		Static: []game.StaticAbility{Labelled(GrantAbilities(LandsYouControl, chromaticLanternGrant), "Lands you control have \"{T}: Add one mana of any color.\"")},
 	})
 }
 
 // landsYouControl is the "lands you control" AppliesTo, read off the
 // effective types so a land a layer-4 effect made is one.
-func landsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+func LandsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsLand() && target.Controller == source.Controller
 }

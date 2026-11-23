@@ -19,7 +19,7 @@ type CloakACardFromYourHand struct{}
 
 func (CloakACardFromYourHand) Apply(ctx *Context) error {
 	g := ctx.Game
-	hand := handCardIDs(g, ctx.Controller())
+	hand := HandCardIDs(g, ctx.Controller())
 	switch len(hand) {
 	case 0:
 		return nil

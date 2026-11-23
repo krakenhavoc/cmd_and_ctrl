@@ -34,7 +34,7 @@ import (
 // Colourless is not monocolored (CR 105.2a: an object with no colour
 // is colorless, and colorless is not a colour), so an Eldrazi and a
 // Sol Ring both survive.
-func b41Monocolored() CardPredicate {
+func B41Monocolored() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return len(c.EffectiveColors()) == 1
 	}
@@ -49,7 +49,7 @@ func b41NonHuman(c game.Card, human string) bool { return !c.HasSubtype(human) }
 // b41BasicLandYouControl is Ossification's enchant clause: a basic
 // land its controller controls. "Basic" is the supertype off the type
 // line, the same read every fetch predicate uses.
-func b41BasicLandYouControl() CardPredicate {
+func B41BasicLandYouControl() CardPredicate {
 	return And(Land(), YouControl(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return IsBasicLand(c)
 	})
@@ -57,7 +57,7 @@ func b41BasicLandYouControl() CardPredicate {
 
 // b41CreatureOrPlaneswalkerAnOpponentControls is Ossification's exile
 // clause.
-func b41CreatureOrPlaneswalkerAnOpponentControls() CardPredicate {
+func B41CreatureOrPlaneswalkerAnOpponentControls() CardPredicate {
 	return And(Or(Creature(), Planeswalker()), OpponentControls())
 }
 
@@ -71,14 +71,14 @@ func b41CreatureOrPlaneswalkerAnOpponentControls() CardPredicate {
 // means — a counter map that still holds a zero entry after the last
 // counter was removed is a permanent with NO counters, and one place
 // decides that.
-func b41HasACounter() CardPredicate { return Not(b10NoCounters()) }
+func B41HasACounter() CardPredicate { return Not(B10NoCounters()) }
 
 // --- state reads ---------------------------------------------------
 
 // b41CreatureCardsInAllGraveyards is Nighthowler's X: every creature
 // card in every player's graveyard, the whole table's. Printed types,
 // which is all a card in a graveyard has.
-func b41CreatureCardsInAllGraveyards(g *game.Game) int {
+func B41CreatureCardsInAllGraveyards(g *game.Game) int {
 	n := 0
 	for _, p := range g.Seats {
 		if p == nil || p.Graveyard == nil {
@@ -96,7 +96,7 @@ func b41CreatureCardsInAllGraveyards(g *game.Game) int {
 // b41SourceIsEquipped is Merry's "as long as it's equipped": some
 // Equipment is attached to the source. Read live on every recompute,
 // so the first strike appears and disappears with the sword.
-func b41SourceIsEquipped(g *game.Game, source *game.Card) bool {
+func B41SourceIsEquipped(g *game.Game, source *game.Card) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.HasSubtype("Equipment") && c.IsAttachedTo(source.InstanceID) {
 			return true
@@ -116,7 +116,7 @@ func b41SourceIsEquipped(g *game.Game, source *game.Card) bool {
 // happen (the sweep returns how many landed) but are clamped anyway,
 // because a negative-toughness token would never reach the
 // state-based-action sweep that is supposed to kill a 0/0.
-func b41PhyrexianHorrorToken(n int) game.Card {
+func B41PhyrexianHorrorToken(n int) game.Card {
 	if n < 0 {
 		n = 0
 	}
@@ -138,7 +138,7 @@ func b41PhyrexianHorrorToken(n int) game.Card {
 // planeswalker feeds the Dog exactly as a legendary creature does,
 // which is why the card is a Partner commander for legend-heavy
 // decks rather than a creature-count payoff.
-func b41AnotherLegendaryPermanentYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
+func B41AnotherLegendaryPermanentYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventETB || ev.CardID == source.InstanceID {
 		return false
 	}
@@ -161,7 +161,7 @@ func b41AnotherLegendaryPermanentYouControlEntered(ev game.Event, source *game.C
 // effective type line, so a legendary artifact that is not a creature
 // does not count and one that has been animated does. They need not
 // attack the same player.
-func b41AnotherLegendaryCreatureYouControlIsAttacking(g *game.Game, source *game.Card) bool {
+func B41AnotherLegendaryCreatureYouControlIsAttacking(g *game.Game, source *game.Card) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == source.InstanceID || c.Controller != source.Controller {
 			continue
@@ -181,7 +181,7 @@ func b41AnotherLegendaryCreatureYouControlIsAttacking(g *game.Game, source *game
 // reports exactly two and every later draw reports more. That is what
 // makes this fire once a turn rather than on every draw from the
 // second onwards.
-func b41DrewYourSecondCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func B41DrewYourSecondCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDrawCard || ev.Actor != source.Controller {
 		return false
 	}
@@ -197,7 +197,7 @@ func b41DrewYourSecondCardThisTurn(ev game.Event, source *game.Card, g *game.Gam
 // The source is looked up live: combat damage is dealt before
 // state-based actions run, so an attacker that traded with its
 // blocker is still on the battlefield when its damage event fires.
-func b41PermanentDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
+func B41PermanentDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
 		return uuid.Nil, false
 	}
@@ -213,7 +213,7 @@ func b41PermanentDealtDamageToYou(ev game.Event, source *game.Card, g *game.Game
 // controller controls dealt combat damage to one of their opponents.
 // Effective subtypes, so a changeling counts and the Skaab itself
 // counts.
-func b41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+func B41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -231,7 +231,7 @@ func b41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *gam
 // damage to ev's target. Counting only those makes an event total the
 // number of DISTINCT opponents hit (Hordewing Skaab). A log that does
 // not hold the event yet, or holds no match, accepts it.
-func b41FirstZombieHitOnThatOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+func B41FirstZombieHitOnThatOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
 	for _, prior := range g.Events {
 		if prior.Batch < ev.Batch {
 			continue
@@ -239,7 +239,7 @@ func b41FirstZombieHitOnThatOpponent(ev game.Event, source *game.Card, g *game.G
 		if prior.Batch > ev.Batch {
 			break
 		}
-		if prior.Target != ev.Target || !b41ZombieYouControlDealtCombatDamageToAnOpponent(prior, source, g) {
+		if prior.Target != ev.Target || !B41ZombieYouControlDealtCombatDamageToAnOpponent(prior, source, g) {
 			continue
 		}
 		return prior.Source == ev.Source
@@ -258,7 +258,7 @@ func b41FirstZombieHitOnThatOpponent(ev game.Event, source *game.Card, g *game.G
 // you. Per target INSTANCE, because EventBecomesTarget is emitted per
 // target slot (CR 115.3) — a spell targeting two of your Slivers is
 // taxed twice.
-func b41SliverYouControlBecameAnOpponentsTarget(ev game.Event, source *game.Card, g *game.Game) bool {
+func B41SliverYouControlBecameAnOpponentsTarget(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 		return false
 	}
@@ -278,7 +278,7 @@ func b41SliverYouControlBecameAnOpponentsTarget(ev game.Event, source *game.Card
 // replacement sees one exactly as it sees a cast creature. Hardened
 // Scales and Doubling Season apply to it, because it really is a CR
 // 614 entry replacement rather than a counter added a beat later.
-func b41OtherNonHumanCreaturesYouControlEnterWithACounter(label string) game.ReplacementEffect {
+func B41OtherNonHumanCreaturesYouControlEnterWithACounter(label string) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -318,7 +318,7 @@ func b41OtherNonHumanCreaturesYouControlEnterWithACounter(label string) game.Rep
 // The rest go to the bottom in an order the player chooses, as
 // Ringleader prints — a put_in_library prompt on the bottom lane
 // (#996, ADR 0088). Until then it was a RANDOM order and a caveat.
-func b41RevealTopThenTakeMatching(ctx *Context, player uuid.UUID, n int, match func(game.Card) bool, reason string) error {
+func B41RevealTopThenTakeMatching(ctx *Context, player uuid.UUID, n int, match func(game.Card) bool, reason string) error {
 	return RevealTopThenTakeToHand(ctx, player, n,
 		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return match(c) }, reason)
 }
@@ -327,7 +327,7 @@ func b41RevealTopThenTakeMatching(ctx *Context, player uuid.UUID, n int, match f
 // trigger carries. b27ExiledWith keys the "until this Aura leaves the
 // battlefield" record on it, so the two must agree — a const rather
 // than two string literals for exactly that reason.
-const b41OssificationExileLabel = "Ossification — exile target creature or planeswalker an opponent controls"
+const B41OssificationExileLabel = "Ossification — exile target creature or planeswalker an opponent controls"
 
 // b41ReturnCardsExiledWithToTheBattlefield is the "until this permanent
 // leaves the battlefield" half of an Oblivion Ring: every card this
@@ -341,10 +341,10 @@ const b41OssificationExileLabel = "Ossification — exile target creature or pla
 //
 // Several cards (a Hostage Taker whose entry trigger was doubled) come
 // back as ONE entry (#1872), so each sees the others enter (CR 603.6a).
-func b41ReturnCardsExiledWithToTheBattlefield(label string) Effect {
+func B41ReturnCardsExiledWithToTheBattlefield(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return ReturnFromExileTogether{
-			Targets: b27ExiledWith(g, item.SourceCardID, label),
+			Targets: B27ExiledWith(g, item.SourceCardID, label),
 		}.Apply(NewContext(g, item))
 	}
 }

@@ -62,7 +62,7 @@ func init() {
 				Label:   "+1: Return up to one target land card from your graveyard to your hand.",
 				Cost:    LoyaltyCost(1),
 				Targets: upToOneLandInYourGraveyard(),
-				Effect:  returnTargetedGraveyardCardsToHand,
+				Effect:  ReturnTargetedGraveyardCardsToHand,
 			},
 			{
 				Label:   "−1: Wrenn and Six deals 1 damage to any target.",
@@ -104,7 +104,7 @@ func upToOneLandInYourGraveyard() *game.TargetSpec {
 // returnTargetedGraveyardCardsToHand returns each still-legal targeted
 // card from its owner's graveyard to their hand (Wrenn and Six's +1,
 // Tamiyo, Collector of Tales' −3).
-func returnTargetedGraveyardCardsToHand(g *game.Game, item *game.StackItem) error {
+func ReturnTargetedGraveyardCardsToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.Targets() {
 		if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {

@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Righteous Valkyrie's +2/+2.
 func LifeGatedPump(applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:              "Gives " + signedPT(power, toughness) + " while your life total is high enough.",
+		Label:              "Gives " + SignedPT(power, toughness) + " while your life total is high enough.",
 		Layer:              game.Layer7PT,
 		SubLayer:           game.SubLayer7C_Modify,
 		DependsOnLifeTotal: true,
@@ -51,7 +51,7 @@ func LifeGatedKeyword(applies func(target *game.Card, g *game.Game, source *game
 // THIS creature …" (Serra Ascendant).
 func SelfWhileYourLifeAtLeast(n int) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return target.InstanceID == source.InstanceID && controllerLifeAtLeast(g, source, n)
+		return target.InstanceID == source.InstanceID && ControllerLifeAtLeast(g, source, n)
 	}
 }
 
@@ -67,7 +67,7 @@ func YourCreaturesWhileYourLifeAboveStarting(n int) func(target *game.Card, g *g
 		if !target.IsCreature() || target.Controller != source.Controller {
 			return false
 		}
-		return controllerLifeAtLeast(g, source, startingLifeOf(g)+n)
+		return ControllerLifeAtLeast(g, source, StartingLifeOf(g)+n)
 	}
 }
 
@@ -92,7 +92,7 @@ func SelfWhileAnOpponentsLifeAtMost(n int) func(target *game.Card, g *game.Game,
 }
 
 // controllerLifeAtLeast is the one life read the constructors share.
-func controllerLifeAtLeast(g *game.Game, source *game.Card, n int) bool {
+func ControllerLifeAtLeast(g *game.Game, source *game.Card, n int) bool {
 	if g == nil || source == nil {
 		return false
 	}
@@ -103,7 +103,7 @@ func controllerLifeAtLeast(g *game.Game, source *game.Card, n int) bool {
 // startingLifeOf is the table's configured starting total, falling
 // back to the format default for a fixture that never went through
 // Start.
-func startingLifeOf(g *game.Game) int {
+func StartingLifeOf(g *game.Game) int {
 	if g == nil || g.Settings.StartingLife <= 0 {
 		return game.StartingLife
 	}

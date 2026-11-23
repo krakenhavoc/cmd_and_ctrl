@@ -13,7 +13,7 @@ import (
 // mana cost" (Matterbending Mage): the cost printed on the card, parsed, so
 // an {X} in an additional or alternative cost does not count (the same
 // reading as socB9HasXInManaCost).
-func socB29SpellWithXInItsManaCost(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+func SocB29SpellWithXInItsManaCost(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 	cost, err := game.ParseCost(c.ManaCost)
 	return err == nil && cost.XSlots > 0
 }

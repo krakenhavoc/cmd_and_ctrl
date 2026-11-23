@@ -12,7 +12,7 @@ import (
 // socB12YouCastAnInstantOrSorceryThisTurn is the trigger-time half of an
 // intervening "if you've cast an instant or sorcery spell this turn"
 // (CR 603.4): Rootha's check as the beginning of combat starts.
-func socB12YouCastAnInstantOrSorceryThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func SocB12YouCastAnInstantOrSorceryThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return g.CastTallyFor(source.Controller).InstantSorcery > 0
 }
 
@@ -20,7 +20,7 @@ func socB12YouCastAnInstantOrSorceryThisTurn(_ game.Event, source *game.Card, _ 
 // the resolving trigger through the CR 614 window and hands the cards that
 // really reached exile to `then`: Renegade Bull's "exile up to one target
 // card from your graveyard and copy it".
-func socB12ExileTargetsAndCopyThem(g *game.Game, item *game.StackItem, then game.TailRef) error {
+func SocB12ExileTargetsAndCopyThem(g *game.Game, item *game.StackItem, then game.TailRef) error {
 	ctx := NewContext(g, item)
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {

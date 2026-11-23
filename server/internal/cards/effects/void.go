@@ -45,7 +45,7 @@ type CondVoid struct{}
 
 func (CondVoid) Holds(ctx *Context) bool { return Void(ctx.Game) }
 
-func (CondVoid) condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
+func (CondVoid) Condition() (game.FootprintStep, bool) { return game.FootprintStep{}, false }
 
 // unlessVoid wraps an Effect so it runs only when void does NOT hold as
 // it resolves.
@@ -97,7 +97,7 @@ func AtYourEndStepUnlessVoid(label string, effect Effect) game.TriggeredAbility 
 // youLoseLife is the step "you lose N life" (CR 119.3): a life change that
 // names the item's source and deals no damage. A step, not a bare call, so
 // the steps after it wait for any prompt it asks (CR 608.2c).
-func youLoseLife(n int) Instruction {
+func YouLoseLife(n int) Instruction {
 	return func(ctx *Context) error {
 		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -n)
 	}

@@ -28,7 +28,7 @@ import (
 
 // entersDuringDeclareAttackers is the shared trigger condition: this
 // permanent entered, and the turn is in the declare attackers step.
-func entersDuringDeclareAttackers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func EntersDuringDeclareAttackers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	return ev.CardID == source.InstanceID && g.Turn.Step == game.StepDeclareAttackers
 }
 
@@ -42,8 +42,8 @@ func entersDuringDeclareAttackers(ev game.Event, source *game.Card, _ game.Chara
 // by resolution fizzles (CR 608.2b). The "you may" is the prompt's
 // first option, "Keep attacking …", asked at resolution where the
 // card prints it rather than as a yes/no when the trigger fires.
-func reselectTargetAttackerTrigger(label string) game.TriggeredAbility {
-	t := On(game.EventETB, entersDuringDeclareAttackers, label, reselectTargetedAttacker)
+func ReselectTargetAttackerTrigger(label string) game.TriggeredAbility {
+	t := On(game.EventETB, EntersDuringDeclareAttackers, label, reselectTargetedAttacker)
 	t.Targets = TargetCreature("target attacking creature", AttackingCreature())
 	return t
 }
@@ -77,8 +77,8 @@ func reselectTargetedAttacker(g *game.Game, item *game.StackItem) error {
 // leaves combat while an earlier question is open is skipped when its
 // turn comes, because the engine's prompt builder finds it no longer
 // attacking and asks nothing.
-func reselectEachAttackerTrigger(label string) game.TriggeredAbility {
-	return On(game.EventETB, entersDuringDeclareAttackers, label, reselectEachAttacker)
+func ReselectEachAttackerTrigger(label string) game.TriggeredAbility {
+	return On(game.EventETB, EntersDuringDeclareAttackers, label, reselectEachAttacker)
 }
 
 func reselectEachAttacker(g *game.Game, item *game.StackItem) error {

@@ -6,7 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // target of the chosen occurrence that is still legal as the spell resolves
 // is tapped (CR 608.2b), the others are skipped. "Up to two" targets with
 // none chosen taps nothing (Urza's Rebuff).
-func tapTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
+func TapTheModesTargets(_ *game.StackItem, ctx *Context, occ int) error {
 	for _, t := range ctx.ModeTargets(occ) {
 		if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
 			continue

@@ -26,14 +26,14 @@ var thenDoublePlusOneCounters = CardTail("counter/double-plus-one", func(ctx *Co
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	return b23DoublePlusOneCountersOn(ctx, o.Tail.Carry[0])
+	return B23DoublePlusOneCountersOn(ctx, o.Tail.Carry[0])
 })
 
 // thenDrawPerCounter is "draw a card for each <kind> counter on it" once the
 // counter has landed (Insight Engine's charge, The One Ring's burden):
 // Carry[0] is the permanent, Word the counter kind, and Player draws. An
 // on-disk key: never renamed, never reused.
-var thenDrawPerCounter = CardTail("counter/draw-per-counter", func(ctx *Context, o game.TailOutcome) error {
+var ThenDrawPerCounter = CardTail("counter/draw-per-counter", func(ctx *Context, o game.TailOutcome) error {
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
@@ -49,7 +49,7 @@ var thenDrawPerCounter = CardTail("counter/draw-per-counter", func(ctx *Context,
 // gain is attributed to its Source. A change that did not lose (the loss was
 // replaced away, or became a gain) gains nothing. An on-disk key: never
 // renamed, never reused.
-var thenGainLifeEqualToLost = game.RegisterTail("life/gain-equal-to-lost", func(g *game.Game, o game.TailOutcome) error {
+var ThenGainLifeEqualToLost = game.RegisterTail("life/gain-equal-to-lost", func(g *game.Game, o game.TailOutcome) error {
 	if o.Amount >= 0 {
 		return nil
 	}
@@ -57,7 +57,7 @@ var thenGainLifeEqualToLost = game.RegisterTail("life/gain-equal-to-lost", func(
 })
 
 // carryFirst is the first of a tail's Carry, or uuid.Nil.
-func carryFirst(t game.KeyedTail) uuid.UUID {
+func CarryFirst(t game.KeyedTail) uuid.UUID {
 	if len(t.Carry) == 0 {
 		return uuid.Nil
 	}

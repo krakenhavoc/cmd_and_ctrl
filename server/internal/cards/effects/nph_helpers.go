@@ -14,7 +14,7 @@ import (
 // loss lands on the player who controlled it even when the permanent has
 // left, or survived a destroy by indestructible or regeneration. A target
 // gone by resolution does nothing (CR 608.2b).
-func nphThenItsControllerLosesOne(act func(ctx *Context, id uuid.UUID) error) func(*game.StackItem, *Context) error {
+func NphThenItsControllerLosesOne(act func(ctx *Context, id uuid.UUID) error) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		for _, t := range ctx.LegalTargets() {
 			c, ok := ctx.Game.LookupCardForEffect(t.ID)

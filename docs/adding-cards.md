@@ -20,6 +20,7 @@ with no engine change: see [adding-a-signature.md](adding-a-signature.md).
 
 Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points here.
 
+  - [Where a card goes](#where-a-card-goes)
   - [Recipe](#recipe)
   - [Random effects (#744)](#random-effects-744)
   - [Adding a mana ability (S15+)](#adding-a-mana-ability-s15)
@@ -134,6 +135,94 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
   - [Ante cards: built, with their ante text inert (#5724, CR 407)](#ante-cards-built-with-their-ante-text-inert-5724-cr-407)
   - [When in doubt](#when-in-doubt)
+
+### Where a card goes
+
+**This takes effect when #5906's split lands** (its second PR,
+[ADR 0225](decisions/0225-splitting-the-card-catalog-package.md)). Until
+then every card, helper and test is in `server/internal/cards/effects/`, as
+the rest of this guide shows. After it, that directory is a tree of
+packages, because one package had grown past what the compiler can build in
+16 GB:
+
+| what | where | package |
+|---|---|---|
+| a card file (it has an `init()`) | `server/internal/cards/effects/cards/<shard>/<snake_name>.go` | `cards<shard>` |
+| a helper two or more files use, a seam, `Spec` | `server/internal/cards/effects/<file>.go` (the core) | `effects` |
+| a test | `server/internal/cards/effects/tests/<id>/<name>_test.go` | `tests<id>` |
+| a test helper another test package uses | `server/internal/cards/effects/effectstest/<file>.go` | `effectstest` |
+
+- **`<shard>` and `<id>` come from the file name**, through the frozen range
+  table [`shards.txt`](../server/internal/cards/effects/shards.txt): the last
+  row of its kind whose bound sorts at or before the lower-cased name.
+  `monk_gyatso.go` is in `cards/mi/` and `monk_gyatso_test.go` in `tests/m/`.
+  You never pick a shard by hand: `--place` (below) does it.
+- **A card file reaches the core qualified**, never through a dot import:
+  ```go
+  package cardsmi
+
+  import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+
+  func init() {
+      effects.Register(effects.Spec{
+          OracleID:     "<oracle id>",
+          Name:         "Card Name",
+          Completeness: effects.CompletenessFull,
+          Targets:      effects.TargetAny(),
+          Purpose:      effects.ForTargets(effects.DamageToTarget(0, 3)),
+          OnResolve:    effects.DamageToFirstTargetStep(3), // was damageToFirstTarget
+      })
+  }
+  ```
+  The recipes in this guide write core names bare (`Register(Spec{…})`,
+  `TargetAny()`), as the core's own files do; in a card file each one is
+  `effects.<Name>`.
+- **A card file declares nothing another file uses.** If two cards share a
+  helper, put it in a core file with no `init()` (a mechanic-named file, as
+  [Shared vocabulary](#shared-vocabulary-and-the-clone-gate) says), exported:
+  `func OnBattlefield(…)`, called as `effects.OnBattlefield(…)`. A shard
+  cannot import another shard. `core_cards.txt` lists the card files that
+  stayed in the core at the split because their siblings use their helpers;
+  never add to it (moving a listed file's helpers out and its card to its
+  shard is welcome).
+- **Tests** go in their test package and reach everything qualified:
+  `effectstest.NewCatalogGame(t)`, `effectstest.PassPriorityAroundTable(t, g)`,
+  `effects.Lookup(id)`, and a card's own helper as `cardsmi.Helper` when a
+  test needs it. Every test package links the whole catalog (its generated
+  `main_test.go` imports `effects/cards`), so tests look cards up by name as
+  before. A helper that tests in two packages share goes in `effectstest`,
+  exported. A test that reads its own sources uses the flat view
+  (`effectstest.FlatGlob("*.go")`, `FlatReadFile`, `FlatParseFile`): the
+  tree as the one directory it was, qualifiers removed.
+- **Anything that reads the catalog links it all.** A main package, or the
+  tests of a package that reaches the core, imports
+  `_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/cards"`
+  (the split generated `catalog_link.go` / `effects_catalog_link_test.go` for
+  every one that existed). Without it `effects.Lookup`, `All` and `Has`
+  panic and say so.
+
+**A branch written for the old layout** (or an agent following an old
+recipe) puts files in `server/internal/cards/effects/`. After rebasing past
+the split they do not compile there, and `TestEffectsTreeLayout`
+(`server/internal/docsguard`) fails naming each file and one command to run
+from the repository root:
+
+```bash
+scripts/split-effects.sh --place server/internal/cards/effects/foo.go server/internal/cards/effects/foo_test.go
+```
+
+It moves each card file to its shard, each test to its test package and any
+other file to the core (with `git mv`), sets the package clause, and
+rewrites every name that no longer resolves: `onBattlefield` becomes
+`effects.OnBattlefield`, `newCatalogGame` becomes
+`effectstest.NewCatalogGame`, `Register(Spec{…})` becomes
+`effects.Register(effects.Spec{…})`. It reads the split's own rename table
+(`scripts/split-effects/table.txt`). If the file needs a core helper that is
+still unexported, it exports it in place. Then build and test what it
+touched, and commit. A branch that *edits* an existing card file rebases
+onto the moved file (raise `merge.renameLimit` if git says rename detection
+was skipped); resolve its conflicts, then run `--place` on that file too to
+rewrite any old name it brought.
 
 ### Recipe
 
@@ -435,6 +524,19 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
 
+   **"An opponent chooses one —" (#5771, CR 700.2e)** is
+   `OpponentChoosesOne(…)` on a **spell's** `Modes` (Fatal Lore, Library
+   of Lat-Nam, Misfortune). The opponent chooses as the spell is cast, the
+   caster picks which opponent when more than one could, and the caster
+   picks the chosen bullet's targets after; the engine parks the cast and
+   asks all of it (`game/opponent_mode.go`), so the card file declares the
+   bullets and nothing else. That opponent is "that player": read it with
+   `ctx.ModeChooser()`, and write "target … that player controls" as
+   `ThatPlayerControls(…)`. Declare each bullet's `Purpose` from the
+   caster's side, as for any modal spell: a bot choosing for somebody else
+   prices it as the caster's gain. `Register` refuses it on a trigger or an
+   activated ability, and beside a cost, a raised count or a repeat.
+
    **"When this enters, choose up to X" (#4617, CR 107.3m)** is
    `ChooseUpToX(…)` on the **enters trigger's** `Modes` (The Ruinous
    Wrecking Crew), where X is the X paid for the spell that became the
@@ -498,7 +600,10 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    Judgment's old shape, and it is the wrong event.
 
 4. **Write the card file.** One file per card at
-   `server/internal/cards/effects/<snake_name>.go`:
+   `server/internal/cards/effects/<snake_name>.go` (after #5906's split:
+   `server/internal/cards/effects/cards/<shard>/<snake_name>.go`, calling the
+   core as `effects.Register(effects.Spec{…})`; see
+   [Where a card goes](#where-a-card-goes)):
    ```go
    package effects
 
@@ -593,7 +698,9 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    below).
 
 5. **Add a test case** in
-   [cards_test.go](../server/internal/cards/effects/cards_test.go). Use
+   [cards_test.go](../server/internal/cards/effects/cards_test.go) (after
+   the split: a `_test.go` file in its `tests/<id>/` package, calling the
+   helpers as `effectstest.NewCatalogGame(t)` and so on). Use
    `newCatalogGame(t)` + `castCatalogSpell(t, g, name, typeLine, oracleID, targets)`
    + `passPriorityAroundTable(t, g)` and assert the resulting state. For
    an ETB trigger that call settles the spell and the trigger it queues;
@@ -1283,6 +1390,13 @@ OnResolve: func(item *game.StackItem, ctx *Context) error {
 The engine stamps it on `StackItem.CastValues` after every cost is paid and before anyone can respond; it survives undo and snapshots, and a spell copy keeps its original's (CR 707.10). Use it only for text that says "as you cast"; a count the text reads as the spell resolves (Traverse the Outlands) stays in `OnResolve`. `ok` from `ctx.CastValue` is false only for a game restored from before the value existed; fall back to the resolution-time reading there.
 
 ### Granting an ability to another permanent (ADR 0093, #754)
+
+A bundle may also carry replacement effects, `AbilityGrant.Replacements`
+(Master Chef's "This creature enters with an additional +1/+1 counter on it"):
+the recipient has them while it has the grant, as its own, so `src` in each
+`AppliesTo` and `Replace` is the recipient and "you" is its controller. They
+merge into the composite definition's `Replacements` (`game.CardDef.
+GrantedReplacements`, `game/copy_grants.go`).
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a
 layer-6 grant of a catalog BUNDLE, never a closure on the recipient.
@@ -11546,7 +11660,9 @@ because batch authors were told never to touch shared files; that rule
 is gone. In its place:
 
 - **Shared code lives in mechanic-named files, and those files are
-  append-only.** A trigger shape or condition goes in
+  append-only.** After #5906's split those files are in the core
+  (`server/internal/cards/effects/`, no `init()`) and their helpers are
+  exported, so a card shard can call them ([Where a card goes](#where-a-card-goes)). A trigger shape or condition goes in
   `triggers_common.go`; a card predicate or an effect body used by
   more than one card goes in `helpers.go` (or a `predicates_<mechanic>.go`
   / `effects_<mechanic>.go` beside it); a token is a row in

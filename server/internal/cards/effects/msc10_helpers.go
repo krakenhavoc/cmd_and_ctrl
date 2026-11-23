@@ -11,22 +11,22 @@ import (
 // attack declaration with at least two OTHER creatures its controller
 // controls attacking in the same declaration (Boros Strike-Captain,
 // General Thunderbolt Ross).
-func battalionAttack(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclared(ev, source) && attackersYouControlOtherThan(g, source.Controller, source.InstanceID) >= 2
+func BattalionAttack(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return AttackDeclared(ev, source) && AttackersYouControlOtherThan(g, source.Controller, source.InstanceID) >= 2
 }
 
 // landsYouControlPT is the characteristic-defining ability "<this>'s
 // power and toughness are each equal to the number of lands you control"
 // (CR 604.3, layer 7a), counted live as the layers are recomputed
 // (Ashaya, Flora Colossus). The label is the clause as the card prints it.
-func landsYouControlPT(label string) game.StaticAbility {
+func LandsYouControlPT(label string) game.StaticAbility {
 	return game.StaticAbility{
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7A_CDA,
 		Label:     label,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := b10LandsControlled(g, source.Controller)
+			n := B10LandsControlled(g, source.Controller)
 			c.Power, c.Toughness = n, n
 		},
 	}
@@ -35,8 +35,8 @@ func landsYouControlPT(label string) game.StaticAbility {
 // msc10HexproofTheLegalTarget gives hexproof until end of turn to the
 // ability's still-legal target (CR 608.2b: one that left in response is
 // skipped) — Foggy Nelson's second sentence.
-func msc10HexproofTheLegalTarget(ctx *Context) error {
-	for _, id := range legalTargetCards(ctx.Item, ctx.Game) {
+func Msc10HexproofTheLegalTarget(ctx *Context) error {
+	for _, id := range LegalTargetCards(ctx.Item, ctx.Game) {
 		if err := (GrantKeywordUntilEOT{
 			Target:   id,
 			Keywords: []string{"hexproof"},
@@ -52,9 +52,9 @@ func msc10HexproofTheLegalTarget(ctx *Context) error {
 // ability: exile the still-legal target creature, then its controller
 // gains life equal to its power. Controller and power are read before the
 // exile, the card's last state on the battlefield (CR 608.2h).
-func msc10ExileThenItsControllerGainsItsPower(g *game.Game, item *game.StackItem) error {
+func Msc10ExileThenItsControllerGainsItsPower(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range legalTargetCards(item, g) {
+	for _, id := range LegalTargetCards(item, g) {
 		card, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
@@ -73,10 +73,10 @@ func msc10ExileThenItsControllerGainsItsPower(g *game.Game, item *game.StackItem
 // msc10CreatureExiledFromTheBattlefield is "whenever a creature other
 // than <this> is exiled from the battlefield": a battlefield exit bound
 // for exile by a creature that was a creature as it last existed there.
-func msc10CreatureExiledFromTheBattlefield(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func Msc10CreatureExiledFromTheBattlefield(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneExile || ev.CardID == source.InstanceID {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftAsType(ev, c, "creature")
+	return ok && LeftAsType(ev, c, "creature")
 }

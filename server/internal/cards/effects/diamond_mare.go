@@ -18,7 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		AsEnters:     ChooseColorAsEnters(game.ColorForBenefit, "Diamond Mare"),
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, youCastASpellOfTheChosenColor,
+			On(game.EventCast, YouCastASpellOfTheChosenColor,
 				"Diamond Mare — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 	})
@@ -27,7 +27,7 @@ func init() {
 // youCastASpellOfTheChosenColor — you cast a spell whose colours include
 // the colour stored on the source ("Whenever you cast a spell of the
 // chosen color").
-func youCastASpellOfTheChosenColor(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+func YouCastASpellOfTheChosenColor(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller || source.ChosenColor == "" {
 		return false
 	}

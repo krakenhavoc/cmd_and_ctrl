@@ -1,0 +1,378 @@
+package testsex
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+)
+
+// tenFetchlands is the whole Zendikar / Onslaught cycle. Listing it
+// here rather than spot-checking one card is deliberate: the ten
+// files are generated from one template, so the failure mode this
+// guards against is a file going missing in a merge, not a typo in
+// the logic.
+var tenFetchlands = map[string]string{
+	"Polluted Delta":    effectstest.PollutedDeltaOracle,
+	"Flooded Strand":    "f3c7af78-a77d-4134-82a2-a5ce84285a84",
+	"Misty Rainforest":  "09dd85aa-47bc-4713-a9b9-8b52ff2285ed",
+	"Bloodstained Mire": "fc0707c7-d504-4ccf-a0d2-3eb6e26e7a57",
+	"Windswept Heath":   "29737a60-3ebd-40d9-b935-c4f54b90d45d",
+	"Wooded Foothills":  "6587a463-a108-4854-b6d1-944e89b8c8a4",
+	"Verdant Catacombs": "67d60b24-d429-4ded-90d9-06e49f28c396",
+	"Scalding Tarn":     "cb027150-848c-4a66-88ad-e20222304dd8",
+	"Marsh Flats":       "dab520d0-20b4-4273-ba6b-eb07f85ea433",
+	"Arid Mesa":         "c5acf2a5-40f4-433d-a74d-1cb56c521464",
+}
+
+// --- wiring ------------------------------------------------------
+
+// Every fetchland pays {T}, 1 life and itself — and nothing else.
+// A stray mana component or a missing life payment would make the
+// card strictly better than printed, which is the failure worth
+// pinning.
+func TestFetchlandCycleCostIsTapLifeSacrifice(t *testing.T) {
+	for name, oracle := range tenFetchlands {
+		abs := game.ActivatedAbilitiesForCard(game.Card{OracleID: oracle})
+		if len(abs) != 1 {
+			t.Errorf("%s: %d activated abilities, want 1", name, len(abs))
+			continue
+		}
+		c := abs[0].Cost
+		if !c.Tap || !c.SacrificeSelf || c.Life != 1 {
+			t.Errorf("%s: cost %+v, want tap + sacrifice self + 1 life", name, c)
+		}
+		if c.Mana != "" || c.SacrificeOther != nil {
+			t.Errorf("%s: cost has an extra component: %+v", name, c)
+		}
+		if abs[0].Targets != nil {
+			t.Errorf("%s: a fetchland does not target", name)
+		}
+		if abs[0].SorcerySpeed {
+			t.Errorf("%s: fetches are crackable at instant speed", name)
+		}
+	}
+}
+
+// Evolving Wilds and Terramorphic Expanse pay no life — that is the
+// entire difference between the two families, so it gets its own
+// assertion rather than riding along with the cycle above.
+func TestSacrificeFetchBasicsPayNoLife(t *testing.T) {
+	for name, oracle := range map[string]string{
+		"Evolving Wilds":       effectstest.EvolvingWildsOracle,
+		"Terramorphic Expanse": effectstest.TerramorphicExpanseOracle,
+	} {
+		abs := game.ActivatedAbilitiesForCard(game.Card{OracleID: oracle})
+		if len(abs) != 1 {
+			t.Fatalf("%s: %d activated abilities, want 1", name, len(abs))
+		}
+		c := abs[0].Cost
+		if !c.Tap || !c.SacrificeSelf {
+			t.Errorf("%s: cost %+v, want tap + sacrifice self", name, c)
+		}
+		if c.Life != 0 {
+			t.Errorf("%s: costs %d life, want 0", name, c.Life)
+		}
+	}
+}
+
+// --- the fetch itself --------------------------------------------
+
+// A fetchland takes a NONBASIC dual — "an Island or Swamp card" is
+// any land with the type, which is the whole reason the cycle is
+// played — and the land arrives UNTAPPED.
+func TestFetchlandTakesNonbasicDualUntapped(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	delta := effectstest.PushCatalogPermanent(g, me.ID, "Polluted Delta", "Land", effectstest.PollutedDeltaOracle, false)
+	grave := effectstest.StapleLibraryCard(me, "Watery Grave", "Land — Island Swamp")
+	lifeBefore := me.Life
+
+	if err := g.ActivateCatalogAbility(me.ID, delta, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	// Costs are paid at announce, before the ability resolves.
+	if _, still := effectstest.AangCardOnBF(g, delta); still {
+		t.Error("the fetchland should be sacrificed as a cost, at announce")
+	}
+	if me.Life != lifeBefore-1 {
+		t.Errorf("life %d -> %d, want one less", lifeBefore, me.Life)
+	}
+
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.TakeSearchPrompts(t, g)
+
+	got, ok := effectstest.AangCardOnBF(g, grave)
+	if !ok {
+		t.Fatal("Watery Grave was not fetched — a fetchland takes any land with the subtype, not just a basic")
+	}
+	if got.Tapped {
+		t.Error("a fetched land arrives untapped; that is what the life pays for")
+	}
+}
+
+// #2965: a fetch is not a reveal. The land goes from the library onto
+// the battlefield, so the public log says it was fetched there, and
+// never that the table saw it revealed.
+func TestFetchlandLogsFetchNotReveal(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	delta := effectstest.PushCatalogPermanent(g, me.ID, "Polluted Delta", "Land", effectstest.PollutedDeltaOracle, false)
+	effectstest.StapleLibraryCard(me, "Watery Grave", "Land — Island Swamp")
+
+	if err := g.ActivateCatalogAbility(me.ID, delta, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.TakeSearchPrompts(t, g)
+
+	var reveals []string
+	for _, e := range protocol.ViewOfGame(g).Log {
+		if e.Kind == protocol.LogReveal {
+			reveals = append(reveals, e.Text)
+		}
+	}
+	if len(reveals) != 1 {
+		t.Fatalf("reveal log lines %q, want exactly one fetch line", reveals)
+	}
+	if !strings.Contains(reveals[0], "fetched Watery Grave") || !strings.HasSuffix(reveals[0], "onto the battlefield") {
+		t.Errorf("fetch log line %q, want it to say the land was fetched onto the battlefield", reveals[0])
+	}
+}
+
+// The subtype filter is real: a Delta cannot find a Taiga or a
+// Plains. Getting this wrong would turn every fetch into a
+// five-colour tutor.
+func TestFetchlandRejectsWrongSubtypes(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	delta := effectstest.PushCatalogPermanent(g, me.ID, "Polluted Delta", "Land", effectstest.PollutedDeltaOracle, false)
+	effectstest.StapleLibraryCard(me, "Taiga", "Land — Mountain Forest")
+	effectstest.StapleLibraryCard(me, "Plains", "Basic Land — Plains")
+	before := effectstest.StapleCountLands(g)
+	lifeBefore := me.Life
+
+	if err := g.ActivateCatalogAbility(me.ID, delta, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+
+	// The Delta itself left, and nothing arrived to replace it.
+	if got := effectstest.StapleCountLands(g); got != before-1 {
+		t.Errorf("lands on battlefield %d -> %d, want %d — an illegal land was fetched",
+			before, got, before-1)
+	}
+	// A whiffed fetch still costs the life and the land (CR 601.2h).
+	if me.Life != lifeBefore-1 {
+		t.Errorf("life %d -> %d: the cost is paid even when the search finds nothing",
+			lifeBefore, me.Life)
+	}
+}
+
+// Evolving Wilds fetches a BASIC, tapped, for no life — and cannot
+// take the nonbasic dual sitting next to it in the library.
+func TestEvolvingWildsFetchesBasicTapped(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	wilds := effectstest.PushCatalogPermanent(g, me.ID, "Evolving Wilds", "Land", effectstest.EvolvingWildsOracle, false)
+	dual := effectstest.StapleLibraryCard(me, "Watery Grave", "Land — Island Swamp")
+	forest := effectstest.StapleLibraryCard(me, "Forest", "Basic Land — Forest")
+	lifeBefore := me.Life
+
+	if err := g.ActivateCatalogAbility(me.ID, wilds, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.TakeSearchPrompts(t, g)
+
+	got, ok := effectstest.AangCardOnBF(g, forest)
+	if !ok {
+		t.Fatal("Evolving Wilds did not fetch the basic Forest")
+	}
+	if !got.Tapped {
+		t.Error("Evolving Wilds puts the land onto the battlefield TAPPED")
+	}
+	if _, wrong := effectstest.AangCardOnBF(g, dual); wrong {
+		t.Error("Evolving Wilds fetched a nonbasic — its predicate is basic-land only")
+	}
+	if me.Life != lifeBefore {
+		t.Errorf("life %d -> %d: Evolving Wilds costs no life", lifeBefore, me.Life)
+	}
+}
+
+// --- mana dorks --------------------------------------------------
+
+func TestLlanowarElvesTapsForGreen(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	elf := effectstest.PushCatalogPermanent(g, me.ID, "Llanowar Elves", "Creature — Elf Druid", effectstest.LlanowarElvesOracle, false)
+
+	if err := g.ActivateManaAbility(me.ID, elf, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "G" {
+		t.Errorf("mana pool %+v, want 1xG", me.ManaPool)
+	}
+	// A fixed colour needs no picker — only pipes queue a choice.
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("unexpected PendingChoice for a fixed-colour ability: %+v", g.PendingChoices)
+	}
+}
+
+// A summoning-sick creature cannot tap for mana (CR 302.6).
+//
+// This test shipped in #243 pinning the OPPOSITE — a known engine
+// gap where Game.ActivateManaAbility checked card.Tapped and nothing
+// else, so a turn-one Elf tapped for mana. #233 closed the gap in
+// the same hour, and #243's own comment named flipping this test as
+// the fix's acceptance criterion. The two merged three minutes
+// apart without either seeing the other, which is why the flip
+// arrives separately.
+//
+// Validate-before-pay: the refused activation leaves the Elf
+// untapped and the pool empty, not a tapped Elf with no mana.
+func TestLlanowarElvesCannotTapWhileSummoningSick(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	elf := effectstest.PushCatalogPermanent(g, me.ID, "Llanowar Elves", "Creature — Elf Druid", effectstest.LlanowarElvesOracle, true)
+
+	if err := g.ActivateManaAbility(me.ID, elf, 0, game.ManaAbilityParams{}); err != game.ErrSummoningSick {
+		t.Fatalf("summoning-sick Elf: got %v, want ErrSummoningSick", err)
+	}
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool %+v, want empty — a sick creature produced mana", me.ManaPool)
+	}
+	if got, ok := effectstest.AangCardOnBF(g, elf); !ok || got.Tapped {
+		t.Error("a refused activation must not tap the Elf")
+	}
+}
+
+// Elvish Mystic is the same card under another name; assert the
+// shapes match rather than repeating the behaviour tests.
+func TestElvishMysticMatchesLlanowarElves(t *testing.T) {
+	elf := game.ManaAbilitiesForCard(game.Card{OracleID: effectstest.LlanowarElvesOracle})
+	mystic := game.ManaAbilitiesForCard(game.Card{OracleID: effectstest.ElvishMysticOracle})
+	if len(elf) != 1 || len(mystic) != 1 {
+		t.Fatalf("mana abilities: elves %d, mystic %d, want 1 each", len(elf), len(mystic))
+	}
+	if elf[0].Produced != mystic[0].Produced || mystic[0].Produced != "{G}" {
+		t.Errorf("produced: elves %q, mystic %q, want {G}", elf[0].Produced, mystic[0].Produced)
+	}
+	if !mystic[0].TapCost || mystic[0].SacrificeCost {
+		t.Errorf("Elvish Mystic cost: %+v, want tap only", mystic[0])
+	}
+}
+
+// --- Lotus Petal -------------------------------------------------
+
+// The Petal is the first catalog card whose MANA ability sacrifices
+// its source, so this exercises a wire path nothing else in the
+// catalog reaches.
+func TestLotusPetalCracksForAnyColor(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[0]
+	petal := effectstest.PushArtifactToBattlefieldForTest(g, me.ID, "Lotus Petal", "Artifact", effectstest.LotusPetalOracle)
+
+	if err := g.ActivateManaAbility(me.ID, petal, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	if _, still := effectstest.AangCardOnBF(g, petal); still {
+		t.Error("Lotus Petal should be sacrificed by its own mana ability")
+	}
+	if len(g.PendingChoices) != 1 {
+		t.Fatalf("PendingChoices %d, want 1 colour pick", len(g.PendingChoices))
+	}
+	choice := g.PendingChoices[0]
+	if len(choice.ColorOptions) != 5 {
+		t.Errorf("ColorOptions %v, want all five", choice.ColorOptions)
+	}
+	if err := g.ResolveManaChoice(choice.ID, me.ID, "R"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
+		t.Errorf("mana pool %+v, want 1xR", me.ManaPool)
+	}
+}
+
+// --- Bojuka Bog --------------------------------------------------
+
+// bogPlay moves a Bojuka Bog from hand to battlefield, the path a
+// played land takes.
+func bogPlay(t *testing.T, g *game.Game, owner uuid.UUID) uuid.UUID {
+	t.Helper()
+	id := uuid.New()
+	var p *game.Player
+	for _, s := range g.Seats {
+		if s != nil && s.ID == owner {
+			p = s
+		}
+	}
+	if p == nil {
+		t.Fatalf("no seat %s", owner)
+	}
+	p.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Bojuka Bog", TypeLine: "Land",
+		OracleID: effectstest.BojukaBogOracle, Owner: owner, Controller: owner,
+	})
+	if err := g.MoveCardByID(
+		game.ZoneRef{Kind: game.ZoneHand, Owner: owner},
+		game.ZoneRef{Kind: game.ZoneBattlefield},
+		id,
+	); err != nil {
+		t.Fatalf("play Bojuka Bog: %v", err)
+	}
+	return id
+}
+
+func TestBojukaBogEntersTapped(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	bog := bogPlay(t, g, g.Seats[0].ID)
+
+	got, ok := effectstest.AangCardOnBF(g, bog)
+	if !ok {
+		t.Fatal("Bojuka Bog never reached the battlefield")
+	}
+	if !got.Tapped {
+		t.Error("Bojuka Bog enters tapped; that is its cost for being free removal")
+	}
+}
+
+// The ETB empties the CHOSEN player's graveyard, all of it, and
+// leaves everyone else's alone.
+func TestBojukaBogExilesTargetPlayersGraveyard(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]
+	for i := 0; i < 3; i++ {
+		effectstest.PushGraveyardCardForTest(opp, "Buried")
+	}
+	effectstest.PushGraveyardCardForTest(other, "Not Yours")
+	exileBefore := len(g.Exile.Cards)
+
+	bogPlay(t, g, me.ID)
+	effectstest.PickPlayer(t, g, me.ID, opp.ID)
+	effectstest.PassPriorityAroundTable(t, g)
+
+	if n := len(opp.Graveyard.Cards); n != 0 {
+		t.Errorf("target graveyard still holds %d cards, want 0 — the loop skipped cards", n)
+	}
+	if n := len(other.Graveyard.Cards); n != 1 {
+		t.Errorf("an untargeted player's graveyard was touched: %d cards, want 1", n)
+	}
+	if n := len(g.Exile.Cards); n != exileBefore+3 {
+		t.Errorf("exile holds %d cards, want %d", n, exileBefore+3)
+	}
+}
+
+func TestBojukaBogTapsForBlack(t *testing.T) {
+	abs := game.ManaAbilitiesForCard(game.Card{OracleID: effectstest.BojukaBogOracle})
+	if len(abs) != 1 {
+		t.Fatalf("%d mana abilities, want 1", len(abs))
+	}
+	if abs[0].Produced != "{B}" || !abs[0].TapCost {
+		t.Errorf("mana ability %+v, want tap for {B}", abs[0])
+	}
+}

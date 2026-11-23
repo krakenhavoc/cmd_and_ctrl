@@ -12,7 +12,7 @@ import (
 // second sentence: the spell deals `amount` damage to each nonartifact
 // creature `victim` controls. The set is fixed before any damage is dealt
 // (CR 608.2), and the damage is one instance.
-func neoB15DamageEachNonartifactCreatureControlledBy(ctx *Context, victim uuid.UUID, amount int) error {
+func NeoB15DamageEachNonartifactCreatureControlledBy(ctx *Context, victim uuid.UUID, amount int) error {
 	var ids []uuid.UUID
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller == victim && c.IsCreature() && !Artifact()(ctx.Game, ctx.Controller(), c) {
@@ -31,7 +31,7 @@ func neoB15DamageEachNonartifactCreatureControlledBy(ctx *Context, victim uuid.U
 
 // neoB15XTargets is "X target creatures and/or planeswalkers": exactly X
 // of them, the count being the announced X (Spinning Wheel Kick).
-func neoB15XTargets() *game.TargetSpec {
+func NeoB15XTargets() *game.TargetSpec {
 	spec := TargetPermanent("X target creatures and/or planeswalkers", Or(Creature(), Planeswalker()))
 	spec.CountFromX = true
 	return spec

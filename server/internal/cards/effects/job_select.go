@@ -11,13 +11,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and the Hero stays unequipped.
 
 // jobSelectHeroToken is the token every job-select Equipment makes.
-const jobSelectHeroToken = "1/1 colorless Hero"
+const JobSelectHeroToken = "1/1 colorless Hero"
 
 // JobSelect is the job select keyword ability for `cardName`.
 func JobSelect(cardName string) game.TriggeredAbility {
 	return WhenThisEnters(cardName+" — job select: create a 1/1 Hero and attach this to it",
 		func(g *game.Game, item *game.StackItem) error {
-			return createTokenAndAttachSource(g, item, jobSelectHeroToken, false)
+			return CreateTokenAndAttachSource(g, item, JobSelectHeroToken, false)
 		})
 }
 
@@ -33,7 +33,7 @@ func AttachedIsAlso(subtype string) game.StaticAbility {
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			now := source.TextSubtype(subtype)
-			if !eotHasType(c.Subtypes, now) {
+			if !EotHasType(c.Subtypes, now) {
 				c.Subtypes = append(c.Subtypes, now)
 			}
 		},

@@ -13,7 +13,7 @@ import (
 
 // neoB07TargetGetsUntilEOT is "Target creature gets +P/+T and gains <keywords> until
 // end of turn." (Ironhoof Boar's and Favor of Jukai's channel).
-func neoB07TargetGetsUntilEOT(label string, power, toughness int, keywords ...string) func(g *game.Game, item *game.StackItem) error {
+func NeoB07TargetGetsUntilEOT(label string, power, toughness int, keywords ...string) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		target := FirstLegalBattlefieldTarget(ctx)
@@ -33,7 +33,7 @@ func neoB07TargetGetsUntilEOT(label string, power, toughness int, keywords ...st
 }
 
 // neoB07DrawsCards is "Draw N cards." as an ability's whole effect.
-func neoB07DrawsCards(n int) func(g *game.Game, item *game.StackItem) error {
+func NeoB07DrawsCards(n int) func(g *game.Game, item *game.StackItem) error {
 	return func(g *game.Game, item *game.StackItem) error {
 		return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
 	}
@@ -43,13 +43,13 @@ func neoB07DrawsCards(n int) func(g *game.Game, item *game.StackItem) error {
 // are on, the land becomes a 0/0 green Spirit creature with haste, still a
 // land, for good (CR 611.2a) and only if it is still the object that was
 // targeted (CR 400.7). The land's entry stamp rides the tail as N.
-var neoB07AnimateLand = CardTail("then/neo-roaring-earth-animate-land", func(ctx *Context, o game.TailOutcome) error {
+var NeoB07AnimateLand = CardTail("then/neo-roaring-earth-animate-land", func(ctx *Context, o game.TailOutcome) error {
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
 	land := o.Tail.Carry[0]
 	c, ok := ctx.Game.LookupCardForEffect(land)
-	if !ok || int(c.EnteredBattlefieldAt) != o.Tail.N || !onBattlefield(ctx.Game, land) {
+	if !ok || int(c.EnteredBattlefieldAt) != o.Tail.N || !OnBattlefield(ctx.Game, land) {
 		return nil
 	}
 	mods := []game.Mod{

@@ -30,13 +30,13 @@ func init() {
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {
-				id, ok := b16FirstLegalTargetCard(ctx)
+				id, ok := B16FirstLegalTargetCard(ctx)
 				if !ok || ctx.X() <= 0 {
 					return nil
 				}
 				return AddCounter{Target: id, Kind: game.CounterPlusOne, N: ctx.X()}.Apply(ctx)
 			}),
-			Instruction(targetDealsItsPowerToEachOtherCreature),
+			Instruction(TargetDealsItsPowerToEachOtherCreature),
 		),
 	})
 }
@@ -46,8 +46,8 @@ func init() {
 // target creature: one damage event, the target as the source (so its
 // deathtouch and lifelink apply), its power read as the instruction runs.
 // Nova Flame and Nibelheim Aflame share it.
-func targetDealsItsPowerToEachOtherCreature(ctx *Context) error {
-	id, ok := b16FirstLegalTargetCard(ctx)
+func TargetDealsItsPowerToEachOtherCreature(ctx *Context) error {
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

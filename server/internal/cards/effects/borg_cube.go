@@ -59,7 +59,7 @@ func init() {
 // borgCubeFlyingGrant is "12+ | Artifact creatures you control have
 // flying": a layer-6 grant, live on the charge-counter count.
 func borgCubeFlyingGrant() game.StaticAbility {
-	grant := b16GrantKeywords(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+	grant := B16GrantKeywords(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.IsArtifact() && target.IsCreature() && target.Controller == source.Controller
 	}, "flying")
 	grant.ActiveWhen = AtChargeCounters(12)
@@ -71,7 +71,7 @@ const borgCubeAssimilatedLabel = "Borg Cube — assimilated: a Borg artifact cre
 // borgCubeAssimilateOrExile is the trigger's resolution.
 func borgCubeAssimilateOrExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	exiled := borgCubeCreatureCardsExiledWith(ctx)
+	exiled := BorgCubeCreatureCardsExiledWith(ctx)
 	switch len(exiled) {
 	case 0:
 		return borgCubeExileTarget(ctx)
@@ -95,7 +95,7 @@ func borgCubeAssimilateOrExile(g *game.Game, item *game.StackItem) error {
 // borgCubeCreatureCardsExiledWith is "a creature card exiled with it":
 // the creature cards in exile linked to the ability's source object,
 // read where they sit (printed types; no layer applies in exile).
-func borgCubeCreatureCardsExiledWith(ctx *Context) []uuid.UUID {
+func BorgCubeCreatureCardsExiledWith(ctx *Context) []uuid.UUID {
 	src, ok := ctx.SourceRef()
 	if !ok {
 		return nil
@@ -110,7 +110,7 @@ func borgCubeCreatureCardsExiledWith(ctx *Context) []uuid.UUID {
 }
 
 // borgCubePick is the creature card chosen among several (an on-disk key).
-var borgCubePick = askedPick("choose-cards/borg-cube-assimilate", func(ctx *Context, r game.CardsChosen) error {
+var borgCubePick = AskedPick("choose-cards/borg-cube-assimilate", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return borgCubeExileTarget(ctx)
 	}
@@ -130,7 +130,7 @@ var borgCubeAssimilated = CardTail("borg-cube/assimilated", func(ctx *Context, o
 // the Cube (CR 607.2a) so a later trigger can assimilate it. No target
 // chosen, or none still legal, exiles nothing (CR 608.2b).
 func borgCubeExileTarget(ctx *Context) error {
-	id := firstLegalCardTarget(ctx)
+	id := FirstLegalCardTarget(ctx)
 	if id == uuid.Nil {
 		return nil
 	}

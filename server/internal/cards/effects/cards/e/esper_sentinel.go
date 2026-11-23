@@ -1,0 +1,72 @@
+package cardse
+
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Esper Sentinel — 1/1 Artifact Creature — Human Soldier for {W}:
+//
+//	"Whenever an opponent casts their first noncreature spell each
+//	turn, draw a card unless that player pays {X}, where X is Esper
+//	Sentinel's power."
+//
+// S19 sub-PR 6. Two engine pieces make this card:
+//   - Game.SpellsCastThisTurn, bumped in CastSpell BEFORE EventCast
+//     fires, so AppliesTo sees Noncreature == 1 for exactly the
+//     first noncreature spell an opponent casts each turn.
+//   - The pay-unless prompt, with X read at resolution from the
+//     Sentinel's current power (post-layer, counters included — the
+//     same number combat uses). If the Sentinel has left the
+//     battlefield by then, X is the power captured when the trigger
+//     went on the stack (CR 603.10). X of 0 is a free "payment": no
+//     prompt, no draw.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "5def9f38-0a0b-4e8d-9f9d-29dcb46520b4",
+		Name:         "Esper Sentinel",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventCast},
+			AppliesTo: effects.AnOpponentCastTheirFirstNoncreatureSpellThisTurn,
+			Key:       "Esper Sentinel — draw unless caster pays {X}",
+			// What a decline gives the Sentinel's controller (ADR 0126
+			// §6): the card a tax-paying bot weighs (ADR 0136,
+			// 2026-10-09).
+			Purpose: game.Purpose{Draws: 1},
+			// The Sentinel's power at trigger time is a board read the
+			// effect cannot re-derive from item.Trigger alone (ADR 0041
+			// P9's fill-in Build): it is the CR 603.10 fallback X if the
+			// source has since left the battlefield.
+			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+				item := game.NewTriggeredItem(source, "Esper Sentinel — draw unless caster pays {X}")
+				item.Params.Amount = source.CurrentPower()
+				return item
+			},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				x := item.Params.Amount
+				if live, ok := g.LookupCardForEffect(item.SourceCardID); ok {
+					x = live.CurrentPower()
+				}
+				if x <= 0 {
+					return nil
+				}
+				cost := fmt.Sprintf("{%d}", x)
+				return effects.PayUnless{
+					Chooser:  item.Trigger.Event.Actor,
+					Cost:     cost,
+					Question: "Esper Sentinel — pay " + cost + "?",
+					Else:     esperSentinelDecline,
+				}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}
+
+// esperSentinelDecline is the draw once the tax is not paid, keyed
+// (#4256): a table waiting on the payer is a restore point.
+var esperSentinelDecline = effects.PayUnlessElse("pay-unless/esper-sentinel-draw", func(ctx *effects.Context, _ game.PayUnlessAnswer) error {
+	return effects.DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

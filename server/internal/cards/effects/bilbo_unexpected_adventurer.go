@@ -28,9 +28,9 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				On(game.EventDealDamage, thisDealtCombatDamageToAPlayerOrBattle,
+				On(game.EventDealDamage, ThisDealtCombatDamageToAPlayerOrBattle,
 					"Bilbo, Unexpected Adventurer — put a nonland permanent card with mana value 3 or less from a graveyard onto the battlefield",
-					hobB8ReturnTargetGraveyardCardToBattlefield),
+					HobB8ReturnTargetGraveyardCardToBattlefield),
 				TargetCardInGraveyard("up to one target nonland permanent card with mana value 3 or less in a graveyard",
 					Nonland(), Permanent(), ManaValueLE(3)).WithCount(0, 1)),
 		},
@@ -39,7 +39,7 @@ func init() {
 
 // thisDealtCombatDamageToAPlayerOrBattle is "this creature deals combat
 // damage to a player or battle".
-func thisDealtCombatDamageToAPlayerOrBattle(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
+func ThisDealtCombatDamageToAPlayerOrBattle(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
 	if ThisDealtCombatDamageToAPlayer(ev, source, c, g) {
 		return true
 	}

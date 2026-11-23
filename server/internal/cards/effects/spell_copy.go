@@ -131,7 +131,7 @@ func (c CopySpell) Apply(ctx *Context) error {
 // family prints. Kept here rather than in targets.go so a
 // concurrent batch touching that file doesn't collide; move it if a
 // third family wants it.
-func instantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpec {
+func TargetInstantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpec {
 	preds := append([]CardPredicate{Or(Instant(), Sorcery())}, extra...)
 	return TargetSpell(label, preds...)
 }
@@ -141,7 +141,7 @@ func instantOrSorcerySpell(label string, extra ...CardPredicate) *game.TargetSpe
 // Choreographed Sparks): copy the bullet's targeted spell under the
 // spell's controller, with the CR 707.10c re-target prompt. The bullet's
 // own target clause decides which spells qualify.
-func copyModeTargetSpellWithNewTargets(_ *game.StackItem, ctx *Context, occurrence int) error {
+func CopyModeTargetSpellWithNewTargets(_ *game.StackItem, ctx *Context, occurrence int) error {
 	refs := ctx.ModeTargets(occurrence)
 	if len(refs) == 0 {
 		return nil

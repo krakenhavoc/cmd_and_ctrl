@@ -1,0 +1,47 @@
+package cardsv
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Viscera Seer — Creature — Vampire Wizard {B}, 1/1:
+//
+//	"Sacrifice a creature: Scry 1."
+//
+// The cheapest free sacrifice outlet in the format, and the reason it
+// is played over strictly stronger payoffs: no mana, no tap, no limit
+// per turn. Any number of creatures can go through it at instant speed
+// during someone else's turn, which is what makes a persist or
+// undying loop work at all.
+//
+// The scry is almost incidental — the card is in every aristocrats
+// list for the outlet — but it does mean a sacrifice loop also fixes
+// your draws, and it stacks: sacrifice five creatures, scry five
+// times, one card at a time.
+//
+// It can eat itself (Sacrifice a creature, and it is a creature), so
+// the last activation is always available.
+//
+// Audited for #1565: one activated ability, one cost, one effect —
+// the whole printed card. See scry_test.go (the scry itself, and that
+// declining to bottom leaves the library untouched) and
+// paused_exit_cost_test.go / cost_commander_cards_test.go (a
+// commander named as the sacrifice pauses for its owner's CR 903.9
+// answer before the Seer is paid).
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "f82a4e85-526d-4456-b700-7760043a31be",
+		Name:         "Viscera Seer",
+		Completeness: effects.CompletenessFull,
+		Activated: []effects.ActivatedAbility{{
+			Label:   "Sacrifice a creature: Scry 1.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    effects.SacrificeACreature(),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return effects.Scry{Player: item.Controller, N: 1}.Apply(effects.NewContext(g, item))
+			},
+		}},
+	})
+}

@@ -62,7 +62,7 @@ func (k LoseAndCantHaveUntilEOT) Apply(ctx *Context) error {
 	if len(k.Keywords) == 0 {
 		return nil
 	}
-	return untilEndOfTurn(ctx, k.Target, k.Match,
+	return UntilEndOfTurn(ctx, k.Target, k.Match,
 		eotLabel(k.Label, "loses and can't have until end of turn"),
 		game.CantHaveKeywordsMod(k.Keywords...))
 }

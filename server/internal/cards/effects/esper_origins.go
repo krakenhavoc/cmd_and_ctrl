@@ -32,7 +32,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:         esperOriginsOracleID,
+		OracleID:         EsperOriginsOracleID,
 		Name:             "Esper Origins",
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
@@ -42,14 +42,14 @@ func init() {
 			if item.CastFromZone == game.ZoneGraveyard {
 				n = 1
 			}
-			return Surveil{N: 2, ThenTail: withN(ctx.ItemTail(esperOriginsAfterSurveil), n)}.Apply(ctx)
+			return Surveil{N: 2, ThenTail: WithN(ctx.ItemTail(esperOriginsAfterSurveil), n)}.Apply(ctx)
 		},
 	})
 }
 
 // esperOriginsOracleID is shared with the back face, which registers under
 // it plus "#1" (game.CatalogKey).
-const esperOriginsOracleID = "947b40a2-e272-4ef6-85fb-3d767a21bc7a"
+const EsperOriginsOracleID = "947b40a2-e272-4ef6-85fb-3d767a21bc7a"
 
 // esperOriginsAfterSurveil is the surveil answered: gain 2 life, then the
 // spell, if it was cast from a graveyard, exiles itself and returns

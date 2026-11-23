@@ -14,7 +14,7 @@ import (
 // socB31LandOrHasXInManaCost is "a land card or a card with {X} in its mana
 // cost" (Paradox Surveyor): the cost printed on the card, parsed, so an {X}
 // in an additional or alternative cost does not count.
-func socB31LandOrHasXInManaCost() CardPredicate {
+func SocB31LandOrHasXInManaCost() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		if c.IsLand() {
 			return true
@@ -30,9 +30,9 @@ func socB31LandOrHasXInManaCost() CardPredicate {
 // (ChosenName) as Pithing Needle's is. There is no list of real card names to
 // check the answer against (game/choose_card_name.go), so "land card" is kept
 // where the name is read: the two clauses that read it only reach lands.
-type socB31ChooseALandCardName struct{ Label string }
+type SocB31ChooseALandCardName struct{ Label string }
 
-func (s socB31ChooseALandCardName) Apply(ctx *Context) error {
+func (s SocB31ChooseALandCardName) Apply(ctx *Context) error {
 	ctx.Game.QueueCardNameChoiceForEffect(ctx.Controller(), ctx.Source(), s.Label)
 	return nil
 }
@@ -41,7 +41,7 @@ func (s socB31ChooseALandCardName) Apply(ctx *Context) error {
 // (case-insensitive, CR 201.2b): the active face by the card's printed type
 // line, every other face by its own. phyrexian_revoker.go's nonlandFaceNamed
 // turned the other way round.
-func socB31LandFaceNamed(c game.Card, named string) bool {
+func SocB31LandFaceNamed(c game.Card, named string) bool {
 	if c.FaceDown {
 		return false
 	}

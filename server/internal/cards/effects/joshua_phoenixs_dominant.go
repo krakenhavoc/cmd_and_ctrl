@@ -24,15 +24,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     joshuaPhoenixsDominantOracleID,
+		OracleID:     JoshuaPhoenixsDominantOracleID,
 		Name:         "Joshua, Phoenix's Dominant",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Joshua, Phoenix's Dominant — discard up to two cards, then draw that many cards",
 				func(g *game.Game, item *game.StackItem) error {
-					return b39MayDiscardThenDraw(2, false,
+					return B39MayDiscardThenDraw(2, false,
 						"Joshua, Phoenix's Dominant — discard up to two cards, then draw that many",
-						drawAsManyAsDiscarded)(NewContext(g, item))
+						DrawAsManyAsDiscarded)(NewContext(g, item))
 				}),
 		},
 		Activated: []ActivatedAbility{{
@@ -49,4 +49,4 @@ func init() {
 
 // joshuaPhoenixsDominantOracleID is shared with the back face, which
 // registers under it plus "#1" (game.CatalogKey).
-const joshuaPhoenixsDominantOracleID = "f4629329-a79b-4460-a1bc-9ae0f59adf5a"
+const JoshuaPhoenixsDominantOracleID = "f4629329-a79b-4460-a1bc-9ae0f59adf5a"

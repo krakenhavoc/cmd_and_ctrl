@@ -28,7 +28,7 @@ func init() {
 		OracleID:     oracle,
 		Name:         "Instigator Gang",
 		Completeness: CompletenessFull,
-		Static:       []game.StaticAbility{attackingCreaturesYouControlGetPower(1)},
+		Static:       []game.StaticAbility{AttackingCreaturesYouControlGetPower(1)},
 		Triggered: []game.TriggeredAbility{
 			TransformAtUpkeepIfNoSpellsLastTurn("Instigator Gang"),
 		},
@@ -38,7 +38,7 @@ func init() {
 		Name:            "Wildblood Pack",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Static:          []game.StaticAbility{attackingCreaturesYouControlGetPower(3)},
+		Static:          []game.StaticAbility{AttackingCreaturesYouControlGetPower(3)},
 		Triggered: []game.TriggeredAbility{
 			TransformAtUpkeepIfAPlayerCastTwoSpellsLastTurn("Wildblood Pack"),
 		},
@@ -47,9 +47,9 @@ func init() {
 
 // attackingCreaturesYouControlGetPower is "Attacking creatures you
 // control get +N/+0".
-func attackingCreaturesYouControlGetPower(n int) game.StaticAbility {
+func AttackingCreaturesYouControlGetPower(n int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:                    "Attacking creatures you control get " + signedPT(n, 0) + ".",
+		Label:                    "Attacking creatures you control get " + SignedPT(n, 0) + ".",
 		Layer:                    game.Layer7PT,
 		SubLayer:                 game.SubLayer7C_Modify,
 		DependsOnAttackingStatus: true,

@@ -42,7 +42,7 @@ import (
 //
 // `subtype` is judged as given: a caller reads its printed word through
 // its own text first (TextSubtype, CR 612.2, #3984).
-func b43CreaturesOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
+func B43CreaturesOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() && c.HasSubtype(subtype) {
@@ -61,7 +61,7 @@ func b43CreaturesOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtype
 // count, which is what "have total power" means (CR 208.3). Negative
 // power is clamped at zero by CurrentPower, so a creature shrunk
 // below zero contributes nothing rather than subtracting.
-func b43TotalPowerControlled(g *game.Game, controller uuid.UUID) int {
+func B43TotalPowerControlled(g *game.Game, controller uuid.UUID) int {
 	total := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == controller && c.IsCreature() {
@@ -87,8 +87,8 @@ func b43TotalPowerControlled(g *game.Game, controller uuid.UUID) int {
 //
 // `subtype` is the printed word, read through the source's text
 // (CR 612.2, #3984).
-func b43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
-	if !combatDamageToPlayerBy(ev, source.Controller, g) {
+func B43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
+	if !CombatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	src, ok := g.LookupCardForEffect(ev.Source)
@@ -102,7 +102,7 @@ func b43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer(ev game.Event, sour
 //
 // Returns the land's controller alongside the verdict, because the
 // trigger has to drain THAT player and not an arbitrary opponent.
-func b43ALandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
+func B43ALandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game.Game) (uuid.UUID, bool) {
 	if ev.Kind != game.EventETB {
 		return uuid.Nil, false
 	}
@@ -126,7 +126,7 @@ func b43ALandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game
 // Éowyn is herself a Human, so when she is one of this turn's
 // arrivals the tally has to reach two before the clause is
 // satisfied.
-func b43AnotherHumanEnteredThisTurn(g *game.Game, source *game.Card) bool {
+func B43AnotherHumanEnteredThisTurn(g *game.Game, source *game.Card) bool {
 	return anotherEnteredWithSubtypeThisTurn(g, source, "Human")
 }
 
@@ -136,8 +136,8 @@ func b43AnotherHumanEnteredThisTurn(g *game.Game, source *game.Card) bool {
 // the engine taps an attacker without an EventTapCard, so an
 // EventAttack whose creature is now tapped is "became tapped" and a
 // vigilance attacker is not.
-func b43NontokenMerfolkYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !b32CreatureYouControlBecameTapped(ev, source, g) {
+func B43NontokenMerfolkYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Game) bool {
+	if !B32CreatureYouControlBecameTapped(ev, source, g) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
@@ -155,7 +155,7 @@ func b43NontokenMerfolkYouControlBecameTapped(ev game.Event, source *game.Card, 
 // (CR 119.3). Damage prevented or replaced never happens, so a
 // prevention shield really does stop the tokens as well as the
 // damage — the event is emitted with the amount that was APPLIED.
-func b43YouWereDealtDamage(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
+func B43YouWereDealtDamage(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
 	if ev.Kind != game.EventDealDamage || ev.Amount <= 0 || ev.Target != source.Controller {
 		return 0, false
 	}
@@ -177,7 +177,7 @@ func b43YouWereDealtDamage(ev game.Event, source *game.Card, g *game.Game) (int,
 // colour-changing effect has already been applied. That ordering is
 // what lets the two halves be plain conditional statics rather than a
 // CR 613.8 dependency.
-func b43AttachedHasColor(color string) func(target *game.Card, g *game.Game, source *game.Card) bool {
+func B43AttachedHasColor(color string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, g *game.Game, source *game.Card) bool {
 		if !AttachedToSource(target, g, source) {
 			return false
@@ -196,9 +196,9 @@ func b43AttachedHasColor(color string) func(target *game.Card, g *game.Game, sou
 // b43PumpAttachedWhen is PumpAttached under a condition — layer 7c,
 // so it composes additively with anthems and with the card's other
 // conditional pump.
-func b43PumpAttachedWhen(when func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
+func B43PumpAttachedWhen(when func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     "Attached creature gets " + signedPT(power, toughness) + " while a condition holds.",
+		Label:     "Attached creature gets " + SignedPT(power, toughness) + " while a condition holds.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: when,
@@ -212,7 +212,7 @@ func b43PumpAttachedWhen(when func(target *game.Card, g *game.Game, source *game
 // b43GrantToAttachedWhen is GrantToAttached under a condition — layer
 // 6. Keywords must be canonical lowercase tokens the engine honours;
 // both of Shield of the Oversoul's are.
-func b43GrantToAttachedWhen(when func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
+func B43GrantToAttachedWhen(when func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	granted := append([]string(nil), keywords...)
 	return game.StaticAbility{
 		Label:     "Attached creature has " + joinWords(keywords) + " while a condition holds.",
@@ -237,7 +237,7 @@ func b43GrantToAttachedWhen(when func(target *game.Card, g *game.Game, source *g
 // blocked attacker that kills its blocker banks a Jitte counter, and
 // a Sword of Fire and Ice on the same creature does nothing. Both
 // halves of that are printed.
-func b43AttachedCreatureDealtCombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+func B43AttachedCreatureDealtCombatDamage(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
 		return false
 	}
@@ -258,7 +258,7 @@ func b43AttachedCreatureDealtCombatDamage(ev game.Event, source *game.Card, _ ga
 // are two combat damage steps (CR 510.4), so a double striker triggers
 // in each.
 func WheneverEquippedCreatureDealsCombatDamage(label string, effect Effect) game.TriggeredAbility {
-	return OncePerBatch(On(game.EventDealDamage, b43AttachedCreatureDealtCombatDamage, label, effect))
+	return OncePerBatch(On(game.EventDealDamage, B43AttachedCreatureDealtCombatDamage, label, effect))
 }
 
 // b43AttachedCreature is "equipped creature" read off the Equipment —
@@ -269,7 +269,7 @@ func WheneverEquippedCreatureDealsCombatDamage(label string, effect Effect) game
 // between the activation and the resolution equips nothing, and the
 // bullet that would have grown its host does nothing at all, which is
 // what the printed card does.
-func b43AttachedCreature(g *game.Game, equipment uuid.UUID) (uuid.UUID, bool) {
+func B43AttachedCreature(g *game.Game, equipment uuid.UUID) (uuid.UUID, bool) {
 	c, ok := g.LookupCardForEffect(equipment)
 	if !ok || c.AttachedTo.Kind != game.TargetCard || c.AttachedTo.ID == uuid.Nil {
 		return uuid.Nil, false
@@ -293,13 +293,13 @@ func b43AttachedCreature(g *game.Game, equipment uuid.UUID) (uuid.UUID, bool) {
 // is b17LastKnownPowerOffBattlefield. Killing the source in response
 // is therefore not a way to fog the effect, which is what the rule
 // says and what a player expects.
-func b43PowerNowOrLastKnown(g *game.Game, cardID uuid.UUID) int {
+func B43PowerNowOrLastKnown(g *game.Game, cardID uuid.UUID) int {
 	if z := g.FindCardZoneForEffect(cardID); z != nil && z.Kind == game.ZoneBattlefield {
 		if c, ok := g.LookupCardForEffect(cardID); ok {
 			return c.CurrentPower()
 		}
 	}
-	return b17LastKnownPowerOffBattlefield(g, cardID)
+	return B17LastKnownPowerOffBattlefield(g, cardID)
 }
 
 // --- effect bodies -------------------------------------------------
@@ -307,7 +307,7 @@ func b43PowerNowOrLastKnown(g *game.Game, cardID uuid.UUID) int {
 // b43TargetPlayerLoses is "target opponent loses N life" for a trigger
 // whose target clause is a player, with N computed at resolution.
 // A target that is no longer legal is skipped.
-func b43TargetPlayerLoses(g *game.Game, item *game.StackItem, n int) error {
+func B43TargetPlayerLoses(g *game.Game, item *game.StackItem, n int) error {
 	if n <= 0 {
 		return nil
 	}

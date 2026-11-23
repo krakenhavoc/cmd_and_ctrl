@@ -26,11 +26,11 @@ func init() {
 		Name:         "Crowd-Control Warden",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
-			b19EntersWithCountersCounted("+1/+1", crowdControlWardenX,
+			B19EntersWithCountersCounted("+1/+1", CrowdControlWardenX,
 				"Crowd-Control Warden: enters with a +1/+1 counter per other creature you control"),
 		},
 		AlternativeCosts: []game.AlternativeCost{
-			AsTurnedFaceUp(Disguise("{3}{G/W}{G/W}"), game.AsTurnedFaceUpCounters{Count: crowdControlWardenX}),
+			AsTurnedFaceUp(Disguise("{3}{G/W}{G/W}"), game.AsTurnedFaceUpCounters{Count: CrowdControlWardenX}),
 		},
 	})
 }
@@ -38,7 +38,7 @@ func init() {
 // crowdControlWardenX is "the number of other creatures you control",
 // for the Warden `src`: as it enters (it is not on the battlefield yet)
 // and as it is turned face up (it is, and is left out).
-func crowdControlWardenX(g *game.Game, src *game.Card) int {
+func CrowdControlWardenX(g *game.Game, src *game.Card) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID != src.InstanceID && c.Controller == src.Controller && c.IsCreature() {

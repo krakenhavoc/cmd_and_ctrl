@@ -9,7 +9,7 @@ import (
 // s82Mom16TargetOpponentOrBattle is "target opponent or battle"
 // (Ayara, Widow of the Realm): a player other than the caster, or a
 // battle on the battlefield.
-func s82Mom16TargetOpponentOrBattle() *game.TargetSpec {
+func S82Mom16TargetOpponentOrBattle() *game.TargetSpec {
 	return &game.TargetSpec{
 		Mode:    "any",
 		Label:   "target opponent or battle",
@@ -28,7 +28,7 @@ func s82Mom16TargetOpponentOrBattle() *game.TargetSpec {
 // s82Mom16CardsOpponentsDrewThisTurn is the number of cards the
 // modifier's controller's opponents have drawn this turn (Heliod, the
 // Warped Eclipse). A player who has left the game is no opponent.
-func s82Mom16CardsOpponentsDrewThisTurn(q game.CostQuery) int {
+func S82Mom16CardsOpponentsDrewThisTurn(q game.CostQuery) int {
 	n := 0
 	for _, p := range q.Game.Seats {
 		if p == nil || p.Eliminated || p.ID == q.Source.Controller {
@@ -42,9 +42,9 @@ func s82Mom16CardsOpponentsDrewThisTurn(q game.CostQuery) int {
 // s82Mom16ReturnTargetToHand is "return target <card> from a graveyard to
 // your hand": the first target still legal as the ability resolves
 // (CR 608.2b).
-func s82Mom16ReturnTargetToHand(g *game.Game, item *game.StackItem) error {
+func S82Mom16ReturnTargetToHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
@@ -53,9 +53,9 @@ func s82Mom16ReturnTargetToHand(g *game.Game, item *game.StackItem) error {
 
 // s82Mom16PutTargetOntoTheBattlefield is "put target <card> from a
 // graveyard onto the battlefield under your control".
-func s82Mom16PutTargetOntoTheBattlefield(g *game.Game, item *game.StackItem) error {
+func S82Mom16PutTargetOntoTheBattlefield(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
+	id, ok := B16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}

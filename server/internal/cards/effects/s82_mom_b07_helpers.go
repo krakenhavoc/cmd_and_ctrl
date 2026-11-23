@@ -25,7 +25,7 @@ func CountersPerConvoked(kind string, per int) game.EntryCountersFromCast {
 // `source`, as the Payload of a trigger item built while it is still on
 // the battlefield (CR 400.7d), so the trigger resolves the same if the
 // permanent has since left.
-func convokersPayload(source *game.Card) []game.TargetRef {
+func ConvokersPayload(source *game.Card) []game.TargetRef {
 	var out []game.TargetRef
 	for _, id := range source.ConvokedBy() {
 		out = append(out, game.TargetRef{Kind: game.TargetCard, ID: id})
@@ -37,7 +37,7 @@ func convokersPayload(source *game.Card) []game.TargetRef {
 // was activated this turn or tapped creature". A planeswalker has been
 // activated when one of its loyalty abilities was (CR 606), which is the
 // per-permanent tally Game.LoyaltyActivatedThisTurn keeps.
-func activatedPlaneswalkerOrTapped() CardPredicate {
+func ActivatedPlaneswalkerOrTapped() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
 		if c.IsPlaneswalker() && g.LoyaltyActivatedThisTurn[c.InstanceID] {
 			return true

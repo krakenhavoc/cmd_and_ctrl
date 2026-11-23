@@ -41,19 +41,19 @@ type champion struct {
 
 // newChampion registers the pick under pickKey. Call it once, from a
 // package-level var. `after` is the zero TailRef for a plain Champion.
-func newChampion(cardName, subtype, pickKey string, after game.TailRef) *champion {
+func NewChampion(cardName, subtype, pickKey string, after game.TailRef) *champion {
 	c := &champion{
 		subtype:  subtype,
 		question: cardName + " — exile another " + subtype + " you control (or sacrifice " + cardName + ")",
 		label:    cardName + " — the championed card returns when " + cardName + " leaves the battlefield",
 		after:    after,
 	}
-	c.pick = askedPick(pickKey, c.picked)
+	c.pick = AskedPick(pickKey, c.picked)
 	return c
 }
 
 // trigger is the enters trigger, labelled with the card's text.
-func (c *champion) trigger(cardName string) game.TriggeredAbility {
+func (c *champion) Trigger(cardName string) game.TriggeredAbility {
 	return WhenThisEnters(cardName+" — champion a "+c.subtype+": sacrifice it unless you exile another "+c.subtype+" you control", c.enters)
 }
 
@@ -86,7 +86,7 @@ func (c *champion) enters(g *game.Game, item *game.StackItem) error {
 // picked exiles the permanent named until the champion leaves, or
 // sacrifices the champion when none was named or the one named is gone.
 func (c *champion) picked(ctx *Context, r game.CardsChosen) error {
-	if len(r.Picked) == 1 && onBattlefield(ctx.Game, r.Picked[0]) {
+	if len(r.Picked) == 1 && OnBattlefield(ctx.Game, r.Picked[0]) {
 		e := ExileUntil{Target: r.Picked[0], ThisLeaves: true, Label: c.label}
 		if c.after.Key() != "" {
 			e.ThenTail = ctx.ItemTail(c.after)

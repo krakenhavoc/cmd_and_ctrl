@@ -1,0 +1,48 @@
+package cardslu
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Manglehorn — Creature — Beast {2}{G}, 2/2 (EDHREC rank 2253):
+//
+//	"When this creature enters, you may destroy target artifact.
+//	 Artifacts your opponents control enter tapped."
+//
+// The green artifact hoser. Two halves:
+//
+//   - The ETB is Acidic Slime's targeted trigger with a "you may":
+//     the controller is asked, then picks the artifact on the board,
+//     and the destroy resolves off the stack (CR 608.2b re-checks
+//     the target).
+//   - The tapped entry is Authority of the Consuls' CR 614
+//     replacement narrowed to artifacts — the entering permanent's
+//     controller must not be Manglehorn's. A cast, reanimated,
+//     fetched or flickered artifact runs the entry pipeline and
+//     arrives tapped, as printed; an artifact creature is an
+//     artifact and counts.
+//
+// An opponent's artifact TOKEN — a Treasure, a Clue — enters tapped
+// too, since #762: a created token now runs the same
+// battlefield-entry pipeline every other permanent runs, so this
+// replacement sees it exactly as it sees a cast artifact.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "b67db32b-30a9-49d2-b4c2-90a9f80c36eb",
+		Name:         "Manglehorn",
+		Completeness: effects.CompletenessFull,
+		Triggered: []game.TriggeredAbility{{
+			Watches:        []game.EventKind{game.EventETB},
+			AppliesTo:      effects.B06SelfETB,
+			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Manglehorn — destroy target artifact?"},
+			Targets:        effects.TargetPermanent("target artifact", effects.Artifact()),
+			Key:            "Manglehorn — destroy target artifact",
+			Effect:         effects.DestroyChosenPermanent,
+		}},
+		Replacements: []game.ReplacementEffect{
+			effects.OpponentsArtifactsEnterTapped("Manglehorn: artifacts your opponents control enter tapped"),
+		},
+	})
+}

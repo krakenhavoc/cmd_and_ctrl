@@ -191,8 +191,8 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 //
 // Split out of Apply so EachPlayerTakesFromLibrary asks every player
 // exactly the question a single take would, as one leg of a run.
-func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*game.ChooseCardsPrompt, []uuid.UUID) {
-	candidates := libraryCardsTakeable(g, player, p.Cards, p.candidateMatch())
+func (p TakeFromLibraryToHand) Ask(g *game.Game, player, source uuid.UUID) (*game.ChooseCardsPrompt, []uuid.UUID) {
+	candidates := LibraryCardsTakeable(g, player, p.Cards, p.candidateMatch())
 	if len(candidates) == 0 {
 		return nil, nil
 	}
@@ -206,8 +206,8 @@ func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*gam
 		// hold AT ONCE, not the sum of the slots: three lands and no
 		// instant fill one slot of "a land card and/or an instant or
 		// sorcery card", so the prompt asks for at most one.
-		slots = newTakeSlotRule(g, player, p.Slots, candidates)
-		hi = slots.fill(candidates)
+		slots = NewTakeSlotRule(g, player, p.Slots, candidates)
+		hi = slots.Fill(candidates)
 	}
 	if hi <= 0 || hi > len(candidates) {
 		hi = len(candidates)
@@ -255,7 +255,7 @@ func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*gam
 // `then` runs in every case: at once when nothing was picked, after the
 // move otherwise, and even when the move itself returned an error before
 // reaching it, so the rest are never left on top because one card failed.
-func finishTake(g *game.Game, source, player uuid.UUID, reveal bool, label string, then game.KeyedTail, picked []uuid.UUID) error {
+func FinishTake(g *game.Game, source, player uuid.UUID, reveal bool, label string, then game.KeyedTail, picked []uuid.UUID) error {
 	if len(picked) == 0 {
 		return unwrapTakeThen(then.Run(g, nil))
 	}
@@ -289,7 +289,7 @@ func (e takeThenError) Error() string { return e.err.Error() }
 func (e takeThenError) Unwrap() error { return e.err }
 
 // takeThenErr wraps a take continuation's error; nil stays nil.
-func takeThenErr(err error) error {
+func TakeThenErr(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -308,12 +308,12 @@ func unwrapTakeThen(err error) error {
 // takeResult is what a take's keyed continuation reports: Player took
 // `taken` (the cards that reached a hand) from a look at `looked`, for the
 // clause of Source.
-func takeResult(g *game.Game, source, player uuid.UUID, looked, taken []uuid.UUID) TakeFromLibraryResult {
+func TakeResult(g *game.Game, source, player uuid.UUID, looked, taken []uuid.UUID) TakeFromLibraryResult {
 	return TakeFromLibraryResult{
 		Source: source,
 		Player: player,
 		Taken:  append([]uuid.UUID(nil), taken...),
-		Rest:   cardsStillInALibrary(g, looked),
+		Rest:   CardsStillInALibrary(g, looked),
 		Looked: append([]uuid.UUID(nil), looked...),
 	}
 }
@@ -329,7 +329,7 @@ func revealTaken(g *game.Game, player, source uuid.UUID, label string, picked []
 		Player: player,
 		Source: source,
 		Reason: label,
-		Cards:  cardsStillInALibrary(g, picked),
+		Cards:  CardsStillInALibrary(g, picked),
 	})
 }
 
@@ -406,7 +406,7 @@ type takeSlotRule struct {
 	fits map[uuid.UUID][]int
 }
 
-func newTakeSlotRule(g *game.Game, player uuid.UUID, slots []TakeSlot, candidates []uuid.UUID) *takeSlotRule {
+func NewTakeSlotRule(g *game.Game, player uuid.UUID, slots []TakeSlot, candidates []uuid.UUID) *takeSlotRule {
 	r := &takeSlotRule{
 		caps: make([]int, len(slots)),
 		fits: make(map[uuid.UUID][]int, len(candidates)),
@@ -435,7 +435,7 @@ func newTakeSlotRule(g *game.Game, player uuid.UUID, slots []TakeSlot, candidate
 // in a slot it fits, no slot over its capacity, no card in two. A
 // maximum bipartite matching by augmenting paths, which for two slots
 // and a five-card look is a handful of steps.
-func (r *takeSlotRule) fill(cards []uuid.UUID) int {
+func (r *takeSlotRule) Fill(cards []uuid.UUID) int {
 	holders := make([][]int, len(r.caps))
 	var place func(card int, tried []bool) bool
 	place = func(card int, tried []bool) bool {
@@ -474,7 +474,7 @@ func (r *takeSlotRule) validate(also func([]game.Card) bool) func([]game.Card) b
 		for i, c := range picked {
 			ids[i] = c.InstanceID
 		}
-		if r.fill(ids) != len(ids) {
+		if r.Fill(ids) != len(ids) {
 			return false
 		}
 		return also == nil || also(picked)
@@ -495,7 +495,7 @@ func (r *takeSlotRule) validate(also func([]game.Card) bool) func([]game.Card) b
 // battlefield" can only mean a permanent. A hand takes anything.
 //
 // Caller holds g.mu.
-func libraryCardsTakeable(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred CardPredicate) []uuid.UUID {
+func LibraryCardsTakeable(g *game.Game, player uuid.UUID, ids []uuid.UUID, pred CardPredicate) []uuid.UUID {
 	var out []uuid.UUID
 	for _, id := range ids {
 		z := g.FindCardZoneForEffect(id)
@@ -537,7 +537,7 @@ func TakeRestOnBottomInRandomOrder(g *game.Game, res TakeFromLibraryResult) erro
 // card does not keep the others out of the graveyard: the loop carries
 // on and the first error is returned.
 func TakeRestIntoGraveyard(g *game.Game, res TakeFromLibraryResult) error {
-	return restIntoGraveyard(g, res.Rest)
+	return RestIntoGraveyard(g, res.Rest)
 }
 
 // LookAtTopThenMayTakeToHand is the whole sentence: "look at the top N
@@ -559,7 +559,7 @@ func LookAtTopThenMayTakeToHand(n int, match CardPredicate, max int, label strin
 			Max:      max,
 			Optional: true,
 			Label:    label,
-			Key:      takeRevealRestBottomRandom,
+			Key:      TakeRevealRestBottomRandom,
 		}.Apply(ctx)
 	}
 }
@@ -579,7 +579,7 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 		Match:  match,
 		All:    true,
 		Label:  label,
-		Key:    takeRestBottomAny,
+		Key:    TakeRestBottomAny,
 	}.Apply(ctx)
 }
 
@@ -648,7 +648,7 @@ type EachPlayerTakesFromLibrary struct {
 }
 
 func (e EachPlayerTakesFromLibrary) Apply(ctx *Context) error {
-	if !e.Keyed.run.Valid() {
+	if !e.Keyed.Run.Valid() {
 		return fmt.Errorf("%w: EachPlayerTakesFromLibrary with no registered definition (RegisterEachTake)", game.ErrInvalidParam)
 	}
 	return e.applyKeyed(ctx)

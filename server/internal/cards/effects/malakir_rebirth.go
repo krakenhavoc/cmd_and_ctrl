@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with its one target gone it does nothing at all (CR 608.2b).
 //
 // No simplification.
-const malakirRebirthReturn = "malakir-rebirth/return"
+const MalakirRebirthReturn = "malakir-rebirth/return"
 
 func init() {
 	Register(Spec{
@@ -26,29 +26,29 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		Grants: []AbilityGrant{{
-			Key: malakirRebirthReturn,
+			Key: MalakirRebirthReturn,
 			Triggered: []game.TriggeredAbility{
 				WhenThisDies("Malakir Rebirth — return it tapped",
-					returnThisCreatureFromGraveyard(nil, nil)),
+					ReturnThisCreatureFromGraveyard(nil, nil)),
 			},
 			Text: "When this creature dies, return it to the battlefield tapped under its owner's control.",
 		}},
 		OnResolve: ResolveSteps(
 			// The grant waits for a prompt the life loss asks (CR 608.2c, #4155).
 			Instruction(func(ctx *Context) error {
-				if _, ok := b16FirstLegalTargetCard(ctx); !ok {
+				if _, ok := B16FirstLegalTargetCard(ctx); !ok {
 					return nil
 				}
 				return GainLife{Amount: -2}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {
-				target, ok := b16FirstLegalTargetCard(ctx)
+				target, ok := B16FirstLegalTargetCard(ctx)
 				if !ok {
 					return nil
 				}
 				return GrantAbilitiesFor{
 					Target: target,
-					Keys:   []string{malakirRebirthReturn},
+					Keys:   []string{MalakirRebirthReturn},
 					Label:  "Malakir Rebirth — until end of turn, it returns when it dies",
 				}.Apply(ctx)
 			}),

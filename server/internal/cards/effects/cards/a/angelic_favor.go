@@ -1,0 +1,60 @@
+package cardsa
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Angelic Favor — Instant {3}{W}:
+//
+//	"If you control a Plains, you may tap an untapped creature you
+//	 control rather than pay this spell's mana cost.
+//	 Cast this spell only during combat.
+//	 Create a 4/4 white Angel creature token with flying. Exile it at
+//	 the beginning of the next end step."
+//
+// ADR 0135 §1 (#2030): the tap alternative cost (CR 118.9), offered only
+// while you control a Plains. The timing restriction holds whichever cost
+// is paid, as Mandate of Peace's does. The exile is a CR 603.7 delayed
+// trigger over exactly the token this spell made (Kindred Charge's
+// shape); a token that has left by then is not exiled.
+//
+// No simplifications.
+// angelicFavorRecord files the event log's position before the Angel is made.
+const angelicFavorRecord = "angelic-favor/cursor"
+
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "37162c6e-ac31-4386-9d1e-76aa66070b35",
+		Name:         "Angelic Favor",
+		Completeness: effects.CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{
+			effects.TapInstead(1, "an untapped creature you control", effects.ControlsA("Plains"), effects.Creature()),
+		},
+		CastCondition: func(g *game.Game, _ uuid.UUID, _ game.Card) bool {
+			return game.PhaseOf(g.Turn.Step) == game.PhaseCombat
+		},
+		CastConditionLabel: "Cast this spell only during combat.",
+		// The delayed exile waits for a prompt the token asks (a CR 616 order; CR 608.2c, #4155).
+		// The event log's position before the token is filed for the second step.
+		OnResolve: effects.ResolveSteps(
+			effects.Instruction(func(ctx *effects.Context) error {
+				ctx.RecordStep(angelicFavorRecord, nil, int(effects.B25LastEventSeq(ctx.Game)))
+				return effects.CreateToken{Template: effects.TokenCard("4/4 white Angel with flying"), N: 1}.Apply(ctx)
+			}),
+			effects.Instruction(func(ctx *effects.Context) error {
+				tokens := effects.B27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(ctx.StepRecord(angelicFavorRecord).N()))
+				if len(tokens) == 0 {
+					return nil
+				}
+				return effects.ScheduleDelayedTrigger{
+					Label: "Angelic Favor — exile the Angel",
+					Cards: tokens,
+					Body:  effects.ExileListedCardsBody,
+				}.Apply(ctx)
+			}),
+		),
+	})
+}

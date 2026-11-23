@@ -7,7 +7,7 @@ package effects
 // `then` happens only when at least three `color` mana was spent to cast
 // the spell. A waived payment reads as not spent (AdamantSpent), the
 // weaker-than-printed direction. Unexplained Vision's scry 3.
-func eldB1IfAdamantSpent(color string, then Applier) Instruction {
+func EldB1IfAdamantSpent(color string, then Applier) Instruction {
 	return func(ctx *Context) error {
 		if !AdamantSpent(ctx, color, 3) {
 			return nil
@@ -19,6 +19,6 @@ func eldB1IfAdamantSpent(color string, then Applier) Instruction {
 // eldB1AdamantSpentFood is "Adamant — If at least three <color> mana was spent
 // to cast this spell, create a Food token." (Foreboding Fruit, Turn into
 // a Pumpkin).
-func eldB1AdamantSpentFood(color string) Instruction {
-	return eldB1IfAdamantSpent(color, CreateToken{Template: FoodToken(), N: 1})
+func EldB1AdamantSpentFood(color string) Instruction {
+	return EldB1IfAdamantSpent(color, CreateToken{Template: FoodToken(), N: 1})
 }

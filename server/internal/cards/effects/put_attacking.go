@@ -26,16 +26,16 @@ import (
 // The card was never declared as an attacker, so its own "whenever this
 // attacks" does not trigger and neither does anyone else's "whenever a
 // creature attacks".
-func putAttackingYourChoice(ctx *Context, card uuid.UUID, from game.ZoneKind, name string) error {
-	return putAttackingForm{from: from}.choose(ctx, card, name)
+func PutAttackingYourChoice(ctx *Context, card uuid.UUID, from game.ZoneKind, name string) error {
+	return PutAttackingForm{From: from}.Choose(ctx, card, name)
 }
 
 // putAttackingWithFinality is putAttackingYourChoice for "... tapped and
 // attacking with a finality counter on it" (Grim Reaper, Lethal Legionnaire):
 // the card enters with the counter (CR 614.1c), and the engine's CR 122.1h
 // replacement does the rest.
-func putAttackingWithFinality(ctx *Context, card uuid.UUID, from game.ZoneKind, name string) error {
-	return putAttackingForm{from: from, finality: true}.choose(ctx, card, name)
+func PutAttackingWithFinality(ctx *Context, card uuid.UUID, from game.ZoneKind, name string) error {
+	return PutAttackingForm{From: from, finality: true}.Choose(ctx, card, name)
 }
 
 // putAttackingForm is one way a card is put onto the battlefield tapped and
@@ -43,23 +43,23 @@ func putAttackingWithFinality(ctx *Context, card uuid.UUID, from game.ZoneKind, 
 // finality counter. Each form has its own keyed answer to "what does it
 // attack?", because the answer carries the card and the targets as data and
 // nothing else.
-type putAttackingForm struct {
-	from     game.ZoneKind
+type PutAttackingForm struct {
+	From     game.ZoneKind
 	finality bool
 }
 
 // enters is the counters the card enters with.
-func (f putAttackingForm) enters() map[string]int {
+func (f PutAttackingForm) enters() map[string]int {
 	if f.finality {
 		return map[string]int{game.CounterFinality: 1}
 	}
 	return nil
 }
 
-func (f putAttackingForm) choose(ctx *Context, card uuid.UUID, name string) error {
-	then, ok := putAttackingThens[f]
+func (f PutAttackingForm) Choose(ctx *Context, card uuid.UUID, name string) error {
+	then, ok := PutAttackingThens[f]
 	if !ok {
-		return fmt.Errorf("%w: putAttackingYourChoice from %q", game.ErrInvalidParam, f.from)
+		return fmt.Errorf("%w: putAttackingYourChoice from %q", game.ErrInvalidParam, f.From)
 	}
 	me := ctx.Controller()
 	refs := ctx.Game.AttackTargetsForEffect(me)
@@ -67,12 +67,12 @@ func (f putAttackingForm) choose(ctx *Context, card uuid.UUID, name string) erro
 		return nil
 	}
 	if len(refs) == 1 {
-		return putAttacking(ctx.Game, me, card, f, refs[0].ID)
+		return PutAttacking(ctx.Game, me, card, f, refs[0].ID)
 	}
 	options := make([]game.ChoiceOption, len(refs))
 	carry := []uuid.UUID{card}
 	for i, r := range refs {
-		options[i] = game.ChoiceOption{Label: "Attack " + attackTargetName(ctx.Game, r.ID)}
+		options[i] = game.ChoiceOption{Label: "Attack " + AttackTargetName(ctx.Game, r.ID)}
 		if r.Kind != game.AttackTargetPlayer {
 			options[i].Cards = []uuid.UUID{r.ID}
 		}
@@ -88,12 +88,12 @@ func (f putAttackingForm) choose(ctx *Context, card uuid.UUID, name string) erro
 
 // putAttacking is the entry itself: the card, if it is still where the
 // instruction found it, tapped and attacking `target`.
-func putAttacking(g *game.Game, me, card uuid.UUID, f putAttackingForm, target uuid.UUID) error {
-	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != f.from {
+func PutAttacking(g *game.Game, me, card uuid.UUID, f PutAttackingForm, target uuid.UUID) error {
+	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != f.From {
 		return nil
 	}
 	return g.PutOntoBattlefieldTogetherKeyedForEffect(
-		[]game.BatchEntry{{CardID: card, From: f.from}},
+		[]game.BatchEntry{{CardID: card, From: f.From}},
 		game.ZoneEntryOptions{Controller: me, Tapped: true, Attacking: target, EntersWithCounters: f.enters()}, game.KeyedTail{})
 }
 
@@ -101,21 +101,21 @@ func putAttacking(g *game.Game, me, card uuid.UUID, f putAttackingForm, target u
 // per form (#4253 slice 8). The prompt's Carry is the card and then the
 // attack targets in the order the options list them, so the answer's index
 // names one; the zone and the entry counters are the registration's.
-var putAttackingThens = map[putAttackingForm]game.OptionPickThen{
-	{from: game.ZoneExile}:                     putAttackingFromExile,
-	{from: game.ZoneLibrary}:                   putAttackingFromLibrary,
-	{from: game.ZoneGraveyard}:                 putAttackingFromGraveyard,
-	{from: game.ZoneGraveyard, finality: true}: putAttackingFromGraveyardFinality,
+var PutAttackingThens = map[PutAttackingForm]game.OptionPickThen{
+	{From: game.ZoneExile}:                     PutAttackingFromExile,
+	{From: game.ZoneLibrary}:                   putAttackingFromLibrary,
+	{From: game.ZoneGraveyard}:                 PutAttackingFromGraveyard,
+	{From: game.ZoneGraveyard, finality: true}: putAttackingFromGraveyardFinality,
 }
 
 var (
-	putAttackingFromExile             = OptionPickThen("option-pick/put-attacking-from-exile", putAttackingAnswer(putAttackingForm{from: game.ZoneExile}))
-	putAttackingFromLibrary           = OptionPickThen("option-pick/put-attacking-from-library", putAttackingAnswer(putAttackingForm{from: game.ZoneLibrary}))
-	putAttackingFromGraveyard         = OptionPickThen("option-pick/put-attacking-from-graveyard", putAttackingAnswer(putAttackingForm{from: game.ZoneGraveyard}))
-	putAttackingFromGraveyardFinality = OptionPickThen("option-pick/put-attacking-from-graveyard-finality", putAttackingAnswer(putAttackingForm{from: game.ZoneGraveyard, finality: true}))
+	PutAttackingFromExile             = OptionPickThen("option-pick/put-attacking-from-exile", PutAttackingAnswer(PutAttackingForm{From: game.ZoneExile}))
+	putAttackingFromLibrary           = OptionPickThen("option-pick/put-attacking-from-library", PutAttackingAnswer(PutAttackingForm{From: game.ZoneLibrary}))
+	PutAttackingFromGraveyard         = OptionPickThen("option-pick/put-attacking-from-graveyard", PutAttackingAnswer(PutAttackingForm{From: game.ZoneGraveyard}))
+	putAttackingFromGraveyardFinality = OptionPickThen("option-pick/put-attacking-from-graveyard-finality", PutAttackingAnswer(PutAttackingForm{From: game.ZoneGraveyard, finality: true}))
 )
 
-func putAttackingAnswer(form putAttackingForm) func(ctx *Context, r game.OptionPicked) error {
+func PutAttackingAnswer(form PutAttackingForm) func(ctx *Context, r game.OptionPicked) error {
 	return func(ctx *Context, r game.OptionPicked) error {
 		if len(r.Carry) < 2 {
 			return nil
@@ -125,6 +125,6 @@ func putAttackingAnswer(form putAttackingForm) func(ctx *Context, r game.OptionP
 		if index < 0 || index >= len(targets) {
 			index = 0
 		}
-		return putAttacking(ctx.Game, ctx.Controller(), card, form, targets[index])
+		return PutAttacking(ctx.Game, ctx.Controller(), card, form, targets[index])
 	}
 }

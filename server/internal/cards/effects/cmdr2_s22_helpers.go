@@ -11,16 +11,16 @@ import (
 
 // cmdr2S22HandHas reports whether `player` is still in the game with
 // exactly n cards in hand (Triskaidekaphile's intervening "if").
-func cmdr2S22HandHas(g *game.Game, player uuid.UUID, n int) bool {
+func Cmdr2S22HandHas(g *game.Game, player uuid.UUID, n int) bool {
 	p := g.PlayerByIDForEffect(player)
-	return p != nil && !p.Eliminated && cardsInHand(g, player) == n
+	return p != nil && !p.Eliminated && CardsInHand(g, player) == n
 }
 
 // cmdr2S22WinIfHandHas is "you win the game" behind that intervening
 // "if", checked again as the trigger resolves (CR 603.4).
-func cmdr2S22WinIfHandHas(n int) Effect {
+func Cmdr2S22WinIfHandHas(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		if !cmdr2S22HandHas(g, item.Controller, n) {
+		if !Cmdr2S22HandHas(g, item.Controller, n) {
 			return nil
 		}
 		return WinTheGame{Player: item.Controller}.Apply(NewContext(g, item))
@@ -30,7 +30,7 @@ func cmdr2S22WinIfHandHas(n int) Effect {
 // cmdr2S22TargetPlayerDrawsThenYouDraw is "target player draws N cards
 // and you draw M cards", the target first as printed. A target that
 // became illegal draws nothing; the controller still draws.
-func cmdr2S22TargetPlayerDrawsThenYouDraw(theirs, yours int) Effect {
+func Cmdr2S22TargetPlayerDrawsThenYouDraw(theirs, yours int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		for _, t := range ctx.LegalTargets() {
@@ -49,7 +49,7 @@ func cmdr2S22TargetPlayerDrawsThenYouDraw(theirs, yours int) Effect {
 // cmdr2S22HexproofAndTapThis is "This creature gains hexproof until end
 // of turn. Tap it." as an activated ability's effect, both halves the
 // resolving ability's own.
-func cmdr2S22HexproofAndTapThis(label string) Effect {
+func Cmdr2S22HexproofAndTapThis(label string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		if err := (GrantKeywordUntilEOT{
@@ -67,9 +67,9 @@ func cmdr2S22HexproofAndTapThis(label string) Effect {
 // then you may return a land you control to its owner's hand": the pick
 // is made after the draw (CR 608.2c), so a land that was just drawn is
 // not a candidate (it is in hand) but one the draw let you play is.
-func cmdr2S22DrawThenMayReturnALand(g *game.Game, item *game.StackItem) error {
+func Cmdr2S22DrawThenMayReturnALand(g *game.Game, item *game.StackItem) error {
 	return Do(DrawCards{N: 1}, Instruction(func(ctx *Context) error {
-		return mayReturnALandYouControl("Kefnet the Mindful — you may return a land you control to its owner's hand",
+		return MayReturnALandYouControl("Kefnet the Mindful — you may return a land you control to its owner's hand",
 			cmdr2S22LandReturned).Apply(ctx)
 	}))(g, item)
 }
@@ -79,7 +79,7 @@ func cmdr2S22DrawThenMayReturnALand(g *game.Game, item *game.StackItem) error {
 var cmdr2S22LandReturned = RegisterPermanentsPick("prompt-run/cmdr2-s22-kefnet-return-land", PermanentsDef{
 	Then: func(ctx *Context, picked game.PromptedPicks) error {
 		for _, id := range picked.Cards() {
-			if !onBattlefield(ctx.Game, id) {
+			if !OnBattlefield(ctx.Game, id) {
 				continue
 			}
 			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
@@ -94,7 +94,7 @@ var cmdr2S22LandReturned = RegisterPermanentsPick("prompt-run/cmdr2-s22-kefnet-r
 // card each turn": the turn's draw tally read after the draw, so it
 // fires on the fifth draw and on no other (b41DrewYourSecondCardThisTurn's
 // shape).
-func cmdr2S22DrewYourFifthCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+func Cmdr2S22DrewYourFifthCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventDrawCard || ev.Actor != source.Controller {
 		return false
 	}
@@ -105,11 +105,11 @@ func cmdr2S22DrewYourFifthCardThisTurn(ev game.Event, source *game.Card, g *game
 // control each get +X/+X until end of turn, where X is the number of
 // cards in your hand": X is read as the trigger resolves and the set of
 // creatures is locked then (CR 611.2c).
-func cmdr2S22AlandraAndDrakesGetCardsInHand(g *game.Game, item *game.StackItem) error {
+func Cmdr2S22AlandraAndDrakesGetCardsInHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	x := cardsInHand(g, item.Controller)
+	x := CardsInHand(g, item.Controller)
 	self := item.SourceCardID
-	return untilEndOfTurn(ctx, uuid.Nil,
+	return UntilEndOfTurn(ctx, uuid.Nil,
 		And(YouControl(), Or(Subtype("Drake"), func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID == self })),
 		"Alandra, Sky Dreamer — Alandra and Drakes you control each get +X/+X until end of turn",
 		game.ModifyPTMod(x, x))
@@ -119,10 +119,10 @@ func cmdr2S22AlandraAndDrakesGetCardsInHand(g *game.Game, item *game.StackItem) 
 // creatures you control have base power and toughness X/X, where X is the
 // number of cards in your hand" (Jolrael, Mwonvuli Recluse), Mirror
 // Entity's layer 7b set with X read as the ability resolves.
-func cmdr2S22CreaturesBecomeXByXForCardsInHand(g *game.Game, item *game.StackItem) error {
+func Cmdr2S22CreaturesBecomeXByXForCardsInHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	x := cardsInHand(g, item.Controller)
-	return untilEndOfTurn(ctx, uuid.Nil, And(Creature(), YouControl()),
+	x := CardsInHand(g, item.Controller)
+	return UntilEndOfTurn(ctx, uuid.Nil, And(Creature(), YouControl()),
 		"Jolrael, Mwonvuli Recluse — base power and toughness X/X",
 		game.SetBasePowerMod(x), game.SetBaseToughnessMod(x))
 }
@@ -133,7 +133,7 @@ func cmdr2S22CreaturesBecomeXByXForCardsInHand(g *game.Game, item *game.StackIte
 // read on every pass; DependsOnEvents{EventDrawCard} drops the layer
 // cache on a draw (Duelist of the Mind's hint), since a draw moves
 // nothing on the battlefield.
-func cmdr2S22PlusXForCardsDrawnThisTurn() game.StaticAbility {
+func Cmdr2S22PlusXForCardsDrawnThisTurn() game.StaticAbility {
 	return game.StaticAbility{
 		Label:           "Creatures you control get +X/+X, where X is the number of cards you've drawn this turn.",
 		Layer:           game.Layer7PT,
@@ -158,7 +158,7 @@ func cmdr2S22YourCreatures(target *game.Card, _ *game.Game, source *game.Card) b
 // this creature's power is even (odd), you may cast <kind> spells as
 // though they had flash": CastAsThoughFlash narrowed to a kind of spell
 // and gated on the source's live power parity.
-func cmdr2S22CastWhilePowerParity(filter game.PermissionFilter, even bool, label string) game.CastTimingRule {
+func Cmdr2S22CastWhilePowerParity(filter game.PermissionFilter, even bool, label string) game.CastTimingRule {
 	rule := CastKindAsThoughFlash(filter, label)
 	rule.SourcePowerEven = even
 	rule.SourcePowerOdd = !even
@@ -168,7 +168,7 @@ func cmdr2S22CastWhilePowerParity(filter game.PermissionFilter, even bool, label
 // cmdr2S22CastDuringOpponentsEndStep is "During each opponent's end
 // step, you may cast spells as though they had flash" (Final-Word
 // Phantom).
-func cmdr2S22CastDuringOpponentsEndStep(label string) game.CastTimingRule {
+func Cmdr2S22CastDuringOpponentsEndStep(label string) game.CastTimingRule {
 	rule := CastAsThoughFlash()
 	rule.Label = label
 	rule.DuringOpponentsEndStep = true

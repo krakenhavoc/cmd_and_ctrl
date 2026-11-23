@@ -30,7 +30,7 @@ func SupportEffect(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		if err := nothingIfGone(g.AddCounterByForEffect(item.Controller, t.ID, game.CounterPlusOne, 1)); err != nil {
+		if err := NothingIfGone(g.AddCounterByForEffect(item.Controller, t.ID, game.CounterPlusOne, 1)); err != nil {
 			return err
 		}
 	}

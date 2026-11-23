@@ -14,7 +14,7 @@ func PlayersCantPayLifeToCastOrActivate() game.StaticAbility {
 	return game.StaticAbility{
 		Label:     "Players can't pay life to cast spells or to activate abilities that aren't mana abilities.",
 		Layer:     game.Layer6Ability,
-		AppliesTo: selfOnly,
+		AppliesTo: SelfOnly,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Restrictions |= game.PlayersCantPayLifeToCastOrActivate
 		},

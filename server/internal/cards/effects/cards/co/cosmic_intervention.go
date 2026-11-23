@@ -1,0 +1,78 @@
+package cardsco
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Cosmic Intervention — "If a permanent you control would be put
+// into a graveyard from the battlefield this turn, exile it instead.
+// Return it to the battlefield under its owner's control at the
+// beginning of the next end step. // Foretell {1}{W}"
+//
+// A board wipe answered by a CR 614 replacement plus a CR 603.7
+// delayed trigger: the wipe still resolves, but every permanent it
+// would have killed lands in exile and walks back at the end step,
+// as a new object. Registered in OnResolve for the Fog reason — the
+// instant is in the graveyard by the time the replacement has anything
+// to do, so the effect has to outlive its source. It is a ScopedEffect
+// record (ADR 0041 phase 3 tier 3b): "permanents you control", read
+// live, until end of turn, with the return named as a registered
+// delayed-trigger body rather than captured in a closure — so a table
+// that cast it is still a restore point.
+//
+// It catches sacrifice as well as destruction, which is correct:
+// the card says "put into a graveyard from the battlefield", not
+// "destroyed", and `sacrificePermanentLocked` routes through the
+// same replacement pipeline.
+//
+// One delayed trigger is scheduled per exiled permanent rather than
+// one carrying the whole list, because the replacement fires once
+// per move event — a wrath produces one event per creature. The
+// observable difference is only how many items the stack shows.
+//
+// History — both S22 simplifications are closed:
+//
+//   - **Foretell** (CR 702.143) ships on #658 and is one line on this
+//     card: `Foretell("{1}{W}")`. The comment this replaced claimed
+//     `Spec.CastableZones` plus `AlternativeCost.FromZone` already
+//     covered the cost half and only the hidden exile was missing.
+//     That was wrong twice. Those two are CARD-level declarations, so
+//     they would make every exiled copy of this card — a Path to
+//     Exile target included — castable for {1}{W} on any turn, while
+//     foretold status and the foretell cost belong to the ONE card
+//     that was foretold (CR 702.143c-d). And they are not "the cost
+//     half" either: the foretell cost is claimable only from a LATER
+//     turn (CR 702.143a), which no card-level declaration can say.
+//     What foretell actually rides is a per-instance CastPermission
+//     (ADR 0066) over that one exiled object, carrying the
+//     NotBeforeSeq floor, plus ADR 0069's face-down kind for the
+//     owner-only look.
+//
+// A dying COMMANDER is saved too, and its owner decides. CR 903.9a
+// (pinned edition, ADR 0115) makes a commander's trip from a
+// graveyard or exile a state-based "may" AFTER it arrives, and the
+// engine runs it in that order: this replacement exiles the
+// commander (no ordering prompt, it is the only one that applies),
+// and its owner is then offered the command zone: now, or stay
+// exiled and come back at the end step. Both printed outcomes are
+// reachable and nothing else, pinned by
+// TestCosmicInterventionExilesACommanderThenAsksItsOwner.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.Spec{
+		OracleID:     "cddccc2a-a76e-48b3-b4dd-dfeab89e1619",
+		Name:         "Cosmic Intervention",
+		Completeness: effects.CompletenessFull,
+		SpecialActions: []game.SpecialAction{
+			effects.Foretell("{1}{W}"),
+		},
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.ExileInsteadOfGraveyardThisTurn{
+				Then:  effects.ReturnExiledToOwnersBody,
+				Label: "Cosmic Intervention: exile instead of graveyard",
+			}.Apply(ctx)
+		},
+	})
+}
