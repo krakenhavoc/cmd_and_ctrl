@@ -1863,6 +1863,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
+confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
 confirm confirm/orcish-squatters-gain-control
 confirm confirm/painful-quandary-discard-or-lose-life

@@ -10,9 +10,9 @@ import (
 // its owner take before the game begins (ADR 0133). The one shape the
 // catalog has is "you may begin the game with this on the battlefield"
 // (CR 103.6a): the Leylines, Leyline Axe, and Gemstone Caverns with its
-// two riders. Chancellor-style "you may reveal this card from your
-// opening hand" is a different shape (a reveal that arms a delayed
-// trigger) and is not here.
+// two riders. "You may reveal this card from your opening hand" is a
+// different shape (a reveal that arms a delayed trigger), and lives in
+// opening_hand_reveal.go (#6101).
 //
 // # When
 //
@@ -69,6 +69,14 @@ type OpeningHandAction struct {
 	// cards exiles what it has (CR 701.17b-style: do as much as you
 	// can).
 	ExileFromHand int
+
+	// Reveal is the other CR 103.6 shape: "You may reveal this card
+	// from your opening hand. If you do, at the beginning of your first
+	// upkeep, …" (Devourer of Destiny, #6101). When it is set the
+	// action is a reveal and not an entry: the card stays in its
+	// owner's hand and the three riders above are not read
+	// (opening_hand_reveal.go).
+	Reveal *OpeningHandReveal
 }
 
 // CatalogOpeningHand returns a card's opening-hand action, or nil when
@@ -110,6 +118,10 @@ func (g *Game) offerOpeningHandActionsLocked() {
 			offers = append(offers, offer{id: c.InstanceID, name: c.Name, action: act})
 		}
 		for _, o := range offers {
+			if o.action.Reveal != nil {
+				g.queueOpeningHandRevealOfferLocked(seat.ID, o.id, o.name)
+				continue
+			}
 			g.queueOpeningHandOfferLocked(seat.ID, o.id, o.name, o.action)
 		}
 	}
