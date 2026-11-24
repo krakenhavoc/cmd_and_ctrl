@@ -219,6 +219,9 @@ battlefield.cards[].goads[].forRestOfGame	bool
 battlefield.cards[].grantedAbilities	array
 battlefield.cards[].grantedAbilities[]	string
 battlefield.cards[].harnessed	bool
+battlefield.cards[].hauntedEpoch	number:int
+battlefield.cards[].hauntedId	custom(uuid.UUID)
+battlefield.cards[].hauntingEpoch	number:int
 battlefield.cards[].hiddenBy	object
 battlefield.cards[].hiddenBy.epoch	number:int
 battlefield.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -798,6 +801,9 @@ enteringTokens[].goads[].forRestOfGame	bool
 enteringTokens[].grantedAbilities	array
 enteringTokens[].grantedAbilities[]	string
 enteringTokens[].harnessed	bool
+enteringTokens[].hauntedEpoch	number:int
+enteringTokens[].hauntedId	custom(uuid.UUID)
+enteringTokens[].hauntingEpoch	number:int
 enteringTokens[].hiddenBy	object
 enteringTokens[].hiddenBy.epoch	number:int
 enteringTokens[].hiddenBy.id	custom(uuid.UUID)
@@ -1345,6 +1351,9 @@ exile.cards[].goads[].forRestOfGame	bool
 exile.cards[].grantedAbilities	array
 exile.cards[].grantedAbilities[]	string
 exile.cards[].harnessed	bool
+exile.cards[].hauntedEpoch	number:int
+exile.cards[].hauntedId	custom(uuid.UUID)
+exile.cards[].hauntingEpoch	number:int
 exile.cards[].hiddenBy	object
 exile.cards[].hiddenBy.epoch	number:int
 exile.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -9287,6 +9296,9 @@ frozenEntries[].event.keywordActionTail.armyToken.goads[].forRestOfGame	bool
 frozenEntries[].event.keywordActionTail.armyToken.grantedAbilities	array
 frozenEntries[].event.keywordActionTail.armyToken.grantedAbilities[]	string
 frozenEntries[].event.keywordActionTail.armyToken.harnessed	bool
+frozenEntries[].event.keywordActionTail.armyToken.hauntedEpoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.hauntedId	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.hauntingEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.hiddenBy	object
 frozenEntries[].event.keywordActionTail.armyToken.hiddenBy.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.hiddenBy.id	custom(uuid.UUID)
@@ -11771,6 +11783,9 @@ frozenEntries[].event.millTail.run.planned[].goads[].forRestOfGame	bool
 frozenEntries[].event.millTail.run.planned[].grantedAbilities	array
 frozenEntries[].event.millTail.run.planned[].grantedAbilities[]	string
 frozenEntries[].event.millTail.run.planned[].harnessed	bool
+frozenEntries[].event.millTail.run.planned[].hauntedEpoch	number:int
+frozenEntries[].event.millTail.run.planned[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].hauntingEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].hiddenBy	object
 frozenEntries[].event.millTail.run.planned[].hiddenBy.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -12200,6 +12215,9 @@ frozenEntries[].event.millTail.run.seen[].goads[].forRestOfGame	bool
 frozenEntries[].event.millTail.run.seen[].grantedAbilities	array
 frozenEntries[].event.millTail.run.seen[].grantedAbilities[]	string
 frozenEntries[].event.millTail.run.seen[].harnessed	bool
+frozenEntries[].event.millTail.run.seen[].hauntedEpoch	number:int
+frozenEntries[].event.millTail.run.seen[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].hauntingEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].hiddenBy	object
 frozenEntries[].event.millTail.run.seen[].hiddenBy.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -14600,6 +14618,9 @@ frozenEntries[].event.tokenGroups[].template.goads[].forRestOfGame	bool
 frozenEntries[].event.tokenGroups[].template.grantedAbilities	array
 frozenEntries[].event.tokenGroups[].template.grantedAbilities[]	string
 frozenEntries[].event.tokenGroups[].template.harnessed	bool
+frozenEntries[].event.tokenGroups[].template.hauntedEpoch	number:int
+frozenEntries[].event.tokenGroups[].template.hauntedId	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.hauntingEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.hiddenBy	object
 frozenEntries[].event.tokenGroups[].template.hiddenBy.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -15721,6 +15742,9 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.goads[].forRestOfGame	
 frozenEntries[].event.tokensAfterMove[].groups[].template.grantedAbilities	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.grantedAbilities[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.harnessed	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.hauntedEpoch	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.hauntedId	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.hauntingEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.hiddenBy	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.hiddenBy.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -16163,6 +16187,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].goads[].forRestOfGame	b
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].grantedAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].grantedAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].harnessed	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hauntedEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hauntingEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hiddenBy	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hiddenBy.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -16592,6 +16619,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].goads[].forRestOfGame	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].grantedAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].grantedAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].harnessed	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hauntedEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hauntingEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hiddenBy	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hiddenBy.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -20516,6 +20546,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].goads[].forRestOfGame	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].grantedAbilities	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].grantedAbilities[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].harnessed	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].hauntedEpoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].hauntingEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].hiddenBy	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].hiddenBy.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].hiddenBy.id	custom(uuid.UUID)
@@ -21703,6 +21736,9 @@ lastKnownStack[].card.goads[].forRestOfGame	bool
 lastKnownStack[].card.grantedAbilities	array
 lastKnownStack[].card.grantedAbilities[]	string
 lastKnownStack[].card.harnessed	bool
+lastKnownStack[].card.hauntedEpoch	number:int
+lastKnownStack[].card.hauntedId	custom(uuid.UUID)
+lastKnownStack[].card.hauntingEpoch	number:int
 lastKnownStack[].card.hiddenBy	object
 lastKnownStack[].card.hiddenBy.epoch	number:int
 lastKnownStack[].card.hiddenBy.id	custom(uuid.UUID)
@@ -22630,6 +22666,9 @@ match.decks[].fixed[].goads[].forRestOfGame	bool
 match.decks[].fixed[].grantedAbilities	array
 match.decks[].fixed[].grantedAbilities[]	string
 match.decks[].fixed[].harnessed	bool
+match.decks[].fixed[].hauntedEpoch	number:int
+match.decks[].fixed[].hauntedId	custom(uuid.UUID)
+match.decks[].fixed[].hauntingEpoch	number:int
 match.decks[].fixed[].hiddenBy	object
 match.decks[].fixed[].hiddenBy.epoch	number:int
 match.decks[].fixed[].hiddenBy.id	custom(uuid.UUID)
@@ -23057,6 +23096,9 @@ match.decks[].main[].goads[].forRestOfGame	bool
 match.decks[].main[].grantedAbilities	array
 match.decks[].main[].grantedAbilities[]	string
 match.decks[].main[].harnessed	bool
+match.decks[].main[].hauntedEpoch	number:int
+match.decks[].main[].hauntedId	custom(uuid.UUID)
+match.decks[].main[].hauntingEpoch	number:int
 match.decks[].main[].hiddenBy	object
 match.decks[].main[].hiddenBy.epoch	number:int
 match.decks[].main[].hiddenBy.id	custom(uuid.UUID)
@@ -23487,6 +23529,9 @@ match.decks[].side[].goads[].forRestOfGame	bool
 match.decks[].side[].grantedAbilities	array
 match.decks[].side[].grantedAbilities[]	string
 match.decks[].side[].harnessed	bool
+match.decks[].side[].hauntedEpoch	number:int
+match.decks[].side[].hauntedId	custom(uuid.UUID)
+match.decks[].side[].hauntingEpoch	number:int
 match.decks[].side[].hiddenBy	object
 match.decks[].side[].hiddenBy.epoch	number:int
 match.decks[].side[].hiddenBy.id	custom(uuid.UUID)
@@ -30500,6 +30545,9 @@ movesAwaitingTokens[].keywordActionTail.armyToken.goads[].forRestOfGame	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.grantedAbilities	array
 movesAwaitingTokens[].keywordActionTail.armyToken.grantedAbilities[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.harnessed	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.hauntedEpoch	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.hauntingEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.hiddenBy	object
 movesAwaitingTokens[].keywordActionTail.armyToken.hiddenBy.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.hiddenBy.id	custom(uuid.UUID)
@@ -32984,6 +33032,9 @@ movesAwaitingTokens[].millTail.run.planned[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].millTail.run.planned[].grantedAbilities	array
 movesAwaitingTokens[].millTail.run.planned[].grantedAbilities[]	string
 movesAwaitingTokens[].millTail.run.planned[].harnessed	bool
+movesAwaitingTokens[].millTail.run.planned[].hauntedEpoch	number:int
+movesAwaitingTokens[].millTail.run.planned[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].hauntingEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].hiddenBy	object
 movesAwaitingTokens[].millTail.run.planned[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -33413,6 +33464,9 @@ movesAwaitingTokens[].millTail.run.seen[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].millTail.run.seen[].grantedAbilities	array
 movesAwaitingTokens[].millTail.run.seen[].grantedAbilities[]	string
 movesAwaitingTokens[].millTail.run.seen[].harnessed	bool
+movesAwaitingTokens[].millTail.run.seen[].hauntedEpoch	number:int
+movesAwaitingTokens[].millTail.run.seen[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].hauntingEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].hiddenBy	object
 movesAwaitingTokens[].millTail.run.seen[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -35813,6 +35867,9 @@ movesAwaitingTokens[].tokenGroups[].template.goads[].forRestOfGame	bool
 movesAwaitingTokens[].tokenGroups[].template.grantedAbilities	array
 movesAwaitingTokens[].tokenGroups[].template.grantedAbilities[]	string
 movesAwaitingTokens[].tokenGroups[].template.harnessed	bool
+movesAwaitingTokens[].tokenGroups[].template.hauntedEpoch	number:int
+movesAwaitingTokens[].tokenGroups[].template.hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.hauntingEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.hiddenBy	object
 movesAwaitingTokens[].tokenGroups[].template.hiddenBy.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -36934,6 +36991,9 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.goads[].forRestOfGame	
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.grantedAbilities	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.grantedAbilities[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.harnessed	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.hauntedEpoch	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.hauntingEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.hiddenBy	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.hiddenBy.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -37376,6 +37436,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].goads[].forRestOfGame	b
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].grantedAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].grantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].harnessed	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hauntedEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hauntingEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hiddenBy	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -37805,6 +37868,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].grantedAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].grantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].harnessed	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hauntedEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hauntingEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hiddenBy	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -41729,6 +41795,9 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].grantedAbilities	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].grantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].harnessed	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].hauntedEpoch	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].hauntingEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].hiddenBy	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].hiddenBy.id	custom(uuid.UUID)
@@ -43727,6 +43796,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.goads[].forRestOfGame	boo
 pendingChoices[].attackSplit.settled.chosen[].template.grantedAbilities	array
 pendingChoices[].attackSplit.settled.chosen[].template.grantedAbilities[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.harnessed	bool
+pendingChoices[].attackSplit.settled.chosen[].template.hauntedEpoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.hauntingEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.hiddenBy	object
 pendingChoices[].attackSplit.settled.chosen[].template.hiddenBy.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.hiddenBy.id	custom(uuid.UUID)
@@ -44176,6 +44248,9 @@ pendingChoices[].attackSplit.settled.groups[].template.goads[].forRestOfGame	boo
 pendingChoices[].attackSplit.settled.groups[].template.grantedAbilities	array
 pendingChoices[].attackSplit.settled.groups[].template.grantedAbilities[]	string
 pendingChoices[].attackSplit.settled.groups[].template.harnessed	bool
+pendingChoices[].attackSplit.settled.groups[].template.hauntedEpoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.hauntingEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.hiddenBy	object
 pendingChoices[].attackSplit.settled.groups[].template.hiddenBy.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -45277,6 +45352,9 @@ pendingChoices[].attackSplit.template.goads[].forRestOfGame	bool
 pendingChoices[].attackSplit.template.grantedAbilities	array
 pendingChoices[].attackSplit.template.grantedAbilities[]	string
 pendingChoices[].attackSplit.template.harnessed	bool
+pendingChoices[].attackSplit.template.hauntedEpoch	number:int
+pendingChoices[].attackSplit.template.hauntedId	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.hauntingEpoch	number:int
 pendingChoices[].attackSplit.template.hiddenBy	object
 pendingChoices[].attackSplit.template.hiddenBy.epoch	number:int
 pendingChoices[].attackSplit.template.hiddenBy.id	custom(uuid.UUID)
@@ -46123,6 +46201,9 @@ pendingChoices[].copyWalk.src.goads[].forRestOfGame	bool
 pendingChoices[].copyWalk.src.grantedAbilities	array
 pendingChoices[].copyWalk.src.grantedAbilities[]	string
 pendingChoices[].copyWalk.src.harnessed	bool
+pendingChoices[].copyWalk.src.hauntedEpoch	number:int
+pendingChoices[].copyWalk.src.hauntedId	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.hauntingEpoch	number:int
 pendingChoices[].copyWalk.src.hiddenBy	object
 pendingChoices[].copyWalk.src.hiddenBy.epoch	number:int
 pendingChoices[].copyWalk.src.hiddenBy.id	custom(uuid.UUID)
@@ -58507,6 +58588,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.goads[].for
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.grantedAbilities	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.grantedAbilities[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.harnessed	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hiddenBy	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hiddenBy.id	custom(uuid.UUID)
@@ -60991,6 +61075,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].goads[].forRestO
 pendingChoices[].replacementResume.event.millTail.run.planned[].grantedAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].harnessed	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].hiddenBy	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -61420,6 +61507,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].goads[].forRestOfGa
 pendingChoices[].replacementResume.event.millTail.run.seen[].grantedAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].harnessed	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].hiddenBy	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -63820,6 +63910,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.goads[].forRestO
 pendingChoices[].replacementResume.event.tokenGroups[].template.grantedAbilities	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.grantedAbilities[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.harnessed	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.hiddenBy	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -64941,6 +65034,9 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.goa
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.grantedAbilities	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.grantedAbilities[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.harnessed	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hiddenBy	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -65383,6 +65479,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].goad
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].grantedAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].harnessed	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hiddenBy	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -65812,6 +65911,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].goads[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].grantedAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].harnessed	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hiddenBy	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -69736,6 +69838,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].goads[].fo
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].grantedAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].harnessed	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hiddenBy	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hiddenBy.id	custom(uuid.UUID)
@@ -72116,6 +72221,9 @@ pendingChoices[].targetWalk.frame.source.goads[].forRestOfGame	bool
 pendingChoices[].targetWalk.frame.source.grantedAbilities	array
 pendingChoices[].targetWalk.frame.source.grantedAbilities[]	string
 pendingChoices[].targetWalk.frame.source.harnessed	bool
+pendingChoices[].targetWalk.frame.source.hauntedEpoch	number:int
+pendingChoices[].targetWalk.frame.source.hauntedId	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.hauntingEpoch	number:int
 pendingChoices[].targetWalk.frame.source.hiddenBy	object
 pendingChoices[].targetWalk.frame.source.hiddenBy.epoch	number:int
 pendingChoices[].targetWalk.frame.source.hiddenBy.id	custom(uuid.UUID)
@@ -72951,6 +73059,9 @@ pendingChoices[].triggerFrame.source.goads[].forRestOfGame	bool
 pendingChoices[].triggerFrame.source.grantedAbilities	array
 pendingChoices[].triggerFrame.source.grantedAbilities[]	string
 pendingChoices[].triggerFrame.source.harnessed	bool
+pendingChoices[].triggerFrame.source.hauntedEpoch	number:int
+pendingChoices[].triggerFrame.source.hauntedId	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.hauntingEpoch	number:int
 pendingChoices[].triggerFrame.source.hiddenBy	object
 pendingChoices[].triggerFrame.source.hiddenBy.epoch	number:int
 pendingChoices[].triggerFrame.source.hiddenBy.id	custom(uuid.UUID)
@@ -74157,6 +74268,9 @@ phasedOut.cards[].goads[].forRestOfGame	bool
 phasedOut.cards[].grantedAbilities	array
 phasedOut.cards[].grantedAbilities[]	string
 phasedOut.cards[].harnessed	bool
+phasedOut.cards[].hauntedEpoch	number:int
+phasedOut.cards[].hauntedId	custom(uuid.UUID)
+phasedOut.cards[].hauntingEpoch	number:int
 phasedOut.cards[].hiddenBy	object
 phasedOut.cards[].hiddenBy.epoch	number:int
 phasedOut.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -74589,6 +74703,9 @@ planechase.deck.cards[].goads[].forRestOfGame	bool
 planechase.deck.cards[].grantedAbilities	array
 planechase.deck.cards[].grantedAbilities[]	string
 planechase.deck.cards[].harnessed	bool
+planechase.deck.cards[].hauntedEpoch	number:int
+planechase.deck.cards[].hauntedId	custom(uuid.UUID)
+planechase.deck.cards[].hauntingEpoch	number:int
 planechase.deck.cards[].hiddenBy	object
 planechase.deck.cards[].hiddenBy.epoch	number:int
 planechase.deck.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -75021,6 +75138,9 @@ planechase.faceUp.cards[].goads[].forRestOfGame	bool
 planechase.faceUp.cards[].grantedAbilities	array
 planechase.faceUp.cards[].grantedAbilities[]	string
 planechase.faceUp.cards[].harnessed	bool
+planechase.faceUp.cards[].hauntedEpoch	number:int
+planechase.faceUp.cards[].hauntedId	custom(uuid.UUID)
+planechase.faceUp.cards[].hauntingEpoch	number:int
 planechase.faceUp.cards[].hiddenBy	object
 planechase.faceUp.cards[].hiddenBy.epoch	number:int
 planechase.faceUp.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -75705,6 +75825,9 @@ resolving.card.goads[].forRestOfGame	bool
 resolving.card.grantedAbilities	array
 resolving.card.grantedAbilities[]	string
 resolving.card.harnessed	bool
+resolving.card.hauntedEpoch	number:int
+resolving.card.hauntedId	custom(uuid.UUID)
+resolving.card.hauntingEpoch	number:int
 resolving.card.hiddenBy	object
 resolving.card.hiddenBy.epoch	number:int
 resolving.card.hiddenBy.id	custom(uuid.UUID)
@@ -76775,6 +76898,9 @@ seats[].attractionDeck.cards[].goads[].forRestOfGame	bool
 seats[].attractionDeck.cards[].grantedAbilities	array
 seats[].attractionDeck.cards[].grantedAbilities[]	string
 seats[].attractionDeck.cards[].harnessed	bool
+seats[].attractionDeck.cards[].hauntedEpoch	number:int
+seats[].attractionDeck.cards[].hauntedId	custom(uuid.UUID)
+seats[].attractionDeck.cards[].hauntingEpoch	number:int
 seats[].attractionDeck.cards[].hiddenBy	object
 seats[].attractionDeck.cards[].hiddenBy.epoch	number:int
 seats[].attractionDeck.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -77389,6 +77515,9 @@ seats[].command.cards[].goads[].forRestOfGame	bool
 seats[].command.cards[].grantedAbilities	array
 seats[].command.cards[].grantedAbilities[]	string
 seats[].command.cards[].harnessed	bool
+seats[].command.cards[].hauntedEpoch	number:int
+seats[].command.cards[].hauntedId	custom(uuid.UUID)
+seats[].command.cards[].hauntingEpoch	number:int
 seats[].command.cards[].hiddenBy	object
 seats[].command.cards[].hiddenBy.epoch	number:int
 seats[].command.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -77823,6 +77952,9 @@ seats[].companion.cards[].goads[].forRestOfGame	bool
 seats[].companion.cards[].grantedAbilities	array
 seats[].companion.cards[].grantedAbilities[]	string
 seats[].companion.cards[].harnessed	bool
+seats[].companion.cards[].hauntedEpoch	number:int
+seats[].companion.cards[].hauntedId	custom(uuid.UUID)
+seats[].companion.cards[].hauntingEpoch	number:int
 seats[].companion.cards[].hiddenBy	object
 seats[].companion.cards[].hiddenBy.epoch	number:int
 seats[].companion.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -78266,6 +78398,9 @@ seats[].emblems.cards[].goads[].forRestOfGame	bool
 seats[].emblems.cards[].grantedAbilities	array
 seats[].emblems.cards[].grantedAbilities[]	string
 seats[].emblems.cards[].harnessed	bool
+seats[].emblems.cards[].hauntedEpoch	number:int
+seats[].emblems.cards[].hauntedId	custom(uuid.UUID)
+seats[].emblems.cards[].hauntingEpoch	number:int
 seats[].emblems.cards[].hiddenBy	object
 seats[].emblems.cards[].hiddenBy.epoch	number:int
 seats[].emblems.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -78796,6 +78931,9 @@ seats[].graveyard.cards[].goads[].forRestOfGame	bool
 seats[].graveyard.cards[].grantedAbilities	array
 seats[].graveyard.cards[].grantedAbilities[]	string
 seats[].graveyard.cards[].harnessed	bool
+seats[].graveyard.cards[].hauntedEpoch	number:int
+seats[].graveyard.cards[].hauntedId	custom(uuid.UUID)
+seats[].graveyard.cards[].hauntingEpoch	number:int
 seats[].graveyard.cards[].hiddenBy	object
 seats[].graveyard.cards[].hiddenBy.epoch	number:int
 seats[].graveyard.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -79226,6 +79364,9 @@ seats[].hand.cards[].goads[].forRestOfGame	bool
 seats[].hand.cards[].grantedAbilities	array
 seats[].hand.cards[].grantedAbilities[]	string
 seats[].hand.cards[].harnessed	bool
+seats[].hand.cards[].hauntedEpoch	number:int
+seats[].hand.cards[].hauntedId	custom(uuid.UUID)
+seats[].hand.cards[].hauntingEpoch	number:int
 seats[].hand.cards[].hiddenBy	object
 seats[].hand.cards[].hiddenBy.epoch	number:int
 seats[].hand.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -79661,6 +79802,9 @@ seats[].junkyard.cards[].goads[].forRestOfGame	bool
 seats[].junkyard.cards[].grantedAbilities	array
 seats[].junkyard.cards[].grantedAbilities[]	string
 seats[].junkyard.cards[].harnessed	bool
+seats[].junkyard.cards[].hauntedEpoch	number:int
+seats[].junkyard.cards[].hauntedId	custom(uuid.UUID)
+seats[].junkyard.cards[].hauntingEpoch	number:int
 seats[].junkyard.cards[].hiddenBy	object
 seats[].junkyard.cards[].hiddenBy.epoch	number:int
 seats[].junkyard.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -80117,6 +80261,9 @@ seats[].library.cards[].goads[].forRestOfGame	bool
 seats[].library.cards[].grantedAbilities	array
 seats[].library.cards[].grantedAbilities[]	string
 seats[].library.cards[].harnessed	bool
+seats[].library.cards[].hauntedEpoch	number:int
+seats[].library.cards[].hauntedId	custom(uuid.UUID)
+seats[].library.cards[].hauntingEpoch	number:int
 seats[].library.cards[].hiddenBy	object
 seats[].library.cards[].hiddenBy.epoch	number:int
 seats[].library.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -80588,6 +80735,9 @@ seats[].sideboard.cards[].goads[].forRestOfGame	bool
 seats[].sideboard.cards[].grantedAbilities	array
 seats[].sideboard.cards[].grantedAbilities[]	string
 seats[].sideboard.cards[].harnessed	bool
+seats[].sideboard.cards[].hauntedEpoch	number:int
+seats[].sideboard.cards[].hauntedId	custom(uuid.UUID)
+seats[].sideboard.cards[].hauntingEpoch	number:int
 seats[].sideboard.cards[].hiddenBy	object
 seats[].sideboard.cards[].hiddenBy.epoch	number:int
 seats[].sideboard.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -81421,6 +81571,9 @@ stack.cards[].goads[].forRestOfGame	bool
 stack.cards[].grantedAbilities	array
 stack.cards[].grantedAbilities[]	string
 stack.cards[].harnessed	bool
+stack.cards[].hauntedEpoch	number:int
+stack.cards[].hauntedId	custom(uuid.UUID)
+stack.cards[].hauntingEpoch	number:int
 stack.cards[].hiddenBy	object
 stack.cards[].hiddenBy.epoch	number:int
 stack.cards[].hiddenBy.id	custom(uuid.UUID)

@@ -552,6 +552,18 @@ type Card struct {
 	// then: the two still agree.
 	TurnOvers int
 
+	// HauntedID and HauntedEpoch are haunt's link (CR 702.55b, #6083): set
+	// on a card a haunt ability exiled, they name the OBJECT it haunts —
+	// the creature the ability targeted, at the epoch it had then (an
+	// instance ID survives a zone change; CR 400.7). HauntingEpoch is this
+	// card's own ObjectEpoch as it arrived in exile, so the link holds only
+	// for that object: a card that leaves exile and comes back haunts
+	// nothing. Written once by HauntForEffect, never in place; uuid.Nil is
+	// no link. See haunt.go.
+	HauntedID     uuid.UUID
+	HauntedEpoch  int
+	HauntingEpoch int
+
 	// ControlledSinceUpkeep is the value of the controller's
 	// Player.UpkeepsBegun when this permanent last came under that
 	// player's control: as it entered the battlefield, and at each
