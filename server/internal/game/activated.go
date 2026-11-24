@@ -654,6 +654,17 @@ type AbilityCost struct {
 	// (AbilityNeedsPermanentSource). Data, no pick to announce.
 	UnattachThis bool
 
+	// UnattachGrantor is "Unattach <the Equipment that granted this
+	// ability>" as a cost (S82 OLD batch 67, Toralf's Hammer's equipped
+	// creature has "{1}{R}, {T}, Unattach Toralf's Hammer: …"; CR 701.3d).
+	// The grantor is the object that granted the row (AbilityOrigin.
+	// GrantedBy, the one TapGrantor and ExileGrantor read), unattached at
+	// announce through UnattachForEffect so a "becomes unattached" watcher
+	// sees it, and it stays on the battlefield. A grantor attached to
+	// nothing can't pay it (CR 118.3). Only a granted battlefield row has
+	// one. Data, no pick to announce. See unattach_cost.go.
+	UnattachGrantor bool
+
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
 	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
@@ -2059,6 +2070,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateUnattachThisCostLocked(cardID, srcZone, ab.Cost.UnattachThis); err != nil {
 		return err
 	}
+	// Toralf's Hammer: "Unattach <the permanent that granted this>": the
+	// row's grantor must still be attached to something, and pays no other
+	// component (CR 118.3).
+	unattachGrantor, err := g.unattachGrantorOfLocked(ab.Cost, origins.At(index))
+	if err != nil {
+		return err
+	}
+	if err := validateTapGrantorCostLocked(unattachGrantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs, params.TapIDs); err != nil {
+		return err
+	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
 	// else to check: an exert cost can be paid tapped or untapped, and
 	// again after an earlier exert this turn (CR 701.43b).
@@ -2598,6 +2619,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)
 	g.payUnattachThisCostLocked(cardID, ab.Cost.UnattachThis)
+	g.payUnattachGrantorCostLocked(unattachGrantor)
 	if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
