@@ -3532,6 +3532,7 @@ tail connive/each
 tail connive/kamiz-obscura-oculus
 tail connive/x
 tail copy-and-cast/cast-copies-then-exile-self
+tail copy-and-cast/mnemonic-deluge-three-copies
 tail cori-steel-cutter/offer-attach
 tail corpse-appraiser/look-at-top-three
 tail counter/double-if-grew
