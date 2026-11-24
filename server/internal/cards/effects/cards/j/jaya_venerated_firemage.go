@@ -51,14 +51,9 @@ func init() {
 			Cost:    effects.LoyaltyCost(-2),
 			Targets: effects.TargetAny(),
 			Purpose: effects.ForTargets(effects.DamageToTarget(0, 2)),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				t, ok := effects.FirstLegalTarget(ctx)
-				if !ok {
-					return nil
-				}
-				return effects.DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}.Apply(ctx)
-			},
+			Effect: effects.Do(effects.Instruction(func(ctx *effects.Context) error {
+				return effects.DamageToFirstTargetStep(2)(ctx.Item, ctx)
+			})),
 		}},
 	})
 }

@@ -36,6 +36,7 @@ func init() {
 				Label:   "+1: Target creature gets +2/+0 and gains first strike and trample until end of turn.",
 				Cost:    effects.LoyaltyCost(1),
 				Targets: effects.TargetCreature("target creature"),
+				Purpose: effects.ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetBenefit}),
 				Effect: effects.PumpAndGrantFirstTarget(2, 0, "The Royal Scions — +2/+0, first strike and trample",
 					"first strike", "trample"),
 			},
