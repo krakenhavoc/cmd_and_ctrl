@@ -88,6 +88,7 @@ body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
 body cascade/the-spell-just-cast
 body cascade/the-spell-you-just-cast
+body cascade/the-spell-you-just-cast-from-hand
 body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
 body catalog/activated
