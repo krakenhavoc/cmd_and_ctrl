@@ -2704,6 +2704,7 @@ payunless pay-unless/forage-only
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
+payunless pay-unless/furnace-celebration-damage
 payunless pay-unless/furyblade-vampire-pump
 payunless pay-unless/gap-b213-sivriss-return
 payunless pay-unless/gap-b53-conduit-goblin-pump-haste
