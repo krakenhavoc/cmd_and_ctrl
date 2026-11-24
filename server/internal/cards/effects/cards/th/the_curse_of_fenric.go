@@ -32,9 +32,10 @@ import (
 // creature types go, the supertype is gained), every ability lost in layer
 // 6 and base 6/6 in layer 7b. It stays after the Saga is gone.
 //
-// Chapter III fights the two picks (CR 701.14a); if either is no longer a
-// legal target, neither deals damage (CR 701.14b). "Named Fenric" reads the
-// name after the layers, so a creature chapter II renamed qualifies.
+// Chapter III fights the two picks; if either is no longer a legal target
+// (CR 608.2b) or no longer a creature on the battlefield (CR 701.14b),
+// neither deals damage. "Named Fenric" reads the name after the layers, so
+// a creature chapter II renamed qualifies.
 //
 // No simplification.
 const fenricName = "The Curse of Fenric"
