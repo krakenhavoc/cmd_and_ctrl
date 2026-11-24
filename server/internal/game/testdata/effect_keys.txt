@@ -273,6 +273,7 @@ body grim-reaper-lethal-legionnaire/return
 body grishnakh-brash-instigator/steal-body
 body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
+body halana-kessig-ranger/damage
 body halo-forager/cast
 body harald-unites-the-elves/shrink
 body havengul-lich/gains-its-abilities
@@ -2719,6 +2720,7 @@ payunless pay-unless/grim-reaper-lethal-legionnaire-return
 payunless pay-unless/grist-voracious-larva-transform
 payunless pay-unless/gryffwing-cavalry-flying
 payunless pay-unless/guide-of-souls-angel
+payunless pay-unless/halana-kessig-ranger-damage
 payunless pay-unless/halo-forager-x-cast
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
 payunless pay-unless/haunted-library-spirit
