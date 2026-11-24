@@ -530,6 +530,14 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		}
 		return ProtectionQuality{}, false
 	}
+	// "<creature type> creatures" (Sigrid, God-Favored's "protection from God
+	// creatures"): the same quality as "creatures of type <T>", a source that
+	// is a CREATURE of the type, so a noncreature God does not match.
+	if rest, ok := strings.CutSuffix(lower, " creatures"); ok {
+		if ct, ok := CanonicalCreatureType(strings.TrimSpace(rest)); ok {
+			return ProtectionQuality{Kind: ProtectionQualityCreatureSubtype, Value: ct, Printed: printed}, true
+		}
+	}
 	// A subtype, and only a CREATURE type: those are the ones printed
 	// protection names (Demons, Dragons, Goblins) and the ones
 	// CanonicalCreatureType can validate. An artifact or enchantment

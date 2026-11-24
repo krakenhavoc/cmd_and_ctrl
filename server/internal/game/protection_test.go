@@ -38,6 +38,8 @@ func TestProtectionGrammarParsesTheClosedSet(t *testing.T) {
 		{"protection from Elves", ProtectionQualitySubtype, "Elf"},
 		{"protection from Goblin", ProtectionQualitySubtype, "Goblin"},
 		{"protection from everything", ProtectionQualityEverything, ""},
+		// Sigrid, God-Favored: a creature of the type, not a noncreature God.
+		{"protection from God creatures", ProtectionQualityCreatureSubtype, "God"},
 		// CR 702.16k, #980. The seat is NOT in the token — Value stays
 		// empty and the reader resolves Player off the permanent — so
 		// no raw UUID can reach a display string.
