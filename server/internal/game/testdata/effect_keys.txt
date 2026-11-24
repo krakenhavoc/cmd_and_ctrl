@@ -1424,6 +1424,7 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/s82-old-b005-karn-scion-pick
 choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-old-b021-hokori-untap-a-land
+choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
