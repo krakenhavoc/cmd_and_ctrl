@@ -27,7 +27,7 @@ import type { CardView } from "./protocol";
 /** One chip: what it says, and what its tooltip says. */
 export interface ChosenValueChip {
   /** Stable key for `{#each}`, and the CSS modifier for the chip. */
-  kind: "color" | "tribe" | "option" | "name" | "number";
+  kind: "color" | "tribe" | "option" | "name" | "number" | "commander-color";
   /**
    * The rendered text — "Green", "Elf" for colour/tribe, which read
    * fine bare in context. "Temur" and "Sol Ring" alone do not (a
@@ -61,7 +61,12 @@ export interface ChosenValueChip {
 export function chosenValueChips(
   card: Pick<
     CardView,
-    "chosen_color" | "named_tribe" | "chosen_option" | "chosen_name" | "chosen_number"
+    | "chosen_color"
+    | "named_tribe"
+    | "chosen_option"
+    | "chosen_name"
+    | "chosen_number"
+    | "commander_color"
   >,
 ): ChosenValueChip[] {
   const chips: ChosenValueChip[] = [];
@@ -109,6 +114,19 @@ export function chosenValueChips(
       kind: "number",
       label: `Paid: ${number}`,
       title: `${number} was paid as it entered (CR 614.12a)`,
+    });
+  }
+  // #5948: a commander's colour chosen before the game (CR 903.4b).
+  // Shown in every zone, the command zone above all, because the card's
+  // printed frame is colourless and the choice is what makes it this
+  // colour and widens its deck's colour identity.
+  const commanderColor = card.commander_color;
+  if (commanderColor) {
+    const label = COLOR_META[commanderColor]?.label ?? commanderColor;
+    chips.push({
+      kind: "commander-color",
+      label,
+      title: `chosen before the game: this commander is ${label} (CR 903.4b)`,
     });
   }
   return chips;

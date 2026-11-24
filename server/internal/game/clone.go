@@ -144,6 +144,8 @@ func (g *Game) cloneLocked() *Game {
 	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	out.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	out.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
+	out.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
+	out.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -477,6 +479,8 @@ func (g *Game) cloneLocked() *Game {
 	// window between the two steps that dropped it would let every
 	// first-striker deal its damage a second time in the regular step.
 	out.firstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	// #6098: and the record of what had to attack.
+	out.hadToAttack = copyBoolMap(g.hadToAttack)
 	// #3665: the step's damage held behind its prompts rewinds with
 	// them. Copy on write, so it is shared.
 	out.heldCombatDamage = g.heldCombatDamage
@@ -1356,6 +1360,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.LoyaltyTwiceThisTurn = src.LoyaltyTwiceThisTurn
 	g.LoyaltyPermanentTwiceThisTurn = src.LoyaltyPermanentTwiceThisTurn
+	g.LoyaltyPermanentExtraThisTurn = src.LoyaltyPermanentExtraThisTurn
+	g.LoyaltyPermanentExtraUsedThisTurn = src.LoyaltyPermanentExtraUsedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
@@ -1435,6 +1441,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.attacksDeclared = src.attacksDeclared
 	g.combatHadAttackers = src.combatHadAttackers
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
+	g.hadToAttack = src.hadToAttack
 	g.heldCombatDamage = src.heldCombatDamage
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices

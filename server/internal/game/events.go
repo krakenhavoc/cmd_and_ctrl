@@ -2444,6 +2444,17 @@ type Event struct {
 	// like LastKnownTypes; additive (#4452).
 	LastKnownFaceDown bool `json:"last_known_face_down,omitempty"`
 
+	// AttackingAlone / BlockingAlone are whether the same permanent was
+	// attacking alone or blocking alone as it last existed, on EventLTB
+	// only (#6098, CR 506.5: "attacking but no other creatures are").
+	// Judged against the whole simultaneous event: a creature that dies
+	// together with the only other attacker was not attacking alone,
+	// even though the other one left first (exit_alone.go). Thijarian
+	// Witness's "if it was attacking or blocking alone". Engine-internal,
+	// like LastKnownTypes; additive.
+	AttackingAlone bool `json:"attacking_alone,omitempty"`
+	BlockingAlone  bool `json:"blocking_alone,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

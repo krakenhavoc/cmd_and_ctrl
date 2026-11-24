@@ -189,10 +189,7 @@ func KnownBlockerFilter(key string) bool {
 	if key == "" {
 		return true
 	}
-	blockerFilters.RLock()
-	defer blockerFilters.RUnlock()
-	_, ok := blockerFilters.byKey[key]
-	return ok
+	return blockerFilterMatch(key) != nil
 }
 
 // bindsBlocker reports whether Lure requirement r reaches `blocker`:
@@ -206,9 +203,7 @@ func (r BlockRequirement) bindsBlocker(blocker *Card) bool {
 	if r.Filter == "" {
 		return true
 	}
-	blockerFilters.RLock()
-	match := blockerFilters.byKey[r.Filter]
-	blockerFilters.RUnlock()
+	match := blockerFilterMatch(r.Filter)
 	return match != nil && blocker != nil && match(blocker)
 }
 
@@ -268,8 +263,10 @@ type BlockRequirement struct {
 	// came back is not it. Zero on every other kind.
 	Attacker ObjectRef
 	// Filter narrows a BlockRequirementLure to the blockers a registered
-	// filter matches (KnownBlockerFilter; "wall", "flying"). Empty on
-	// every other kind, and on an ordinary Lure.
+	// filter matches (KnownBlockerFilter; "wall", "flying"), and a
+	// BlockRequirementMustBeBlocked to "must be blocked by <filter> if
+	// able" (#6087, "subtype:Dalek"; block_requirement_filtered.go).
+	// Empty on every other kind, and on an ordinary Lure.
 	Filter string
 	// ExceptController narrows a BlockRequirementLure to blockers NOT
 	// controlled by this player (#2050): "all creatures your opponents
@@ -462,6 +459,11 @@ func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign blockAssign
 		}
 		for j, r := range reqs {
 			switch {
+			case r.filteredMustBeBlocked():
+				// #6087: obeyed only by a blocker the filter matches.
+				if ok, by := g.mustBeBlockedObeyedBy(r, atk, assign); ok {
+					out = append(out, blockReqHit{req: r, holder: atk.InstanceID, idx: j, blocker: by, attacker: atk.InstanceID})
+				}
 			case r.Kind == BlockRequirementMustBeBlocked && n >= 1,
 				r.Kind == BlockRequirementExactlyOne && n == 1:
 				out = append(out, blockReqHit{req: r, holder: atk.InstanceID, idx: j, blocker: first, attacker: atk.InstanceID})
@@ -499,6 +501,11 @@ type brAttacker struct {
 	max     int // 0: unbounded
 	mb, one int // must-be-blocked / exactly-one requirement counts
 	modes   []brMode
+	// #6087: the filtered "must be blocked by <filter>" requirements the
+	// first matching blocker obeys (0 once one already blocks), and
+	// their filter key.
+	fkey string
+	fmb  int
 }
 
 type brBlocker struct {
@@ -545,8 +552,11 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 		a := &brAttacker{
 			card: c,
 			c0:   counts[c.InstanceID],
-			mb:   blockRequirementCount(reqs, BlockRequirementMustBeBlocked),
+			mb:   unfilteredMustBeBlockedCount(reqs),
 			one:  blockRequirementCount(reqs, BlockRequirementExactlyOne),
+		}
+		if key, n, obeyed := g.filteredMustBeBlockedOf(c, reqs, assign); n > 0 && !obeyed {
+			a.fkey, a.fmb = key, n
 		}
 		a.min, a.max = g.blockerBoundsLocked(c)
 		atks = append(atks, a)
@@ -778,8 +788,18 @@ func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, 
 	src, lim := 0, 1
 	bNode := func(i int) int { return 2 + i }
 	aNode := func(j int) int { return 2 + nb + j }
-	sink := 2 + nb + na
+	// #6087: an attacker with a filtered "must be blocked" takes its
+	// matching blockers through a node of its own, whose first unit is
+	// the requirement.
+	fNode := func(j int) int { return 2 + nb + na + j }
+	sink := 2 + nb + 2*na
 	f := newMinCostFlow(sink + 1)
+	for j, a := range atks {
+		if a.fmb > 0 {
+			f.add(fNode(j), aNode(j), 1, -a.fmb)
+			f.add(fNode(j), aNode(j), brInfCap, 0)
+		}
+	}
 	if room.room >= 0 {
 		f.add(src, lim, room.room, 0)
 	}
@@ -814,7 +834,11 @@ func (g *Game) solveBlockRequirementFlow(atks []*brAttacker, blks []*brBlocker, 
 			if weight[i][j] < 0 || modeOf(a).closed {
 				continue
 			}
-			pairs = append(pairs, pairArc{b: i, a: j, arc: f.add(bNode(i), aNode(j), 1, -weight[i][j])})
+			to := aNode(j)
+			if a.fmb > 0 && blockerFilterMatch(a.fkey) != nil && blockerFilterMatch(a.fkey)(blks[i].card) {
+				to = fNode(j)
+			}
+			pairs = append(pairs, pairArc{b: i, a: j, arc: f.add(bNode(i), to, 1, -weight[i][j])})
 		}
 	}
 	type forced struct{ node, arc int }

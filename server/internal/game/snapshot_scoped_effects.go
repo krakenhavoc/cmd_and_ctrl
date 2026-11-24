@@ -549,6 +549,11 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 		if problem := dealtDamageByScopeProblem(e.Scope, e.Mods); problem != "" {
 			unknown = append(unknown, problem)
 		}
+		// #6087: a creaturesExceptObjects record spares named objects,
+		// and objects on a restriction anywhere else are a newer shape.
+		if problem := exceptObjectsScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}

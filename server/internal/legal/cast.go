@@ -989,6 +989,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		if c, ok := flashIf.XCeilingUnder(0, false); ok && (xLifeCeiling == noXCeiling || c < xLifeCeiling) {
 			xLifeCeiling = c
 		}
+		// #6085, CR 202.3e: and a ban on mana value (Lavinia, Azorius
+		// Renegade) — the gate above passed this cast at X=0, and
+		// refuses it at CastSpell above the X its ceiling leaves.
+		if c, ok := e.g.CastGateXCeilingForEffect(e.seat, card, fromZone); ok && (xLifeCeiling == noXCeiling || c < xLifeCeiling) {
+			xLifeCeiling = c
+		}
 	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
@@ -1200,8 +1206,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// off the permission the announcement is made under, as the engine's
 	// pricer reads it off the one the cast claims.
 	grantLess, grantMore := 0, 0
+	var grantMoreMana *game.ParsedCost
 	if perm != nil {
 		grantLess, grantMore = perm.CostLess, perm.CostMore
+		// #6091: the permission's coloured additional cost.
+		grantMoreMana = game.CostMoreManaOf(perm)
 	}
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
@@ -1401,6 +1410,7 @@ modeLoop:
 				AltFlashback:          offer != nil && offer.Key == "flashback",
 				GrantReduction:        grantLess,
 				GrantIncrease:         grantMore,
+				GrantIncreaseMana:     grantMoreMana,
 				ExilingFromHand:       len(handExile),
 				TappingToPay:          len(tapAny),
 				OptionalCosts:         chosen,
@@ -1529,6 +1539,7 @@ modeLoop:
 					AltFlashback:          offer != nil && offer.Key == "flashback",
 					GrantReduction:        grantLess,
 					GrantIncrease:         grantMore,
+					GrantIncreaseMana:     grantMoreMana,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
 					OptionalCosts:         chosen,
@@ -1614,6 +1625,7 @@ modeLoop:
 							AltFlashback:          offer != nil && offer.Key == "flashback",
 							GrantReduction:        grantLess,
 							GrantIncrease:         grantMore,
+							GrantIncreaseMana:     grantMoreMana,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
 							OptionalCosts:         chosen,

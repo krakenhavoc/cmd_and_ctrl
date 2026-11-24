@@ -106,6 +106,13 @@ type CastQuery struct {
 	// spell could lift a ban, and the optional-cost choice is made
 	// before this gate runs. Nothing in the catalog reads it yet.
 	OptionalCosts []int
+
+	// XValue is the X the caster announced for the spell (CR 107.3a,
+	// 601.2b), #6085. A spell's mana value on the stack counts {X} at
+	// this number (CR 202.3e), so a ban on mana value reads it through
+	// SpellManaValue (cast_gate_x.go). Zero from the enumerator's and
+	// the view's "is ANY cast open" query, which is X's least value.
+	XValue int
 }
 
 // CastRestriction is one "can't cast" static ability contributed by a
@@ -135,6 +142,22 @@ type CastRestriction struct {
 	// engine, the enumerator and the view cannot disagree about
 	// whether it exists (ADR 0071).
 	ActiveWhen Designation
+
+	// ManaValueCeiling is a ban on mana value read as data (#6085):
+	// Lavinia, Azorius Renegade's "can't cast noncreature spells with
+	// mana value greater than the number of lands that player
+	// controls". When it reports (n, true) for a cast, the gate refuses
+	// that cast if the spell's mana value with its announced X
+	// (CastQuery.SpellManaValue, CR 202.3e) is greater than n; (_,
+	// false) means this restriction does not bear on the cast. Declared
+	// as a ceiling rather than inside Forbids so the engine can also
+	// say how large an X stays under it (CastGateXCeilingLocked): the
+	// enumerator and the client's X picker stop there instead of
+	// offering a cast the gate refuses. It must not read q.XValue.
+	//
+	// Either this or Forbids may be set, or both; a cast either one
+	// refuses is refused.
+	ManaValueCeiling func(q CastQuery) (ceiling int, ok bool)
 
 	// Ignorable marks this restriction as the static ability the card's
 	// IgnorableEffect lets a player ignore (CR 116.2d, #1986): while the
@@ -236,8 +259,11 @@ func (e *CantCastError) Unwrap() error { return ErrCantCast }
 // `card` carries the chosen face (ADR 0034 materialises it before any
 // announce gate runs). `params` is the announcement so far; the
 // enumerator and the view pass a zero value, which is honest — they
-// are asking whether ANY cast of this card is open, and no catalog
-// restriction reads the announcement today.
+// are asking whether ANY cast of this card is open. #6085: the one
+// part of the announcement a restriction reads is X, through a
+// ManaValueCeiling, and X=0 is its least mana value, so the zero
+// value is still the right "any cast" question; the X a cast may then
+// announce is bounded by CastGateXCeilingLocked (cast_gate_x.go).
 //
 // A land PLAY is not a cast (CR 305.1, CR 116.2a) and is not gated
 // here: CastSpell's land branch skips this call, because every
@@ -253,6 +279,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 		Controller:    caster,
 		FromZone:      zone,
 		OptionalCosts: params.OptionalCosts,
+		XValue:        params.XValue,
 	}
 	// The statics first: a restriction from the board beats the
 	// card's own permission to exist, and it is the cheaper check on
@@ -262,7 +289,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	// carries a restriction — nearly never (#1498).
 	refusedBy := func(src *Card) *CantCastError {
 		for _, r := range castRestrictionsOf(src) {
-			if r.Forbids == nil {
+			if r.Forbids == nil && r.ManaValueCeiling == nil {
 				continue
 			}
 			// CR 116.2d (#1986): an effect the caster is ignoring refuses
@@ -271,7 +298,7 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 				continue
 			}
 			q.Source = *src
-			if r.Forbids(q) {
+			if (r.Forbids != nil && r.Forbids(q)) || r.refusesManaValue(q) {
 				return &CantCastError{Reason: r.Label, Source: src.InstanceID}
 			}
 		}

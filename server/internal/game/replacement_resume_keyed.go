@@ -838,6 +838,7 @@ type replacementEventSnapshot struct {
 	LandGainsKeywords         []string            `json:"landGainsKeywords,omitempty"`
 	LandGainsAbilities        []string            `json:"landGainsAbilities,omitempty"`
 	LandGainsLabel            string              `json:"landGainsLabel,omitempty"`
+	LandGainsExileInsteadOf   bool                `json:"landGainsExileInsteadOf,omitempty"`
 	EntryControllerSet        bool                `json:"entryControllerSet,omitempty"`
 	EntryControllerPrior      *uuid.UUID          `json:"entryControllerPrior,omitempty"`
 	ZoneRoute                 *zoneRouteSnapshot  `json:"zoneRoute,omitempty"`
@@ -1303,6 +1304,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LandGainsKeywords:         append([]string(nil), ev.landGains.keywords...),
 		LandGainsAbilities:        append([]string(nil), ev.landGains.abilities...),
 		LandGainsLabel:            ev.landGains.label,
+		LandGainsExileInsteadOf:   ev.landGains.exileInsteadOfLeaving,
 		EntryControllerSet:        ev.entryControllerSet,
 		EntryControllerPrior:      uuidPtrOrNil(ev.entryControllerPrior),
 		AsCommanderMove:           ev.asCommanderMove,
@@ -1479,7 +1481,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		entryResumable:            s.EntryResumable,
 		landPlay:                  s.LandPlay,
 		landPlayer:                uuidOrNil(s.LandPlayer),
-		landGains:                 permissionCastGains{keywords: s.LandGainsKeywords, abilities: s.LandGainsAbilities, label: s.LandGainsLabel},
+		landGains:                 permissionCastGains{keywords: s.LandGainsKeywords, abilities: s.LandGainsAbilities, label: s.LandGainsLabel, exileInsteadOfLeaving: s.LandGainsExileInsteadOf},
 		entryControllerSet:        s.EntryControllerSet,
 		entryControllerPrior:      uuidOrNil(s.EntryControllerPrior),
 		asCommanderMove:           s.AsCommanderMove,

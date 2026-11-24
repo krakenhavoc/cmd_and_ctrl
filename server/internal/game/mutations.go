@@ -125,7 +125,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, 1), DrawThen{})
+	return g.drawInstructionRunLocked(playerID, 1, DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
@@ -175,7 +175,8 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	c, err := p.Library.PopTop()
+	// #6089: River Song draws from the bottom (draw_from_bottom.go).
+	c, err := g.popDrawnCardLocked(p)
 	if err != nil {
 		if err == ErrZoneEmpty {
 			p.AttemptedEmptyDraw = true
@@ -4107,6 +4108,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
 		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
+		// and its "{R}{R} in addition" (Ogre Battlecaster, #6091).
+		GrantIncreaseMana: g.grantIncreaseManaLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -5839,6 +5842,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		drew := p.AttemptedEmptyDraw
 		p.AttemptedEmptyDraw = false
 		if cause, ok := g.sbaLossCauseLocked(p, drew); ok {
+			// #6096, CR 704.7: one "if you would lose the game"
+			// replacement replaces every loss this pass would deal p.
+			if g.replaceLossLocked(p, cause) {
+				fired = true
+				continue
+			}
 			losers = append(losers, lossEntry{p: p, cause: cause})
 		}
 	}
@@ -9944,6 +9953,12 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 	}
 	if len(colors) == 0 {
 		colors = distinctColorsInManaCost(cost)
+	}
+	// CR 903.4b: a commander's colour chosen before the game is part of
+	// its colour identity (commander_color.go). It is the card's own
+	// attribute, so a copy effect on the commander does not remove it.
+	if col := c.CommanderColor; col != "" && !containsColor(colors, col) {
+		colors = append(append([]string(nil), colors...), col)
 	}
 	if len(colors) > 0 {
 		return colors, true

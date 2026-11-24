@@ -5926,6 +5926,13 @@ pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
 
+**"Put a creature card exiled with <this> into its owner's graveyard"
+(#6092):** `ProcessCardExiledWithThis(label, match)` — Shelob, Dread
+Weaver. The processing component with `ExileCost.ExiledWithSource`: the
+picks are the cards exiled WITH the paying object (`Card.ExiledWith`
+against the source as it is now, CR 607.2a, 400.7), whoever owns them,
+and each still goes to its owner's graveyard.
+
 **"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
 composed with `Plus` — Synthesis Pod is
 `Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl())`. It is
@@ -14496,9 +14503,14 @@ field, not a closure.
 
 Three things to know:
 
-- **Not a reveal.** "You may reveal this card from your opening hand. If you
-  do, at the beginning of the first upkeep, …" (the Chancellors) is a
-  different shape — it arms a delayed trigger — and has no slot yet.
+- **A reveal is its own constructor.** "You may reveal this card from your
+  opening hand. If you do, at the beginning of your first upkeep, …"
+  (Devourer of Destiny) is `OpeningHand:
+  RevealFromOpeningHandForYourFirstUpkeep(label, body)`, `body` a registered
+  delayed-trigger body (ADR 0133 amendment 2026-11-24). The card stays in
+  hand, revealed; the trigger fires in its owner's first upkeep, the
+  starting player's included. "The first upkeep" of any player (the
+  Chancellors) has no constructor yet.
 - **The question is private.** It names a card in a hidden zone, so the
   view strips its words from every viewer but the chooser
   (`PendingChoice.private`, wire `private_text`). The table sees who the
@@ -15582,3 +15594,21 @@ Static:            []game.StaticAbility{DomainPT("Domain — … power and tough
 alone). A count read as an ability resolves calls `DomainCount(g, controller)` directly (Sunbathing Rootwalla). Never write a
 private copy. Cards: Leyline Binding, Fblthp, Knows the Way, Jodah's Codex, Llanowar Greenwidow, Radha's Firebrand,
 Yavimaya Sojourner, Sunbathing Rootwalla, Territorial Maro, Nishoba Brawler.
+
+### "If this is your commander, choose a color before the game begins" (#5948, CR 903.4b)
+
+The Prismatic Piper, Faceless One and Clara Oswald print "If <this> is your
+commander, choose a color before the game begins. <This> is the chosen
+color." Declare it with `ChoosesCommanderColor: true` on the `Spec`; nothing
+else is needed for that sentence.
+
+- **Deck construction** (`internal/deck/commander_color.go`) reads the printed
+  sentence and accepts a deck whose cards need one colour outside the other
+  commanders' identity for each such commander: that colour is the choice.
+- **As the game begins** (`game/commander_color.go`), when the mulligan window
+  closes and before the opening-hand actions, the engine records that colour,
+  or, for a deck that shows none, asks the owner with an ordinary
+  `choose_color` prompt. The answer is `Card.CommanderColor`, kept in every
+  zone, and the card is that colour (a CDA in the printed colour baseline) and
+  that colour joins its commander's colour identity.
+- A card that is not the commander, or a copy of one, is colourless.

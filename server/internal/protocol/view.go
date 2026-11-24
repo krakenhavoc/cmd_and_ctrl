@@ -4138,6 +4138,15 @@ type CardView struct {
 	// Absent at zero, and cleared by the non-knower redaction for the
 	// reasons above.
 	ChosenNumber int `json:"chosen_number,omitempty"`
+	// CommanderColor is the colour this commander's owner chose for it
+	// before the game began (CR 903.4b, #5948): one uppercase letter, on
+	// The Prismatic Piper, Faceless One and Clara Oswald when they are
+	// the commander. PUBLIC: the rule has the choice revealed as the
+	// commander goes to the command zone, and it is the card's colour
+	// and part of its colour identity in every zone. Absent otherwise,
+	// and cleared by the non-knower redaction with the other chosen
+	// values (a face-down commander has no such ability, CR 708.2).
+	CommanderColor string `json:"commander_color,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -7868,7 +7877,15 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		flashIf = g.FlashIfReliedOnLocked(caster, live, kind, grant.ForClaim(nil), nil, false)
 	}
-	if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key)); ok {
+	ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key))
+	// #6085, CR 202.3e: and a ban on mana value (Lavinia, Azorius
+	// Renegade), which CastSpell's gate reads with the announced X.
+	if haveLive {
+		if c, gated := g.CastGateXCeilingForEffect(caster, live, kind); gated && (!ok || c < ceiling) {
+			ceiling, ok = c, true
+		}
+	}
+	if ok {
 		out.XMax = &ceiling
 	}
 	// S22: convoke / waterbend. Stamped before the target clause
@@ -13058,6 +13075,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.ChosenName = ""
 	out.ChosenOption = ""
 	out.ChosenNumber = 0
+	out.CommanderColor = ""
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
 	// (mintTokenLocked adds every seat as a knower), so in practice
@@ -13387,13 +13405,15 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ChosenName:   c.ChosenName,
 		ChosenOption: c.ChosenOption,
 		ChosenNumber: c.ChosenNumber,
-		knowers:      knowers,
-		Layout:       c.Layout,
-		Faces:        viewOfFaces(c),
-		MeldedFrom:   viewOfMeldedFrom(c),
-		MergedFrom:   viewOfMergedFrom(c),
-		MeldsInto:    viewOfMeldsInto(c),
-		ActiveFace:   c.ActiveFace,
+		// CR 903.4b: an attribute of the card, kept in every zone.
+		CommanderColor: c.CommanderColor,
+		knowers:        knowers,
+		Layout:         c.Layout,
+		Faces:          viewOfFaces(c),
+		MeldedFrom:     viewOfMeldedFrom(c),
+		MergedFrom:     viewOfMergedFrom(c),
+		MeldsInto:      viewOfMeldsInto(c),
+		ActiveFace:     c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
 		// oracle text for the client to fetch by scryfall_id and a
 		// token that prints an ability would otherwise reach the board
@@ -14420,7 +14440,9 @@ func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) 
 // about what the client may offer. Caller must hold g.mu.
 func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost, ac *game.CounterAddCost) CounterCostView {
 	var v CounterCostView
-	if rc != nil && (rc.N > 0 || rc.Variable) {
+	// #6085: a removal whose count is the announced X has no picker of
+	// its own; the X picker is the payment (game.CounterCountIsX).
+	if rc != nil && !game.CounterCountIsX(rc) && (rc.N > 0 || rc.Variable) {
 		v.CounterCostN = rc.N
 		v.CounterCostKind = rc.Counter
 		v.CounterCostSelf = rc.From == nil

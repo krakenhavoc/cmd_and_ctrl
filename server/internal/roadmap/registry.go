@@ -1536,13 +1536,12 @@ var items = []Item{
 		EngineNotes: "primitive: **narrowed twice.** #1184 put activations through the CR 601.2f pass for BOARD modifiers (`CostModifier.Activations`, Boom Scholar), and #1296 gave an ability its OWN cost clause (`ActivatedAbilityShape.CostModifiers` — \"This ability costs {1} less to activate …\", including clauses that read the ability's target; see Closed seams). **The FLOOR half closed in S79** (ADR 0020 amendment 2026-11-06): `CostModifier.KeepsOneMana`, built with `effects.KeepsOneMana`, is Training Grounds' and Power Artifact's \"can't reduce the mana in that cost to less than one mana\" — a per-reduction cap measured against the total so far with {X} at its announced value (`Game.AbilityManaCostAtXForEffect`), applied before the other reductions (CR 601.2f, any order). Training Grounds ships `full` on it. **Closed in S82 (#5948):** granted alternative costs for spells with a spell condition: Hunting Velociraptor's prowl is a `GrantedAlternativeCost` (key `granted-prowl`) whose offer carries prowl's `SpellCondition`.",
 	},
 	{
-		Slug: "search-replacement", Name: "Changing how a library is searched", Kind: KindSeam, Status: StatusMissing,
+		Slug: "search-replacement", Name: "Changing how a library is searched", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects like Aven Mindcensor that change what an opponent's library search can find.",
-		Missing:     "A library search always sees the whole library; nothing can limit it to the top few cards yet.",
 		Issue:       304,
-		Tracked:     "#304 (batch issue)",
-		Waiting:     []string{"Aven Mindcensor"},
-		EngineNotes: "primitive: no search-replacement or depth limit on a library search — no `ReplacementEventKind` watches a search (re-checked 2026-09-24 against `game/replacements.go`). The non-owner-searcher half closed with #1230 (see Closed seams), which took Bribery off it. The library-top cast path used to be listed here, then had its own row, and closed with #765 (see Closed seams); the mill-as-a-replacement-event kind was the other half of this row and closed with #569 (see Closed seams), which took Bruvac the Grandiloquent off it.",
+		Tracked:     "#304 (batch issue); #6090 the top-N search",
+		Examples:    []string{"Aven Mindcensor"},
+		EngineNotes: "primitive: **Closed in S82 (#6090):** `CardDef.OpponentsSearchTopN` (`effects.Spec.OpponentsSearchTopN`, `game/search_top_n.go`) narrows every search an opponent of the permanent's controller makes, in the one search primitive, to the top N cards of the library searched; the smallest N of several wins, and the graveyard or hand half of an and/or search is not narrowed. Aven Mindcensor ships `full` on it. The non-owner-searcher half closed with #1230 (see Closed seams), which took Bribery off it. The library-top cast path used to be listed here, then had its own row, and closed with #765 (see Closed seams); the mill-as-a-replacement-event kind was the other half of this row and closed with #569 (see Closed seams), which took Bruvac the Grandiloquent off it.",
 	},
 	{
 		// #1866: paradigm is a keyword read off the resolving spell by
@@ -2199,16 +2198,14 @@ var items = []Item{
 		Phrases:  []string{"keyword counter"},
 	},
 	{
-		Slug: "discard-as-it-would-enter", Name: "Discarding a card as a permanent would enter", Kind: KindSeam, Status: StatusPartial,
-		Summary:     "Cards like Mox Diamond and Heart of Yavimaya, which ask you to discard a card or sacrifice a permanent as they would enter, and go to the graveyard if you don't.",
-		Missing:     "A card that discards cards as it enters and then reads what it discarded, like Indominus Rex, Alpha, isn't supported yet.",
+		Slug: "discard-as-it-would-enter", Name: "Discarding a card as a permanent would enter", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Cards like Mox Diamond and Heart of Yavimaya, which ask you to discard a card or sacrifice a permanent as they would enter, and go to the graveyard if you don't, and Indominus Rex, Alpha, which discards creature cards as it enters and gets a counter for each keyword among them.",
 		Rules:       []string{"614.1a", "614.13"},
 		Issue:       1744,
 		ADR:         "0098-discard-as-a-permanent-would-enter.md",
 		Probe:       enterOnlyIfProbe,
-		Examples:    []string{"Mox Diamond", "Heart of Yavimaya", "Lotus Vale"},
-		Waiting:     []string{"Indominus Rex, Alpha"},
-		EngineNotes: "**shipped in #1744 (ADR 0098):** `ReplacementEffect.EntryCardChoice` (renamed from #1198's `EntryHandReveal`) carries an `Action` — reveal, discard or sacrifice — and the entry kinds `entry_discard_from_hand` and `entry_sacrifice` join `entry_reveal_from_hand`. The discard goes through `discardCardsLocked` with `DiscardCauseEffect` and the sacrifice through `SacrificeAllKeyedForEffect`; either may pause, and the paused entry rides a frozen copy of the event (cloned again when the continuation runs). A redirected entry is now MOVED, by `moveRedirectedEntryLocked` inside the one entry finisher, where three sites used to treat it as a cancel and two put the card onto the battlefield anyway; a window that cannot ask runs a shockland's, reveal-land's or Mox's decline (`declineIsReplace`); and the apply-loop and `ResolveReplacementOrder` share one question dispatcher (`offerOwnQuestionLocked`). Shipped on Mox Diamond and the seven \"sacrifice … instead\" lands. Still missing: Indominus Rex, Alpha's \"discard any number of creature cards\" with no redirect, whose follow-on (a counter for each keyword among the discarded cards) needs `EntryCardChoice.Then` to be handed the entering event, which it is since ADR 0170 (#1893).",
+		Examples:    []string{"Mox Diamond", "Heart of Yavimaya", "Lotus Vale", "Indominus Rex, Alpha"},
+		EngineNotes: "**shipped in #1744 (ADR 0098):** `ReplacementEffect.EntryCardChoice` (renamed from #1198's `EntryHandReveal`) carries an `Action` — reveal, discard or sacrifice — and the entry kinds `entry_discard_from_hand` and `entry_sacrifice` join `entry_reveal_from_hand`. The discard goes through `discardCardsLocked` with `DiscardCauseEffect` and the sacrifice through `SacrificeAllKeyedForEffect`; either may pause, and the paused entry rides a frozen copy of the event (cloned again when the continuation runs). A redirected entry is now MOVED, by `moveRedirectedEntryLocked` inside the one entry finisher, where three sites used to treat it as a cancel and two put the card onto the battlefield anyway; a window that cannot ask runs a shockland's, reveal-land's or Mox's decline (`declineIsReplace`); and the apply-loop and `ResolveReplacementOrder` share one question dispatcher (`offerOwnQuestionLocked`). Shipped on Mox Diamond and the seven \"sacrifice … instead\" lands. Indominus Rex, Alpha (#6100) discards any number of creature cards with no redirect (a Max clamped to the creature cards in hand), and its `EntryCardChoice.Then`, handed the entering event since ADR 0170 (#1893), adds a counter for each keyword among the cards really discarded.",
 	},
 	{
 		Slug: "aura-on-a-graveyard-card", Name: "Auras that enchant a card in a graveyard", Kind: KindSeam, Status: StatusImplemented,
