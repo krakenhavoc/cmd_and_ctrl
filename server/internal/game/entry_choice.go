@@ -656,7 +656,18 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 // Caller must hold g.mu.
 func (g *Game) announceEntryLocked(l entryLanding) {
 	ev := l.ev
-	if l.srcKind == "" && ev.entryTokenNotCreated() {
+	if l.srcKind == "" && ev.entryConjured() {
+		// ADR 0099 amendment 2026-11-24 (#5948): a conjured card came
+		// from no zone and is not a token, so its arrival is a plain
+		// move from no zone, the shape a spawned card's has. The log
+		// skips it: EventConjured already announced the card.
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   ev.Actor,
+			CardID:  l.entered,
+			NewZone: ZoneBattlefield,
+		})
+	} else if l.srcKind == "" && ev.entryTokenNotCreated() {
 		// #4994: the token a copy of a permanent spell becomes is not
 		// "created" (CR 111.13, CR 608.3f), so its arrival is a move
 		// from no zone, the shape a spawn's arrival has: every entry

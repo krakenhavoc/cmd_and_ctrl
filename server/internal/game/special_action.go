@@ -365,7 +365,10 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// Deliberately NOT gated on SplitSecondActive: CR 702.61b
 		// stops casts and activations, and a special action is
 		// neither.
-		return g.activeSeatIDLocked() == playerID
+		//
+		// Cosmos Charger: "can be done on any player's turn" opens the other
+		// players' turns to its controller.
+		return g.activeSeatIDLocked() == playerID || g.foretellOnAnyTurnLocked(playerID)
 
 	case SpecialActionSuspend:
 		// CR 702.62c: "any time you could begin to cast this card".
@@ -724,15 +727,18 @@ func SpecialActionKindBuilt(kind SpecialActionKind) bool {
 // is spent ON. The zero context — matching no restricted mana — for
 // every kind but unlock, whose cost is "an unlock cost" (CR 709.5e):
 // mana restricted to "unlock doors" pays it (Smoky Lounge, Creeping
-// Peeper), and mana restricted to casting does not (ADR 0103); and turn
+// Peeper), and mana restricted to casting does not (ADR 0103); turn
 // face up, which mana restricted to "turn a permanent face up" pays
-// (Creeping Peeper, #3172).
+// (Creeping Peeper, #3172); and foretell, which mana restricted to "foretell
+// a card from your hand" pays (Karfell Harbinger).
 func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 	switch kind {
 	case SpecialActionUnlock:
 		return ManaSpendContext{Purpose: SpendPurposeUnlock}
 	case SpecialActionTurnFaceUp:
 		return ManaSpendContext{Purpose: SpendPurposeTurnFaceUp}
+	case SpecialActionForetell:
+		return ManaSpendContext{Purpose: SpendPurposeForetell}
 	}
 	return ManaSpendContext{}
 }

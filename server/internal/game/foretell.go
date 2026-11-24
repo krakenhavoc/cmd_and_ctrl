@@ -206,3 +206,43 @@ func (g *Game) revealForetoldAtGameEndLocked() {
 		})
 	}
 }
+
+// CatalogForetellOnAnyTurn is the catalog hook for Spec.ForetellOnAnyTurn
+// (Cosmos Charger). Nil, or false, is the ordinary case: foretell only during
+// your own turn (CR 702.143a).
+var CatalogForetellOnAnyTurn func(oracleID string) bool
+
+// foretellOnAnyTurnLocked reports whether a permanent playerID controls lets
+// them foretell during any player's turn. Derived from the battlefield on every
+// query, so it lasts exactly as long as the permanent does.
+//
+// Caller must hold g.mu.
+func (g *Game) foretellOnAnyTurnLocked(playerID uuid.UUID) bool {
+	if g.Battlefield == nil || CatalogForetellOnAnyTurn == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != playerID {
+			continue
+		}
+		if key := catalogAbilityKeyOf(c); key != "" && CatalogForetellOnAnyTurn(key) {
+			return true
+		}
+	}
+	return false
+}
+
+// CardHasForetell reports whether the card prints foretell (CR 702.143): the
+// catalog declares the foretell special action for its oracle id. It asks the
+// card, not the zone, so a card in hand, in a graveyard or in exile answers
+// alike (Niko Defies Destiny's "target card with foretell", and the spell
+// mana restricted to "spells that have foretell").
+func CardHasForetell(c Card) bool {
+	for _, sa := range SpecialActionsFor(CatalogKey(c)) {
+		if sa.Kind == SpecialActionForetell {
+			return true
+		}
+	}
+	return false
+}

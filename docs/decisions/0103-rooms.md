@@ -396,3 +396,7 @@ Every paper Room in the dump. "PR 3" means the card is expected to need nothing 
 6. **A fully locked Room's `CardView.name` is empty**, and the client falls back to `faces`.
 7. **"Fully unlocked" gets its own log line.** This is not the recommendation; Decision 9 is changed to match.
 8. **Four PRs, as proposed.** Engine, client, the 20 Rooms, then the Room-adjacent cards.
+
+## Amendment 2026-11-24: conjure and perpetual changes (#5948)
+
+"Out of scope" above names the two Alchemy Rooms because they "use 'perpetually' and 'conjure', which are digital-only". The owner has since brought conjure, perpetual changes and boons into scope for paper cards that print them ([ADR 0099's 2026-11-24 amendment](0099-discover.md#amendment-2026-11-24-conjure-perpetual-changes-and-boons-are-in-scope-5948)). The seam is general: a catalog record per conjured name, and `Card.PerpetualKeywords` for a perpetual keyword. The two Rooms (Crude Abattoir // Unsavory Kitchen and Solitary Study // Endless Corridor) are still out of scope. They are Alchemy-only (digital) cards, not paper, and the perpetual changes they make (to power, toughness and costs) need fields that amendment does not add. They are left out because they are digital, not because they conjure.

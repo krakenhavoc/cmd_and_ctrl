@@ -72,6 +72,14 @@ type SpecialActionGrant struct {
 	// Nothing lets the player choose it, and the later plotted cast is
 	// free, so paying more would buy nothing.
 	CostIsManaCost bool
+
+	// CostReducedBy is the generic mana taken off a CostIsManaCost
+	// offer's price ("Its foretell cost is equal to its mana cost
+	// reduced by {2}", Dream Devourer, CR 118.7: generic only, never
+	// below zero). Only the hand grant of foretell reads it: the
+	// price is the foretell COST the card is cast for later, and the
+	// {2} paid to foretell is the keyword's own.
+	CostReducedBy int
 }
 
 // CatalogSpecialActionGrants is the catalog hook for
@@ -84,7 +92,8 @@ var CatalogSpecialActionGrants func(oracleID string) []SpecialActionGrant
 // panics at boot on anything else, the same treatment
 // SpecialActionKindBuilt gives a declared kind.
 func SpecialActionGrantBuilt(kind SpecialActionKind, zone ZoneKind) bool {
-	return kind == SpecialActionPlot && zone == ZoneLibrary
+	return kind == SpecialActionPlot && zone == ZoneLibrary ||
+		kind == SpecialActionForetell && zone == ZoneHand
 }
 
 // specialActionGrantsLocked is every grant made by a permanent `actor`
@@ -159,6 +168,7 @@ func (g *Game) SpecialActionsOfferedLocked(actor uuid.UUID, card Card, zone Zone
 			out = append(out, sa)
 		}
 	}
+	out = append(out, g.handForetellGrantOffersLocked(actor, card, zone, own)...)
 	top, ok := grantedZoneCard(g.playerByIDLocked(actor), zone)
 	if !ok || top.InstanceID != card.InstanceID {
 		return out
@@ -309,4 +319,58 @@ func (g *Game) specialActionOfferLocked(actor uuid.UUID, card Card, zone ZoneKin
 		return &out
 	}
 	return nil
+}
+
+// handForetellGrantOffersLocked is the offer a permanent `actor` controls
+// gives a card in their HAND that prints no foretell: "Each nonland card in
+// your hand without foretell has foretell. Its foretell cost is equal to
+// its mana cost reduced by {2}." (Dream Devourer.) The card is foretold the
+// ordinary way, for the keyword's {2}; only the foretell cost it is cast
+// for later (SpecialAction.CastCost) is the grant's. A card that prints
+// foretell keeps its own offer. A land, a card with no mana cost (CR 118.6)
+// and a card that is not in `actor`'s hand are offered nothing.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) handForetellGrantOffersLocked(actor uuid.UUID, card Card, zone ZoneKind, own []SpecialAction) []SpecialAction {
+	if zone != ZoneHand || specialActionZone(SpecialActionForetell) != ZoneHand || card.IsLand() {
+		return nil
+	}
+	p := g.playerByIDLocked(actor)
+	if p == nil || p.Hand == nil || !p.Hand.Contains(card.InstanceID) {
+		return nil
+	}
+	for _, sa := range own {
+		if sa.Kind == SpecialActionForetell {
+			return nil
+		}
+	}
+	reduced := -1
+	for _, gr := range g.specialActionGrantsLocked(actor) {
+		if gr.Kind != SpecialActionForetell || gr.Zone != ZoneHand || !gr.CostIsManaCost {
+			continue
+		}
+		// Two such permanents: the cards have foretell once, and the cost
+		// is the lowest the grants name.
+		if reduced < 0 || gr.CostReducedBy > reduced {
+			reduced = gr.CostReducedBy
+		}
+	}
+	if reduced < 0 {
+		return nil
+	}
+	parsed, ok := libraryManaCost(card)
+	if !ok {
+		return nil
+	}
+	parsed.XSlots = 0
+	cast := reduceGeneric(parsed, reduced).String()
+	if cast == "" {
+		cast = "{0}"
+	}
+	return []SpecialAction{{
+		Kind:     SpecialActionForetell,
+		Cost:     ForetellExileCost,
+		CastCost: cast,
+		Label:    "Foretell " + ForetellExileCost,
+	}}
 }

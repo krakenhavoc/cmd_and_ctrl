@@ -486,6 +486,8 @@ var carriedFixture = map[string]any{
 	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
+	// Which spell this was this turn, carried to the permanent's provenance.
+	"StackItem.CastOrdinal": 3,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.
 	"Card.FaceDownKind": FaceDownForetold,
 

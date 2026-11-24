@@ -46,6 +46,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"SelfCostModifiers":          "what THIS spell costs, shown by the cast surface",
 	"CastableZones":              "where the card may be cast from, shown by the cast surface",
 	"CastsOnlyFromGraveyard":     "the card may be cast from a graveyard and nowhere else (Haakon, Stromgald Scourge), shown by the cast surface",
+	"ForetellOnAnyTurn":          "the foretell special action may be taken on any player's turn (Cosmos Charger), a timing grant read by the special-action table and not an ability row",
 	"CastableZonesIf":            "where the card may be cast from while a condition holds (#3105), shown by the cast surface",
 	"SpecialActions":             "special actions (CR 116), not abilities: ADR 0105's star pip",
 	"OpeningHand":                "an action taken from the opening hand before the game (CR 103.6, ADR 0133), not an ability of the permanent",

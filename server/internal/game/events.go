@@ -1712,6 +1712,15 @@ const (
 	// Added in S35 (#1032).
 	EventSpawned EventKind = "spawned"
 
+	// EventConjured — a card's effect conjured a card (conjure.go, ADR
+	// 0099 amendment 2026-11-24, #5948). One event per card, emitted
+	// before the card lands. Actor is the player who conjured it (its
+	// owner, also in Target), Source the object whose ability did it,
+	// NewZone where it went, Label the card's name and Amount 1. Public;
+	// the log names the zone but not the card for a conjure into a hand
+	// or a library, as it does for a spawn.
+	EventConjured EventKind = "conjured"
+
 	// EventIdleClose — the server closed the table, or warned that it
 	// will, because nobody used it (ADR 0211 §4, §6). Label is
 	// IdleCloseLobby, IdleCloseGame or IdleCloseBots for a close, and

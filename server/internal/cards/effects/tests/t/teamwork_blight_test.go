@@ -328,7 +328,7 @@ func TestTeamworkAndBlightSurviveUndoAndRestore(t *testing.T) {
 }
 
 func TestRegisterRefusesAMalformedTeamworkOrBlight(t *testing.T) {
-	effectstest.MustPanic(t, "mandatory AdditionalCost slot", func() {
+	effectstest.MustPanic(t, "puts teamwork in the mandatory AdditionalCost slot", func() {
 		effects.Register(effects.Spec{OracleID: "tw-test-mandatory", Name: "Mandatory",
 			AdditionalCost: &game.AdditionalCost{Teamwork: 2}})
 	})
