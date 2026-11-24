@@ -2409,6 +2409,13 @@ type SearchLibrarySpec struct {
 	// ordinary search. Ignored for any other Dest or Limit.
 	OntoBattlefieldIfSubtype string
 
+	// FirstEntersUnderControlOf, when set, is "put one of them onto the
+	// battlefield under <that player>'s control and the rest under your
+	// own" (Rootweaver Druid, #5507): of a battlefield search's takes, the
+	// first one the searcher picked enters under that player's control and
+	// the rest under the searcher's, as the searcher puts them.
+	FirstEntersUnderControlOf uuid.UUID
+
 	// ToTop puts the found cards on TOP of the library, after the
 	// shuffle, when Dest is ZoneLibrary. It is what the "search your
 	// library for a card, then shuffle and PUT THAT CARD ON TOP"
@@ -3183,11 +3190,20 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 		return g.finishSearchLocked(spec, p, found)
 	}
 	head, rest := ids[0], ids[1:]
+	headSpec := spec
+	if spec.FirstEntersUnderControlOf != uuid.Nil {
+		// The first take enters under the named player's control; the
+		// rest of the search goes on as the searcher's.
+		headSpec.Player = spec.FirstEntersUnderControlOf
+		headSpec.LibraryOwner = p.ID
+		headSpec.FirstEntersUnderControlOf = uuid.Nil
+		spec.FirstEntersUnderControlOf = uuid.Nil
+	}
 	// #4253 slice 3: the rest of the search is data, so the entry's
 	// prompt (a fetched shockland's "pay 2 life?") is a restore point.
 	// The step is runSearchEntryStepLocked. Since #4361 S4 a search has
 	// no closure continuation, so this is the only form.
-	return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{search: &searchEntryRun{
+	return g.searchEnterBattlefieldLocked(headSpec, p, head, &entryTail{search: &searchEntryRun{
 		Spec: searchTailSpecOf(spec), Rest: copyUUIDs(rest), Found: copyUUIDs(found),
 	}})
 }
