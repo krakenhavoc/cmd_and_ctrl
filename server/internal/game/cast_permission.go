@@ -2681,7 +2681,8 @@ func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *
 		// #5922: the one standing rule over a hand is a stored one over
 		// ANOTHER player's (Sen Triplets), and it reaches the cards in
 		// that hand and no other.
-		if perm.Scope == ScopeStanding && (!perm.ForeignHandRule() || !g.permissionReachesPileLocked(p.ID, perm, card, ZoneHand)) {
+		if perm.Scope == ScopeStanding && !perm.OwnHandPriceRule() &&
+			(!perm.ForeignHandRule() || !g.permissionReachesPileLocked(p.ID, perm, card, ZoneHand)) {
 			continue
 		}
 		if key != "" && perm.AltCostKey != key {
@@ -2729,6 +2730,19 @@ func (p *CastPermission) ForClaim(alt *AlternativeCost) *CastPermission {
 func (p *CastPermission) ForeignHandRule() bool {
 	return p != nil && p.Zone == ZoneHand && p.Scope == ScopeStanding &&
 		p.ZoneOwner != uuid.Nil && p.ZoneOwner != p.Player
+}
+
+// OwnHandPriceRule reports a stored standing permission over its HOLDER's
+// own hand that names a price: "until end of turn, you may cast spells
+// from your hand without paying their mana costs" (Yusri, Fortune's
+// Flame, #5501). Like a hand grant that prices one claim it is an
+// alternative cost under its AltCostKey (ForClaim), but it covers every
+// card in the hand, so a card drawn after the grant is covered too. A
+// standing rule with no price over the holder's own hand opens nothing
+// (the cast is legal without it). Nil-safe.
+func (p *CastPermission) OwnHandPriceRule() bool {
+	return p != nil && p.Zone == ZoneHand && p.Scope == ScopeStanding && p.Cost != "" &&
+		p.AltCostKey != "" && (p.ZoneOwner == uuid.Nil || p.ZoneOwner == p.Player)
 }
 
 // PileOwnerFor resolves WHOSE graveyard or library this permission

@@ -368,6 +368,15 @@ func (g *Game) ResolvePayAmount(choiceID, chooserID uuid.UUID, amount int) error
 			return ErrInsufficientMana
 		}
 	}
+	if v := choice.CouncilVote; v != nil {
+		// #5948: a secret choice round's number. Nothing is paid; the
+		// answer is recorded hidden, and the next ask is put.
+		source := choice.Source
+		g.dequeueChoiceLocked(idx)
+		g.emitChoiceEffectErrorLocked(chooserID, source, g.castSecretAnswerLocked(v, nil, &amount))
+		g.runStateChecksLocked()
+		return nil
+	}
 	frame := chooseValueFrameOf(choice)
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)

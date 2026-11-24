@@ -1412,6 +1412,23 @@ type Spec struct {
 	// permanent that lost its abilities narrows nothing.
 	OpponentsSearchTopN int
 
+	// OpponentsCantSearchLibraries declares Stranglehold's "Your opponents
+	// can't search libraries" (CR 701.23a, 101.2). The engine stops every
+	// search an opponent of the permanent's controller makes of a library,
+	// in its one search primitive (game/search_cant.go): the search finds
+	// nothing, the card's "then shuffle" still shuffles, and no search is
+	// recorded. Judged through CatalogAbilityKey, so a permanent that lost
+	// its abilities blocks nothing.
+	OpponentsCantSearchLibraries bool
+
+	// AttackingPlayerChoosesBlocks declares Invasion Plans' "The attacking
+	// player chooses how each creature blocks each combat": in every
+	// declare blockers step the active player declares the blocks of every
+	// other defending player, as a Master Warcraft does (CR 509.1a,
+	// game/declaration_control.go), for as long as the permanent is on the
+	// battlefield. Judged through CatalogAbilityKey.
+	AttackingPlayerChoosesBlocks bool
+
 	// DrawsFromBottom declares River Song's "You draw cards from the
 	// bottom of your library rather than the top" (#6089): each draw its
 	// controller performs takes the bottom card (game/draw_from_bottom.go).

@@ -333,6 +333,10 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		} else {
 			err = g.castBallotLocked(v, v.Voter, nil)
 		}
+	case c.Kind == PendingChoicePayAmount && c.CouncilVote != nil:
+		// #5948: a secret number whose voter left records nothing, and
+		// the round goes on (CR 800.4a).
+		err = g.castSecretAnswerLocked(c.CouncilVote, nil, nil)
 	case c.Kind == PendingChoiceOptionPick && c.PickThen != "":
 		// #2854: a keyed option pick, run with nobody's choice.
 		err = g.withCarriedCauseLocked(carriedCauseOfChoice(c), func() error {

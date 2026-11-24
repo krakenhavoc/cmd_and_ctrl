@@ -288,6 +288,13 @@ type PlayerTurnTally struct {
 	Investigates int `json:"investigates,omitempty"`
 }
 
+// EnteredCreatureRecord is one entry of TurnTally.EnteredCreatures: a creature
+// that entered the battlefield, and the player it entered under.
+type EnteredCreatureRecord struct {
+	Controller uuid.UUID `json:"controller"`
+	Card       uuid.UUID `json:"card"`
+}
+
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
 type EnteredFlierRecord struct {
 	// Controller is the player the creature entered under.
@@ -394,6 +401,22 @@ type TurnTally struct {
 	// "another" needs: the source's own entry is skipped by instance id.
 	// Read through Game.EnteredFlierUnderThisTurn. Additive.
 	EnteredFliers []EnteredFlierRecord `json:"enteredFliers,omitempty"`
+	// EnteredCreatures lists the creatures that entered the battlefield this
+	// turn, as they entered, with the player each entered under (Ephara, God
+	// of the Polis's "another creature entered under your control last
+	// turn"). PrevEnteredCreatures is the previous turn's list, stamped in
+	// resetTurnTallyLocked. Additive within the snapshot schema: a file
+	// without them restores empty lists (weaker, never stronger). Read through
+	// Game.EnteredCreatureLastTurnForEffect.
+	EnteredCreatures     []EnteredCreatureRecord `json:"enteredCreatures,omitempty"`
+	PrevEnteredCreatures []EnteredCreatureRecord `json:"prevEnteredCreatures,omitempty"`
+	// LibrarySearchesBarred is "players can't search libraries this turn"
+	// (Shadow of Doubt): set by an effect as it resolves, it ends with the
+	// turn because the tally is replaced as the next turn begins. Read by
+	// the search primitive (SearchLibraryThenForEffect). Additive within the
+	// snapshot schema: a file without it restores false, meaning searches
+	// are allowed (weaker, never stronger).
+	LibrarySearchesBarred bool `json:"librarySearchesBarred,omitempty"`
 	// AttackedSubtypes is the subtype tally of the creatures each player
 	// declared as attackers this turn, per subtype they had as they
 	// attacked (#3192): Robber of the Rich's "during any turn you attacked
@@ -1958,6 +1981,31 @@ func (g *Game) recordEnteredFlierLocked(controller uuid.UUID, c *Card) {
 	g.TurnTally.EnteredFliers = append(g.TurnTally.EnteredFliers, EnteredFlierRecord{Controller: controller, Card: c.InstanceID})
 }
 
+// recordEnteredCreatureLocked notes a creature entering under `controller`
+// (TurnTally.EnteredCreatures).
+func (g *Game) recordEnteredCreatureLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil || c == nil || !c.IsCreature() {
+		return
+	}
+	g.TurnTally.EnteredCreatures = append(g.TurnTally.EnteredCreatures, EnteredCreatureRecord{Controller: controller, Card: c.InstanceID})
+}
+
+// EnteredCreatureLastTurnForEffect reports whether a creature other than
+// `except` (uuid.Nil for any) entered the battlefield under playerID's control
+// during the previous turn, whoever's it was. False on the first turn of the
+// game. Caller must hold g.mu.
+func (g *Game) EnteredCreatureLastTurnForEffect(playerID, except uuid.UUID) bool {
+	if playerID == uuid.Nil {
+		return false
+	}
+	for _, r := range g.TurnTally.PrevEnteredCreatures {
+		if r.Controller == playerID && r.Card != except {
+			return true
+		}
+	}
+	return false
+}
+
 // EnteredFlierUnderThisTurn reports whether a creature other than
 // `except` (uuid.Nil for any) entered the battlefield under playerID's
 // control this turn having flying as it entered (#4707, Flying Drone).
@@ -2125,7 +2173,7 @@ func (g *Game) resetTurnTallyLocked() {
 		}
 	}
 	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch, PrevNoncombatVictims: prevVictims,
-		PrevLifeLosers: g.lifeLosersThisTurnLocked(g.TurnTally)}
+		PrevLifeLosers: g.lifeLosersThisTurnLocked(g.TurnTally), PrevEnteredCreatures: g.TurnTally.EnteredCreatures}
 	// #628: the loop notice is a claim about THIS turn's resolutions,
 	// so it dies with the counts it was derived from. A table that
 	// stepped its way past a loop by hand starts the next turn with
@@ -2135,7 +2183,7 @@ func (g *Game) resetTurnTallyLocked() {
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
 func cloneTurnTally(t TurnTally) TurnTally {
-	out := TurnTally{CreaturesDied: t.CreaturesDied, NontokenCreaturesDied: t.NontokenCreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
+	out := TurnTally{LibrarySearchesBarred: t.LibrarySearchesBarred, CreaturesDied: t.CreaturesDied, NontokenCreaturesDied: t.NontokenCreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
 	if len(t.Players) > 0 {
 		out.Players = make(map[uuid.UUID]PlayerTurnTally, len(t.Players))
 		for k, v := range t.Players {
@@ -2149,6 +2197,8 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.EnteredFliers = append([]EnteredFlierRecord(nil), t.EnteredFliers...)
+	out.EnteredCreatures = append([]EnteredCreatureRecord(nil), t.EnteredCreatures...)
+	out.PrevEnteredCreatures = append([]EnteredCreatureRecord(nil), t.PrevEnteredCreatures...)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.SacrificedCardTypes = copyStringIntMap(t.SacrificedCardTypes)
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
@@ -2488,6 +2538,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.recordEnteredSubtypesLocked(controller, entered)
 		g.recordEnteredCardTypesLocked(controller, entered)
 		g.recordEnteredFlierLocked(controller, entered)
+		g.recordEnteredCreatureLocked(controller, entered)
 		if controller != uuid.Nil && entered.IsCreature() && !entered.IsToken() {
 			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NontokenCreaturesEntered++ })
 		}

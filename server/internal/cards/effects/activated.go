@@ -274,6 +274,14 @@ func UnattachAnEquipment() game.AbilityCost {
 	return game.AbilityCost{UnattachEquipment: 1}
 }
 
+// UnattachThisEquipment is "Unattach this Equipment" as a cost
+// (game.AbilityCost.UnattachThis, Sunforger): the Equipment whose ability it
+// is moves away from what it equips and stays on the battlefield (CR 701.3d).
+// An Equipment attached to nothing can't pay it. Compose it with Plus.
+func UnattachThisEquipment() game.AbilityCost {
+	return game.AbilityCost{UnattachThis: true}
+}
+
 // BlightN is "Blight N" as part of an activated ability's cost (#4684,
 // game.AbilityCost.Blight, CR 701.68a): the activator names a creature
 // they control, any one of them, and it gets N -1/-1 counters as the
@@ -506,6 +514,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// throw would deal damage for {3} and keep the Equipment on him.
 		if c.UnattachEquipment != 0 {
 			out.UnattachEquipment = c.UnattachEquipment
+		}
+		// and "Unattach this Equipment"; dropped, Sunforger would cast
+		// its instant for {R}{W} and keep the +4/+0 on the creature.
+		if c.UnattachThis {
+			out.UnattachThis = true
 		}
 		// #4684: and the blight component; dropped, Gristle Glutton
 		// would loot for a tap alone — stronger than printed, the #259

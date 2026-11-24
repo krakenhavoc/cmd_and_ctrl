@@ -501,6 +501,21 @@ type ReplacementEvent struct {
 	// nothing. See ADR 0013 §5ah.
 	ShuffleDestinationLibrary bool
 
+	// PutOnLibraryBottom is a replacement's declaration that its
+	// redirected NewZone == ZoneLibrary is a PLACEMENT AT THE BOTTOM, not
+	// the default top and not a shuffle: "instead that card is revealed
+	// and put on the bottom of that player's library" (Wheel of Sun and
+	// Moon). Like ShuffleDestinationLibrary it is set by the SAME
+	// `Replace` that rewrites NewZone, because nothing about a library
+	// destination says where in it the card goes, and it is consumed once,
+	// after the move has actually landed in a library (executeZoneRouteLocked
+	// and executeBattlefieldLeaveLocked, the two functions that perform
+	// every replaced move's physical landing): a move a later replacement
+	// or a missing player sent elsewhere places nothing. It also wins over
+	// a depth the route itself carried. Additive within the snapshot
+	// version.
+	PutOnLibraryBottom bool
+
 	// ExiledWith is a replacement's declaration that a card it sent to
 	// EXILE is "exiled with" the replacement's source (CR 607.2a):
 	// Valgavoth, Terror Eater's "if a card you didn't control would be
@@ -612,6 +627,13 @@ type ReplacementEvent struct {
 	// == ZoneBattlefield. Haste is redundant (CR 702.10d), so two riots
 	// answered "haste" are one record.
 	EntersWithHaste bool
+
+	// EntersWithHasteTillEOT is "it gains haste until end of turn" for
+	// a permanent that has just entered (The Fourteenth Doctor, #5462): the
+	// same record as EntersWithHaste, ended at the cleanup step instead of
+	// lasting for as long as it is the same object. Set by an entry copy's
+	// Except clause; read by every battlefield landing beside EntersWithHaste.
+	EntersWithHasteTillEOT bool
 
 	// lookAhead caches the CR 614.12 look-ahead for this entry
 	// (entry_lookahead.go), so the gather, which runs once per pass of

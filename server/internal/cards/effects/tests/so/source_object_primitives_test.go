@@ -681,6 +681,10 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"the_needs_of_the_many.go": true,
 		// "return Haunting Imitation to its owner's hand." (S82 VOW b17)
 		"haunting_imitation.go": true,
+		// "Exile Revel in Silence." (S82 old b049, #5502)
+		"flamescroll_celebrant_revel_in_silence.go": true,
+		// "Exile Harness Infinity." (S82 STX b047, #5502)
+		"harness_infinity.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := effectstest.ExprString(e)

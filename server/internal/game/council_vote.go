@@ -121,6 +121,11 @@ var CatalogExtraVote func(key string) ExtraVote
 type VoteBallot struct {
 	Voter  uuid.UUID `json:"voter"`
 	Option int       `json:"option"`
+	// Ask is the 0-based ask this ballot answered, in a secret choice
+	// round (CouncilVote.Asks, secret_choice_round.go); 0 otherwise.
+	Ask int `json:"ask,omitempty"`
+	// Number is the answer of a number ask (Option VoteNumberIndex).
+	Number int `json:"number,omitempty"`
 }
 
 // CouncilVote is a vote in progress. It rides the open ballot prompt
@@ -192,6 +197,13 @@ type CouncilVote struct {
 	// Carry the IDs the card put on the vote for it.
 	Then  string      `json:"then"`
 	Carry []uuid.UUID `json:"carry,omitempty"`
+	// Asks are a secret choice round's questions still to put after the
+	// current one, Asking the one being answered now, and AskNo its
+	// 0-based place among all of them (secret_choice_round.go, ADR 0180
+	// amendment 2026-11-24). Empty and nil on every vote.
+	Asks   []VoteAsk `json:"asks,omitempty"`
+	Asking *VoteAsk  `json:"asking,omitempty"`
+	AskNo  int       `json:"askNo,omitempty"`
 }
 
 func cloneCouncilVote(v *CouncilVote) *CouncilVote {
@@ -206,6 +218,11 @@ func cloneCouncilVote(v *CouncilVote) *CouncilVote {
 	out.Abstained = copyUUIDs(v.Abstained)
 	out.Voters = copyUUIDs(v.Voters)
 	out.Carry = copyUUIDs(v.Carry)
+	out.Asks = cloneVoteAsks(v.Asks)
+	if v.Asking != nil {
+		a := cloneVoteAsk(*v.Asking)
+		out.Asking = &a
+	}
 	return &out
 }
 
@@ -464,6 +481,10 @@ func (g *Game) extraVotesLocked(voter uuid.UUID) (must, may int) {
 // when the current one has no votes left, and runs the continuation
 // once nobody has. Caller must hold g.mu.
 func (g *Game) askNextBallotLocked(v *CouncilVote) error {
+	if v.Asking != nil || len(v.Asks) > 0 {
+		// A secret choice round's next question (#5948).
+		return g.askNextSecretLocked(v)
+	}
 	for {
 		if v.VotesLeft <= 0 && v.MayLeft <= 0 {
 			if len(v.Voters) == 0 {
@@ -631,6 +652,10 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 	if v == nil {
 		return nil
 	}
+	if v.Asking != nil {
+		// A secret choice round's answer (#5948).
+		return g.castSecretAnswerLocked(v, chosen, nil)
+	}
 	required := v.VotesLeft > 0
 	if chosen != nil && !g.playerInGameLocked(voter) {
 		// The voter left while someone else was choosing for them
@@ -676,7 +701,11 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 // VoteAbstainIndex for a vote for nothing. Caller must hold g.mu.
 func (g *Game) emitBallotCastLocked(v *CouncilVote, voter uuid.UUID, i int) {
 	if v.Secret {
-		g.EmitEvent(Event{Kind: EventSecretVoteCast, Actor: voter, Source: v.Source})
+		ev := Event{Kind: EventSecretVoteCast, Actor: voter, Source: v.Source}
+		if v.Choice {
+			ev.Label = SecretChoiceLabel
+		}
+		g.EmitEvent(ev)
 		return
 	}
 	ev := Event{Kind: EventVoteCast, Actor: voter, Source: v.Source, Amount: i, Label: v.Abstain}
@@ -712,6 +741,11 @@ func (g *Game) finishVoteLocked(v *CouncilVote) error {
 	if v.Secret {
 		g.EmitEvent(revealEventOf(v))
 	}
+	if v.Choice {
+		// A secret CHOICE (Prisoner's Dilemma, the #5948 rounds) is not a
+		// vote (CR 701.38): nobody "finishes voting".
+		return g.runVoteThenLocked(v)
+	}
 	g.EmitEvent(Event{
 		Kind:    EventVotesFinished,
 		Actor:   v.Controller,
@@ -730,9 +764,10 @@ func revealEventOf(v *CouncilVote) Event {
 	for _, voter := range v.Abstained {
 		ballots = append(ballots, VoteBallot{Voter: voter, Option: -1})
 	}
-	labels := make([]string, len(v.Options))
-	for i, o := range v.Options {
-		labels[i] = o.Label
+	labels, ballots := revealLabelsOf(v, ballots)
+	label := v.Abstain
+	if v.Choice && label == "" {
+		label = SecretChoiceLabel
 	}
 	return Event{
 		Kind:        EventVotesRevealed,
@@ -741,7 +776,7 @@ func revealEventOf(v *CouncilVote) Event {
 		Amount:      len(v.Ballots),
 		Ballots:     ballots,
 		VoteOptions: labels,
-		Label:       v.Abstain,
+		Label:       label,
 	}
 }
 

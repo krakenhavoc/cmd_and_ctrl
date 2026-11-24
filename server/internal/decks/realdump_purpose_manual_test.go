@@ -277,6 +277,18 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP2 batch 07 (#5948).
 	"Fires of Mount Doom": "2 damage to one target creature, the Equipment on it destroyed, and 2 damage to each PLAYER when a card is played: no creature but the target is touched",
+
+	// S82 old sets, batch 005 (own group).
+	"Nicol Bolas, the Ravager // Nicol Bolas, the Arisen": "its -12 exiles cards from one library, not permanents; the 10 damage hits one target",
+
+	// #5948 Q3, the secret choice cards.
+	"Call to the Void": "destroys only the creatures the players secretly chose, at most one of their own and one of someone else's each: a handful of chosen creatures, not a board",
+
+	// S82 OLD batch 023 (#5462).
+	"Leveler": "its enters trigger exiles the cards in its controller's own library, not permanents: not a board wipe",
+
+	// S82 older sets batch 35 (#5501).
+	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -1569,8 +1569,11 @@ type cardSnapshot struct {
 	PhaseInBarredBy    uuid.UUID `json:"phaseInBarredBy,omitempty"`
 	PhaseInBarredEpoch int       `json:"phaseInBarredEpoch,omitempty"`
 	PhaseInBarredFor   uuid.UUID `json:"phaseInBarredFor,omitempty"`
-	PhasedOutIndirect  bool      `json:"phasedOutIndirect,omitempty"`
-	TapOnPhaseIn       bool      `json:"tapOnPhaseIn,omitempty"`
+	// #6095: The Pandorica's "for as long as ~ remains tapped" form of
+	// the bar. Additive; absent on every card no such effect names.
+	PhaseInBarredWhileTapped bool `json:"phaseInBarredWhileTapped,omitempty"`
+	PhasedOutIndirect        bool `json:"phasedOutIndirect,omitempty"`
+	TapOnPhaseIn             bool `json:"tapOnPhaseIn,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -1888,6 +1891,10 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileAndReturn is Feather, the Redeemed's mark: exile the resolving
+	// spell and return it to its controller's hand at the beginning of the
+	// next end step. Carried for the reason ExileWithCounter is.
+	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
 	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
 	// resolving spell with this many time counters and give it suspend.
 	// Carried for the reason ExileWithCounter is.
@@ -3338,6 +3345,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PhaseInBarredBy:          c.PhaseInBarredBy,
 		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
 		PhaseInBarredFor:         c.PhaseInBarredFor,
+		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -3504,6 +3512,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
@@ -4521,6 +4530,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PhaseInBarredBy:          c.PhaseInBarredBy,
 		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
 		PhaseInBarredFor:         c.PhaseInBarredFor,
+		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -4734,6 +4744,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,

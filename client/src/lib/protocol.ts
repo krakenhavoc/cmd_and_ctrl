@@ -2761,12 +2761,18 @@ export interface CouncilVoteView {
   tally: number[];
   // In a secret vote, only the viewer's own ballots (option -2 is a vote
   // for nothing).
-  ballots?: { voter: string; option: number }[];
+  // In a secret choice round (#5948) option -3 is an answer that is a
+  // number, carried in `number`.
+  ballots?: { voter: string; option: number; number?: number }[];
   // ADR 0180: a secret vote. The tally is all zeros and `ballots` holds
   // the viewer's own; `voted` lists who has voted so far. The votes are
   // revealed together in the log (`votes_revealed`) when the last is in.
   secret?: boolean;
   voted?: string[];
+  // A secret CHOICE, not a vote (Prisoner's Dilemma and the #5948
+  // rounds: a number, a creature pick, a guess). A round's number is
+  // asked on a pay_amount prompt that carries this view.
+  choice?: boolean;
   // ADR 0180: the "vote for nothing" option of a vote for up to one.
   abstain?: string;
   // ADR 0180, a bot hint: a voter wants the option naming themselves.
@@ -5677,6 +5683,12 @@ export interface CardView extends CastSurfaceView {
   // Absent at zero. Same lifecycle, PUBLIC/redaction and rendering
   // module as chosen_color above.
   chosen_number?: number;
+  // #6097, #5948: what this permanent's abilities have noted for it, in
+  // order — Long List of the Ents' creature types, The Toymaker's Trap's
+  // numbers already chosen, the number Duelists' Convocation
+  // International wrote down and the digits it crossed out. Public;
+  // absent when none. Same lifecycle and redaction as chosen_color.
+  notes?: string[];
   // #5948 (CR 903.4b): the colour this commander's owner chose for it
   // before the game began — The Prismatic Piper, Faceless One, Clara
   // Oswald. One uppercase letter. PUBLIC in every zone (the rule has it

@@ -62,3 +62,31 @@ All are additive keys on `pendingChoices[].councilVote` (and `Event.VoteOptions`
 The `secret-council` seam closes and Elrond leaves the `cant-attack-its-owner` row's Waiting list. The cost is two event kinds, two log kinds, one scoped-effect mod kind, five additive vote keys, one wire flag with one projected list, and one undo refusal.
 
 **The thing most likely to be got wrong later.** Reading a secret vote's ballots off the unfiltered `GameView`. They are not there: only `FilterViewFor` puts a seat's own ballots back. A new consumer that wants them must go through the filter, never through `game.CouncilVote`.
+
+## Amendment 2026-11-24: secret choice rounds (#5948 Q3)
+
+Issue: #5948 (class (c), Q3; the owner's decision of 2026-11-23: "build a generic secret-choice-then-reveal prompt (number, creature pick, guess) in the engine, protocol and client"). Sprint: S82 — Card coverage: sets outside Standard, newest first.
+
+### Context
+
+Prisoner's Dilemma had already used this ADR's machinery for a secret *choice* rather than a vote (`CouncilVote.Choice`): every opponent answers the same question from the same list. Five cards want more than that:
+
+- **Itazura, Lingering Wick**: "Each opponent secretly chooses a number 0 or greater. Then those numbers are revealed." A number with no ceiling, not an option.
+- **Call to the Void**: "Each player secretly chooses a creature they control and a creature they don't control. Then those choices are revealed." Two questions per player, each with its own list.
+- **The Toymaker's Trap**: "secretly choose a number between 1 and 5 that hasn't been chosen. … an opponent guesses which number you chose, then you reveal the number you chose." The chooser's list leaves out the numbers already used; the guesser's does not.
+- **Gollum, Scheming Guide**: "choose land or nonland. An opponent guesses whether the top card of your library is the chosen kind." Not printed "secretly", but a guess at an answer the guesser can see is no guess.
+- **Duelists' Convocation International** chooses its number at random and writes it down; nothing about it is secret. It is in Q3 because it is "a number", and it is built here on the per-object notes of #6097.
+
+### Decisions
+
+1. **A round is a list of asks.** `game.StartSecretChoicesForEffect` (`effects.SecretChoices`) takes `Asks []VoteAsk`, each one question to one player: `Allowed` (the option indices it offers), `Relation` (`"controls"` / `"doesNotControl"`, read live as the ask is put, for "a creature they control"), or `Number` (`{Min, Max, NoMax, Goal, SelfDamage}`) for an answer that is a number. Asks are put one at a time, in the order the card lists them (decision 1's reasoning: whose turn it is to answer is public). An ask whose voter has left, or that has nothing to offer, is skipped and records nothing. The round is `CouncilVote` with `Secret` and `Choice` set and three additive keys (`asks`, `asking`, `askNo`), so the hiding, the per-seat filter, the single `EventVotesRevealed`, the undo refusal of decision 4, the departure rule and the registered continuation are this ADR's, unchanged.
+2. **A number is the `pay_amount` prompt** with nothing paid (choose_number.go's, ADR 0129's amendment of 2026-10-09), carrying the round as `PendingChoice.CouncilVote`: the client's stepper and the bot's enumerator answer it unchanged. Its ballot is `Option: VoteNumberIndex` (-3) with the number in `VoteBallot.Number`; every ballot of a round records which ask it answered (`VoteBallot.Ask`), read by `VoteResult.AnswerTo(i)`. "No ceiling" is `PayAmountNoMaxCeiling`, as for every other number with none.
+3. **The wire.** `council_vote` gains `choice` (also on Prisoner's Dilemma), and a ballot gains `number`. A number answer is hidden exactly as a ballot is (decision 2): the unfiltered view never carries it, and `FilterViewFor` gives it back to its own seat only. The reveal's `VoteOptions` lists the options' labels and then one label per number answer, which that ballot points at, so the log names a number the way it names an option.
+4. **Worded as a choice.** A secret choice's `EventSecretVoteCast` and `EventVotesRevealed` carry `Label: "secret_choice"`; the log entries keep their kinds (`vote_secret`, `votes_revealed`) with `cause: "secret_choice"`, read "Ann chose in secret (…)" and "Choices revealed (…): Bob chose 3, Cy chose Land", and the client's dock says "secret choice … is choosing in secret".
+5. **Not a vote.** A secret choice is not a CR 701.38 vote, so `finishVoteLocked` no longer emits `EventVotesFinished` for one: nothing "finishes voting" (this also corrects Prisoner's Dilemma, which had triggered "whenever players finish voting").
+6. **Hints stay public.** `ForController` and `ForOpponents` ride the wire to every seat. A card builds them from what the table knows (the Trap's numbers already used) and never from a hidden card: Gollum's are flat, because a hint built from the top card would tell the guesser what it is.
+7. **Per-object notes on the wire.** `CardView.notes` projects `Card.Notes` (#6097): the Trap's numbers already chosen and the Convocation's written number and crossed digits are public, and read later by the same object, so they are on the card (a "Noted: …" chip) for the reason `chosen_color` is (CR 607.2d).
+
+### Consequences
+
+Four cards are built on the round and the fifth on notes, all Full. The cost is three additive keys on the snapshot's `councilVote`, two on its ballots (and on `Event.Ballots`), one wire flag, one ballot field, one card field, and one log cause. A future "secretly choose" card writes asks, never a new prompt kind.

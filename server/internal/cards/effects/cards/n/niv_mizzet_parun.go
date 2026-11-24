@@ -41,18 +41,7 @@ func init() {
 				Key:       "Niv-Mizzet, Parun — deal 1 damage to any target",
 				Effect:    effects.SourceDealsDamageToEachLegalTarget(1),
 			},
-			effects.On(game.EventCast, anyPlayerCastAnInstantOrSorcery, "Niv-Mizzet, Parun — draw a card", effects.Do(effects.DrawCards{N: 1})),
+			effects.On(game.EventCast, effects.AnyPlayerCastAnInstantOrSorcery, "Niv-Mizzet, Parun — draw a card", effects.Do(effects.DrawCards{N: 1})),
 		},
 	})
-}
-
-// anyPlayerCastAnInstantOrSorcery is "whenever a player casts an
-// instant or sorcery spell" — the spell is read off the stack, and
-// the caster is anyone.
-func anyPlayerCastAnInstantOrSorcery(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventCast {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && (spell.IsInstant() || spell.IsSorcery())
 }

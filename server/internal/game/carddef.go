@@ -287,9 +287,15 @@ type CardDef struct {
 
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
-	CounterRemovalLocks   []CounterRemovalLock
-	UntapCaps             []UntapCap
-	UntapOptOuts          []UntapOptOut
+	// UntapCounterRemovals are "if this would untap during your untap
+	// step, remove a <counter> counter from it instead. If you do, untap
+	// it." (#6095, untap_counter_removal.go), read off the permanent's
+	// own CatalogAbilityKey, so a grant bundle's are merged in
+	// (copy_grants.go) and the recipient has them while it has the grant.
+	UntapCounterRemovals []UntapCounterRemoval
+	CounterRemovalLocks  []CounterRemovalLock
+	UntapCaps            []UntapCap
+	UntapOptOuts         []UntapOptOut
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -483,6 +489,17 @@ type CardDef struct {
 	// from the battlefield through CatalogOpponentsSearchTopN, keyed by
 	// CatalogAbilityKey; see search_top_n.go.
 	OpponentsSearchTopN int
+	// OpponentsCantSearchLibraries is this permanent's printed "Your
+	// opponents can't search libraries" (Stranglehold). Read from the
+	// battlefield through CatalogOpponentsCantSearch, keyed by
+	// CatalogAbilityKey; see search_cant.go.
+	OpponentsCantSearchLibraries bool
+	// AttackingPlayerChoosesBlocks is this permanent's printed "The
+	// attacking player chooses how each creature blocks each combat"
+	// (Invasion Plans). Read from the battlefield through
+	// CatalogAttackingPlayerChoosesBlocks, keyed by CatalogAbilityKey; see
+	// declaration_control.go.
+	AttackingPlayerChoosesBlocks bool
 	// DrawsFromBottom is this permanent's printed "You draw cards from
 	// the bottom of your library rather than the top" (River Song,
 	// #6089). Read from the battlefield through CatalogDrawsFromBottom,
@@ -1276,6 +1293,14 @@ func init() {
 			return d.OpponentsSearchTopN
 		}
 		return 0
+	}
+	CatalogOpponentsCantSearch = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.OpponentsCantSearchLibraries
+	}
+	CatalogAttackingPlayerChoosesBlocks = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.AttackingPlayerChoosesBlocks
 	}
 	CatalogDrawsFromBottom = func(key string) bool {
 		d := catalogDef(key)

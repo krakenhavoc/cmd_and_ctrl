@@ -214,6 +214,11 @@ registered, or when this file is stale.
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
 | `filterCatalogueBySet` | `filter the catalogue by set` | combobox | aria | `lib/components/SetPicker.svelte` | the Catalogue's set picker (#4790): a combobox that filters the sets by name or set code as you type, narrows the grid to the picked set's cards and shows how many of its cards the game plays |
 | `clearCatalogueSet` | `clear the set filter` | button | aria | `lib/components/SetPicker.svelte` | the set picker's clear button (#4790): empties the box and goes back to All sets |
+| `cataloguePager` | `catalogue pages` | navigation | aria | `routes/Catalog.svelte` | #6120: the Catalogue's pager under the grid: previous and next links and the page numbers |
+| `cataloguePage` | `page <n>` (starts with `page `) | link | aria | `routes/Catalog.svelte` | #6120: one page number in the Catalogue's pager; the current page carries aria-current |
+| `cataloguePrevPage` | `previous page` | link | aria | `routes/Catalog.svelte` | #6120: the pager's Previous link; on page 1 it is drawn disabled, not as a link |
+| `catalogueNextPage` | `next page` | link | aria | `routes/Catalog.svelte` | #6120: the pager's Next link; on the last page it is drawn disabled, not as a link |
+| `cataloguePageSize` | `cards per page` | combobox | aria | `routes/Catalog.svelte` | #6120: the Catalogue's page size selector (25, 50, 75, 100 or 250; 50 by default) |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
 | `seatTile` | `seat <n>: <name>` (starts with `seat `) | listitem | aria | `lib/components/SeatTile.svelte` | a lobby table's seat tile, numbered from 1 as people count; an open one is `seat <n>: open` (ADR 0212 §1) |

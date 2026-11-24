@@ -61,6 +61,8 @@
     chosenNumber?: number;
     // #5948, CR 903.4b: a commander's colour chosen before the game.
     commanderColor?: string;
+    // #6097, #5948: what the permanent's abilities have noted for it.
+    notes?: string[];
     // #662, CR 702.16. The qualities the SERVER parsed; the client
     // owns no protection grammar.
     protection?: ProtectionView[];
@@ -80,6 +82,7 @@
     chosenName,
     chosenNumber,
     commanderColor,
+    notes,
     protection = [],
     riotHaste = false,
     abilityRows = null,
@@ -93,6 +96,7 @@
       chosen_name: chosenName,
       chosen_number: chosenNumber,
       commander_color: commanderColor,
+      notes,
     }),
   );
 

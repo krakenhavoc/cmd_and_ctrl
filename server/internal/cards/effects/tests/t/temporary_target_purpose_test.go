@@ -113,6 +113,11 @@ var untilEndOfTurnExempt = map[string]string{
 	// removing swampwalk, first strike or a landwalk is a harm to the target.
 	"Urborg":     "removes an ability from its target; the check reads 'loses' as a benefit",
 	"Hammerheim": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Secret Lair Drop partner commanders (S82 OLD batch 14): the target is a
+	// player dealt damage; the "until end of turn" is the source's own
+	// indestructible, not a change to the target.
+	"Ellie, Vengeful Hunter": "the target is a player dealt damage; the until end of turn is the source's",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog

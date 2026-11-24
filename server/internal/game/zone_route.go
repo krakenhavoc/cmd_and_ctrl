@@ -906,6 +906,15 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			dstZone.InsertFromTop(c, r.Depth)
 		}
 	}
+	// A replacement's "put it on the bottom of that library instead"
+	// (ReplacementEvent.PutOnLibraryBottom, Wheel of Sun and Moon): once the
+	// card has really settled in a library, whatever depth the route
+	// itself carried.
+	if ev.PutOnLibraryBottom && dstZone.Kind == ZoneLibrary {
+		if c, err := dstZone.Remove(ev.CardID); err == nil {
+			dstZone.PushBottom(c)
+		}
+	}
 	// ADR 0013 §5ah: "shuffle it into its owner's library instead" is
 	// a genuine shuffle, not a placement — Blightsteel Colossus and
 	// the Eldrazi titans' graveyard clause both leak the card's

@@ -116,6 +116,27 @@ func TestNonbasicLandwalkReadsTheBasicSupertype(t *testing.T) {
 	}
 }
 
+// TestArtifactLandwalkReadsTheArtifactType — CR 702.14a: artifact
+// landwalk switches on for a land that is also an artifact (Vectis
+// Gloves), and not for an ordinary land or a nonland artifact.
+func TestArtifactLandwalkReadsTheArtifactType(t *testing.T) {
+	g := newActiveGame(t)
+	me, them := g.Seats[0].ID, g.Seats[1].ID
+	walker := pushWalker(g, me, "Gloved", "artifact landwalk")
+	blocker := pushWalker(g, them, "Blocker")
+	pushLand(g, them, "Island", "Basic Land — Island")
+	pushLand(g, them, "Bauble", "Artifact")
+	attackAndStepToBlocks(t, g, them, walker)
+
+	if r := pairRefusal(g, walker, blocker); !r.Legal() {
+		t.Fatalf("no artifact land: refused with %q", r.Reason)
+	}
+	pushLand(g, them, "Darksteel Citadel", "Artifact Land")
+	if r := pairRefusal(g, walker, blocker); r.Reason != BlockReasonLandwalk {
+		t.Fatalf("an artifact land: reason = %q, want landwalk", r.Reason)
+	}
+}
+
 // TestLandwalkAbilitiesAreCheckedSeparately — CR 702.14d: two landwalk
 // abilities don't cancel, and a blocker's own landwalk answers
 // nothing. The first ability the defender's lands switch on is the
@@ -281,7 +302,7 @@ func TestBlockRefusalSentencesAreNeverEmpty(t *testing.T) {
 		}
 	}
 	for spec, want := range map[string]string{
-		"islandwalk": "an Island", "plainswalk": "a Plains", "nonbasic landwalk": "a nonbasic land",
+		"islandwalk": "an Island", "plainswalk": "a Plains", "nonbasic landwalk": "a nonbasic land", "artifact landwalk": "an artifact land",
 	} {
 		s, ok := landwalkRequirement(spec)
 		if !ok || s.describe() != want {
