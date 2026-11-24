@@ -687,3 +687,52 @@ now read as the permanent last existed on the battlefield (CR
 603.10a). The one remaining gap in this family is Maskwood Nexus's
 off-battlefield grant, noted in the #1679 amendment above, which is
 not a last-known-information question at all.
+
+## Amendment (2026-11-24, #6098): attacking alone, blocking alone, and what had to attack
+
+**Status:** Accepted · S82 — Card coverage: sets outside Standard, newest first · [#6098](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6098)
+
+### Context
+
+Two combat facts were missing for GAP2 cards (#5948). Thijarian Witness
+asks whether a creature that died "was attacking or blocking alone" (CR
+506.5: "attacking but no other creatures are"). The #1661 stamp records
+only the dying creature's own combat state, and asking the live
+battlefield as each card leaves is wrong for an event that removes
+several at once: of two attackers that die together in one combat damage
+step, the second to be moved finds nobody else and reads as alone.
+Firkraag, Cunning Instigator asks whether a creature "had to attack this
+combat" — whether it was affected by a CR 508.1d requirement as attackers
+were declared — and nothing kept that once the declaration was over.
+
+### Decision 1 — `Event.AttackingAlone` and `Event.BlockingAlone`
+
+`exitLKILocked` stamps both on every `EventLTB`, judged by
+`otherCombatantLocked` (`game/exit_alone.go`): another creature is
+attacking (or blocking) on the live battlefield, or among the pre-move
+copies of the open simultaneous exit (`simultaneous.go`) that have
+already left. The batch copies are CR 603.10a's look back for the whole
+event, so creatures that die together are never alone. Additive on the
+event log (the v9 shape file records the keys); not projected on the
+wire.
+
+### Decision 2 — the had-to-attack record
+
+`Game.hadToAttack` (`game/had_to_attack.go`) is written once, as the
+attack declaration passes its checkpoint
+(`markAttackDeclarationJudgedLocked`): every creature the active player
+controls with at least one requirement from `attackRequirementsOfLocked`
+under the final declaration. A creature goaded after the declaration was
+never required to attack. It is cleared with the rest of combat
+(`clearAttackAnnouncementsLocked`), dropped for an object that leaves the
+battlefield (CR 400.7), and kept when a creature is merely removed from
+combat. Carried by Clone, RestoreFrom and the snapshot
+(`Snapshot.HadToAttack`, additive). Read by
+`HadToAttackThisCombatForEffect`.
+
+### Still open
+
+The rest of #6098 (Shelob's damage-by-a-Spider record, Baeloth's goad
+gated on power, Zilortha's lethal damage by power, Emrakul's protection
+from spells and from permanents cast this turn, Noble Heritage's
+protection from a player) is not decided here.

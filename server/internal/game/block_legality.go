@@ -532,6 +532,11 @@ func (e *BlockRefusedError) requirementSentence(blocker, attacker string) string
 		s, subject = blocker+" must block "+attacker+" if able", e.AttackerName
 	case BlockRequirementMustBeBlocked:
 		s, subject = attacker+" must be blocked if able", e.AttackerName
+		if e.Requirement.Filter != "" {
+			// #6087: "Grizzly Bears must be blocked by a Dalek if able
+			// (Ace's Baseball Bat)."
+			s = attacker + " must be blocked by " + BlockerFilterNoun(e.Requirement.Filter) + " if able"
+		}
 	case BlockRequirementExactlyOne:
 		s, subject = attacker+" must be blocked by exactly one creature if able", e.AttackerName
 	default:

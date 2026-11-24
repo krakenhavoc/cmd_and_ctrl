@@ -989,6 +989,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		if c, ok := flashIf.XCeilingUnder(0, false); ok && (xLifeCeiling == noXCeiling || c < xLifeCeiling) {
 			xLifeCeiling = c
 		}
+		// #6085, CR 202.3e: and a ban on mana value (Lavinia, Azorius
+		// Renegade) — the gate above passed this cast at X=0, and
+		// refuses it at CastSpell above the X its ceiling leaves.
+		if c, ok := e.g.CastGateXCeilingForEffect(e.seat, card, fromZone); ok && (xLifeCeiling == noXCeiling || c < xLifeCeiling) {
+			xLifeCeiling = c
+		}
 	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two

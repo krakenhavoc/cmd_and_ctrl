@@ -271,6 +271,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		DamageStaysThroughCleanup:           spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,
 		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
+		ActivateAsThoughHasteOthers:         spec.ActivateAsThoughHasteOthers,
 		ExtraVote:                           spec.ExtraVote,
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
 		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,

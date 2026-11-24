@@ -868,6 +868,11 @@ func effectiveOf(c *Card) Characteristic {
 	for _, kw := range keywordCounterTokens(c) {
 		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
 	}
+	// #6088, CR 613.1e: and the colour the stack step set on a spell,
+	// the same answer EffectiveColors gives.
+	if c.stackColored {
+		ch.Colors = append([]string(nil), c.stackColors...)
+	}
 	// ADR 0107 §3: and a keyword the stack step gave a spell, the same
 	// list forEachAbilityToken reads, so the stack view shows the
 	// rebound a Cast Through Time gives.

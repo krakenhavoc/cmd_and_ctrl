@@ -139,6 +139,7 @@ body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
 body destroy/the-payload-permanent
+body devourer-of-destiny/first-upkeep-look
 body dies/controller-loses-life-equal-to-toughness
 body dies/exile-from-graveyard
 body dies/manifest-dread
@@ -595,6 +596,7 @@ body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
 body yunas-whistle/counters
 body zara/return-to-hand
+body zevlor/copy-for-each-other-opponent
 body ziatora/fling
 body zoraline-cosmos-caller/return
 castfollowup cemetery-illuminator-once-each-turn
@@ -789,6 +791,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
@@ -1237,6 +1240,7 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/neera-wild-mage-cast
 choose choose-cards/neo-discover-the-impossible-exile
 choose choose-cards/neo-distribute-counters-among-players-permanents
 choose choose-cards/neo-invoke-calamity-exile
@@ -1687,6 +1691,7 @@ condition dies/that-creature-with-an-egg-counter
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
 condition discard/opponent-caused-yours
+condition dynaheir/next-activation-four-mana
 condition earthbend/this-object-left
 condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
@@ -1708,6 +1713,7 @@ condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 condition the-pandorica/untapped-or-left
 condition until/returned-under-your-control
+condition zevlor/next-single-opponent-spell
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
 confirm bloomburrow-commander/fishers-talent-reveal
@@ -1841,6 +1847,7 @@ confirm confirm/laccolith-blocked-damage
 confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
+confirm confirm/lim-duls-vault-again
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -1866,6 +1873,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
+confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
 confirm confirm/orcish-squatters-gain-control
 confirm confirm/painful-quandary-discard-or-lose-life
@@ -2394,6 +2402,7 @@ option option-pick/winota-joiner-of-forces-attack
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
+option option-pick/zevlor-chosen
 option option-pick/zimones-hypothesis-parity
 option option-pick/zndrsplts-judgment-friend-or-foe
 option planechase/bottom-order
@@ -2412,6 +2421,7 @@ payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
+payunless pay-unless/agrus-kos-copy-ability
 payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/alistair-the-brigadier-pump
 payunless pay-unless/ancestral-katana-attach
@@ -2589,6 +2599,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/mizzix-replica-rider-copy
 payunless pay-unless/monstrosity-of-the-lake-stun
 payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
@@ -3095,6 +3106,7 @@ searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
 steps steps/ad-nauseam-pass
+steps steps/wylls-reversal-retarget-then-copy
 steps steps/zimones-hypothesis-rest
 steps then-steps/agent-of-the-shadow-thieves-grant
 steps then-steps/altar-of-the-wretched-draw-mill
@@ -3503,6 +3515,7 @@ tail dice/velukan-dragon-plus-result-minus-one
 tail dice/wild-endeavor-rolled
 tail dice/wizards-spellbook-exiled
 tail dice/wizards-spellbook-rolled
+tail dice/wylls-reversal-rolled
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
@@ -3790,6 +3803,7 @@ tail if-it-was/scavenging-ooze-grow
 tail if-it-went/aspiring-champion-ruinous-ascension
 tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
+tail illusion/color-chosen
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
@@ -4556,6 +4570,8 @@ tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
+tail then/lim-duls-vault-bottomed
+tail then/lim-duls-vault-looked
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
@@ -4578,6 +4594,7 @@ tail then/mystery-key-draw-three
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
@@ -4688,6 +4705,7 @@ tail then/the-stone-brain-draw
 tail then/the-stone-brain-named
 tail then/the-tale-of-tamiyo-copy-and-cast
 tail then/the-tale-of-tamiyo-milled
+tail then/thief-of-existence-exiled
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/thornplate-intimidator-punisher-sacrificed
 tail then/tibalts-trickery-exile-until
@@ -4719,6 +4737,7 @@ tail then/xenagos-the-reveler-exiled
 tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
+tail thijarian-witness/investigate
 tail thrasios-triton-hero/reveal-top
 tail threats-undetected/choose
 tail through-the-breach/entered

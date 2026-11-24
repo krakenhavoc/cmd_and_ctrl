@@ -7868,7 +7868,15 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		flashIf = g.FlashIfReliedOnLocked(caster, live, kind, grant.ForClaim(nil), nil, false)
 	}
-	if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key)); ok {
+	ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key))
+	// #6085, CR 202.3e: and a ban on mana value (Lavinia, Azorius
+	// Renegade), which CastSpell's gate reads with the announced X.
+	if haveLive {
+		if c, gated := g.CastGateXCeilingForEffect(caster, live, kind); gated && (!ok || c < ceiling) {
+			ceiling, ok = c, true
+		}
+	}
+	if ok {
 		out.XMax = &ceiling
 	}
 	// S22: convoke / waterbend. Stamped before the target clause
@@ -14420,7 +14428,9 @@ func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) 
 // about what the client may offer. Caller must hold g.mu.
 func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost, ac *game.CounterAddCost) CounterCostView {
 	var v CounterCostView
-	if rc != nil && (rc.N > 0 || rc.Variable) {
+	// #6085: a removal whose count is the announced X has no picker of
+	// its own; the X picker is the payment (game.CounterCountIsX).
+	if rc != nil && !game.CounterCountIsX(rc) && (rc.N > 0 || rc.Variable) {
 		v.CounterCostN = rc.N
 		v.CounterCostKind = rc.Counter
 		v.CounterCostSelf = rc.From == nil

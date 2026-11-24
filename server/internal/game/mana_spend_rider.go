@@ -193,6 +193,12 @@ type ManaSpendRider struct {
 	// what the spell gains, and for how long.
 	Keywords       []string `json:"keywords,omitempty"`
 	UntilEndOfTurn bool     `json:"untilEndOfTurn,omitempty"`
+	// UntilYourNextTurn is the other printed duration of a
+	// ManaRiderSpellGains grant: "it gains hexproof until your next
+	// turn" (Jade Orb of Dragonkind, #6088), "your" being the player who
+	// cast the spell with the mana (CR 611.2b). Additive within the
+	// snapshot version (#522).
+	UntilYourNextTurn bool `json:"untilYourNextTurn,omitempty"`
 
 	// Trigger is ManaRiderTrigger's registry key (RegisterManaSpendTrigger).
 	Trigger string `json:"trigger,omitempty"`
@@ -594,8 +600,11 @@ func (g *Game) manaRiderSpellGainsLocked(source uuid.UUID, item *StackItem, paid
 		return
 	}
 	d := IndefiniteDuration()
-	if r.UntilEndOfTurn {
+	switch {
+	case r.UntilEndOfTurn:
 		d = g.UntilEndOfTurnDuration()
+	case r.UntilYourNextTurn:
+		d = g.UntilYourNextTurnDuration(item.Controller)
 	}
 	label := "that spell gains " + strings.Join(r.Keywords, ", ")
 	g.GrantKeywordsToSpellForEffect(source, paidFor.InstanceID, r.Keywords, d, label)

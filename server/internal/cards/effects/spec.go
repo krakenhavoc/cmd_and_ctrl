@@ -1366,6 +1366,12 @@ type Spec struct {
 	// the turn they arrive (CR 609.4). Judged through CatalogAbilityKey.
 	ActivateAsThoughHaste bool
 
+	// ActivateAsThoughHasteOthers is ActivateAsThoughHaste over OTHER
+	// creatures only: "You may activate abilities of other creatures you
+	// control as though those creatures had haste" (Dynaheir, Invoker
+	// Adept, #6094). The permanent's own abilities are not reached.
+	ActivateAsThoughHasteOthers bool
+
 	// ExtraVote declares the printed static "While voting, you get an
 	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
 	// or "While voting, you may vote an additional time"

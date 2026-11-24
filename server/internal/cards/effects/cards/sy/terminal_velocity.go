@@ -39,16 +39,7 @@ func init() {
 			Key: terminalVelocityBundle,
 			Triggered: []game.TriggeredAbility{
 				effects.WhenThisLeaves("Terminal Velocity — damage equal to its mana value to each creature", terminalVelocityLeaves),
-				effects.AtYourEndStep("Terminal Velocity — sacrifice this permanent", func(g *game.Game, item *game.StackItem) error {
-					if !effects.OnBattlefield(g, item.SourceCardID) {
-						return nil
-					}
-					c, ok := g.LookupCardForEffect(item.SourceCardID)
-					if !ok || c.Controller != item.Controller {
-						return nil
-					}
-					return effects.SacrificePermanent{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
-				}),
+				effects.AtYourEndStep("Terminal Velocity — sacrifice this permanent", effects.SacrificeThisPermanentAtYourEndStep),
 			},
 			Text: "When this permanent leaves the battlefield, it deals damage equal to its mana value to each creature. At the beginning of your end step, sacrifice this permanent.",
 		}},
