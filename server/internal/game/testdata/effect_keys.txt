@@ -55,6 +55,7 @@ body annihilator/sacrifice
 body anointer-of-valor/counter
 body ant-man-colony-commander/counter
 body anthropede/destroy-room
+body arcane-artisan/exile-linked-tokens
 body arcane-denial/draws
 body archangel-avacyn/transform
 body argentum-masticore/destroy
@@ -664,6 +665,7 @@ choose choose-cards/amys-home-exile
 choose choose-cards/animal-magnetism-take
 choose choose-cards/another-round-picked
 choose choose-cards/anzrags-rampage-creature
+choose choose-cards/arcane-artisan-exile
 choose choose-cards/arcane-endeavor-cast
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
@@ -1848,6 +1850,7 @@ confirm confirm/corruption-of-towashi-draw
 confirm confirm/cosmic-rebirth-battlefield-or-hand
 confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
+confirm confirm/cultivator-of-blades-pump
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
 confirm confirm/dawnbreak-reclaimer-return
@@ -3352,6 +3355,7 @@ tail another-round/after-return
 tail anowon-the-ruin-thief/after-mill
 tail apocalypse/saprolings-per-mana-value
 tail approach-of-the-second-sun/gain-seven
+tail arcane-artisan/copy-exiled-creature
 tail arcane-bombardment/copy-exiled
 tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
