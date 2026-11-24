@@ -1533,8 +1533,11 @@ type cardSnapshot struct {
 	PhaseInBarredBy    uuid.UUID `json:"phaseInBarredBy,omitempty"`
 	PhaseInBarredEpoch int       `json:"phaseInBarredEpoch,omitempty"`
 	PhaseInBarredFor   uuid.UUID `json:"phaseInBarredFor,omitempty"`
-	PhasedOutIndirect  bool      `json:"phasedOutIndirect,omitempty"`
-	TapOnPhaseIn       bool      `json:"tapOnPhaseIn,omitempty"`
+	// #6095: The Pandorica's "for as long as ~ remains tapped" form of
+	// the bar. Additive; absent on every card no such effect names.
+	PhaseInBarredWhileTapped bool `json:"phaseInBarredWhileTapped,omitempty"`
+	PhasedOutIndirect        bool `json:"phasedOutIndirect,omitempty"`
+	TapOnPhaseIn             bool `json:"tapOnPhaseIn,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -3292,6 +3295,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PhaseInBarredBy:          c.PhaseInBarredBy,
 		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
 		PhaseInBarredFor:         c.PhaseInBarredFor,
+		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -4465,6 +4469,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PhaseInBarredBy:          c.PhaseInBarredBy,
 		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
 		PhaseInBarredFor:         c.PhaseInBarredFor,
+		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,

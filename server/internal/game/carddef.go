@@ -287,9 +287,15 @@ type CardDef struct {
 
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
-	CounterRemovalLocks   []CounterRemovalLock
-	UntapCaps             []UntapCap
-	UntapOptOuts          []UntapOptOut
+	// UntapCounterRemovals are "if this would untap during your untap
+	// step, remove a <counter> counter from it instead. If you do, untap
+	// it." (#6095, untap_counter_removal.go), read off the permanent's
+	// own CatalogAbilityKey, so a grant bundle's are merged in
+	// (copy_grants.go) and the recipient has them while it has the grant.
+	UntapCounterRemovals []UntapCounterRemoval
+	CounterRemovalLocks  []CounterRemovalLock
+	UntapCaps            []UntapCap
+	UntapOptOuts         []UntapOptOut
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —

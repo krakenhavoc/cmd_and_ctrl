@@ -319,6 +319,18 @@ func (g *Game) untapPermanentLocked(c *Card) {
 		_ = g.applyCounterLocked(c.InstanceID, CounterStun, -1)
 		return
 	}
+	// #6095: "if this creature would untap during your untap step,
+	// remove a +1/+1 counter from it instead. If you do, untap it."
+	// (untap_counter_removal.go). Removing a counter emits, so the card
+	// is found again by its ID before it is untapped.
+	if id := c.InstanceID; len(untapCounterRemovalsLocked(c)) > 0 {
+		if !g.replaceUntapWithCounterRemovalLocked(c) {
+			return
+		}
+		if c = findBattlefieldCard(g, id); c == nil || !c.Tapped {
+			return
+		}
+	}
 	c.Tapped = false
 	g.markAbilitiesOfUntappedSourceLocked(c)
 	g.EmitEvent(Event{

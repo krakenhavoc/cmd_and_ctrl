@@ -424,6 +424,8 @@ type Card struct {
 	PhaseInBarredBy    uuid.UUID
 	PhaseInBarredEpoch int
 	PhaseInBarredFor   uuid.UUID
+	// PhaseInBarredWhileTapped lives in the bool block at the end of
+	// Card, for alignment.
 
 	// DamageMarked is the damage currently noted on the creature this
 	// turn, used by the lethal-damage state-based action (CR 704.5g).
@@ -2142,6 +2144,14 @@ type Card struct {
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
 	// for every card host. Cleared wherever AttachedTo is.
 	AttachedPinned bool
+
+	// PhaseInBarredWhileTapped changes the PhaseInBarredBy bar's condition
+	// from "you control ~" to "~ remains tapped" (The Pandorica, #6095):
+	// the source must be on the battlefield as the object
+	// PhaseInBarredEpoch names and tapped, whoever controls it, and
+	// PhaseInBarredFor is unused. The rest is the same bar: a prohibition,
+	// cleared for good once it stops holding (CR 611.2b).
+	PhaseInBarredWhileTapped bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
