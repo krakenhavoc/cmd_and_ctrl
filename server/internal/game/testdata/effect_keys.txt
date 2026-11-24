@@ -380,6 +380,7 @@ body ogre-battlecaster/pump
 body old-b036/mount-velus-manticore-strike
 body old-b049/devouring-tendrils-gain-2
 body old-b042/rushed-rebirth-search
+body old-b050/blocker-controller-loses-1
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -815,6 +816,7 @@ choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/dawnbreak-reclaimer-first
 choose choose-cards/dawnbreak-reclaimer-second
 choose choose-cards/deadly-cover-up-exile
+choose choose-cards/deadly-vanity-keep
 choose choose-cards/death-wish-take
 choose choose-cards/deathbonnet-hulk-exile
 choose choose-cards/deepfathom-echo-copy
@@ -822,6 +824,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/devastating-mastery-bounce
 choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
@@ -1770,6 +1773,7 @@ condition ltb/the-listed-object
 condition ltb/ugin-the-ineffable-spirit
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
+condition old-b050/any-creature-blocks
 condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
@@ -2273,6 +2277,7 @@ option option-pick/dawnbreak-reclaimer-opponent
 option option-pick/demanding-dragon-answer
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
+option option-pick/devastating-mastery-opponent
 option option-pick/development-opponent-round-1
 option option-pick/development-opponent-round-2
 option option-pick/development-opponent-round-3
@@ -4490,6 +4495,7 @@ tail tail/break-out-entered
 tail tail/deadly-cover-up-after-sweep
 tail tail/deadly-cover-up-draw
 tail tail/deadly-cover-up-exiled
+tail tail/devastating-mastery-wipe
 tail tail/dig-deep-counters
 tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
