@@ -141,6 +141,14 @@ type NextSpellPromise struct {
 	// that spell IS the next one.
 	WithoutPayingManaCost bool `json:"withoutPayingManaCost,omitempty"`
 
+	// FromHandOnly narrows WithoutPayingManaCost to spells cast from the
+	// caster's hand: "until end of turn, you may cast spells from your hand
+	// without paying their mana costs" (Chandra, Flame's Catalyst), with
+	// EveryMatchingSpell so it is not spent. Read by the free offer only,
+	// which knows the zone the spell is cast from. Additive within the
+	// schema version.
+	FromHandOnly bool `json:"fromHandOnly,omitempty"`
+
 	// PayLifeEqualToManaValue is "rather than pay the mana cost of the next
 	// spell you cast this turn, you may pay life equal to that spell's mana
 	// value" (Marshland Bloodcaster): while the promise stands, a matching

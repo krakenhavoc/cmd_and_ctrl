@@ -489,6 +489,12 @@ type CardDef struct {
 	// from the battlefield through CatalogOpponentsSearchTopN, keyed by
 	// CatalogAbilityKey; see search_top_n.go.
 	OpponentsSearchTopN int
+	// OpponentsCantCauseSearch is this permanent's printed "Spells and
+	// abilities your opponents control can't cause their controller to
+	// search their library" (Ashiok, Dream Render). Read from the
+	// battlefield through CatalogOpponentsCantCauseSearch, keyed by
+	// CatalogAbilityKey; see search_cant_cause.go.
+	OpponentsCantCauseSearch bool
 	// DrawsFromBottom is this permanent's printed "You draw cards from
 	// the bottom of your library rather than the top" (River Song,
 	// #6089). Read from the battlefield through CatalogDrawsFromBottom,
@@ -1282,6 +1288,10 @@ func init() {
 			return d.OpponentsSearchTopN
 		}
 		return 0
+	}
+	CatalogOpponentsCantCauseSearch = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.OpponentsCantCauseSearch
 	}
 	CatalogDrawsFromBottom = func(key string) bool {
 		d := catalogDef(key)

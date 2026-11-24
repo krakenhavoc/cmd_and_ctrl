@@ -2757,6 +2757,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if !spec.Rule.IsZero() && !KnownSearchRule(spec.Rule.key) {
 		return fmt.Errorf("%w: search rule %q", ErrUnknownEffectKey, spec.Rule.key)
 	}
+	// Ashiok, Dream Render: an opponent's spell or ability can't make its
+	// controller search their own library (search_cant_cause.go).
+	if spec.libraryOwnerID() == spec.Player && g.searchCausedByForbiddenLocked(spec.Player) {
+		return nil
+	}
 	// #4033: "all cards" has no count.
 	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
 	if takeAllInGraveyard {

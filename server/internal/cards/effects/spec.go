@@ -1412,6 +1412,11 @@ type Spec struct {
 	// permanent that lost its abilities narrows nothing.
 	OpponentsSearchTopN int
 
+	// OpponentsCantCauseSearch declares Ashiok, Dream Render's "Spells and
+	// abilities your opponents control can't cause their controller to
+	// search their library." (search_cant_cause.go).
+	OpponentsCantCauseSearch bool
+
 	// DrawsFromBottom declares River Song's "You draw cards from the
 	// bottom of your library rather than the top" (#6089): each draw its
 	// controller performs takes the bottom card (game/draw_from_bottom.go).

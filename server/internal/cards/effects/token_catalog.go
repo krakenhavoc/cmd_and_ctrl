@@ -569,6 +569,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// token with enchant land that gives the land a mana ability.
 	printedGapB63SettlementToken,
 
+	// Estrid, the Masked's Mask (S82 old sets batch 006, #5462): a white Aura
+	// token with enchant permanent and umbra armor.
+	printedOldB006MaskToken,
+
 	// Moira Brown, Guide Author's Wasteland Survival Guide (Fallout, #5948).
 	printedGapB64SurvivalGuideToken,
 

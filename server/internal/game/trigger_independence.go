@@ -1811,6 +1811,9 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// #6090: Aven Mindcensor narrows an opponent's search to the top of
 	// the library while its permanent is there.
 	"OpponentsSearchTopN": defFieldOwnRules,
+	// Ashiok, Dream Render: an opponent's spell or ability can't make
+	// its controller search their library while its permanent is there.
+	"OpponentsCantCauseSearch": defFieldOwnRules,
 	// #6089: River Song changes which card its controller's draws take
 	// while its permanent is there.
 	"DrawsFromBottom": defFieldOwnRules,

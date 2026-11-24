@@ -323,7 +323,7 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 	// #2709: a standing "the next <kind> spell you cast this turn can be
 	// cast without paying its mana cost" promise (Apex Observatory) is
 	// the same offer, held on the player rather than on a permanent.
-	out := g.nextSpellFreeOffersLocked(playerID, card)
+	out := g.nextSpellFreeOffersLocked(playerID, card, zone)
 	if CatalogGrantedAlternativeCosts == nil || g.Battlefield == nil {
 		return out
 	}
@@ -467,7 +467,7 @@ const GrantedAltCostNextLife = "granted-next-spell-life"
 // offer. Its label is the first matching promise's text.
 //
 // Caller must hold g.mu.
-func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card) []*AlternativeCost {
+func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card, zone ZoneKind) []*AlternativeCost {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil
@@ -484,6 +484,9 @@ func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card) []*Alter
 			}
 		}
 		if !np.WithoutPayingManaCost || !g.livePromise(s) || !np.Matches(card) {
+			continue
+		}
+		if np.FromHandOnly && zone != ZoneHand {
 			continue
 		}
 		label := "Cast it without paying its mana cost"
