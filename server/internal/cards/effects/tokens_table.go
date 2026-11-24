@@ -686,4 +686,6 @@ var TokenTable = map[string]game.Card{
 
 	// Secret Lair Drop partner commanders (#5462, S82 OLD batch 014): Tevesh Szat, Doom of Fools.
 	"0/1 black Thrull": {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 0, Toughness: 1, Colors: []string{"B"}},
+	// S82 OLD batch 26 (#5462): Gisa's Favorite Shovel's Walker.
+	"2/2 black Zombie named Walker": {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }

@@ -5056,6 +5056,12 @@ battlefield unattached. With nothing attached the ability can't be activated. A 
 `Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
 the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
 
+`Plus(ManaCost("{R}{W}"), UnattachThisEquipment())` is Sunforger's "{R}{W}, Unattach this Equipment:": the ability's own
+source, an Equipment, is the thing unattached (`game.AbilityCost.UnattachThis`, paid at announce through
+`UnattachForEffect`, so a "becomes unattached" watcher sees it). It names no pick. Pair it with
+`Condition: SourceAttachedToACreature()`: an Equipment attached to nothing can't pay it (CR 118.3), and the engine
+refuses the activation too.
+
 ### Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)
 
 `Plus(ManaCost("{1}"), TapCost(), TapTheGrantor())` in an `AbilityGrant` bundle is Fishing Pole's equipped creature
