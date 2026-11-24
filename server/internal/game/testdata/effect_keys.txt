@@ -139,6 +139,7 @@ body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
 body destroy/the-payload-permanent
+body devourer-of-destiny/first-upkeep-look
 body dies/controller-loses-life-equal-to-toughness
 body dies/exile-from-graveyard
 body dies/manifest-dread
@@ -596,6 +597,7 @@ body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
 body yunas-whistle/counters
 body zara/return-to-hand
+body zevlor/copy-for-each-other-opponent
 body ziatora/fling
 body zoraline-cosmos-caller/return
 castfollowup cemetery-illuminator-once-each-turn
@@ -604,6 +606,7 @@ castfollowup conduit-of-worlds-no-more-spells
 castfollowup emet-selch-of-the-third-seat-once-each-turn
 castfollowup finale-of-promise/copy-twice
 castfollowup fires-of-mount-doom-played
+castfollowup ian-malcolm-chaotician-cast
 castfollowup kaervek-the-punisher-lose-2
 castfollowup kefka-dancing-mad-life-loss
 castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
@@ -791,6 +794,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
@@ -1239,6 +1243,7 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/neera-wild-mage-cast
 choose choose-cards/neo-discover-the-impossible-exile
 choose choose-cards/neo-distribute-counters-among-players-permanents
 choose choose-cards/neo-invoke-calamity-exile
@@ -1689,6 +1694,7 @@ condition dies/that-creature-with-an-egg-counter
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
 condition discard/opponent-caused-yours
+condition dynaheir/next-activation-four-mana
 condition earthbend/this-object-left
 condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
@@ -1709,6 +1715,7 @@ condition s82-bns-b27/you-cast-a-dinosaur
 condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 condition until/returned-under-your-control
+condition zevlor/next-single-opponent-spell
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
 confirm bloomburrow-commander/fishers-talent-reveal
@@ -1842,6 +1849,7 @@ confirm confirm/laccolith-blocked-damage
 confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
+confirm confirm/lim-duls-vault-again
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -1867,6 +1875,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
+confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
 confirm confirm/orcish-squatters-gain-control
 confirm confirm/painful-quandary-discard-or-lose-life
@@ -2001,6 +2010,7 @@ confirm s82-rpr-b04/aid-from-the-cowl-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-put
 confirm spark-of-creativity/damage-or-play
 confirm std-b9/traveling-botanist-take-land
+drawinstead abundance
 drawinstead asmodeus-the-archfiend
 drawinstead dredge-1
 drawinstead dredge-2
@@ -2050,6 +2060,7 @@ drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
 drawthen hypothesizzle/may-discard-nonland
+drawthen jace-mirror-mage-reveal
 drawthen leonardo-da-vinci/discard
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
@@ -2129,6 +2140,7 @@ option meld/order
 option mutate/over-under
 option option-pick/abstract-performance-opponent
 option option-pick/abstract-performance-pile
+option option-pick/abundance-kind
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/agents-toolkit-move
@@ -2147,6 +2159,7 @@ option option-pick/attach-source-to-player
 option option-pick/aven-courier-counter
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/ballroom-brawlers-keyword
+option option-pick/beckoning-will-o-wisp-opponent
 option option-pick/bellowing-mauler-lose-or-sacrifice
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
@@ -2251,6 +2264,7 @@ option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/master-of-ceremonies-answer
+option option-pick/me-the-immortal-counter
 option option-pick/memories-returning-opponent
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
@@ -2382,6 +2396,7 @@ option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
 option option-pick/vislor-turlough-deal-with-the-black-guardian
+option option-pick/volos-journal-note
 option option-pick/wake-to-slaughter-opponent
 option option-pick/winding-way-type
 option option-pick/wingnut-bat-on-the-belfry-keyword
@@ -2389,9 +2404,11 @@ option option-pick/winota-joiner-of-forces-attack
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
+option option-pick/zevlor-chosen
 option option-pick/zimones-hypothesis-parity
 option option-pick/zndrsplts-judgment-friend-or-foe
 option planechase/bottom-order
+option planechase/order-top-two
 option retarget/pinned-slot
 option sticker/choose-sticker
 option sticker/name-position
@@ -2406,6 +2423,7 @@ payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
+payunless pay-unless/agrus-kos-copy-ability
 payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/alistair-the-brigadier-pump
 payunless pay-unless/ancestral-katana-attach
@@ -2437,6 +2455,7 @@ payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
+payunless pay-unless/canoptek-wraith-sacrifice
 payunless pay-unless/carefree-swinemaster-boar
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
@@ -2582,6 +2601,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/mizzix-replica-rider-copy
 payunless pay-unless/monstrosity-of-the-lake-stun
 payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
@@ -2800,6 +2820,7 @@ run prompt-run/caesar-legions-emperor-sacrifice
 run prompt-run/cait-cage-brawler-discarded
 run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
+run prompt-run/canoptek-wraith-land
 run prompt-run/capital-punishment-discards
 run prompt-run/cataclysmic-gearhulk-keep
 run prompt-run/chaos-defiler-destroy
@@ -2849,6 +2870,7 @@ run prompt-run/exploit-colonel-autumn
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
 run prompt-run/exploit-graf-reaver
+run prompt-run/exploit-henry-wu-ingen-geneticist
 run prompt-run/exploit-infernal-captor
 run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
@@ -3086,6 +3108,7 @@ searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
 steps steps/ad-nauseam-pass
+steps steps/wylls-reversal-retarget-then-copy
 steps steps/zimones-hypothesis-rest
 steps then-steps/agent-of-the-shadow-thieves-grant
 steps then-steps/altar-of-the-wretched-draw-mill
@@ -3161,6 +3184,8 @@ tail aberrant-researcher/after-mill
 tail abstract-performance/after-face-down
 tail abstract-performance/after-face-up
 tail abstract-performance/offer-cast
+tail abundance/ordered
+tail abundance/taken
 tail abyssal-harvester/exile-other-nightmares
 tail abyssal-harvester/nightmare-copy
 tail advanced-reconstruction/exile-random
@@ -3303,9 +3328,11 @@ tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
 tail campfire/shuffle-graveyard
+tail canoptek-wraith/sacrificed
 tail cant-stay-away/entered
 tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
+tail card-name/day-of-the-moon-goad
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
@@ -3371,6 +3398,8 @@ tail counter/guinan-ancient-advisor-next
 tail counter/put-on-each-next
 tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
+tail creature-type/long-list-of-the-ents-note
+tail creature-type/volos-journal-note
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
 tail cultivator-colossus/draw-and-repeat
@@ -3487,6 +3516,7 @@ tail dice/velukan-dragon-plus-result-minus-one
 tail dice/wild-endeavor-rolled
 tail dice/wizards-spellbook-exiled
 tail dice/wizards-spellbook-rolled
+tail dice/wylls-reversal-rolled
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
@@ -3774,6 +3804,7 @@ tail if-it-was/scavenging-ooze-grow
 tail if-it-went/aspiring-champion-ruinous-ascension
 tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
+tail illusion/color-chosen
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
@@ -4117,6 +4148,7 @@ tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
 tail sacrificed-one/prompt-run/exploit-graf-reaver
+tail sacrificed-one/prompt-run/exploit-henry-wu-ingen-geneticist
 tail sacrificed-one/prompt-run/exploit-infernal-captor
 tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
@@ -4539,6 +4571,8 @@ tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
+tail then/lim-duls-vault-bottomed
+tail then/lim-duls-vault-looked
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
@@ -4561,6 +4595,7 @@ tail then/mystery-key-draw-three
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
@@ -4671,6 +4706,7 @@ tail then/the-stone-brain-draw
 tail then/the-stone-brain-named
 tail then/the-tale-of-tamiyo-copy-and-cast
 tail then/the-tale-of-tamiyo-milled
+tail then/thief-of-existence-exiled
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/thornplate-intimidator-punisher-sacrificed
 tail then/tibalts-trickery-exile-until
@@ -4702,6 +4738,7 @@ tail then/xenagos-the-reveler-exiled
 tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
+tail thijarian-witness/investigate
 tail thrasios-triton-hero/reveal-top
 tail threats-undetected/choose
 tail through-the-breach/entered

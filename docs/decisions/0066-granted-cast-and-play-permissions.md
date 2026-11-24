@@ -5130,6 +5130,25 @@ additive fields, no decision above changed.
 - **Tests.** `game/permission_filter_colors_test.go` and `cards/effects/niv_mizzet_supreme_test.go`.
 - **Card.** Niv-Mizzet, Supreme (Full).
 
+## Amendment — 2026-11-24 (#6092): a standing permission over every graveyard
+
+Coram, the Undertaker: "During each of your turns, you may play a land and cast a spell from among cards in graveyards
+that were put there from libraries this turn." A standing permission is scoped to its holder's own pile
+(`permissionReachesPileLocked`, #1022) and Shaman's Trance widens a holder's permissions only while its stored grant is
+live; nothing let one permanent's own rule name every graveyard.
+
+- **The flag.** `CastPermission.AllGraveyards` (omitempty): a ScopeStanding permission over `ZoneGraveyard` that reaches
+  a card in any player's graveyard. `permissionReachesPileLocked` reads it after the own-pile check, so the cast path, the
+  enumerator and the view agree, as they do for the Trance. The filter still narrows which cards
+  (`FromLibraryToGraveyardThisTurn` for Coram), and the holder is still only the permanent's controller.
+- **"A land and a spell"** is one of each, said with two permissions on the card: a `LandsOnly` one with the per-type
+  budget `land`, and a `CastOnly` one with the one-use budget `permanent`. The budgets are tallied under different types,
+  so spending one leaves the other.
+- **Snapshot.** Additive: `allGraveyards`, recorded in `v9.txt`. The permission is derived, so nothing new is stored for
+  this card. No func reachable from `Game`.
+- **Tests.** `game/exile_links_6092_test.go` and Coram's card tests.
+- **Card.** Coram, the Undertaker (Full).
+
 ## Amendment — 2026-11-24 (#6091): a coloured additional cost, a gained leave-the-battlefield replacement, and a delayed trigger on the play
 
 Three additive pieces from the GAP2 one-shot play and cast offers (#5948, batch 7). No decision above changed.

@@ -5895,6 +5895,13 @@ pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
 
+**"Put a creature card exiled with <this> into its owner's graveyard"
+(#6092):** `ProcessCardExiledWithThis(label, match)` — Shelob, Dread
+Weaver. The processing component with `ExileCost.ExiledWithSource`: the
+picks are the cards exiled WITH the paying object (`Card.ExiledWith`
+against the source as it is now, CR 607.2a, 400.7), whoever owns them,
+and each still goes to its owner's graveyard.
+
 **"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
 composed with `Plus` — Synthesis Pod is
 `Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl())`. It is
@@ -14465,9 +14472,14 @@ field, not a closure.
 
 Three things to know:
 
-- **Not a reveal.** "You may reveal this card from your opening hand. If you
-  do, at the beginning of the first upkeep, …" (the Chancellors) is a
-  different shape — it arms a delayed trigger — and has no slot yet.
+- **A reveal is its own constructor.** "You may reveal this card from your
+  opening hand. If you do, at the beginning of your first upkeep, …"
+  (Devourer of Destiny) is `OpeningHand:
+  RevealFromOpeningHandForYourFirstUpkeep(label, body)`, `body` a registered
+  delayed-trigger body (ADR 0133 amendment 2026-11-24). The card stays in
+  hand, revealed; the trigger fires in its owner's first upkeep, the
+  starting player's included. "The first upkeep" of any player (the
+  Chancellors) has no constructor yet.
 - **The question is private.** It names a card in a hidden zone, so the
   view strips its words from every viewer but the chooser
   (`PendingChoice.private`, wire `private_text`). The table sees who the

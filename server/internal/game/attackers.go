@@ -214,6 +214,8 @@ func (g *Game) clearAttackAnnouncementsLocked() {
 	g.attackBands = nil
 	// #4154: and a chosen declaration's handoff (declaration_control.go).
 	g.AttackHandoff = nil
+	// #6098: and the record of what had to attack.
+	g.hadToAttack = nil
 }
 
 // stampEntryAttackerLocked makes a permanent that has just landed on

@@ -728,6 +728,14 @@ type GameSnapshot struct {
 	// bump.
 	FirstStrikeStepParticipants map[uuid.UUID]bool `json:"firstStrikeStepParticipants,omitempty"`
 
+	// HadToAttack is this combat's record of the creatures that had to
+	// attack (#6098, CR 508.1d): those carrying an attack requirement as
+	// the declaration passed its checkpoint. A file written before it
+	// restores as empty, which reads as "nothing had to attack" — only a
+	// file paused mid-combat after the declaration differs. Additive, no
+	// schema bump.
+	HadToAttack map[uuid.UUID]bool `json:"hadToAttack,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -1238,6 +1246,12 @@ type cardSnapshot struct {
 	// a restore that lost it would leave a Cavern of Souls producing
 	// mana for a tribe nobody named.
 	NamedTribe string `json:"namedTribe,omitempty"`
+	// HauntedID, HauntedEpoch and HauntingEpoch are Card's haunt link
+	// (#6083, haunt.go). Additive within the version and absent when
+	// there is no link, which is every card in an earlier file.
+	HauntedID     *uuid.UUID `json:"hauntedId,omitempty"`
+	HauntedEpoch  int        `json:"hauntedEpoch,omitempty"`
+	HauntingEpoch int        `json:"hauntingEpoch,omitempty"`
 	// ChosenColor is the "as this enters, choose a color" answer
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
@@ -1299,6 +1313,12 @@ type cardSnapshot struct {
 	// for ChosenPermanent's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenCard *ObjectRef `json:"chosenCard,omitempty"`
+	// Notes are the words this permanent's abilities noted for it
+	// (#6097): Long List of the Ents' creature types, Day of the Moon's
+	// names. Carried for ChosenCard's reason: a player chose them and
+	// nothing can re-derive them. Old snapshots have no key and read
+	// "nothing noted".
+	Notes []string `json:"notes,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -2688,6 +2708,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.AttacksDeclared = g.attacksDeclared
 	s.CombatHadAttackers = g.combatHadAttackers
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	s.HadToAttack = copyBoolMap(g.hadToAttack)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -3226,6 +3247,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Surveilled:               c.Surveilled,
 		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
+		HauntedID:                uuidPtrOrNil(c.HauntedID),
+		HauntedEpoch:             c.HauntedEpoch,
+		HauntingEpoch:            c.HauntingEpoch,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -3252,6 +3276,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		ChosenCard:               objectRefPtr(c.ChosenCard),
+		Notes:                    append([]string(nil), c.Notes...),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -3990,6 +4015,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.attacksDeclared = s.AttacksDeclared
 	g.combatHadAttackers = s.CombatHadAttackers
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
+	g.hadToAttack = copyBoolMap(s.HadToAttack)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -4399,6 +4425,9 @@ func restoreCard(c *cardSnapshot) Card {
 		Surveilled:               c.Surveilled,
 		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
+		HauntedID:                uuidOrNil(c.HauntedID),
+		HauntedEpoch:             c.HauntedEpoch,
+		HauntingEpoch:            c.HauntingEpoch,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -4425,6 +4454,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		ChosenCard:               objectRefValue(c.ChosenCard),
+		Notes:                    append([]string(nil), c.Notes...),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,

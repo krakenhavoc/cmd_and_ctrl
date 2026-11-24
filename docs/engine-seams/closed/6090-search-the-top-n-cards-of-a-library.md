@@ -1,0 +1,6 @@
+---
+title: "Searching only the top N cards of a library"
+date: 2026-11-24
+issues: [6090]
+---
+**Searching only the top N cards of a library** (#6090, CR 701.23a, 614.1) — a library search always looked at the whole library, so Aven Mindcensor's "If an opponent would search a library, that player searches the top four cards of that library instead" had nowhere to go. `CardDef.OpponentsSearchTopN` (card side `Spec.OpponentsSearchTopN`, read through `CatalogOpponentsSearchTopN` and `catalogAbilityKeyOf`, so a permanent that lost its abilities narrows nothing) is applied in the one search primitive, `SearchLibraryThenForEffect` (`game/search_top_n.go`): the searcher's library candidates are the top N cards of the library searched, whoever owns it. It is still a search: `EventSearchLibrary` fires and "then shuffle" shuffles the whole library. The graveyard or hand half of an and/or search is not a library and is not narrowed. Of several such permanents the smallest N applies. Snapshot: no new field. **Cards:** Aven Mindcensor (Full). **Still open on #6090:** Leonin Arbiter's "Any player may pay {2} for that player to ignore this effect until end of turn" (a CR 116.2d special action with a mana cost, which the `ignore_effect` action does not carry).

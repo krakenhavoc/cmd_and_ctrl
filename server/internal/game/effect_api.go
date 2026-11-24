@@ -945,7 +945,7 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 	// dredge offer, Underrealm Lich's pick) holds the rest of the
 	// instruction behind it (CR 121.6b) instead of the later draws
 	// racing ahead of the question.
-	if err := g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, n), DrawThen{}); err != nil {
+	if err := g.drawInstructionRunLocked(playerID, n, DrawThen{}); err != nil {
 		if err == ErrZoneEmpty {
 			// Flag set, stop drawing. SBA loop will handle the loss.
 			return nil
@@ -2772,7 +2772,9 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	// point of the chooser is that the searcher sees the full set.
 	matches := make([]uuid.UUID, 0, len(p.Library.Cards))
 	matched := make([]Card, 0, len(p.Library.Cards))
-	for _, c := range p.Library.Cards {
+	// #6090: an opponent's Aven Mindcensor narrows the look to the top
+	// cards of the library (search_top_n.go).
+	for _, c := range g.searchableLibraryCards(spec.Player, p.Library.Cards) {
 		if spec.Pred == nil || spec.Pred(c) {
 			matches = append(matches, c.InstanceID)
 			matched = append(matched, c)
