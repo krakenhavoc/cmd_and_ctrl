@@ -347,6 +347,17 @@ type ProtectionQuality struct {
 	// remove Auras": the instance removes no Aura at all
 	// (ProtectionSparingAuras).
 	SparesAuras bool
+
+	// SparesAttachedOf is CR 702.16p's form, Benevolent Blessing's "This
+	// effect doesn't remove Auras and Equipment you control that are already
+	// attached to it": the instance removes no Aura and no Equipment that
+	// this player controls (ProtectionSparingAttachedOf), and uuid.Nil for
+	// every other instance. "Already attached" needs no field of its own:
+	// protection from the quality stops anything else with it from becoming
+	// attached (CR 303.4d, 301.5c), so the permanents it can spare are
+	// exactly the ones attached when it began to apply. Read, like the
+	// others, only by the CR 704.5m attachment check.
+	SparesAttachedOf uuid.UUID
 }
 
 // protectionSparesHead opens the CR 702.16n exemption a token can end
@@ -359,6 +370,9 @@ type ProtectionQuality struct {
 const (
 	protectionSparesHead  = " (doesn't remove "
 	protectionSparesAuras = "Auras"
+	// protectionSparesAttached opens the CR 702.16p exemption's controller:
+	// "(doesn't remove Auras and Equipment controlled by <player id>)".
+	protectionSparesAttached = "Auras and Equipment controlled by "
 )
 
 // ProtectionSparingAura is `tok` (a "protection from <quality>" token)
@@ -385,11 +399,34 @@ func ProtectionSparingAuras(tok string) string {
 	return tok + protectionSparesHead + protectionSparesAuras + ")"
 }
 
+// ProtectionSparingAttachedOf is ProtectionSparingAura for "This effect
+// doesn't remove Auras and Equipment you control that are already attached
+// to it" (CR 702.16p, Benevolent Blessing): `controller` is the player "you"
+// means, the granting Aura's controller. "" for a token the grammar cannot
+// parse, or a nil player.
+func ProtectionSparingAttachedOf(tok string, controller uuid.UUID) string {
+	if controller == uuid.Nil {
+		return ""
+	}
+	if _, ok := ParseProtectionQuality(tok); !ok || strings.Contains(tok, protectionSparesHead) {
+		return ""
+	}
+	return tok + protectionSparesHead + protectionSparesAttached + controller.String() + ")"
+}
+
 // Spares reports whether this instance of protection leaves the
-// attachment `att` alone under CR 702.16n: `att` is an Aura, and the
-// instance says it doesn't remove that Aura or doesn't remove Auras.
+// attachment `att` alone under CR 702.16n and CR 702.16p: `att` is an Aura
+// the instance says it doesn't remove (that Aura, or all Auras), or an Aura
+// or Equipment controlled by the player a Benevolent Blessing names.
 func (q ProtectionQuality) Spares(att *Card) bool {
-	if att == nil || !att.IsAura() {
+	if att == nil {
+		return false
+	}
+	if q.SparesAttachedOf != uuid.Nil && att.Controller == q.SparesAttachedOf &&
+		(att.IsAura() || att.HasSubtype("Equipment")) {
+		return true
+	}
+	if !att.IsAura() {
 		return false
 	}
 	return q.SparesAuras || (q.SparesAura != uuid.Nil && q.SparesAura == att.InstanceID)
@@ -399,6 +436,8 @@ func (q ProtectionQuality) Spares(att *Card) bool {
 func (q ProtectionQuality) Token() string {
 	tok := protectionPrefix + q.Printed
 	switch {
+	case q.SparesAttachedOf != uuid.Nil:
+		return tok + protectionSparesHead + protectionSparesAttached + q.SparesAttachedOf.String() + ")"
 	case q.SparesAuras:
 		return tok + protectionSparesHead + protectionSparesAuras + ")"
 	case q.SparesAura != uuid.Nil:
@@ -422,8 +461,9 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 	// protection rather than protection that removes the Aura it
 	// promised to spare.
 	var (
-		sparesAura  uuid.UUID
-		sparesAuras bool
+		sparesAura     uuid.UUID
+		sparesAuras    bool
+		sparesAttached uuid.UUID
 	)
 	if i := strings.Index(rest, protectionSparesHead); i >= 0 {
 		what, closed := strings.CutSuffix(rest[i+len(protectionSparesHead):], ")")
@@ -432,6 +472,12 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 		}
 		if strings.EqualFold(what, protectionSparesAuras) {
 			sparesAuras = true
+		} else if who, ok := strings.CutPrefix(what, protectionSparesAttached); ok {
+			id, err := uuid.Parse(who)
+			if err != nil || id == uuid.Nil {
+				return ProtectionQuality{}, false
+			}
+			sparesAttached = id
 		} else if id, err := uuid.Parse(what); err == nil && id != uuid.Nil {
 			sparesAura = id
 		} else {
@@ -443,7 +489,7 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 	if !ok {
 		return ProtectionQuality{}, false
 	}
-	q.SparesAura, q.SparesAuras = sparesAura, sparesAuras
+	q.SparesAura, q.SparesAuras, q.SparesAttachedOf = sparesAura, sparesAuras, sparesAttached
 	return q, true
 }
 
