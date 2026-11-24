@@ -2029,6 +2029,7 @@ confirm confirm/tempt-with-discovery-search
 confirm confirm/tempt-with-immortality
 confirm confirm/tempt-with-mayhem
 confirm confirm/tempt-with-vengeance
+confirm confirm/tempting-contract
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/territory-culler-take
 confirm confirm/territory-culler-to-graveyard
@@ -3169,6 +3170,7 @@ run prompt-run/swarm-culler-draw
 run prompt-run/sword-of-truth-and-justice-counter
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
+run prompt-run/taste-of-death-sacrificed
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/temur-sabertooth-return
 run prompt-run/tenured-tethermage-tokens
@@ -4932,6 +4934,7 @@ tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
+tail then/zaffai-after-scry
 tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
