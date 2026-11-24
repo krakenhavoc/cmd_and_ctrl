@@ -22,8 +22,8 @@ func laviniaBoard(t *testing.T) (g *game.Game, me, opp *game.Player) {
 	me, opp = g.Seats[0], g.Seats[1]
 	effectstest.B12Push(g, me.ID, "Lavinia, Azorius Renegade", "Legendary Creature — Human Soldier", laviniaAzoriusRenegadeOracle, 2, 2)
 	effectstest.AangAdvanceToMain(t, g, 1)
+	effectstest.PushLands(g, opp.ID, 2)
 	g.WithWriteLock(func() {
-		effectstest.PushLands(g, opp.ID, 2)
 		for range 6 {
 			opp.ManaPool.AddMana(game.ManaToken{Color: "G"})
 		}
