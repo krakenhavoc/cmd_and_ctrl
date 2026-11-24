@@ -69,3 +69,10 @@ From server/, each as its own command: `go vet ./internal/cards/... ./internal/g
 - No AI attribution lines anywhere.
 - Push `feat/s82-<set>-b<NN>` and STOP: do NOT open a PR. Put the PR-body text in the FINAL commit message: a one-line subject `feat(server): <SET> cards, batch <NN>`, then the cards built, any new seam / token rows / effect keys, `## Skipped` with exact clauses (if any), the checks you ran with results, and one line `oracle-ids=<id>,<id>,...`.
 - Your final message: cards built, skipped (with clauses), each check with its result.
+
+## Full card data (added 2026-11-23)
+`all-cards.json.gz` on this branch holds one printing per oracle_id for every card Scryfall knows, preferring English and paper printings, plus every token and emblem printing. It was cut from the 2026-11-23 Scryfall bulk file.
+- `sets-index.json.gz` maps each set code to its name, release date, set_type, digital flag and the oracle_ids printed in it.
+- Use `all-cards.json.gz` in place of `s82-cards.json.gz` for any card outside the cut (older sets, Prophecy, and so on):
+  `git show FETCH_HEAD:all-cards.json.gz | gunzip > data/scryfall/default-cards.json`.
+- With this file, the coverage test's "catalogued oracle IDs are not in the dump" check should pass too.
