@@ -1958,6 +1958,7 @@ confirm confirm/tainted-pact-take
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
+confirm confirm/tempt-with-immortality
 confirm confirm/tempt-with-mayhem
 confirm confirm/tempt-with-vengeance
 confirm confirm/terrapact-intimidator-landers-or-counters
@@ -2654,6 +2655,8 @@ payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
+payunless pay-unless/relentless-dead-to-hand
+payunless pay-unless/relentless-dead-zombie
 payunless pay-unless/remnant-of-the-rising-star-x-counters
 payunless pay-unless/replication-specialist-copy
 payunless pay-unless/rhystic-study-may-draw
@@ -3233,6 +3236,7 @@ tail arcane-bombardment/copy-exiled
 tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
 tail archfiends-vessel/demon
+tail arden-angel/rolled
 tail arid-archway/surveil-if-desert-returned
 tail arjun-the-shifting-flame/draw-that-many
 tail ark-of-hunger/play-the-milled-card
@@ -3833,6 +3837,7 @@ tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
 tail incandescent-soulstoke/entered
+tail incarnation-technique/milled
 tail incubate/next-round
 tail incubate/transform-all-incubators
 tail indoctrination-attendant/mite
