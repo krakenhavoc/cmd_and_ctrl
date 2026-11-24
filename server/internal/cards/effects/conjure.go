@@ -3,6 +3,7 @@ package effects
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -17,22 +18,22 @@ import (
 // and game.EmblemDef.Boon; a boon is declared as EmblemSpec{Boon: true}
 // and made by the ordinary CreateEmblem primitive.
 
-func init() {
-	var recs []cards.Card
-	if err := json.Unmarshal([]byte(conjurableRecordsJSON), &recs); err != nil {
-		panic("effects: conjurable_cards.go does not parse: " + err.Error())
-	}
-	for _, r := range recs {
+// registerConjurables files every record with the engine, once. It runs
+// from CheckConjure, which every conjuring card calls from its init, so
+// the records are filed before any card can conjure (the core has no
+// init of its own: ADR 0225).
+var registerConjurables = sync.OnceFunc(func() {
+	for _, r := range ConjurableRecords() {
 		game.RegisterConjurable(deck.ToGameCard(r, false))
 	}
-}
+})
 
 // ConjurableRecords are the printed records conjure builds its cards
 // from, for the audit that holds them to the dump.
 func ConjurableRecords() []cards.Card {
 	var recs []cards.Card
 	if err := json.Unmarshal([]byte(conjurableRecordsJSON), &recs); err != nil {
-		panic(err)
+		panic("effects: conjurable_cards.go does not parse: " + err.Error())
 	}
 	return recs
 }
@@ -92,6 +93,7 @@ func (c Conjure) Apply(ctx *Context) error {
 // CheckConjure is the boot guard for a Conjure: every name must have a
 // printed record, and the zone must be one conjure knows.
 func CheckConjure(card string, c Conjure) Conjure {
+	registerConjurables()
 	if len(c.Names) == 0 {
 		panic(fmt.Sprintf("effects: %s conjures nothing", card))
 	}
@@ -136,6 +138,19 @@ func (p PerpetuallyGainKeyword) Apply(ctx *Context) error {
 	return ctx.Game.GainKeywordPerpetuallyForEffect(id, p.Keyword)
 }
 
+// TargetPlayerDraws is "target player draws N cards": the first player
+// among the item's targets still legal as it resolves (CR 608.2b).
+type TargetPlayerDraws struct{ N int }
+
+func (s TargetPlayerDraws) Apply(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return DrawCards{Player: t.ID, N: s.N}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // PermanentsYouControlNamed lists the permanents `you` control whose
 // name is `name` ("each permanent you control named Chitterspitter").
 // The name is read through the layered view, so a permanent that has
@@ -163,7 +178,7 @@ type CounterOnEachPermanentYouControlNamed struct {
 
 func (s CounterOnEachPermanentYouControlNamed) Apply(ctx *Context) error {
 	for _, id := range PermanentsYouControlNamed(ctx.Game, ctx.Controller(), s.Name) {
-		if err := (AddCounter{Target: id, Kind: s.Kind, N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: id, Kind: s.Kind, N: 1}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
 		}
 	}

@@ -18,16 +18,6 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Draws: 3},
 		Targets:      effects.TargetPlayer("target player"),
-		OnResolve:    effects.ResolveSteps(effects.Instruction(targetPlayerDrawsThree)),
+		OnResolve:    effects.ResolveSteps(effects.TargetPlayerDraws{N: 3}),
 	})
-}
-
-// targetPlayerDrawsThree is "target player draws three cards", the
-// player re-checked at resolution (CR 608.2b).
-func targetPlayerDrawsThree(ctx *effects.Context) error {
-	who, ok := ctx.ClauseTarget(0)
-	if !ok || who.Kind != game.TargetPlayer {
-		return nil
-	}
-	return effects.DrawCards{Player: who.ID, N: 3}.Apply(ctx)
 }

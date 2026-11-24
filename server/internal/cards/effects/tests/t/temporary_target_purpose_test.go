@@ -98,6 +98,7 @@ var untilEndOfTurnExempt = map[string]string{
 	// The target is a card in a graveyard, which a permanent direction
 	// cannot describe: it gains embalm until end of turn.
 	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
+	"Sapphire Collector":   "the target is a graveyard card, not a permanent",
 	// The target is the opponent given an emblem; the "until end of turn" is
 	// the emblem's, about the creatures that attack them.
 	"Garruk, Apex Predator": "the target is an opponent given an emblem",

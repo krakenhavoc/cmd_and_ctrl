@@ -26,16 +26,6 @@ func init() {
 		AdditionalCost: effects.MinusOneCounterOnACreatureYouControlCost(),
 		Purpose:        game.Purpose{Answers: game.AnswerRemove},
 		Targets:        effects.TargetCreature("target creature"),
-		OnResolve:      effects.ResolveSteps(effects.Instruction(destroyFirstTargetCreature)),
+		OnResolve:      effects.ResolveSteps(effects.Instruction(effects.KineticOozeDestroy)),
 	})
-}
-
-// destroyFirstTargetCreature destroys the spell's target if it is still
-// legal.
-func destroyFirstTargetCreature(ctx *effects.Context) error {
-	t, ok := ctx.ClauseTarget(0)
-	if !ok || t.Kind != game.TargetCard {
-		return nil
-	}
-	return effects.DestroyTarget{Target: t.ID}.Apply(ctx)
 }
