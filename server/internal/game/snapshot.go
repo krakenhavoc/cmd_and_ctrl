@@ -1238,6 +1238,12 @@ type cardSnapshot struct {
 	// a restore that lost it would leave a Cavern of Souls producing
 	// mana for a tribe nobody named.
 	NamedTribe string `json:"namedTribe,omitempty"`
+	// HauntedID, HauntedEpoch and HauntingEpoch are Card's haunt link
+	// (#6083, haunt.go). Additive within the version and absent when
+	// there is no link, which is every card in an earlier file.
+	HauntedID     *uuid.UUID `json:"hauntedId,omitempty"`
+	HauntedEpoch  int        `json:"hauntedEpoch,omitempty"`
+	HauntingEpoch int        `json:"hauntingEpoch,omitempty"`
 	// ChosenColor is the "as this enters, choose a color" answer
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
@@ -3232,6 +3238,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Surveilled:               c.Surveilled,
 		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
+		HauntedID:                uuidPtrOrNil(c.HauntedID),
+		HauntedEpoch:             c.HauntedEpoch,
+		HauntingEpoch:            c.HauntingEpoch,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -4406,6 +4415,9 @@ func restoreCard(c *cardSnapshot) Card {
 		Surveilled:               c.Surveilled,
 		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
+		HauntedID:                uuidOrNil(c.HauntedID),
+		HauntedEpoch:             c.HauntedEpoch,
+		HauntingEpoch:            c.HauntingEpoch,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,

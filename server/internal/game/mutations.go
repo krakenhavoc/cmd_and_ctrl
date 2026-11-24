@@ -5840,6 +5840,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		drew := p.AttemptedEmptyDraw
 		p.AttemptedEmptyDraw = false
 		if cause, ok := g.sbaLossCauseLocked(p, drew); ok {
+			// #6096, CR 704.7: one "if you would lose the game"
+			// replacement replaces every loss this pass would deal p.
+			if g.replaceLossLocked(p, cause) {
+				fired = true
+				continue
+			}
 			losers = append(losers, lossEntry{p: p, cause: cause})
 		}
 	}
