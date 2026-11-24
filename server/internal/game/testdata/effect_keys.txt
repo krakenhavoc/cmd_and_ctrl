@@ -214,6 +214,7 @@ body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
 body fireblade-artist/damage
 body fires-of-mount-doom/damage-each-player
+body flamethrower-sonata/damage
 body flanking/shrink
 body flash/cleanup-sacrifice
 body flicker/return-exiled-creatures-tapped
@@ -1425,6 +1426,8 @@ choose choose-cards/s82-old-b005-karn-scion-pick
 choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-old-b021-hokori-untap-a-land
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
+choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
+choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -4127,6 +4130,7 @@ tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
 tail oona-queen-of-the-fae/after-mill
 tail orcus-prince-of-undeath/gain-haste-until-eot
+tail oriq-loremage/instant-or-sorcery-counter
 tail ormos-archive-keeper/then-draw
 tail ostrich-horse/after-mill
 tail outlaw-stitcher/token-counters
