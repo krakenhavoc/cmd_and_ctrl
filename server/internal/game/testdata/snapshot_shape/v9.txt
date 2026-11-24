@@ -83029,6 +83029,9 @@ turnTally.excessDamaged	array
 turnTally.excessDamaged[]	object
 turnTally.excessDamaged[].controller	custom(uuid.UUID)
 turnTally.excessDamaged[].creature	bool
+turnTally.excessDamaged[].object	object
+turnTally.excessDamaged[].object.epoch	number:int
+turnTally.excessDamaged[].object.id	custom(uuid.UUID)
 turnTally.excessDamaged[].planeswalker	bool
 turnTally.exerts	array
 turnTally.exerts[]	object

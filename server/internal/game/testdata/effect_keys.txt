@@ -2963,6 +2963,7 @@ run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/light-of-judgment-destroy
 run prompt-run/liliana-dreadhorde-general-keep
 run prompt-run/lithobraking-sacrifice
+run prompt-run/lord-of-the-pit-cant-sacrifice
 run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
 run prompt-run/loyal-gryff-return
