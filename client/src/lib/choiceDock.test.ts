@@ -504,9 +504,15 @@ describe("voteRequest and gameOverRequest", () => {
           voted: ["b"],
         },
       });
-    const bob = councilVoteRequest(numberAsk([{ voter: "b", option: SECRET_NUMBER_OPTION, number: 7 }]), "b", seats);
+    const bob = councilVoteRequest(
+      numberAsk([{ voter: "b", option: SECRET_NUMBER_OPTION, number: 7 }]),
+      "b",
+      seats,
+    );
     expect(bob?.label).toBe("secret choice");
-    expect(bob?.detail).toBe("Cy is choosing in secret · 1 chose so far · you chose 7, waiting for the others");
+    expect(bob?.detail).toBe(
+      "Cy is choosing in secret · 1 chose so far · you chose 7, waiting for the others",
+    );
     const ann = councilVoteRequest(numberAsk([]), "a", seats);
     expect(ann?.detail).toBe("Cy is choosing in secret · 1 chose so far");
   });
