@@ -55,18 +55,6 @@ func oldB036Zone(g *game.Game, id uuid.UUID) game.ZoneKind {
 	return out
 }
 
-func oldB036Count(g *game.Game, name string, controller uuid.UUID) int {
-	n := 0
-	g.ReadSnapshot(func() {
-		for _, c := range g.Battlefield.Cards {
-			if c.Name == name && c.Controller == controller {
-				n++
-			}
-		}
-	})
-	return n
-}
-
 // oldB036Suspend suspends the card from the active seat's hand with `pay`
 // mana, then walks the table through the countdown until the last time counter
 // comes off and the free cast is offered. It returns the card's id and the
