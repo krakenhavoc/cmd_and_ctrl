@@ -669,4 +669,6 @@ var TokenTable = map[string]game.Card{
 	"1/1 blue Merfolk Wizard": {Name: "Merfolk Wizard", TypeLine: "Token Creature — Merfolk Wizard", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"4/4 green Elemental":     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"5/5 white Giant Warrior": {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 5, Toughness: 5, Colors: []string{"W"}},
+	// S82 GAP2 batch 8 (#5948): Tasha, the Witch Queen's Demon.
+	"3/3 black Demon": {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 3, Toughness: 3, Colors: []string{"B"}},
 }
