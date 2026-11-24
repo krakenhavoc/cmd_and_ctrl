@@ -379,6 +379,7 @@ body offspring/granted-token
 body ogre-battlecaster/pump
 body old-b036/mount-velus-manticore-strike
 body old-b049/devouring-tendrils-gain-2
+body old-b042/rushed-rebirth-search
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -4125,6 +4126,7 @@ tail old-b036/glimpse-of-tomorrow-shuffled
 tail old-b041/emergent-sequence-animate
 tail old-b041/imbraham-exiled
 tail old-b041/kianne-exiled
+tail old-b042/introduction-to-annihilation-draw
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
