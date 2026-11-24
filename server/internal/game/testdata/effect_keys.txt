@@ -1928,6 +1928,7 @@ confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/purestrain-genestealer-remove-counter
 confirm confirm/pygmy-hippo-lose-mana
+confirm confirm/questing-phelddagrif-draw
 confirm confirm/rakdos-patron-of-chaos-sacrifice
 confirm confirm/ral-monsoon-mage-transform
 confirm confirm/rampant-frogantua-mill

@@ -156,6 +156,8 @@ var knownUnmatchedTokens = map[string]string{
 	// creature tokens". No Monkey token card was printed for it; the template follows
 	// the oracle text.
 	"2/2 green Monkey": "no Monkey token card was printed for Monkey Cage",
+	// Questing Phelddagrif (Secret Lair Drop) makes "a 1/1 green Hippo creature token"; the only Hippo token card in the dump is a 3/3.
+	"1/1 green Hippo": "no 1/1 green Hippo token card in the dump; Questing Phelddagrif prints the token in its text",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
