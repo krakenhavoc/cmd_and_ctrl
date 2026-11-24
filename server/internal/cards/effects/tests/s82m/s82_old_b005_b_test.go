@@ -59,7 +59,7 @@ func TestS82OldB005BVraskaPlusTwoSacrificesForLifeAndACard(t *testing.T) {
 	life, hand := me.Life, me.Hand.Size()
 	effectstest.S82Activate(t, g, me.ID, vraska, 0, game.ActivateAbilityParams{})
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerSacrifice(t, g, me.ID, bear)
+	effectstest.AnswerMayCounter(t, g, me.ID, bear)
 	effectstest.PassPriorityAroundTable(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, bear); ok {
 		t.Error("the Bear was not sacrificed")
@@ -72,7 +72,26 @@ func TestS82OldB005BVraskaPlusTwoSacrificesForLifeAndACard(t *testing.T) {
 	}
 }
 
-func TestS82OldB005BVraskaPlusTwoCanDeclineAndNeverSacrificesHerself(t *testing.T) {
+func TestS82OldB005BVraskaPlusTwoDeclinedGivesNothing(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	vraska := effectstest.S82Walker(g, me.ID, "Vraska, Golgari Queen", s82OldB5VraskaOracle, 4)
+	bear := effectstest.B12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	effectstest.AdvanceToMain(t, g)
+	life, hand := me.Life, me.Hand.Size()
+	effectstest.S82Activate(t, g, me.ID, vraska, 0, game.ActivateAbilityParams{})
+	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AnswerMayCounter(t, g, me.ID, uuid.Nil)
+	effectstest.PassPriorityAroundTable(t, g)
+	if _, ok := effectstest.BattlefieldCard(g, bear); !ok {
+		t.Error("the Bear was sacrificed after declining")
+	}
+	if me.Life != life || me.Hand.Size() != hand {
+		t.Errorf("life %d→%d, hand %d→%d after declining", life, me.Life, hand, me.Hand.Size())
+	}
+}
+
+func TestS82OldB005BVraskaPlusTwoNeverSacrificesHerself(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	vraska := effectstest.S82Walker(g, me.ID, "Vraska, Golgari Queen", s82OldB5VraskaOracle, 4)
@@ -215,7 +234,9 @@ func TestS82OldB005BBolasUltimateDamagesDiscardsSevenThenSacrificesSeven(t *test
 	if got := opp.Hand.Size(); got != 2 {
 		t.Fatalf("hand %d after discarding seven of nine, want 2", got)
 	}
-	effectstest.AnswerSacrifice(t, g, opp.ID, perms[:7]...)
+	for _, id := range perms[:7] {
+		effectstest.AnswerSacrifice(t, g, opp.ID, id)
+	}
 	effectstest.PassPriorityAroundTable(t, g)
 	left := 0
 	for _, id := range perms {
@@ -239,9 +260,6 @@ func TestS82OldB005BBolasUltimateOnAPlaneswalkerHitsItsController(t *testing.T) 
 	}
 	effectstest.S82Activate(t, g, me.ID, bolas, 2, game.ActivateAbilityParams{Targets: effectstest.S82TargetCard(walker)})
 	effectstest.PassPriorityAroundTable(t, g)
-	if _, ok := effectstest.BattlefieldCard(g, walker); ok {
-		t.Error("the planeswalker survived seven damage")
-	}
 	var hand []uuid.UUID
 	for _, c := range opp.Hand.Cards {
 		hand = append(hand, c.InstanceID)
@@ -249,6 +267,16 @@ func TestS82OldB005BBolasUltimateOnAPlaneswalkerHitsItsController(t *testing.T) 
 	effectstest.AnswerDiscard(t, g, opp.ID, hand[:7]...)
 	if opp.Hand.Size() != len(hand)-7 {
 		t.Errorf("the walker's controller kept %d cards, want %d", opp.Hand.Size(), len(hand)-7)
+	}
+	// The walker, at 0 loyalty from the damage, is the one permanent left to
+	// sacrifice for "sacrifices seven permanents".
+	if got := effectstest.LoyaltyOf(g, walker); got != 0 {
+		t.Errorf("walker loyalty %d, want 0 after seven damage", got)
+	}
+	effectstest.AnswerSacrifice(t, g, opp.ID, walker)
+	effectstest.PassPriorityAroundTable(t, g)
+	if _, ok := effectstest.BattlefieldCard(g, walker); ok {
+		t.Error("the planeswalker survived seven damage")
 	}
 }
 
@@ -311,10 +339,24 @@ func TestS82OldB005BScionsUltimateDrawsFourThenDealsDamageForTheHand(t *testing.
 
 // --- Chandra, Fire Artisan --------------------------------------------------
 
+// s82OldB5ChandraWith puts Chandra onto the battlefield and gives her her loyalty
+// the way a placement does, so the event log knows how many counters she had.
+func s82OldB5ChandraWith(g *game.Game, owner uuid.UUID, loyalty int) uuid.UUID {
+	id := uuid.New()
+	g.Battlefield.PushTop(game.Card{InstanceID: id, Name: "Chandra, Fire Artisan", TypeLine: "Legendary Planeswalker — Chandra",
+		OracleID: s82OldB5ChandraOracle, Owner: owner, Controller: owner})
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventZoneMove, CardID: id, OldZone: game.ZoneHand, NewZone: game.ZoneBattlefield})
+		_ = g.AddCounterForEffect(id, game.CounterLoyalty, loyalty)
+	})
+	g.RunStateChecksForTest()
+	return id
+}
+
 func TestS82OldB005BChandraPlusOneExilesTheTopCardAndMayPlayIt(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	chandra := effectstest.S82Walker(g, me.ID, "Chandra, Fire Artisan", s82OldB5ChandraOracle, 4)
+	chandra := s82OldB5ChandraWith(g, me.ID, 4)
 	top := effectstest.SeedLibraryTop(me, "Mountain", "Basic Land — Mountain", "")
 	effectstest.AdvanceToMain(t, g)
 	lib := me.Library.Size()
@@ -334,7 +376,7 @@ func TestS82OldB005BChandraPlusOneExilesTheTopCardAndMayPlayIt(t *testing.T) {
 func TestS82OldB005BChandraMinusSevenExilesSevenAndTriggersSevenDamage(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
-	chandra := effectstest.S82Walker(g, me.ID, "Chandra, Fire Artisan", s82OldB5ChandraOracle, 7)
+	chandra := s82OldB5ChandraWith(g, me.ID, 7)
 	effectstest.AdvanceToMain(t, g)
 	lib, life := me.Library.Size(), opp.Life
 	effectstest.S82Activate(t, g, me.ID, chandra, 1, game.ActivateAbilityParams{})
@@ -352,7 +394,7 @@ func TestS82OldB005BChandraMinusSevenExilesSevenAndTriggersSevenDamage(t *testin
 func TestS82OldB005BChandraTriggersOnDamageThatRemovesLoyaltyOnce(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
-	chandra := effectstest.S82Walker(g, me.ID, "Chandra, Fire Artisan", s82OldB5ChandraOracle, 4)
+	chandra := s82OldB5ChandraWith(g, me.ID, 4)
 	effectstest.AdvanceToMain(t, g)
 	life := opp.Life
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(chandra, game.CounterLoyalty, -2) })
