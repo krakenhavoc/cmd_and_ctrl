@@ -97,7 +97,6 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 	}
 	for oracle, name := range map[string]string{
 		"855a4837-7fc8-4b97-afbd-daa88e322c89": "Walking Atlas",
-		"872ef617-7cdb-4a7a-85f5-efc9e12bece5": "Elvish Piper",
 	} {
 		if _, ok := effects.Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #391 but is registered — update the issue", name)
