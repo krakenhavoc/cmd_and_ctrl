@@ -1001,6 +1001,22 @@ type Card struct {
 	// Game.ChosenExiledCardOf (chosen_card.go).
 	ChosenCard ObjectRef
 
+	// Notes are the words this object's abilities have noted or chosen
+	// for it, in order, each once: Long List of the Ents' and Volo's
+	// Journal's "a creature type that hasn't been noted for this <object>",
+	// Day of the Moon's "a name chosen for this enchantment" (#6097). A
+	// per-object list a later ability of the same object reads back, so
+	// "hasn't been noted" spans chapters, turns and abilities. Nil is
+	// "nothing noted".
+	//
+	// ChosenCard's lifecycle: per INSTANCE, carried by the snapshot and by
+	// clone, cleared when this permanent leaves the battlefield (CR 400.7:
+	// a Saga that returns is a new object nothing was noted for), and NOT a
+	// copiable value (CR 707.2). Always replaced, never appended in place
+	// (clone shares the backing array). Written by Game.AddNoteForEffect and
+	// read with Game.NotesForEffect (notes.go).
+	Notes []string
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.

@@ -624,6 +624,10 @@ var cardFields = plan(
 	// ADR 0155's 2026-11-05 amendment: Koh's last chosen card. A
 	// player's choice, so nothing can rebuild it.
 	"ChosenCard", carried, "",
+	// #6097: the words noted for this permanent (Long List of the Ents'
+	// creature types, Day of the Moon's names). Player choices nothing
+	// can re-derive.
+	"Notes", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.

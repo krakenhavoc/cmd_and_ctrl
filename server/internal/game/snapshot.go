@@ -1299,6 +1299,12 @@ type cardSnapshot struct {
 	// for ChosenPermanent's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenCard *ObjectRef `json:"chosenCard,omitempty"`
+	// Notes are the words this permanent's abilities noted for it
+	// (#6097): Long List of the Ents' creature types, Day of the Moon's
+	// names. Carried for ChosenCard's reason: a player chose them and
+	// nothing can re-derive them. Old snapshots have no key and read
+	// "nothing noted".
+	Notes []string `json:"notes,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -3252,6 +3258,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		ChosenCard:               objectRefPtr(c.ChosenCard),
+		Notes:                    append([]string(nil), c.Notes...),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -4425,6 +4432,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		ChosenCard:               objectRefValue(c.ChosenCard),
+		Notes:                    append([]string(nil), c.Notes...),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
