@@ -76,6 +76,12 @@ const (
 	// ManaRestrictTurnFaceUp is the restriction that does (#3172,
 	// Creeping Peeper).
 	SpendPurposeTurnFaceUp ManaSpendPurpose = "turn_face_up"
+
+	// SpendPurposeForetell is paying the {2} to foretell a card (CR 702.143a,
+	// CR 116.2h). Neither a cast nor an activation, so mana restricted to
+	// either does not pay it; ManaRestrictForetell is the restriction that
+	// does (Karfell Harbinger, S82 OLD batch 071).
+	SpendPurposeForetell ManaSpendPurpose = "foretell"
 )
 
 // Restriction tag constants and constructors. Card files build tags
@@ -121,6 +127,12 @@ const (
 	// face up" half of Creeping Peeper's restriction. Combine it with a
 	// cast clause through ManaRestrictAnyOf.
 	ManaRestrictTurnFaceUp = "purpose:turn_face_up"
+	// ManaRestrictForetell permits the token only on the cost of the foretell
+	// special action (CR 702.143a): the "foretell a card from your hand" half
+	// of Karfell Harbinger's "Spend this mana only to foretell a card from your
+	// hand or cast an instant or sorcery spell". Combine it with the cast
+	// clause through ManaRestrictAnyOf.
+	ManaRestrictForetell = "purpose:foretell"
 	// ManaRestrictColorless permits the token only when the object
 	// being paid for is colorless (CR 105.2c) — Shrine of the
 	// Forsaken Gods, Eldrazi Temple.
@@ -860,13 +872,15 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:
 		return ctx.Purpose == SpendPurposeTurnFaceUp
+	case ManaRestrictForetell:
+		return ctx.Purpose == SpendPurposeForetell
 	case ManaRestrictNoGeneric:
 		// Decided per symbol by the solvers (noGeneric), not by the
 		// object being paid for: nothing here to refuse.
 		return true
 	case ManaRestrictNotFromHand:
 		switch ctx.Purpose {
-		case SpendPurposeActivate, SpendPurposeUnlock, SpendPurposeTurnFaceUp:
+		case SpendPurposeActivate, SpendPurposeUnlock, SpendPurposeTurnFaceUp, SpendPurposeForetell:
 			return true
 		case SpendPurposeCast:
 			return ctx.CastFrom != "" && ctx.CastFrom != ZoneHand
@@ -1081,7 +1095,7 @@ func containsFold(xs []string, want string) bool {
 // face up (#3172): its face-down self has no colour a restriction should
 // read as "colorless".
 func (ctx ManaSpendContext) hasPaidForObject() bool {
-	return ctx.Purpose != SpendPurposeUnknown && ctx.Purpose != SpendPurposeTurnFaceUp
+	return ctx.Purpose != SpendPurposeUnknown && ctx.Purpose != SpendPurposeTurnFaceUp && ctx.Purpose != SpendPurposeForetell
 }
 
 // ManaAbilityRestrictionsLocked is the spend restrictions one activation
