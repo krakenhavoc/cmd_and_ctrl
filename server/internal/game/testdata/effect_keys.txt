@@ -1085,6 +1085,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
 choose choose-cards/lively-dirge-return
+choose choose-cards/living-lore-exile
 choose choose-cards/living-wish-take
 choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
@@ -1398,6 +1399,7 @@ choose choose-cards/research-shuffle
 choose choose-cards/resonance-technician-investigate-twice
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
+choose choose-cards/revival-experiment-chosen
 choose choose-cards/ring-bearer
 choose choose-cards/rinoa-angel-wing-return
 choose choose-cards/rip-spawn-hunter-different-powers
@@ -1441,6 +1443,8 @@ choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-old-b046-illuminate-history
+choose choose-cards/s82-old-b054-first-picked
+choose choose-cards/s82-old-b054-second-picked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1921,6 +1925,7 @@ confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
 confirm confirm/lim-duls-vault-again
+confirm confirm/living-lore-sacrifice
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -2338,6 +2343,8 @@ option option-pick/hunters-axe-keyword
 option option-pick/ilharg-the-raze-boar-attacks
 option option-pick/immard-the-stormcleaver-charge
 option option-pick/indulgent-tormentor-answer
+option option-pick/infernal-offering-first-chosen
+option option-pick/infernal-offering-second-chosen
 option option-pick/inspirit-flagship-vessel-counters
 option option-pick/intellectual-offering-draw
 option option-pick/intellectual-offering-untap
@@ -3053,6 +3060,7 @@ run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/indoctrination-attendant-return
+run prompt-run/infernal-offering-sacrificed
 run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
@@ -4756,6 +4764,7 @@ tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/lim-duls-vault-bottomed
 tail then/lim-duls-vault-looked
+tail then/living-lore-cast
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
@@ -4934,6 +4943,8 @@ tail through-the-forest-gate/shuffle-and-gain-8
 tail thunderbolts-conspiracy/hero
 tail thunderous-debut/shuffle-after-put
 tail tinybones-bauble-burglar/after-exile
+tail together/revival-experiment-life
+tail together/s82-old-b054-chosen-returns
 tail token-and-attach-source/attach
 tail tomb-fortress/after-mill
 tail tombstone-stairwell/next-players-tombspawn
