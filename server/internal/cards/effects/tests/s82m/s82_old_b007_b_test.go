@@ -167,7 +167,7 @@ func TestS82OldB007AjaniMinusSixMakesAnAvatarAsBigAsYourLife(t *testing.T) {
 	if c := effectstest.EffectiveCardForTest(t, g, id); c.CurrentPower() != me.Life || c.CurrentToughness() != me.Life {
 		t.Errorf("Avatar %d/%d, life %d", c.CurrentPower(), c.CurrentToughness(), me.Life)
 	}
-	g.WithWriteLock(func() { me.Life = 7 })
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(walker, me.ID, 7-me.Life) })
 	g.RunStateChecksForTest()
 	if c := effectstest.EffectiveCardForTest(t, g, id); c.CurrentPower() != 7 || c.CurrentToughness() != 7 {
 		t.Errorf("after life change Avatar %d/%d, want 7/7", c.CurrentPower(), c.CurrentToughness())
