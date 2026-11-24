@@ -187,6 +187,7 @@ body evie-frye/unblockable
 body evoke/sacrifice
 body evolve/grow
 body exalted/pump
+body exile-and-return/hand
 body exile-top/play-until-end-of-your-next-turn
 body exile/glimpse-the-impossible-bin
 body exile/listed-cards
@@ -331,6 +332,7 @@ body mana-rider/dispatch-targeted
 body marchesa-the-black-rose/return
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
+body meandering-towershell/return
 body meanders-guide/return
 body mechtitan-core/return-exiled
 body meek-attack/sacrifice
@@ -801,6 +803,8 @@ choose choose-cards/danse-macabre-return
 choose choose-cards/dark-bargain-take
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
+choose choose-cards/dawnbreak-reclaimer-first
+choose choose-cards/dawnbreak-reclaimer-second
 choose choose-cards/deadly-cover-up-exile
 choose choose-cards/death-wish-take
 choose choose-cards/deathbonnet-hulk-exile
@@ -1359,6 +1363,7 @@ choose choose-cards/rambling-possum-return-saddlers
 choose choose-cards/rampant-frogantua-lands
 choose choose-cards/read-the-runes-discarded
 choose choose-cards/reality-fracture-hand-card-on-bottom
+choose choose-cards/reality-smasher-discard
 choose choose-cards/realmbreaker-steal-land
 choose choose-cards/realms-uncharted-settle
 choose choose-cards/reanimate-one-milled
@@ -1809,6 +1814,7 @@ confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
+confirm confirm/dawnbreak-reclaimer-return
 confirm confirm/deadly-complication-unsuspect
 confirm confirm/delifs-cone-gain-life
 confirm confirm/delina-roll-again
@@ -2237,6 +2243,7 @@ option option-pick/craig-boone-damage
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
+option option-pick/dawnbreak-reclaimer-opponent
 option option-pick/demanding-dragon-answer
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
@@ -2315,6 +2322,7 @@ option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/master-of-ceremonies-answer
 option option-pick/me-the-immortal-counter
+option option-pick/meandering-towershell-attacks
 option option-pick/memories-returning-opponent
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
@@ -3658,6 +3666,7 @@ tail engine/exile-return-transformed-then
 tail engine/exile-return-transformed-with-counter
 tail engine/exile-until-another-granted
 tail engine/exiled-and-plotted
+tail engine/exiled-and-return
 tail engine/exiled-creature-or-hand
 tail engine/exiled-with-counter
 tail engine/explore-after-scry
@@ -4002,6 +4011,7 @@ tail mass/whiptongue-hydra-counters
 tail mass/worlds-within-worlds-exiled
 tail mass/zero-point-ballad-return
 tail mazes-end/win-the-game
+tail meandering-towershell/exiled
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail mechtitan-core/token-created
@@ -4056,6 +4066,7 @@ tail nahiris-resolve/schedule-return-at-next-upkeep
 tail nantuko-cultivator/discarded
 tail narset-enlightened-exile/copy-exiled
 tail nashi-moons-legacy/copy-exiled
+tail nathan-drake/exiled
 tail navigation-orb/land-to-hand
 tail necromantic-selection/black-zombie-then-exile
 tail necron-deathmark/after-mill
@@ -4888,6 +4899,7 @@ tail urborg-scavengers/counter
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled
+tail vaevictis-asmadi/sacrificed
 tail valduk-keeper-of-the-flame/exile-the-elementals
 tail valgavoths-onslaught/manifest-again
 tail valkyries-call/angel

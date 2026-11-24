@@ -1885,6 +1885,10 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileAndReturn is Feather, the Redeemed's mark: exile the resolving
+	// spell and return it to its controller's hand at the beginning of the
+	// next end step. Carried for the reason ExileWithCounter is.
+	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
 	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
 	// resolving spell with this many time counters and give it suspend.
 	// Carried for the reason ExileWithCounter is.
@@ -3500,6 +3504,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
@@ -4729,6 +4734,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,

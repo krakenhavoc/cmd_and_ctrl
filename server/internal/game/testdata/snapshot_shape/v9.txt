@@ -14213,6 +14213,7 @@ frozenEntries[].event.stackItem.entersTapped	bool
 frozenEntries[].event.stackItem.entryRolls	array
 frozenEntries[].event.stackItem.entryRolls[]	number:int
 frozenEntries[].event.stackItem.exileAndPlot	bool
+frozenEntries[].event.stackItem.exileAndReturn	bool
 frozenEntries[].event.stackItem.exileAndSuspend	number:int
 frozenEntries[].event.stackItem.exileInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.exileLinkedTo	object
@@ -22246,6 +22247,7 @@ lastKnownStack[].item.entersTapped	bool
 lastKnownStack[].item.entryRolls	array
 lastKnownStack[].item.entryRolls[]	number:int
 lastKnownStack[].item.exileAndPlot	bool
+lastKnownStack[].item.exileAndReturn	bool
 lastKnownStack[].item.exileAndSuspend	number:int
 lastKnownStack[].item.exileInsteadOfGraveyard	bool
 lastKnownStack[].item.exileLinkedTo	object
@@ -35697,6 +35699,7 @@ movesAwaitingTokens[].stackItem.entersTapped	bool
 movesAwaitingTokens[].stackItem.entryRolls	array
 movesAwaitingTokens[].stackItem.entryRolls[]	number:int
 movesAwaitingTokens[].stackItem.exileAndPlot	bool
+movesAwaitingTokens[].stackItem.exileAndReturn	bool
 movesAwaitingTokens[].stackItem.exileAndSuspend	number:int
 movesAwaitingTokens[].stackItem.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].stackItem.exileLinkedTo	object
@@ -42569,6 +42572,7 @@ pausedModeWalk.item.entersTapped	bool
 pausedModeWalk.item.entryRolls	array
 pausedModeWalk.item.entryRolls[]	number:int
 pausedModeWalk.item.exileAndPlot	bool
+pausedModeWalk.item.exileAndReturn	bool
 pausedModeWalk.item.exileAndSuspend	number:int
 pausedModeWalk.item.exileInsteadOfGraveyard	bool
 pausedModeWalk.item.exileLinkedTo	object
@@ -42949,6 +42953,7 @@ pausedResolutionTail.item.entersTapped	bool
 pausedResolutionTail.item.entryRolls	array
 pausedResolutionTail.item.entryRolls[]	number:int
 pausedResolutionTail.item.exileAndPlot	bool
+pausedResolutionTail.item.exileAndReturn	bool
 pausedResolutionTail.item.exileAndSuspend	number:int
 pausedResolutionTail.item.exileInsteadOfGraveyard	bool
 pausedResolutionTail.item.exileLinkedTo	object
@@ -43323,6 +43328,7 @@ pausedStepWalk.item.entersTapped	bool
 pausedStepWalk.item.entryRolls	array
 pausedStepWalk.item.entryRolls[]	number:int
 pausedStepWalk.item.exileAndPlot	bool
+pausedStepWalk.item.exileAndReturn	bool
 pausedStepWalk.item.exileAndSuspend	number:int
 pausedStepWalk.item.exileInsteadOfGraveyard	bool
 pausedStepWalk.item.exileLinkedTo	object
@@ -44048,6 +44054,7 @@ pendingChoices[].assist.spend.ManaValue	number:int
 pendingChoices[].assist.spend.ManaValueKnown	bool
 pendingChoices[].assist.spend.NoAbilitiesSpell	bool
 pendingChoices[].assist.spend.Object	custom(uuid.UUID)
+pendingChoices[].assist.spend.ObjectOwner	custom(uuid.UUID)
 pendingChoices[].assist.spend.Payer	custom(uuid.UUID)
 pendingChoices[].assist.spend.PowerUp	bool
 pendingChoices[].assist.spend.Purpose	string
@@ -46158,6 +46165,7 @@ pendingChoices[].copyWalk.item.entersTapped	bool
 pendingChoices[].copyWalk.item.entryRolls	array
 pendingChoices[].copyWalk.item.entryRolls[]	number:int
 pendingChoices[].copyWalk.item.exileAndPlot	bool
+pendingChoices[].copyWalk.item.exileAndReturn	bool
 pendingChoices[].copyWalk.item.exileAndSuspend	number:int
 pendingChoices[].copyWalk.item.exileInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.exileLinkedTo	object
@@ -64070,6 +64078,7 @@ pendingChoices[].replacementResume.event.stackItem.entersTapped	bool
 pendingChoices[].replacementResume.event.stackItem.entryRolls	array
 pendingChoices[].replacementResume.event.stackItem.entryRolls[]	number:int
 pendingChoices[].replacementResume.event.stackItem.exileAndPlot	bool
+pendingChoices[].replacementResume.event.stackItem.exileAndReturn	bool
 pendingChoices[].replacementResume.event.stackItem.exileAndSuspend	number:int
 pendingChoices[].replacementResume.event.stackItem.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.exileLinkedTo	object
@@ -74311,6 +74320,7 @@ pendingTriggers[].entersTapped	bool
 pendingTriggers[].entryRolls	array
 pendingTriggers[].entryRolls[]	number:int
 pendingTriggers[].exileAndPlot	bool
+pendingTriggers[].exileAndReturn	bool
 pendingTriggers[].exileAndSuspend	number:int
 pendingTriggers[].exileInsteadOfGraveyard	bool
 pendingTriggers[].exileLinkedTo	object
@@ -76949,6 +76959,7 @@ resolving.item.entersTapped	bool
 resolving.item.entryRolls	array
 resolving.item.entryRolls[]	number:int
 resolving.item.exileAndPlot	bool
+resolving.item.exileAndReturn	bool
 resolving.item.exileAndSuspend	number:int
 resolving.item.exileInsteadOfGraveyard	bool
 resolving.item.exileLinkedTo	object
@@ -82758,6 +82769,7 @@ stackMeta[].entersTapped	bool
 stackMeta[].entryRolls	array
 stackMeta[].entryRolls[]	number:int
 stackMeta[].exileAndPlot	bool
+stackMeta[].exileAndReturn	bool
 stackMeta[].exileAndSuspend	number:int
 stackMeta[].exileInsteadOfGraveyard	bool
 stackMeta[].exileLinkedTo	object
