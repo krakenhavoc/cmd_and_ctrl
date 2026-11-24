@@ -754,6 +754,8 @@ var cardFields = plan(
 	"PhaseInBarredBy", carried, "",
 	"PhaseInBarredEpoch", carried, "",
 	"PhaseInBarredFor", carried, "",
+	// #6095: The Pandorica's "remains tapped" form of the bar.
+	"PhaseInBarredWhileTapped", carried, "",
 	"PhasedOutIndirect", carried, "",
 	"TapOnPhaseIn", carried, "",
 	// S27 battles. Both are printed / chosen state with no other

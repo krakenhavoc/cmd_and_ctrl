@@ -1240,6 +1240,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// Don't Blink: creatures entering from exile are shuffled into their
 	// owners' libraries instead.
 	ModShuffleInsteadOfEnteringFromExile: {reader: readerReplacement},
+	// #6093: Cone of Cold's "until your next turn, creatures your
+	// opponents control enter tapped" (scoped_enters_tapped.go).
+	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1327,6 +1330,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
+	// #6093: Commander Liara Portyr's and Will Kenrith's timed reduction
+	// (scoped_cost_reduction.go).
+	ModSpellsCostLessForPlayer:       {reader: readerRule},
+	ModExiledSpellsCostLessForPlayer: {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
@@ -1885,6 +1892,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := scopedCostTaxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := scopedCostReductionModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := copyModProblem(m); problem != "" {

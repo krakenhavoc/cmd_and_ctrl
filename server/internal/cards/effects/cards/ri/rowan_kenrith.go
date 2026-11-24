@@ -79,14 +79,7 @@ func init() {
 				Label:   "−8: Target player gets an emblem with \"Whenever you activate an ability that isn't a mana ability, copy it. You may choose new targets for the copy.\"",
 				Cost:    effects.LoyaltyCost(-8),
 				Targets: effects.TargetPlayer("target player"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					p, ok := effects.FirstLegalPlayerTarget(ctx)
-					if !ok {
-						return nil
-					}
-					return effects.CreateEmblem{Player: p}.Apply(ctx)
-				},
+				Effect:  effects.TargetPlayerGetsTheEmblem,
 			},
 		},
 	})

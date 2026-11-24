@@ -552,6 +552,7 @@ body the-last-ronin/attacks-alone
 body the-last-ronin/return
 body the-mindskinner/each-opponent-mills
 body the-motherlode/destroy-and-no-blocks
+body the-pandorica/that-permanent-phases-in
 body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
 body the-sea-devils/salamander-deals-that-much-to-target-creature
@@ -1721,6 +1722,7 @@ condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
 condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
+condition the-pandorica/untapped-or-left
 condition until/returned-under-your-control
 condition zevlor/next-single-opponent-spell
 confirm avatar-b30/bison-whistle-take-creature
@@ -3482,6 +3484,7 @@ tail dice/chaos-dragon-each-player-rolls
 tail dice/clown-car-results
 tail dice/comet-stellar-pup-roll
 tail dice/component-pouch-counters
+tail dice/cone-of-cold-rolled
 tail dice/contact-other-plane-table
 tail dice/contraband-livestock-rolled
 tail dice/danse-macabre-result

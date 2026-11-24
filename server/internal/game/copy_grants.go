@@ -265,6 +265,15 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// CatalogTriggerDoublers(CatalogAbilityKey(c)), so the recipient
 		// has the doubler while it has the grant, and each recipient is
 		// its own doubler (CR 603.2d: they add).
+		// #6095: a layer-6 grant may carry an untap-step replacement
+		// (Bewitching Leechcraft's "if this creature would untap during
+		// your untap step, remove a +1/+1 counter from it instead"). Read
+		// live off the composite key by untapPermanentLocked, so the
+		// recipient is "this creature" and it ends with the grant; a
+		// bundle granted twice replaces twice.
+		if len(g.UntapCounterRemovals) > 0 {
+			merged.UntapCounterRemovals = append(append([]UntapCounterRemoval(nil), merged.UntapCounterRemovals...), g.UntapCounterRemovals...)
+		}
 		if len(g.TriggerDoublers) > 0 {
 			merged.TriggerDoublers = append(append([]TriggerDoubler(nil), merged.TriggerDoublers...), g.TriggerDoublers...)
 		}

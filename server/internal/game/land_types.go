@@ -205,6 +205,8 @@ func (g *Game) durationPhraseLocked(d Duration, sourceName string) string {
 		return "until end of combat"
 	case ThisTurnAndNextTurn:
 		return "this turn and next turn"
+	case UntilEndOfCombatOnYourNextTurn:
+		return "until end of combat on " + g.playerNameLocked(d.Player) + "'s next turn"
 	case ForAsLongAs:
 		// ADR 0109 §2 and §3: every condition of the conjunction, joined
 		// as the card prints them ("for as long as you control Seasinger
