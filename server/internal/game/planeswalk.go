@@ -130,6 +130,10 @@ func (g *Game) PlaneswalkForEffect(player uuid.UUID) error {
 	if g.Planechase == nil || !g.playerInGameLocked(player) {
 		return ErrInvalidParam
 	}
+	// #6096: "If you would planeswalk, instead …" asks first.
+	if g.replacePlaneswalkLocked(player) {
+		return nil
+	}
 	g.continuePlaneswalkLocked(player)
 	return nil
 }

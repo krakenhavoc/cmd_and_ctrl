@@ -75,6 +75,11 @@ const (
 	// knows it is coming; the amount is exact without asking, because
 	// every waived record carries its shortfall (PaidCost.PaperMana).
 	ReadsAnotherSpellsAmount
+	// ReadsYourActivations: a permanent that reads the payment of the
+	// abilities its controller activates, whatever their source
+	// (Dynaheir, Invoker Adept's "by spending four or more mana to
+	// activate it", #6094). An activation by that controller asks.
+	ReadsYourActivations
 )
 
 // ReadsEveryCast is a permanent that watches every spell cast (Vexing
@@ -414,6 +419,33 @@ func (g *Game) castPaymentReadLocked(caster uuid.UUID, card Card) (read, kinds b
 			watch = ReadsYourCasts
 		}
 		if r&watch == 0 {
+			continue
+		}
+		read = true
+		if r&ReadsSourceKinds != 0 {
+			kinds = true
+		}
+	}
+	return read, kinds
+}
+
+// activationPaymentReadLocked is abilityPaymentRead widened to the
+// watchers (#6094): an activated ability of `source` reads the mana spent
+// to activate it, or a permanent `activator` controls reads the payment of
+// every ability they activate (ReadsYourActivations). Caller must hold
+// g.mu.
+func (g *Game) activationPaymentReadLocked(activator uuid.UUID, source Card) (read, kinds bool) {
+	read, kinds = abilityPaymentRead(source)
+	if g.Battlefield == nil {
+		return read, kinds
+	}
+	for i := range g.Battlefield.Cards {
+		perm := &g.Battlefield.Cards[i]
+		if perm.Controller != activator {
+			continue
+		}
+		r := catalogReadsManaSpent(CatalogKeyOf(perm))
+		if r&ReadsYourActivations == 0 {
 			continue
 		}
 		read = true

@@ -734,7 +734,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
-		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
+		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
+		ScopeCreaturesExceptObjects:
 		return true
 	}
 	return false
@@ -1239,6 +1240,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// Don't Blink: creatures entering from exile are shuffled into their
 	// owners' libraries instead.
 	ModShuffleInsteadOfEnteringFromExile: {reader: readerReplacement},
+	// #6093: Cone of Cold's "until your next turn, creatures your
+	// opponents control enter tapped" (scoped_enters_tapped.go).
+	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1326,6 +1330,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
+	// #6093: Commander Liara Portyr's and Will Kenrith's timed reduction
+	// (scoped_cost_reduction.go).
+	ModSpellsCostLessForPlayer:       {reader: readerRule},
+	ModExiledSpellsCostLessForPlayer: {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
@@ -1605,9 +1613,12 @@ func blockRequirementModProblem(m Mod) string {
 		// (dealtDamageByScopeProblem checks it).
 		// #2567: "attacks <that permanent> if able" names the permanent
 		// here (attackPermanentModProblem checks it).
+		// #6087: a creaturesExceptObjects restriction names the spared
+		// creatures here (exceptObjectsScopeProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
-			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject {
+			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
+			m.Kind != ModAddRestrictions {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1883,6 +1894,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := scopedCostTaxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := scopedCostReductionModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := copyModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -1951,6 +1965,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	if problem := dealtDamageByScopeProblem(scope, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
+	if problem := exceptObjectsScopeProblem(scope, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
@@ -2343,6 +2360,10 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 			continue
 		}
 		applies := scopePredicate(e.Scope, e.Controller)
+		if e.Scope == ScopeCreaturesExceptObjects {
+			// #6087: the spared objects ride the record's mods.
+			applies = exceptObjectsPredicate(e.Mods)
+		}
 		for j := range g.Battlefield.Cards {
 			target := &g.Battlefield.Cards[j]
 			if target.effective == nil || !applies(target, g, nil) {

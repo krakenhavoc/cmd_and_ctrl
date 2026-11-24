@@ -83,6 +83,9 @@ linters:
         # Primaris Eliminator and Primaris Chaplain (Warhammer 40,000 Commander)
         # are printed card names.
         - primaris
+        # "daed" is a run of hex digits in Stranglehold's Scryfall oracle id
+        # (b66c6e3a-daed-...), not a word.
+        - daed
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is

@@ -1366,6 +1366,12 @@ type Spec struct {
 	// the turn they arrive (CR 609.4). Judged through CatalogAbilityKey.
 	ActivateAsThoughHaste bool
 
+	// ActivateAsThoughHasteOthers is ActivateAsThoughHaste over OTHER
+	// creatures only: "You may activate abilities of other creatures you
+	// control as though those creatures had haste" (Dynaheir, Invoker
+	// Adept, #6094). The permanent's own abilities are not reached.
+	ActivateAsThoughHasteOthers bool
+
 	// ExtraVote declares the printed static "While voting, you get an
 	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
 	// or "While voting, you may vote an additional time"
@@ -1397,6 +1403,37 @@ type Spec struct {
 	// CatalogAbilityKey, so a permanent that lost its abilities does
 	// neither.
 	ControlsOpponentsSearches bool
+
+	// OpponentsSearchTopN declares Aven Mindcensor's "If an opponent
+	// would search a library, that player searches the top N cards of
+	// that library instead" (#6090, CR 701.23a, 614.1). The engine
+	// narrows every search in its one search primitive
+	// (game/search_top_n.go). Judged through CatalogAbilityKey, so a
+	// permanent that lost its abilities narrows nothing.
+	OpponentsSearchTopN int
+
+	// OpponentsCantSearchLibraries declares Stranglehold's "Your opponents
+	// can't search libraries" (CR 701.23a, 101.2). The engine stops every
+	// search an opponent of the permanent's controller makes of a library,
+	// in its one search primitive (game/search_cant.go): the search finds
+	// nothing, the card's "then shuffle" still shuffles, and no search is
+	// recorded. Judged through CatalogAbilityKey, so a permanent that lost
+	// its abilities blocks nothing.
+	OpponentsCantSearchLibraries bool
+
+	// AttackingPlayerChoosesBlocks declares Invasion Plans' "The attacking
+	// player chooses how each creature blocks each combat": in every
+	// declare blockers step the active player declares the blocks of every
+	// other defending player, as a Master Warcraft does (CR 509.1a,
+	// game/declaration_control.go), for as long as the permanent is on the
+	// battlefield. Judged through CatalogAbilityKey.
+	AttackingPlayerChoosesBlocks bool
+
+	// DrawsFromBottom declares River Song's "You draw cards from the
+	// bottom of your library rather than the top" (#6089): each draw its
+	// controller performs takes the bottom card (game/draw_from_bottom.go).
+	// Judged through CatalogAbilityKey as each draw is made.
+	DrawsFromBottom bool
 
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
@@ -1550,6 +1587,12 @@ type Spec struct {
 	//
 	// Issue #749, ADR 0057 Decision 4.
 	GameEndGates []game.GameEndGate
+
+	// GameActionReplacements declares a printed static "If you would lose
+	// the game, instead …" (The Golden Throne) or "If you would planeswalk,
+	// instead …" (Susan Foreman), #6096. Read off the battlefield through
+	// game.CatalogGameActionReplacements; see game_action_replacements.go.
+	GameActionReplacements []game.GameActionReplacement
 
 	// CoinFlipRules declares a printed static over the coins its controller
 	// flips: Edgar, King of Figaro's "Two-Headed Coin — The first time you
@@ -1812,6 +1855,15 @@ type Spec struct {
 	// "you may reveal this card from your opening hand" is a different
 	// shape and has no slot yet.
 	OpeningHand *game.OpeningHandAction
+
+	// ChoosesCommanderColor declares CR 903.4b's "If <this> is your
+	// commander, choose a color before the game begins. <This> is the
+	// chosen color." (The Prismatic Piper, Faceless One, Clara Oswald.)
+	// The deck checker reads the printed sentence itself
+	// (internal/deck/commander_color.go); this is the engine's half: the
+	// colour is revealed or asked for when the mulligan window closes,
+	// and the card is that colour in every zone (game/commander_color.go).
+	ChoosesCommanderColor bool
 
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —

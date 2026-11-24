@@ -15,6 +15,7 @@ import (
 // so a slot added to CardDef is placed rather than silently dropped.
 var abilityRowFieldsNotRows = map[string]string{
 	"GrantedReplacements":        "a grant bundle's replacement effects; the recipient's composite definition merges them into Replacements, which is the row",
+	"UntapCounterRemovals":       "an untap-step replacement a grant bundle carries (#6095); the bundle's GrantText is its row on the recipient",
 	"Resolve":                    "the spell's effect as it resolves, not an ability of the object",
 	"LibraryTopVisibleWhen":      "the designation gating the look-at-the-top-card permission, a condition and not an ability of the object",
 	"ResumeResolve":              "the rest of that effect after a prompt (#4019), not an ability of the object",
@@ -48,6 +49,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"CastableZonesIf":            "where the card may be cast from while a condition holds (#3105), shown by the cast surface",
 	"SpecialActions":             "special actions (CR 116), not abilities: ADR 0105's star pip",
 	"OpeningHand":                "an action taken from the opening hand before the game (CR 103.6, ADR 0133), not an ability of the permanent",
+	"ChoosesCommanderColor":      "a choice made before the game (CR 903.4b); its colour is the card's colour, shown by the commander_color chip, not an ability row",
 	"CastCondition":              "the spell's own cast gate",
 	"CastConditionLabel":         "the spell's own cast gate's text",
 	"CantBeCountered":            "a property of the spell on the stack, shown there",

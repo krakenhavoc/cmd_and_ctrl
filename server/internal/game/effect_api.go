@@ -945,7 +945,7 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 	// dredge offer, Underrealm Lich's pick) holds the rest of the
 	// instruction behind it (CR 121.6b) instead of the later draws
 	// racing ahead of the question.
-	if err := g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, n), DrawThen{}); err != nil {
+	if err := g.drawInstructionRunLocked(playerID, n, DrawThen{}); err != nil {
 		if err == ErrZoneEmpty {
 			// Flag set, stop drawing. SBA loop will handle the loss.
 			return nil
@@ -2757,6 +2757,19 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if !spec.Rule.IsZero() && !KnownSearchRule(spec.Rule.key) {
 		return fmt.Errorf("%w: search rule %q", ErrUnknownEffectKey, spec.Rule.key)
 	}
+	// "Players can't search libraries this turn" (Shadow of Doubt): the
+	// library cannot be searched, so a search of nothing else does not
+	// happen: no search event, nothing found. Whatever follows the search
+	// (the shuffle, the instruction after it) is its own instruction and
+	// still happens.
+	barred := g.TurnTally.LibrarySearchesBarred
+	if barred && !spec.searchesGraveyard() && !spec.searchesHand() {
+		if spec.Shuffle {
+			p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
+			clearKnownInZoneLocked(p.Library)
+		}
+		return g.runSearchThenLocked(spec, nil)
+	}
 	// #4033: "all cards" has no count.
 	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
 	if takeAllInGraveyard {
@@ -2768,11 +2781,22 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if _, err := g.searchDestZoneLocked(p, spec.Dest); err != nil {
 		return err
 	}
+	// Stranglehold (search_cant.go): a searcher who can't search libraries
+	// searches nothing; an and/or search still looks at the other zones.
+	if !spec.searchesGraveyard() && !spec.searchesHand() && g.searchCantLocked(spec.Player) {
+		return g.skipBlockedSearchLocked(spec, p)
+	}
 	// Collect every match, not just the first `limit` — the whole
 	// point of the chooser is that the searcher sees the full set.
 	matches := make([]uuid.UUID, 0, len(p.Library.Cards))
 	matched := make([]Card, 0, len(p.Library.Cards))
-	for _, c := range p.Library.Cards {
+	// #6090: an opponent's Aven Mindcensor narrows the look to the top
+	// cards of the library (search_top_n.go).
+	libraryCards := g.searchableLibraryCards(spec.Player, p.Library.Cards)
+	if barred {
+		libraryCards = nil // only the graveyard or hand half of an and/or search remains
+	}
+	for _, c := range libraryCards {
 		if spec.Pred == nil || spec.Pred(c) {
 			matches = append(matches, c.InstanceID)
 			matched = append(matched, c)
@@ -2855,6 +2879,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	}
 	g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
 	return nil
+}
+
+// BarLibrarySearchesThisTurnForEffect is "players can't search libraries this
+// turn": from now until the turn ends no library can be searched.
+//
+// Caller must hold g.mu.
+func (g *Game) BarLibrarySearchesThisTurnForEffect() {
+	g.TurnTally.LibrarySearchesBarred = true
 }
 
 // searchDestZoneLocked resolves a search's destination ZoneKind to

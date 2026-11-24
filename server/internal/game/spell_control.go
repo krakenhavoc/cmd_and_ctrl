@@ -531,9 +531,14 @@ func stackPinProblem(affected []AffectedObject, mods []Mod) string {
 	for _, m := range mods {
 		// ADR 0160's 2026-10-15 amendment: a changed word is read off
 		// the spell by materialiseTextWordsLocked, before the pass.
-		if m.Kind != ModSetController && m.Kind != ModAddKeywords && m.Kind != ModChangeText {
+		// #6088: and layer 5, a colour set on the spell (spell_colors.go),
+		// and an ability bundle a PERMANENT spell gains, which the stack
+		// step does not apply because a permanent's abilities function on
+		// the battlefield (CR 113.6) and which the permanent it becomes
+		// carries (CR 400.7a, spell_grants.go).
+		if m.Kind != ModSetController && m.Kind != ModAddKeywords && m.Kind != ModChangeText && m.Kind != ModSetColors && m.Kind != ModGrantAbilities {
 			return "pins a spell on the stack with a " + string(m.Kind) +
-				" mod; the stack step of the layer pass applies layer 2 (setController) and layer-6 keyword grants (addKeywords) only, and the text pass changed words (changeText)"
+				" mod; the stack step of the layer pass applies layer 2 (setController), layer-5 colour setting (setColors) and layer-6 keyword grants (addKeywords) only, and the text pass changed words (changeText)"
 		}
 	}
 	return ""

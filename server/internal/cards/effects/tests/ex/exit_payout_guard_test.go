@@ -169,6 +169,13 @@ var exitPayoutAllowlist = map[string]string{
 		"still makes the token. The type is read before the move because that is the last moment " +
 		"the card is guaranteed findable in the library (CR 608.2h); the graveyard has no " +
 		"continuation form to gate it on.",
+	"grenzo_dungeon_warden.go:42": "Grenzo's `bottom` read is Cellar Door's: \"If it's a creature card with power less " +
+		"than or equal to Grenzo's power\" asks what the card IS (its types and printed power), which no " +
+		"replacement of the move to the graveyard changes, so a card sent elsewhere is still judged by " +
+		"it; the put onto the battlefield then finds the card in whatever zone it is in and does nothing if " +
+		"it is not in a graveyard. The values are read before the move because that is the last moment the " +
+		"card is guaranteed findable in the library (CR 608.2h).",
+	"grenzo_dungeon_warden.go:45": "The same read as grenzo_dungeon_warden.go:42: the card's power against Grenzo's.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

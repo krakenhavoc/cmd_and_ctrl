@@ -59,6 +59,10 @@
     chosenName?: string;
     // #1941: the number chosen (life paid) as it entered.
     chosenNumber?: number;
+    // #5948, CR 903.4b: a commander's colour chosen before the game.
+    commanderColor?: string;
+    // #6097, #5948: what the permanent's abilities have noted for it.
+    notes?: string[];
     // #662, CR 702.16. The qualities the SERVER parsed; the client
     // owns no protection grammar.
     protection?: ProtectionView[];
@@ -77,6 +81,8 @@
     chosenOption,
     chosenName,
     chosenNumber,
+    commanderColor,
+    notes,
     protection = [],
     riotHaste = false,
     abilityRows = null,
@@ -89,6 +95,8 @@
       chosen_option: chosenOption,
       chosen_name: chosenName,
       chosen_number: chosenNumber,
+      commander_color: commanderColor,
+      notes,
     }),
   );
 
@@ -285,5 +293,8 @@
   }
   .kw-chosen-number {
     background: rgba(70, 24, 28, 0.82);
+  }
+  .kw-chosen-commander-color {
+    background: rgba(48, 40, 70, 0.82);
   }
 </style>

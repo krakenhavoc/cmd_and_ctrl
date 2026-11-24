@@ -39,6 +39,12 @@ import "github.com/google/uuid"
 // effects.Spec.ActivateAsThoughHaste. A nil hook grants nothing.
 var CatalogActivateAsThoughHaste func(key string) bool
 
+// CatalogActivateAsThoughHasteOthersOnly reports whether that static, on a
+// permanent with this catalog key, reaches only OTHER creatures (Dynaheir,
+// Invoker Adept's "other creatures you control", #6094). Populated from
+// effects.Spec.ActivateAsThoughHasteOthers. A nil hook reads false.
+var CatalogActivateAsThoughHasteOthersOnly func(key string) bool
+
 // activatesAsThoughHaste answers the static for one permanent through
 // CatalogAbilityKey: a permanent that has lost its abilities grants
 // nothing (CR 613.1f).
@@ -48,6 +54,16 @@ func (c *Card) activatesAsThoughHaste() bool {
 	}
 	key := catalogAbilityKeyOf(c)
 	return key != "" && CatalogActivateAsThoughHaste(key)
+}
+
+// activatesAsThoughHasteOthersOnly reports whether the permanent's static
+// is the "other creatures" form, which does not reach its own abilities.
+func (c *Card) activatesAsThoughHasteOthersOnly() bool {
+	if CatalogActivateAsThoughHasteOthersOnly == nil {
+		return false
+	}
+	key := catalogAbilityKeyOf(c)
+	return key != "" && CatalogActivateAsThoughHasteOthersOnly(key)
 }
 
 // activateAsThoughHasteLocked reports whether a permanent on the
@@ -63,7 +79,8 @@ func (g *Game) activateAsThoughHasteLocked(c *Card, activator uuid.UUID) bool {
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		if src.Controller == activator && src.activatesAsThoughHaste() {
+		if src.Controller == activator && src.activatesAsThoughHaste() &&
+			(src.InstanceID != c.InstanceID || !src.activatesAsThoughHasteOthersOnly()) {
 			return true
 		}
 	}

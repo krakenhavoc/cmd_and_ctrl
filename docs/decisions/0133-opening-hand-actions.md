@@ -106,3 +106,15 @@ The offer is queued with `QueueConfirmKeyedForEffect` under the key `confirm/ope
 ## Amendment 2026-10-24 (second) — the mulligan pick is keyed too (#4301)
 
 The sentence above, that the London-mulligan bottom pick "is still a closure, so it is still never written", no longer holds: it is a keyed pick and `private` is written with it (ADR 0168, amendment of the same date). That amendment also closes a leak on the way: a private `choose_cards` prompt's candidates reached every seat's view.
+
+
+## Amendment 2026-11-24 — the reveal shape (#6101)
+
+"You may reveal this card from your opening hand. If you do, at the beginning of your first upkeep, …" (Devourer of Destiny), which "Out of scope" left without a slot, now has one: `OpeningHandAction.Reveal *OpeningHandReveal{Label, Body}`, built with `effects.RevealFromOpeningHandForYourFirstUpkeep(label, body)`. `Body` is a registered delayed-trigger body (a key), so the catalog entry is still plain data and the closure ratchet gains no route. When `Reveal` is set the action is a reveal, not an entry, and the three entry riders are not read.
+
+- **The question** is asked at the same moment, in the same order and as privately as the entry offer (decisions 1 and 5), as a keyed confirm under `confirm/opening-hand-reveal`: "Reveal *X* from your opening hand?", answered "Reveal it" or "Keep it hidden".
+- **Yes** checks the card is still in the chooser's hand, reveals it to every seat (`RevealForEffect`, CR 701.20a; it stays in the hand) and arms a delayed trigger, controlled by that player, at the beginning of their next upkeep (`ControllerTurnOnly`), which is their first.
+- **The starting player.** Decision 3 runs the first step's entry hooks while the prompts are open, so the starting player answers after turn one's upkeep has begun and its delayed triggers have been read. In paper the reveal comes before the game begins and the trigger triggers as that upkeep begins. So when the revealing player is the active player on the game's first turn and the untap step is over, the answer puts the trigger on `PendingTriggers` at once rather than scheduling it. No player has received priority yet, because the table is parked on the prompts, so it reaches the stack where a trigger at the beginning of that upkeep would (CR 603.3). This is the one place decision 3's narrowing could be seen, and this is how it is closed for the reveal shape.
+- **Not built:** "at the beginning of THE first upkeep" (the Chancellors, Providence: any player's first upkeep, which is the starting player's) and "the first main phase" are the same slot with a different step or turn. Each is a field when a card needs it.
+
+Snapshot impact: none. `OpeningHandAction` is catalog data, and an armed trigger is an ordinary `DelayedTrigger` naming a registered body.

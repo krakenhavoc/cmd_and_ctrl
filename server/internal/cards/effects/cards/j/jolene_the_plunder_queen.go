@@ -39,14 +39,8 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
-			effects.OncePerBatchPerAttacker(effects.On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				opp := effects.AttackedPlayer(g, ev)
-				if opp == uuid.Nil || opp == source.Controller {
-					return false
-				}
-				p := g.PlayerByIDForEffect(opp)
-				return p != nil && !p.Eliminated
-			}, "Jolene, the Plunder Queen — the attacking player creates a Treasure token",
+			effects.OncePerBatchPerAttacker(effects.On(game.EventAttack, effects.AttackAimedAtAnOpponentOfYours,
+				"Jolene, the Plunder Queen — the attacking player creates a Treasure token",
 				func(g *game.Game, item *game.StackItem) error {
 					return effects.CreateToken{Controller: item.Trigger.Event.Actor, Template: effects.TreasureToken(), N: 1}.Apply(effects.NewContext(g, item))
 				})),

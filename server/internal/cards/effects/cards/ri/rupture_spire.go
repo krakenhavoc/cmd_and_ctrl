@@ -1,8 +1,6 @@
 package cardsri
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -18,31 +16,10 @@ import (
 // upkeepSacrificeSource branch. A Spire that left in response, or left
 // and came back (CR 400.7), asks nothing.
 //
+// Archway Commons (Strixhaven: School of Mages, #5502) prints the same text, so
+// both are effects.EntersTappedSacrificeUnlessPaySpec.
+//
 // No simplification.
 func init() {
-	effects.Register(effects.Spec{
-		OracleID:     "7eadffcb-1e15-44c1-b1db-78c71b8ec1ce",
-		Name:         "Rupture Spire",
-		Completeness: effects.CompletenessFull,
-		Replacements: []game.ReplacementEffect{effects.SelfEntersTapped()},
-		Triggered: []game.TriggeredAbility{
-			effects.WhenThisEnters("Rupture Spire — sacrifice it unless you pay {1}",
-				func(g *game.Game, item *game.StackItem) error {
-					if !effects.OnBattlefield(g, item.SourceCardID) || effects.SourceIsNewObject(g, item) {
-						return nil
-					}
-					return effects.UpkeepPayUnless{
-						Chooser:  item.Controller,
-						Cost:     "{1}",
-						Question: "Rupture Spire — pay {1} or sacrifice Rupture Spire?",
-						Else:     effects.UpkeepSacrificeSource,
-					}.Apply(effects.NewContext(g, item))
-				}),
-		},
-		ManaAbilities: []effects.ManaAbility{{
-			Cost:     effects.ManaAbilityCost{Tap: true},
-			Produced: "{W|U|B|R|G}",
-			Label:    "Add one mana of any color",
-		}},
-	})
+	effects.Register(effects.EntersTappedSacrificeUnlessPaySpec("7eadffcb-1e15-44c1-b1db-78c71b8ec1ce", "Rupture Spire"))
 }

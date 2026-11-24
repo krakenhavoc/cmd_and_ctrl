@@ -1,0 +1,6 @@
+---
+title: "Resolution-time counter and target choices"
+date: 2026-11-24
+issues: [6100]
+---
+**Resolution-time counter and target choices** (#6100) — most of the shapes the GAP pass had set aside were already on the engine: per-player "up to one target … that player controls" clauses (Battle at the Helvault's), a delayed trigger's clause that reads "that player" off its event (`ControlledByThatPlayer`), a target chosen by the triggering player (The Abyss's `OfThatPlayersChoice`), the as-enters discard (`EntryCardDiscard`), the name-and-type setters and the dice door. Four small seams finish the set: a player clause judged against the player who chooses it (`TargetSpec.MoreCreaturesThanChooser`, "target player who controls more creatures than they do and is their opponent"); the sameness set rule keyed on toughness (`game.TargetShareToughness`, `effects.WithEqualToughness()`, [ADR 0106](decisions/0106-five-small-seams-from-the-s50-rechecks.md)'s 2026-11-24 amendment); the registered counter choice reading a player's counters; and N more loyalty activations of one permanent this turn (`GrantThisPermanentMoreLoyaltyActivationsForEffect`). **Cards:** Overseer of Vault 76, Etched Slith, Indominus Rex, Alpha, Comet, Stellar Pup, V.A.T.S., Oath of Druids, The Curse of Fenric, Vault 13: Dweller's Journey, The Sea Devils (all Full).

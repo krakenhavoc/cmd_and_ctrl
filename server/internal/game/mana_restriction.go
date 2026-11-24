@@ -580,6 +580,13 @@ type ManaSpendContext struct {
 	// source.
 	Object uuid.UUID
 
+	// ObjectOwner is the owner of the object whose ability is being paid for
+	// (ManaSpendForAbility), uuid.Nil for a cast: Nathan Drake's "to
+	// activate abilities of permanents you control but don't own" compares
+	// it with Controller. Additive: a stored context without it reads as no
+	// owner, which no restriction covers.
+	ObjectOwner uuid.UUID
+
 	// wish is what the spell being cast reads back from its payment
 	// (#3853, ADR 0068 amendment 2026-10-15), snapshotted when the
 	// context is built. Nil for every payment that is not a cast.
@@ -786,6 +793,7 @@ func ManaSpendForAbility(c Card) ManaSpendContext {
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		Controller:       c.Controller,
 		Object:           c.InstanceID,
+		ObjectOwner:      c.Owner,
 	}
 }
 

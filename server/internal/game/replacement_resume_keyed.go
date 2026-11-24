@@ -468,6 +468,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"NewZone":                   repFieldCarried,
 	"NewZoneOwner":              repFieldCarried,
 	"ShuffleDestinationLibrary": repFieldCarried,
+	"PutOnLibraryBottom":        repFieldCarried,
 	"ExiledWith":                repFieldCarried,
 	"ExileCounter":              repFieldCarried,
 	"Destruction":               repFieldCarried,
@@ -478,6 +479,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
+	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
 	"entryRefused":              repFieldCarried,
 	"EntersUnlocked":            repFieldCarried,
@@ -803,6 +805,7 @@ type replacementEventSnapshot struct {
 	NewZone                   ZoneKind            `json:"newZone,omitempty"`
 	NewZoneOwner              *uuid.UUID          `json:"newZoneOwner,omitempty"`
 	ShuffleDestinationLibrary bool                `json:"shuffleDestinationLibrary,omitempty"`
+	PutOnLibraryBottom        bool                `json:"putOnLibraryBottom,omitempty"`
 	ExiledWith                *PermissionCardRef  `json:"exiledWith,omitempty"`
 	ExileCounter              string              `json:"exileCounter,omitempty"`
 	Destruction               bool                `json:"destruction,omitempty"`
@@ -813,6 +816,7 @@ type replacementEventSnapshot struct {
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
+	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
 	EntersUnlocked            DoorMask            `json:"entersUnlocked,omitempty"`
 	EntersAttacking           *uuid.UUID          `json:"entersAttacking,omitempty"`
@@ -838,6 +842,7 @@ type replacementEventSnapshot struct {
 	LandGainsKeywords         []string            `json:"landGainsKeywords,omitempty"`
 	LandGainsAbilities        []string            `json:"landGainsAbilities,omitempty"`
 	LandGainsLabel            string              `json:"landGainsLabel,omitempty"`
+	LandGainsExileInsteadOf   bool                `json:"landGainsExileInsteadOf,omitempty"`
 	EntryControllerSet        bool                `json:"entryControllerSet,omitempty"`
 	EntryControllerPrior      *uuid.UUID          `json:"entryControllerPrior,omitempty"`
 	ZoneRoute                 *zoneRouteSnapshot  `json:"zoneRoute,omitempty"`
@@ -1272,6 +1277,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		NewZone:                   ev.NewZone,
 		NewZoneOwner:              uuidPtrOrNil(ev.NewZoneOwner),
 		ShuffleDestinationLibrary: ev.ShuffleDestinationLibrary,
+		PutOnLibraryBottom:        ev.PutOnLibraryBottom,
 		ExiledWith:                permissionRefPtr(ev.ExiledWith),
 		ExileCounter:              ev.ExileCounter,
 		Destruction:               ev.Destruction,
@@ -1282,6 +1288,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
 		EntersWithHaste:           ev.EntersWithHaste,
+		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
 		EntersUnlocked:            ev.EntersUnlocked,
 		EntersAttacking:           uuidPtrOrNil(ev.EntersAttacking),
@@ -1303,6 +1310,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LandGainsKeywords:         append([]string(nil), ev.landGains.keywords...),
 		LandGainsAbilities:        append([]string(nil), ev.landGains.abilities...),
 		LandGainsLabel:            ev.landGains.label,
+		LandGainsExileInsteadOf:   ev.landGains.exileInsteadOfLeaving,
 		EntryControllerSet:        ev.entryControllerSet,
 		EntryControllerPrior:      uuidPtrOrNil(ev.entryControllerPrior),
 		AsCommanderMove:           ev.asCommanderMove,
@@ -1451,6 +1459,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		NewZone:                   s.NewZone,
 		NewZoneOwner:              uuidOrNil(s.NewZoneOwner),
 		ShuffleDestinationLibrary: s.ShuffleDestinationLibrary,
+		PutOnLibraryBottom:        s.PutOnLibraryBottom,
 		ExiledWith:                permissionRefValue(s.ExiledWith),
 		ExileCounter:              s.ExileCounter,
 		Destruction:               s.Destruction,
@@ -1461,6 +1470,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
 		EntersWithHaste:           s.EntersWithHaste,
+		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,
 		EntersUnlocked:            s.EntersUnlocked,
 		EntersAttacking:           uuidOrNil(s.EntersAttacking),
@@ -1479,7 +1489,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		entryResumable:            s.EntryResumable,
 		landPlay:                  s.LandPlay,
 		landPlayer:                uuidOrNil(s.LandPlayer),
-		landGains:                 permissionCastGains{keywords: s.LandGainsKeywords, abilities: s.LandGainsAbilities, label: s.LandGainsLabel},
+		landGains:                 permissionCastGains{keywords: s.LandGainsKeywords, abilities: s.LandGainsAbilities, label: s.LandGainsLabel, exileInsteadOfLeaving: s.LandGainsExileInsteadOf},
 		entryControllerSet:        s.EntryControllerSet,
 		entryControllerPrior:      uuidOrNil(s.EntryControllerPrior),
 		asCommanderMove:           s.AsCommanderMove,

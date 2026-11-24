@@ -164,6 +164,11 @@ func (g *Game) SpellXCeilingForCast(caster uuid.UUID, card Card, params CastSpel
 		// read, with the optional costs the query announces.
 		optionalFlash := OptionalCostsOpenCastWindow(g.OptionalCostsForCastLocked(caster, card), params.OptionalCosts)
 		ceiling, ok = g.FlashIfReliedOnLocked(caster, card, srcKind, grant, alt, optionalFlash).XCeilingUnder(ceiling, ok)
+		// #6085, CR 202.3e: and a ban on mana value (Lavinia, Azorius
+		// Renegade), which the cast gate reads with the announced X.
+		if c, gated := g.CastGateXCeilingLocked(caster, card, srcKind); gated && (!ok || c < ceiling) {
+			ceiling, ok = c, true
+		}
 	})
 	return ceiling, ok
 }

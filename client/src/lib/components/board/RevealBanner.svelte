@@ -193,7 +193,9 @@
       {cue.log.kind === "roll"
         ? "rolled"
         : cue.log.kind === "votes_revealed"
-          ? "votes revealed"
+          ? cue.log.cause === "secret_choice"
+            ? "choices revealed"
+            : "votes revealed"
           : "flipped"}
     </span>
     <span class="text"><strong>{cue.log.text}</strong></span>

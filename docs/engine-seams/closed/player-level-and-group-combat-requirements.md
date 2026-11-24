@@ -1,0 +1,6 @@
+---
+title: "Player-level and group combat requirements and restrictions"
+date: 2026-11-24
+issues: [6087]
+---
+**Player-level and group combat requirements and restrictions** (#6087) — four shapes the per-creature combat rules could not say. "Each opponent must attack (you or a planeswalker you control) with at least one creature each combat if able" is `AttackRequirement.AtLeastOneCreature` (with `AttacksPlayerOrTheirPlaneswalkers` for Trove's shape): it rides each affected creature but counts once in the CR 508.1d maximum, as a reward only the first obeying attack collects in the min-cost flow. "Only the chosen creatures can attack during that combat phase" is `ScopeCreaturesExceptObjects`, bound to the added combat phase and matched by epoch (CR 400.7). "Creatures with power greater than the number of cards in your hand can't attack" is an `AttackTargetRestriction` clause, `PowerAtMostHandOf`, read live at declaration (CR 508.1c). "Must be blocked by a Dalek if able" is a `BlockRequirementMustBeBlocked` with a subtype `Filter` (`BlockerFilterSubtype`), solved exactly in the CR 509.1c search. Snapshot additions are additive. **Cards:** Seeker of Slaanesh, Trove of Temptation, Last Night Together, Ensnaring Bridge, Ace's Baseball Bat (Full).

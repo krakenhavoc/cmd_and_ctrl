@@ -139,7 +139,11 @@ export type Route =
   //
   // `query` is #/catalog?q=<text>, which pre-fills the search box. The
   // roadmap links a signed-in viewer's example card names here.
-  | { name: "catalog"; query?: string }
+  // `page` and `size` are ?page=<n>&size=<n>, the catalogue's page and
+  // page size (#6120); each is present only when the URL carries a whole
+  // number for it (page above 1), and the page checks size against the
+  // sizes it offers (catalog.ts's parsePageSize).
+  | { name: "catalog"; query?: string; page?: number; size?: number }
   // The retired "My games" page (ADR 0051 decision 4, S34). Its list is
   // Tables' History now (ADR 0158 §1 item 5), and #/my-games only
   // redirects there (signedInHome.routeRedirect), so a bookmark lands.
@@ -165,6 +169,13 @@ export type Route =
       // user database. It gates "sign out everywhere" and "My games".
       userID?: string;
     };
+
+// wholeNumber reads a query value that must be a plain whole number
+// ("3", not "3.5", "-1" or "3abc"); anything else is undefined.
+function wholeNumber(raw: string | null): number | undefined {
+  if (!raw || !/^\d{1,9}$/.test(raw)) return undefined;
+  return Number(raw);
+}
 
 // "login" is the front page (ADR 0156 §4): #/ and #/login both open it.
 const defaultRoute: Route = { name: "login" };
@@ -254,7 +265,14 @@ export function parseHash(hash: string): Route {
       return { name: "practice" };
     case "catalog": {
       const q = params.get("q");
-      return q ? { name: "catalog", query: q } : { name: "catalog" };
+      const page = wholeNumber(params.get("page"));
+      const size = wholeNumber(params.get("size"));
+      return {
+        name: "catalog",
+        ...(q ? { query: q } : {}),
+        ...(page !== undefined && page > 1 ? { page } : {}),
+        ...(size !== undefined && size > 0 ? { size } : {}),
+      };
     }
     case "my-games":
       return { name: "myGames" };

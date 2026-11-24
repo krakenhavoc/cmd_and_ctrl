@@ -115,6 +115,24 @@ describe("parseHash", () => {
     expect(parseHash("#/catalog?q=")).toEqual({ name: "catalog" });
   });
 
+  it("carries the catalogue's ?page= and ?size= (#6120)", () => {
+    expect(parseHash("#/catalog?page=3&size=100")).toEqual({
+      name: "catalog",
+      page: 3,
+      size: 100,
+    });
+    expect(parseHash("#/catalog?q=Sol%20Ring&page=2")).toEqual({
+      name: "catalog",
+      query: "Sol Ring",
+      page: 2,
+    });
+    // Page 1 is the plain page; junk is dropped rather than guessed at.
+    expect(parseHash("#/catalog?page=1")).toEqual({ name: "catalog" });
+    expect(parseHash("#/catalog?page=0&size=0")).toEqual({ name: "catalog" });
+    expect(parseHash("#/catalog?page=-2&size=abc")).toEqual({ name: "catalog" });
+    expect(parseHash("#/catalog?page=2.5&size=1e3")).toEqual({ name: "catalog" });
+  });
+
   it("falls back to login for an empty or unknown hash", () => {
     expect(parseHash("")).toEqual({ name: "login" });
     expect(parseHash("#/nowhere")).toEqual({ name: "login" });

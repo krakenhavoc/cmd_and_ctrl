@@ -156,3 +156,31 @@ func TestHeuristicVotesInASecretVote(t *testing.T) {
 		t.Errorf("with only its own creature on offer the bot voted for %q, want nothing", got)
 	}
 }
+
+// #5948 Q3: a secret choice round. Call to the Void's "a creature you
+// control" offers only the bot's own creatures, with no way to choose
+// nothing: it gives up the least valuable. Itazura's number comes back as
+// damage to whoever names the highest: the bot names 0.
+func TestHeuristicAnswersASecretChoiceRound(t *testing.T) {
+	them := seatID(1).String()
+	small := creature("r-small", 0, "Small", 1, 1)
+	big := creature("r-big", 0, "Big", 7, 7)
+	opts := []protocol.PickOptionView{
+		{Label: "Small", Cards: []protocol.CardView{small}},
+		{Label: "Big", Cards: []protocol.CardView{big}},
+	}
+	vote := protocol.CouncilVoteView{
+		Options: []string{"Small", "Big"}, Tally: []int{0, 0}, Offered: []int{0, 1}, Secret: true, Choice: true,
+	}
+	vote.Controller = them
+	in := ballotInput(t, vote, opts, small, big)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Small" {
+		t.Errorf("giving up one of its own creatures the bot chose %q, want the smaller", got)
+	}
+
+	pa := protocol.PayAmountView{Min: 0, Max: 1_000_000, NoMax: true, Unit: "other", Resource: "none", SelfDamage: true}
+	r := rankAmounts(t, 40, pa, []int{0, 3, 1_000_000})
+	if r[0] <= r[3] || r[0] <= r[1_000_000] {
+		t.Errorf("Itazura's number: %v, want 0 on top", r)
+	}
+}

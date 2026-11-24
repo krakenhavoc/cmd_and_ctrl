@@ -431,6 +431,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
 
+	// Ajani Goldmane's Avatar: a white */* whose size is its controller's life
+	// total (Secret Lair Drop, #5462).
+	printedOldB007AvatarToken,
+
 	// Saproling Burst's Saproling (Nemesis, #5802): a */* whose size is
 	// the fade counters on the Saproling Burst that made it.
 	printedSaprolingBurstToken,
@@ -469,6 +473,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Kaito, Dancing Shadow's Drone (Phyrexia: All Will Be One, #5479).
 	printedS82OneB20DroneToken,
+
+	// Vraska, Swarm's Eminence's Assassin: deathtouch, and it destroys a
+	// planeswalker it damages (Secret Lair Drop, #5462).
+	printedOldB007AAssassinToken,
 
 	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
 	// legendary Equipment token, +1/+1, vigilance, trample and haste,
@@ -549,6 +557,7 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
 	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
 	printedGapB43TarmogoyfToken,
+	printedOldB10VoiceElementalToken,
 
 	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
 	// (Commander Masters, S82 GAP batch 104, #5948).
@@ -574,6 +583,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
 	printedBoarFoodToken,
+
+	// The Rani's Mark of the Rani (S82 GAP2 batch 10, #5948).
+	printedMarkOfTheRaniToken,
+	// Volo, Itinerant Scholar's Volo's Journal (S82 GAP2 batch 10, #5948).
+	printedVolosJournalToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
