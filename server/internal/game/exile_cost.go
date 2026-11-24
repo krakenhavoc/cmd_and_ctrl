@@ -272,6 +272,15 @@ type ExileCost struct {
 	// on an ability, an optional cost or an either/or branch.
 	CountFromX bool
 
+	// CountOpponents is "exile cards from your graveyard equal to the number
+	// of opponents you have" (Araumi of the Dead Tide's activated cost): the
+	// count is the number of players still in the game other than the payer,
+	// read as the activation is announced (CR 601.2b, CR 602.2b), so N is
+	// zero and ExileCostCountForEffect is the number the payment must name.
+	// A CR 602 ability only: effects.Register refuses it elsewhere. False is
+	// every clause before it, additive.
+	CountOpponents bool
+
 	// AnyNumber is "exile any number of <kind> cards from your graveyard
 	// with <a total>" (Baron Helmut Zemo's boast): the activator names as
 	// many matching cards as they like, and SymbolTotal says how many are
@@ -416,6 +425,26 @@ func (e *ExileCost) Count(x int) int {
 	return e.N
 }
 
+// ExileCostCountForEffect is how many cards `cost` makes `playerID` exile
+// right now: N for a printed count, the number of opponents still in the
+// game for CountOpponents. An X form is read through Count. Caller must
+// hold g.mu (read or write).
+func (g *Game) ExileCostCountForEffect(playerID uuid.UUID, cost *ExileCost) int {
+	if cost == nil {
+		return 0
+	}
+	if !cost.CountOpponents {
+		return cost.N
+	}
+	n := 0
+	for _, p := range g.Seats {
+		if p != nil && !p.Eliminated && p.ID != playerID {
+			n++
+		}
+	}
+	return n
+}
+
 // Zone is the pile the clause exiles from: ZoneHand when From is unset,
 // otherwise From. Nil-safe.
 func (e *ExileCost) Zone() ZoneKind {
@@ -524,7 +553,7 @@ func (g *Game) exileCostOwnerOKLocked(playerID, sourceID uuid.UUID, cost *ExileC
 //
 // CALLER MUST ALREADY HOLD g.mu (read or write).
 func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) []uuid.UUID {
-	if cost == nil || (cost.N <= 0 && !cost.CountFromX && !cost.AnyNumber) {
+	if cost == nil || (cost.N <= 0 && !cost.CountFromX && !cost.AnyNumber && !cost.CountOpponents) {
 		return nil
 	}
 	pile := g.exileCostPileLocked(g.playerByIDLocked(playerID), cost)
@@ -557,7 +586,7 @@ func (g *Game) ExileCostPayableForEffect(playerID, sourceID uuid.UUID, cost *Exi
 	}
 	ids := g.ExileCostOptionsForEffect(playerID, sourceID, cost)
 	if !cost.AnyNumber {
-		return cost.CountFromX || len(ids) >= cost.N
+		return cost.CountFromX || len(ids) >= g.ExileCostCountForEffect(playerID, cost)
 	}
 	return cost.FloorMet(g.exileCostCardsLocked(playerID, cost, ids))
 }
@@ -623,7 +652,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 	if p == nil {
 		return nil, ErrPlayerNotFound
 	}
-	if !cost.AnyNumber && len(chosen) != cost.N {
+	if !cost.AnyNumber && len(chosen) != g.ExileCostCountForEffect(playerID, cost) {
 		return nil, ErrInvalidParam
 	}
 	pile := g.exileCostPileLocked(p, cost)

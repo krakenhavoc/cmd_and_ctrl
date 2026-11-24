@@ -298,6 +298,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 071 (#5505).
 	"Valki, God of Lies // Tibalt, Cosmic Impostor": "Tibalt's -8 exiles every graveyard, not permanents",
+	// S82 OLD batch 083 (#5507).
+	"Nevinyrral, Urborg Tyrant": "a 3/6 creature cast to be a creature: the destroy-all is the optional {1} reflexive trigger of its dies trigger, which nobody can plan a turn around",
+	"Szat's Will":               "one mode is an edict (each opponent sacrifices one creature, the one with the greatest power) and the other exiles graveyards: no board is swept",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

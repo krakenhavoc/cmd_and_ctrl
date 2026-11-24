@@ -692,4 +692,8 @@ var TokenTable = map[string]game.Card{
 	"4/4 green Troll Warrior with trample": {Name: "Troll Warrior", TypeLine: "Token Creature — Troll Warrior", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	// S82 OLD batch 060 (#5505): The Bloodsky Massacre's Demon Berserker.
 	"2/3 red Demon Berserker with menace": {Name: "Demon Berserker", TypeLine: "Token Creature — Demon Berserker", Power: 2, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"menace"}},
+
+	// S82 OLD batch 083: Profane Transfusion's X/X Horror (printed */*; a 0/0 placeholder, set to the
+	// difference between the life totals as it is created).
+	"0/0 colorless Horror artifact": {Name: "Horror", TypeLine: "Token Artifact Creature — Horror", PrintedPTKnown: true},
 }
