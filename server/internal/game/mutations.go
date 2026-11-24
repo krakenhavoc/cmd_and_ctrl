@@ -10511,7 +10511,7 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.canAttackTargetWithLocked(card, targetPlayerID); err != nil {
 				return err
 			}
-			if HasSummoningSickness(card) {
+			if HasSummoningSickness(card) && !hasAttackHasteWaiver(card) {
 				return ErrSummoningSick
 			}
 			// CR 508.1c: a creature under a "can't attack"

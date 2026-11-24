@@ -4686,6 +4686,8 @@ frozenEntries[].event.damageTail.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 frozenEntries[].event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
+frozenEntries[].event.damageTail.sourceLki.AttackHasteFor	array
+frozenEntries[].event.damageTail.sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -4828,6 +4830,8 @@ frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].LenderName	string
 frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].Slot	string
 frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.BorrowedAbilities[].SpendFrom	string
+frozenEntries[].event.damageTail.sourceLki.CantAttackWithoutAnyOf	array
+frozenEntries[].event.damageTail.sourceLki.CantAttackWithoutAnyOf[]	string
 frozenEntries[].event.damageTail.sourceLki.CantBeAttacked	bool
 frozenEntries[].event.damageTail.sourceLki.CantBeBeamedUp	bool
 frozenEntries[].event.damageTail.sourceLki.CantBeSacrificed	bool
@@ -7828,6 +7832,7 @@ frozenEntries[].event.entryTail.search.spec.entersWithCounters	map:string
 frozenEntries[].event.entryTail.search.spec.entersWithCounters{}	number:int
 frozenEntries[].event.entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.faceDown	string
+frozenEntries[].event.entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.libraryUntouched	bool
 frozenEntries[].event.entryTail.search.spec.limit	number:int
@@ -14053,6 +14058,8 @@ frozenEntries[].event.sourceLki.AllCreatureTypes	bool
 frozenEntries[].event.sourceLki.AssignsAsThoughUnblocked	bool
 frozenEntries[].event.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.sourceLki.AttackBlockPowerFloor	number:int
+frozenEntries[].event.sourceLki.AttackHasteFor	array
+frozenEntries[].event.sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -14195,6 +14202,8 @@ frozenEntries[].event.sourceLki.BorrowedAbilities[].LenderName	string
 frozenEntries[].event.sourceLki.BorrowedAbilities[].Slot	string
 frozenEntries[].event.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.BorrowedAbilities[].SpendFrom	string
+frozenEntries[].event.sourceLki.CantAttackWithoutAnyOf	array
+frozenEntries[].event.sourceLki.CantAttackWithoutAnyOf[]	string
 frozenEntries[].event.sourceLki.CantBeAttacked	bool
 frozenEntries[].event.sourceLki.CantBeBeamedUp	bool
 frozenEntries[].event.sourceLki.CantBeSacrificed	bool
@@ -17830,6 +17839,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.entersWithCounters	map:string
 frozenEntries[].event.zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.faceDown	string
+frozenEntries[].event.zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.libraryUntouched	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.limit	number:int
@@ -21146,6 +21156,8 @@ heldCombatDamage.answers[].frame.SourceLKI.AllCreatureTypes	bool
 heldCombatDamage.answers[].frame.SourceLKI.AssignsAsThoughUnblocked	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockNeedsOtherPower	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockPowerFloor	number:int
+heldCombatDamage.answers[].frame.SourceLKI.AttackHasteFor	array
+heldCombatDamage.answers[].frame.SourceLKI.AttackHasteFor[]	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AfterTurn	number:int
@@ -21288,6 +21300,8 @@ heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].LenderName	string
 heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].Slot	string
 heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.BorrowedAbilities[].SpendFrom	string
+heldCombatDamage.answers[].frame.SourceLKI.CantAttackWithoutAnyOf	array
+heldCombatDamage.answers[].frame.SourceLKI.CantAttackWithoutAnyOf[]	string
 heldCombatDamage.answers[].frame.SourceLKI.CantBeAttacked	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantBeBeamedUp	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantBeSacrificed	bool
@@ -21373,6 +21387,8 @@ lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AssignsAsThoughUnblocked	bool
 lastKnownBattlefield{}.AttackBlockNeedsOtherPower	number:int
 lastKnownBattlefield{}.AttackBlockPowerFloor	number:int
+lastKnownBattlefield{}.AttackHasteFor	array
+lastKnownBattlefield{}.AttackHasteFor[]	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].AfterTurn	number:int
@@ -21515,6 +21531,8 @@ lastKnownBattlefield{}.BorrowedAbilities[].LenderName	string
 lastKnownBattlefield{}.BorrowedAbilities[].Slot	string
 lastKnownBattlefield{}.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.BorrowedAbilities[].SpendFrom	string
+lastKnownBattlefield{}.CantAttackWithoutAnyOf	array
+lastKnownBattlefield{}.CantAttackWithoutAnyOf[]	string
 lastKnownBattlefield{}.CantBeAttacked	bool
 lastKnownBattlefield{}.CantBeBeamedUp	bool
 lastKnownBattlefield{}.CantBeSacrificed	bool
@@ -21604,6 +21622,8 @@ lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AssignsAsThoughUnblocked	bool
 lastKnownPermanents{}[].characteristic.AttackBlockNeedsOtherPower	number:int
 lastKnownPermanents{}[].characteristic.AttackBlockPowerFloor	number:int
+lastKnownPermanents{}[].characteristic.AttackHasteFor	array
+lastKnownPermanents{}[].characteristic.AttackHasteFor[]	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].AfterTurn	number:int
@@ -21746,6 +21766,8 @@ lastKnownPermanents{}[].characteristic.BorrowedAbilities[].LenderName	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Slot	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].SpendFrom	string
+lastKnownPermanents{}[].characteristic.CantAttackWithoutAnyOf	array
+lastKnownPermanents{}[].characteristic.CantAttackWithoutAnyOf[]	string
 lastKnownPermanents{}[].characteristic.CantBeAttacked	bool
 lastKnownPermanents{}[].characteristic.CantBeBeamedUp	bool
 lastKnownPermanents{}[].characteristic.CantBeSacrificed	bool
@@ -26272,6 +26294,8 @@ movesAwaitingTokens[].damageTail.sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockPowerFloor	number:int
+movesAwaitingTokens[].damageTail.sourceLki.AttackHasteFor	array
+movesAwaitingTokens[].damageTail.sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[]	object
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -26414,6 +26438,8 @@ movesAwaitingTokens[].damageTail.sourceLki.BorrowedAbilities[].LenderName	string
 movesAwaitingTokens[].damageTail.sourceLki.BorrowedAbilities[].Slot	string
 movesAwaitingTokens[].damageTail.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.BorrowedAbilities[].SpendFrom	string
+movesAwaitingTokens[].damageTail.sourceLki.CantAttackWithoutAnyOf	array
+movesAwaitingTokens[].damageTail.sourceLki.CantAttackWithoutAnyOf[]	string
 movesAwaitingTokens[].damageTail.sourceLki.CantBeAttacked	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantBeBeamedUp	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantBeSacrificed	bool
@@ -29414,6 +29440,7 @@ movesAwaitingTokens[].entryTail.search.spec.entersWithCounters	map:string
 movesAwaitingTokens[].entryTail.search.spec.entersWithCounters{}	number:int
 movesAwaitingTokens[].entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.faceDown	string
+movesAwaitingTokens[].entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.libraryUntouched	bool
 movesAwaitingTokens[].entryTail.search.spec.limit	number:int
@@ -35639,6 +35666,8 @@ movesAwaitingTokens[].sourceLki.AllCreatureTypes	bool
 movesAwaitingTokens[].sourceLki.AssignsAsThoughUnblocked	bool
 movesAwaitingTokens[].sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].sourceLki.AttackBlockPowerFloor	number:int
+movesAwaitingTokens[].sourceLki.AttackHasteFor	array
+movesAwaitingTokens[].sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements	array
 movesAwaitingTokens[].sourceLki.AttackRequirements[]	object
 movesAwaitingTokens[].sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -35781,6 +35810,8 @@ movesAwaitingTokens[].sourceLki.BorrowedAbilities[].LenderName	string
 movesAwaitingTokens[].sourceLki.BorrowedAbilities[].Slot	string
 movesAwaitingTokens[].sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.BorrowedAbilities[].SpendFrom	string
+movesAwaitingTokens[].sourceLki.CantAttackWithoutAnyOf	array
+movesAwaitingTokens[].sourceLki.CantAttackWithoutAnyOf[]	string
 movesAwaitingTokens[].sourceLki.CantBeAttacked	bool
 movesAwaitingTokens[].sourceLki.CantBeBeamedUp	bool
 movesAwaitingTokens[].sourceLki.CantBeSacrificed	bool
@@ -39416,6 +39447,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.entersWithCounters	map:string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.faceDown	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.libraryUntouched	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.limit	number:int
@@ -47293,6 +47325,8 @@ pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AssignsAsThoughUnblocked	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockPowerFloor	number:int
+pendingChoices[].damageAssignment.SourceLKI.AttackHasteFor	array
+pendingChoices[].damageAssignment.SourceLKI.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AfterTurn	number:int
@@ -47435,6 +47469,8 @@ pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].LenderName	strin
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Slot	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].damageAssignment.SourceLKI.CantAttackWithoutAnyOf	array
+pendingChoices[].damageAssignment.SourceLKI.CantAttackWithoutAnyOf[]	string
 pendingChoices[].damageAssignment.SourceLKI.CantBeAttacked	bool
 pendingChoices[].damageAssignment.SourceLKI.CantBeBeamedUp	bool
 pendingChoices[].damageAssignment.SourceLKI.CantBeSacrificed	bool
@@ -48254,6 +48290,8 @@ pendingChoices[].divideShield.staged[].lki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].divideShield.staged[].lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].lki.AttackBlockPowerFloor	number:int
+pendingChoices[].divideShield.staged[].lki.AttackHasteFor	array
+pendingChoices[].divideShield.staged[].lki.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AfterTurn	number:int
@@ -48396,6 +48434,8 @@ pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].LenderName	string
 pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].Slot	string
 pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].divideShield.staged[].lki.CantAttackWithoutAnyOf	array
+pendingChoices[].divideShield.staged[].lki.CantAttackWithoutAnyOf[]	string
 pendingChoices[].divideShield.staged[].lki.CantBeAttacked	bool
 pendingChoices[].divideShield.staged[].lki.CantBeBeamedUp	bool
 pendingChoices[].divideShield.staged[].lki.CantBeSacrificed	bool
@@ -48470,6 +48510,8 @@ pendingChoices[].divideShield.staged[].sourceLki.AllCreatureTypes	bool
 pendingChoices[].divideShield.staged[].sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockPowerFloor	number:int
+pendingChoices[].divideShield.staged[].sourceLki.AttackHasteFor	array
+pendingChoices[].divideShield.staged[].sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -48612,6 +48654,8 @@ pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].LenderName	
 pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].Slot	string
 pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].divideShield.staged[].sourceLki.CantAttackWithoutAnyOf	array
+pendingChoices[].divideShield.staged[].sourceLki.CantAttackWithoutAnyOf[]	string
 pendingChoices[].divideShield.staged[].sourceLki.CantBeAttacked	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantBeBeamedUp	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantBeSacrificed	bool
@@ -54777,6 +54821,8 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AllCreatureTypes	b
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackHasteFor	array
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -54919,6 +54965,8 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[].Slot	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CantAttackWithoutAnyOf	array
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CantAttackWithoutAnyOf[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeAttacked	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeBeamedUp	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeSacrificed	bool
@@ -57919,6 +57967,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.entersWithCounter
 pendingChoices[].replacementResume.event.entryTail.search.spec.entersWithCounters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.faceDown	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.libraryUntouched	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.limit	number:int
@@ -64144,6 +64193,8 @@ pendingChoices[].replacementResume.event.sourceLki.AllCreatureTypes	bool
 pendingChoices[].replacementResume.event.sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockPowerFloor	number:int
+pendingChoices[].replacementResume.event.sourceLki.AttackHasteFor	array
+pendingChoices[].replacementResume.event.sourceLki.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AfterTurn	number:int
@@ -64286,6 +64337,8 @@ pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].LenderNam
 pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].Slot	string
 pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].replacementResume.event.sourceLki.CantAttackWithoutAnyOf	array
+pendingChoices[].replacementResume.event.sourceLki.CantAttackWithoutAnyOf[]	string
 pendingChoices[].replacementResume.event.sourceLki.CantBeAttacked	bool
 pendingChoices[].replacementResume.event.sourceLki.CantBeBeamedUp	bool
 pendingChoices[].replacementResume.event.sourceLki.CantBeSacrificed	bool
@@ -67921,6 +67974,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersWithCo
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.faceDown	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.libraryUntouched	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.limit	number:int
@@ -71946,6 +72000,7 @@ pendingChoices[].searchPrompt.spec.entersWithCounters	map:string
 pendingChoices[].searchPrompt.spec.entersWithCounters{}	number:int
 pendingChoices[].searchPrompt.spec.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.faceDown	string
+pendingChoices[].searchPrompt.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.libraryOwner	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.libraryUntouched	bool
 pendingChoices[].searchPrompt.spec.limit	number:int
@@ -72941,6 +72996,8 @@ pendingChoices[].targetWalk.frame.lki.AllCreatureTypes	bool
 pendingChoices[].targetWalk.frame.lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].targetWalk.frame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].targetWalk.frame.lki.AttackBlockPowerFloor	number:int
+pendingChoices[].targetWalk.frame.lki.AttackHasteFor	array
+pendingChoices[].targetWalk.frame.lki.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AfterTurn	number:int
@@ -73083,6 +73140,8 @@ pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].LenderName	string
 pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].Slot	string
 pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].targetWalk.frame.lki.CantAttackWithoutAnyOf	array
+pendingChoices[].targetWalk.frame.lki.CantAttackWithoutAnyOf[]	string
 pendingChoices[].targetWalk.frame.lki.CantBeAttacked	bool
 pendingChoices[].targetWalk.frame.lki.CantBeBeamedUp	bool
 pendingChoices[].targetWalk.frame.lki.CantBeSacrificed	bool
@@ -73797,6 +73856,8 @@ pendingChoices[].triggerFrame.lki.AllCreatureTypes	bool
 pendingChoices[].triggerFrame.lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].triggerFrame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].triggerFrame.lki.AttackBlockPowerFloor	number:int
+pendingChoices[].triggerFrame.lki.AttackHasteFor	array
+pendingChoices[].triggerFrame.lki.AttackHasteFor[]	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
 pendingChoices[].triggerFrame.lki.AttackRequirements[].AfterTurn	number:int
@@ -73939,6 +74000,8 @@ pendingChoices[].triggerFrame.lki.BorrowedAbilities[].LenderName	string
 pendingChoices[].triggerFrame.lki.BorrowedAbilities[].Slot	string
 pendingChoices[].triggerFrame.lki.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.BorrowedAbilities[].SpendFrom	string
+pendingChoices[].triggerFrame.lki.CantAttackWithoutAnyOf	array
+pendingChoices[].triggerFrame.lki.CantAttackWithoutAnyOf[]	string
 pendingChoices[].triggerFrame.lki.CantBeAttacked	bool
 pendingChoices[].triggerFrame.lki.CantBeBeamedUp	bool
 pendingChoices[].triggerFrame.lki.CantBeSacrificed	bool

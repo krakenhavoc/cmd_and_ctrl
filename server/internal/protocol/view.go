@@ -10533,8 +10533,8 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(controller, card.InstanceID, dc))
 		}
 		// #1283: the exile-a-card sibling, off its own walk.
-		if ec := raw[i].ExileCards; ec != nil && ec.N > 0 {
-			views[i].ExileCostN = ec.N
+		if ec := raw[i].ExileCards; ec != nil && (ec.N > 0 || ec.CountOpponents) {
+			views[i].ExileCostN = g.ExileCostCountForEffect(controller, ec)
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
@@ -14346,8 +14346,8 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// #1297: the exile-N-cards component, off the walk the engine
 		// validates against — the mana view's four fields, one ability
 		// kind over.
-		if ec := a.Cost.ExileCards; ec != nil && ec.N > 0 {
-			v.ExileCostN = ec.N
+		if ec := a.Cost.ExileCards; ec != nil && (ec.N > 0 || ec.CountOpponents) {
+			v.ExileCostN = g.ExileCostCountForEffect(caster, ec)
 			v.ExileCostLabel = ec.Label
 			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
 			v.ExileCostZone = string(ec.Zone())

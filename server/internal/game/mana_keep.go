@@ -65,6 +65,12 @@ const (
 	// too. Colors is unused. Like Kruphix's, the conversion keeps the
 	// token's restrictions and riders.
 	ManaPoolBecomesBlack
+	// ManaPoolLosesLife — "a player losing unspent mana causes that player
+	// to lose that much life" (Yurlok of Scorch Thrash, the old "mana
+	// burn"). It keeps and converts nothing: the mana is lost as it always
+	// is, and the player then loses that many life. Read for every player
+	// when the static is ManaPoolEachPlayer. Colors is unused.
+	ManaPoolLosesLife
 )
 
 // ManaPoolStatic is ONE printed static over a player's mana pool.
@@ -101,6 +107,9 @@ type manaPoolRules struct {
 	// Kruphix, "R" for Ozai, "B" for Omnath, Locus of All); empty converts nothing. With two converting
 	// statics live, the first on the battlefield wins.
 	convertTo string
+	// burn is Yurlok's "a player losing unspent mana causes that player to
+	// lose that much life": the player loses life equal to the mana lost.
+	burn bool
 }
 
 func (r manaPoolRules) keeps(color string) bool {
@@ -127,6 +136,8 @@ func (g *Game) manaPoolRulesLocked(p *Player, endOfTurn bool) manaPoolRules {
 			if r.convertTo == "" {
 				r.convertTo = "B"
 			}
+		case ManaPoolLosesLife:
+			r.burn = true
 		case ManaPoolKeep:
 			if len(s.Colors) == 0 {
 				r.keepAll = true
@@ -268,4 +279,16 @@ func (g *Game) sweepManaPoolLocked(p *Player) int {
 	// a conversion changes the colour counts a pool-reading static sees.
 	invalidateLayersForManaPoolLocked(g)
 	return lost
+}
+
+// manaBurnLocked is ManaPoolLosesLife's effect: a player who lost `n`
+// unspent mana loses that much life, if a static on the battlefield says
+// so. Run after the mana is gone, by both ways a pool is emptied (the CR
+// 106.4 step-boundary sweep and "loses all unspent mana"). Caller must hold
+// g.mu (write).
+func (g *Game) manaBurnLocked(p *Player, n int) {
+	if n <= 0 || p == nil || p.Eliminated || !g.manaPoolRulesLocked(p, false).burn {
+		return
+	}
+	_ = g.changePlayerLifeWithTailLocked(uuid.Nil, p.ID, -n, nil)
 }

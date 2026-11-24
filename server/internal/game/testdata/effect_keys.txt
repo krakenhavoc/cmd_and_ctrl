@@ -273,6 +273,7 @@ body grim-reaper-lethal-legionnaire/return
 body grishnakh-brash-instigator/steal-body
 body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
+body halana-kessig-ranger/damage
 body halo-forager/cast
 body harald-unites-the-elves/shrink
 body havengul-lich/gains-its-abilities
@@ -372,6 +373,7 @@ body neo-go-shintai/ancient-wars-damage
 body neo-go-shintai/boundless-vigor-counters
 body neo-go-shintai/hidden-cruelty-destroy
 body neo-go-shintai/lost-wisdom-mill
+body nevinyrral-urborg-tyrant/sweep
 body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
@@ -500,6 +502,8 @@ body s82-neo-b18/kirin-touched-orochi-spirit
 body s82-old-b046/make-your-mark-spirit
 body s82-old-b046/valentin-pest-offer
 body s82-old-b064/surtland-flinger-damage
+body s82-old-b087/hans-eriksson-fight
+body s82-old-b088/plague-reaver-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -716,6 +720,7 @@ choose choose-cards/battlefield-improvisation-equipment
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
+choose choose-cards/bitter-revelation-take
 choose choose-cards/black-suns-twilight-return
 choose choose-cards/blossom-prancer-take
 choose choose-cards/body-snatcher-discard
@@ -1489,6 +1494,8 @@ choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
 choose choose-cards/saheeli-filigree-master-tap-artifact
+choose choose-cards/sakashimas-will-copy
+choose choose-cards/sakashimas-will-steal
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
@@ -2257,6 +2264,7 @@ number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
 number number/old-b069-remove-counters
+number number/old-b081-stumpsquall-hydra-give
 number number/overseer-of-vault-76-split-quest-counters
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plague-of-vermin-paid
@@ -2389,6 +2397,7 @@ option option-pick/golem-artisan-keyword
 option option-pick/gollum-scheming-guide-guesser
 option option-pick/guided-passage-opponent
 option option-pick/hand-of-vecna-creature
+option option-pick/hans-eriksson-attacks
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
 option option-pick/hostile-negotiations-face-up
@@ -2439,6 +2448,7 @@ option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/old-b071-cosima-voyage
+option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -2703,6 +2713,7 @@ payunless pay-unless/forage-only
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
+payunless pay-unless/furnace-celebration-damage
 payunless pay-unless/furyblade-vampire-pump
 payunless pay-unless/gap-b213-sivriss-return
 payunless pay-unless/gap-b53-conduit-goblin-pump-haste
@@ -2719,6 +2730,7 @@ payunless pay-unless/grim-reaper-lethal-legionnaire-return
 payunless pay-unless/grist-voracious-larva-transform
 payunless pay-unless/gryffwing-cavalry-flying
 payunless pay-unless/guide-of-souls-angel
+payunless pay-unless/halana-kessig-ranger-damage
 payunless pay-unless/halo-forager-x-cast
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
 payunless pay-unless/haunted-library-spirit
@@ -2792,6 +2804,7 @@ payunless pay-unless/neo-go-shintai-boundless-vigor
 payunless pay-unless/neo-go-shintai-hidden-cruelty
 payunless pay-unless/neo-go-shintai-lost-wisdom
 payunless pay-unless/neo-go-shintai-shared-purpose
+payunless pay-unless/nevinyrral-sweep
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nim-deathmantle-return-and-attach
@@ -3245,6 +3258,7 @@ run prompt-run/swarm-culler-draw
 run prompt-run/sword-of-truth-and-justice-counter
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
+run prompt-run/szats-will-sacrificed
 run prompt-run/taste-of-death-sacrificed
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/temur-sabertooth-return
@@ -3610,6 +3624,7 @@ tail connive/kamiz-obscura-oculus
 tail connive/x
 tail conspiracy/agenda-named
 tail copy-and-cast/cast-copies-then-exile-self
+tail copy-and-cast/mnemonic-deluge-three-copies
 tail cori-steel-cutter/offer-attach
 tail corpse-appraiser/look-at-top-three
 tail counter/double-if-grew
@@ -3997,6 +4012,7 @@ tail gul-dukat/drain-each-opponent
 tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
+tail hans-eriksson/entered
 tail harald-unites-the-elves/after-mill
 tail harried-dronesmith/haste-then-sacrifice
 tail hate-mirage/haste-and-exile-copies
@@ -4302,6 +4318,7 @@ tail power-pack/after-exile
 tail primal-amulet/ask
 tail primal-amulet/transform
 tail prishes-wanderings/searched
+tail profane-transfusion/token
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
@@ -4525,6 +4542,7 @@ tail sheoldred-the-true-scriptures/flicker-this
 tail shifting-shadow/attach-then-bottom
 tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
+tail sifter-wurm/reveal-gain-life
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
 tail simic-guildmage/take-one
@@ -4593,6 +4611,7 @@ tail sword-of-the-meek/attach
 tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
 tail szarekh-the-silent-king/after-mill
+tail szats-will/exiled
 tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
@@ -4889,6 +4908,7 @@ tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/old-b071-cosima-draw
+tail then/old-b081-fact-or-fiction-take
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill

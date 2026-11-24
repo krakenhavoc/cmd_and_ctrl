@@ -565,6 +565,10 @@ var TokenTable = map[string]game.Card{
 	// set to the total power exiled as it is created).
 	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 85: Marath, Will of the Wild's X/X green Elemental (printed */*; a 0/0
+	// placeholder, set to X as it is created).
+	"0/0 green Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Colors: []string{"G"}, PrintedPTKnown: true},
+
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
 
@@ -692,4 +696,8 @@ var TokenTable = map[string]game.Card{
 	"4/4 green Troll Warrior with trample": {Name: "Troll Warrior", TypeLine: "Token Creature — Troll Warrior", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	// S82 OLD batch 060 (#5505): The Bloodsky Massacre's Demon Berserker.
 	"2/3 red Demon Berserker with menace": {Name: "Demon Berserker", TypeLine: "Token Creature — Demon Berserker", Power: 2, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"menace"}},
+
+	// S82 OLD batch 083: Profane Transfusion's X/X Horror (printed */*; a 0/0 placeholder, set to the
+	// difference between the life totals as it is created).
+	"0/0 colorless Horror artifact": {Name: "Horror", TypeLine: "Token Artifact Creature — Horror", PrintedPTKnown: true},
 }

@@ -2906,6 +2906,17 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s collects evidence sized by the targets — a cast's additional cost only (#5240)",
 			name, where))
 	}
+	if ec.CountOpponents {
+		// "Exile cards from your graveyard equal to the number of opponents
+		// you have" (Araumi of the Dead Tide): a CR 602 ability's printed
+		// count of one kind, no other count form beside it.
+		if ec.N != 0 || ec.AnyNumber || ec.CountFromX || ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 ||
+			ec.Zone() != game.ZoneGraveyard || strings.Contains(where, "mana ability") {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles cards equal to the number of opponents — a graveyard clause of a CR 602 ability with no other count",
+				name, where))
+		}
+		return
+	}
 	if ec.CountFromX {
 		// #1948: "exile X cards" exists on a cast's mandatory slot only
 		// (checkCastExileCardsClause); no ability prints it.

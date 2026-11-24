@@ -148,6 +148,12 @@ var footprintConformanceCases = map[string]conformanceCase{
 		Template: effects.TokenCard("1/1 white Rabbit"), Name: "creature",
 		Count: func(ctx *effects.Context) int { return len(ctx.Game.Battlefield.Cards) },
 	}},
+	// S82 OLD batch 083: Nevinyrral's tapped Zombies and Gor Muldrak's Salamanders.
+	"S82OldB083TappedTokensForEachCreatureDied": {
+		step:  effects.S82OldB083TappedTokensForEachCreatureDied{Template: effects.TokenCard("2/2 black Zombie")},
+		setup: func(_ *testing.T, g *game.Game, _ *game.Player, _ uuid.UUID) { g.TurnTally.CreaturesDied = 2 },
+	},
+	"S82OldB083FewestCreaturesEachMakes": {step: effects.S82OldB083FewestCreaturesEachMakes{Template: effects.TokenCard("4/3 blue Salamander Warrior")}},
 	"Cmdr2S18TappedTreasuresForDamage": {step: effects.Cmdr2S18TappedTreasuresForDamage{
 		Count: func(ctx *effects.Context) int { return len(ctx.Game.Battlefield.Cards) },
 	}},

@@ -118,14 +118,7 @@ func yourRingBearerIsLegendary() game.StaticAbility {
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return source != nil && game.IsRingBearerOf(*target, source.Controller)
 		},
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			for _, s := range c.Supertypes {
-				if strings.EqualFold(s, "Legendary") {
-					return
-				}
-			}
-			c.Supertypes = append(c.Supertypes, "Legendary")
-		},
+		Apply: AddLegendarySupertype,
 	}
 }
 

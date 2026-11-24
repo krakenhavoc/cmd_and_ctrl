@@ -236,6 +236,7 @@ func (g *Game) LoseAllUnspentManaForEffect(player uuid.UUID) []ManaToken {
 	lost := append([]ManaToken(nil), p.ManaPool...)
 	n := p.ManaPool.EmptyPool()
 	g.EmitEvent(Event{Kind: EventManaPoolEmptied, Actor: player, Amount: n})
+	g.manaBurnLocked(p, n)
 	return lost
 }
 
