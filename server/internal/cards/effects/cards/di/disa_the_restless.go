@@ -36,16 +36,7 @@ func init() {
 					c, ok := g.LookupCardForEffect(ev.CardID)
 					return ok && c.Owner == source.Controller && c.IsPermanent() && c.HasSubtype(source.TextSubtype("Lhurgoyf"))
 				}, name+" — put the Lhurgoyf permanent card onto the battlefield",
-				func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					id := item.Trigger.Event.CardID
-					if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
-						return nil
-					}
-					return effects.ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: item.Controller}.Apply(effects.NewContext(g, item))
-				}),
+				effects.S82OldB062PutThatCardOntoTheBattlefield),
 			effects.WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(effects.Creature(),
 				name+" — create a Tarmogoyf token",
 				effects.Do(effects.CreateToken{Template: effects.TarmogoyfToken(), N: 1})),
