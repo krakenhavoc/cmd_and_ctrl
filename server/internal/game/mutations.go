@@ -5246,6 +5246,9 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// flashed-back or adventure card below goes to exile by a
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
+		// CR 702.55a (#6083): "when this spell is put into a graveyard
+		// during its resolution" — the move says which it was.
+		Resolved: resolved,
 	}
 	// What follows the move, as a registered tail (#4361 S11b): the
 	// paradigm trigger, rebound's, the counter, the Adventure's grant.

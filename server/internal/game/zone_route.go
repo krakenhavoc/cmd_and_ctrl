@@ -252,6 +252,15 @@ type zoneRoute struct {
 	// with it.
 	Countered bool
 
+	// Resolved marks an instant or sorcery card put into its owner's
+	// graveyard from the stack as the last step of its own resolution
+	// (CR 608.2n), as opposed to one countered or removed by CR 608.2b.
+	// It rides onto the completed EventZoneMove (Event.Resolved), and
+	// only when the card really landed in a graveyard: haunt on a spell
+	// reads it (CR 702.55a, #6083). Set by routeStackCardToGraveyardLocked
+	// on its one resolving call.
+	Resolved bool
+
 	// Cause is what moved the card (#1320, move_cause.go): a cost, a
 	// special action, a rule or a manual move, named by the caller that
 	// knows it. Left zero, routeCardToZoneLocked fills it from the
@@ -1003,12 +1012,13 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			kind = EventMill
 		}
 		out := Event{
-			Kind:    kind,
-			Actor:   actor,
-			Source:  r.Source,
-			CardID:  ev.CardID,
-			OldZone: src.Kind,
-			NewZone: dstZone.Kind,
+			Kind:     kind,
+			Actor:    actor,
+			Source:   r.Source,
+			CardID:   ev.CardID,
+			OldZone:  src.Kind,
+			NewZone:  dstZone.Kind,
+			Resolved: r.Resolved && src.Kind == ZoneStack && dstZone.Kind == ZoneGraveyard,
 		}
 		r.Cause.stampCause(&out)
 		leave.stamp(&out)

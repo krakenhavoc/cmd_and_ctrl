@@ -2033,6 +2033,16 @@ type Event struct {
 	// skips a spawn's move from no zone. Additive within schema v9.
 	BecameToken bool `json:"became_token,omitempty"`
 
+	// Resolved marks the EventZoneMove that puts an instant or sorcery
+	// card into its owner's graveyard from the stack as the last step of
+	// its own resolution (CR 608.2n), and no other move: a spell
+	// countered, or removed for want of legal targets (CR 608.2b), goes
+	// to the same graveyard without it. Haunt on a spell triggers on it
+	// ("When this spell is put into a graveyard during its resolution",
+	// CR 702.55a, #6083). Additive within the schema version: an older
+	// log has no such moves to mark. Engine-internal.
+	Resolved bool `json:"resolved,omitempty"`
+
 	// ExiledWith and ExiledWithAbility are the CR 607.2a link a card
 	// PLAYED FROM EXILE had while it sat there (Card.ExiledWith and
 	// Card.ExiledWithAbility): set on the EventCast of a spell cast from

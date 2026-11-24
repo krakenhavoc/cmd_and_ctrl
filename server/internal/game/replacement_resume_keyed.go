@@ -1135,6 +1135,7 @@ type zoneRouteSnapshot struct {
 	Source              *uuid.UUID          `json:"source,omitempty"`
 	MustSettleNow       bool                `json:"mustSettleNow,omitempty"`
 	Countered           bool                `json:"countered,omitempty"`
+	Resolved            bool                `json:"resolved,omitempty"`
 	CauseKind           MoveCauseKind       `json:"causeKind,omitempty"`
 	CauseController     *uuid.UUID          `json:"causeController,omitempty"`
 	CauseItem           *uuid.UUID          `json:"causeItem,omitempty"`
@@ -1145,6 +1146,11 @@ type zoneRouteSnapshot struct {
 	StateBased          bool                `json:"stateBased,omitempty"`
 	AsCommander         bool                `json:"asCommander,omitempty"`
 	CommanderAnswer     commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+	// Resolved above is zoneRoute.Resolved (haunt on a spell, #6083).
+	// Additive: a frame without it restores false, so a spell whose
+	// graveyard move paused before it existed does not haunt, the weaker
+	// direction.
+	//
 	// #4253 slice 3: one leg of a face-down exile batch.
 	FaceDownLegs *faceDownExileRun `json:"faceDownLegs,omitempty"`
 	// #4253 slice 9: one leg of a keyed route batch with the batch's
@@ -1404,7 +1410,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 			Actor: uuidPtrOrNil(r.Actor), ToBottom: r.ToBottom, Depth: r.Depth, FaceDown: r.FaceDown,
 			HiddenBy: permissionRefPtr(r.HiddenBy), ExiledWith: permissionRefPtr(r.ExiledWith),
 			Mill: r.Mill, Discard: r.Discard, DiscardCause: r.DiscardCause,
-			Source: uuidPtrOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered,
+			Source: uuidPtrOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered, Resolved: r.Resolved,
 			CauseKind: r.Cause.Kind, CauseController: uuidPtrOrNil(r.Cause.Controller), CauseItem: uuidPtrOrNil(r.Cause.Item),
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
@@ -1579,7 +1585,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 			Actor: uuidOrNil(r.Actor), ToBottom: r.ToBottom, Depth: r.Depth, FaceDown: r.FaceDown,
 			HiddenBy: permissionRefValue(r.HiddenBy), ExiledWith: permissionRefValue(r.ExiledWith),
 			Mill: r.Mill, Discard: r.Discard, DiscardCause: r.DiscardCause,
-			Source: uuidOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered,
+			Source: uuidOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered, Resolved: r.Resolved,
 			Cause:     MoveCause{Kind: r.CauseKind, Controller: uuidOrNil(r.CauseController), Item: uuidOrNil(r.CauseItem)},
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
