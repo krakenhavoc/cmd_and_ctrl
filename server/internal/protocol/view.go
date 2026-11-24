@@ -1111,6 +1111,12 @@ type CouncilVoteView struct {
 	// log says anyway.
 	Secret bool     `json:"secret,omitempty"`
 	Voted  []string `json:"voted,omitempty"`
+	// Choice marks a secret CHOICE rather than a vote (Prisoner's
+	// Dilemma, and the #5948 secret choice rounds: a number, a creature
+	// pick, a guess): the same hiding, worded as choosing. A round's
+	// number is asked on a pay_amount prompt that carries this view, and
+	// its ballot is Option -3 with the number in Number.
+	Choice bool `json:"choice,omitempty"`
 	// secretBallots are a secret vote's ballots, kept off the wire:
 	// FilterViewFor copies the viewer's own into Ballots, and nothing
 	// else reads them.
@@ -1142,10 +1148,13 @@ type CouncilVoteView struct {
 	ForOpponents  []int `json:"for_opponents,omitempty"`
 }
 
-// CouncilBallotView is one vote cast.
+// CouncilBallotView is one vote cast. In a secret choice round
+// (#5948) Option is -3 for an answer that is a number, which Number
+// carries.
 type CouncilBallotView struct {
 	Voter  string `json:"voter"`
 	Option int    `json:"option"`
+	Number int    `json:"number,omitempty"`
 }
 
 // PickOptionView is one branch of an "option_pick" prompt (#568):
@@ -4138,6 +4147,13 @@ type CardView struct {
 	// Absent at zero, and cleared by the non-knower redaction for the
 	// reasons above.
 	ChosenNumber int `json:"chosen_number,omitempty"`
+	// Notes are what this permanent's abilities have noted for it, in
+	// order (game.Card.Notes, #6097): Long List of the Ents' creature
+	// types, The Toymaker's Trap's numbers already chosen, the number
+	// Duelists' Convocation International wrote down and the digits it
+	// crossed out (#5948). Every one is public. Absent when none, and
+	// cleared by the non-knower redaction with the chosen values above.
+	Notes []string `json:"notes,omitempty"`
 	// CommanderColor is the colour this commander's owner chose for it
 	// before the game began (CR 903.4b, #5948): one uppercase letter, on
 	// The Prismatic Piper, Faceless One and Clara Oswald when they are
@@ -11822,6 +11838,7 @@ func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *Counci
 		ForController: append([]int(nil), v.ForController...),
 		ForOpponents:  append([]int(nil), v.ForOpponents...),
 		Secret:        v.Secret,
+		Choice:        v.Choice,
 		Abstain:       v.Abstain,
 		SelfBest:      v.SelfBest,
 	}
@@ -11842,7 +11859,7 @@ func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *Counci
 		}
 		for _, b := range v.Ballots {
 			note(b.Voter)
-			out.secretBallots = append(out.secretBallots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+			out.secretBallots = append(out.secretBallots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option, Number: b.Number})
 		}
 		for _, voter := range v.Abstained {
 			note(voter)
@@ -13075,6 +13092,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.ChosenName = ""
 	out.ChosenOption = ""
 	out.ChosenNumber = 0
+	out.Notes = nil
 	out.CommanderColor = ""
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
@@ -13405,6 +13423,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ChosenName:   c.ChosenName,
 		ChosenOption: c.ChosenOption,
 		ChosenNumber: c.ChosenNumber,
+		Notes:        append([]string(nil), c.Notes...),
 		// CR 903.4b: an attribute of the card, kept in every zone.
 		CommanderColor: c.CommanderColor,
 		knowers:        knowers,

@@ -76,6 +76,20 @@ describe("chosenValueChips", () => {
     expect(chosenValueChips({ chosen_number: 0 })).toEqual([]);
   });
 
+  it("lists what was noted for the permanent (#6097, #5948), shortened on the chip", () => {
+    const chip = chosenValueChips({ notes: ["1", "4"] })[0];
+    expect(chip.kind).toBe("notes");
+    expect(chip.label).toBe("Noted: 1 · 4");
+    expect(chip.title).toBe("noted for this permanent: 1 · 4");
+    const long = chosenValueChips({
+      notes: ["Number 3141592653", "Crossed out the 3 in place 1", "Crossed out the 1 in place 2"],
+    })[0];
+    expect(long.label.length).toBeLessThanOrEqual("Noted: ".length + 48);
+    expect(long.label.endsWith("…")).toBe(true);
+    expect(long.title).toContain("Crossed out the 1 in place 2");
+    expect(chosenValueChips({ notes: [] })).toEqual([]);
+  });
+
   it("labels a chosen name (#1210, Pithing Needle) as named", () => {
     const chip = chosenValueChips({ chosen_name: "Sol Ring" })[0];
     expect(chip.kind).toBe("name");

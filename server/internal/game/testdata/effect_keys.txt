@@ -947,6 +947,7 @@ choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/irreverent-gremlin-discard-draw
 choose choose-cards/isildurs-fateful-strike-exile
 choose choose-cards/isochron-scepter-imprint
+choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
@@ -1609,6 +1610,7 @@ choose resolution-cast/glorious-purpose-rest-to-hand
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/herald-of-amity-rest-to-bottom
 choose resolution-cast/invasion-of-alara-after-cast
+choose resolution-cast/itazura-lingering-wick-to-hand
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
@@ -2252,6 +2254,7 @@ option option-pick/gluntch-the-bestower-first
 option option-pick/gluntch-the-bestower-second
 option option-pick/gluntch-the-bestower-third
 option option-pick/golem-artisan-keyword
+option option-pick/gollum-scheming-guide-guesser
 option option-pick/guided-passage-opponent
 option option-pick/hand-of-vecna-creature
 option option-pick/hidden-strings-tap-or-untap
@@ -2267,6 +2270,7 @@ option option-pick/intellectual-offering-draw
 option option-pick/intellectual-offering-untap
 option option-pick/intrude-on-the-mind-chooser
 option option-pick/invasion-of-arcavios-zones
+option option-pick/itazura-lingering-wick-opponent
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
@@ -2385,6 +2389,7 @@ option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
+option option-pick/toymakers-trap-guesser
 option option-pick/tresserhorns-lord-returned-choice
 option option-pick/triarch-stalker-opponent
 option option-pick/trigger-opponent-chooser
@@ -3753,6 +3758,7 @@ tail go-nuts/fight
 tail goblin-plate-mail/attach
 tail golden-argosy/schedule-return-tapped
 tail goldwardens-gambit/after-tokens
+tail gollum-scheming-guide/looked
 tail gorging-vulture/after-mill
 tail grasping-tentacles/choose-artifact
 tail grave-researcher/become-prepared
@@ -3842,6 +3848,7 @@ tail invasion-of-pyrulea/reveal-then-draw
 tail invent/sorcery-search
 tail isareth/exile-instead
 tail isolated-watchtower/after-scry
+tail itazura-lingering-wick/exiled
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail jacob-frye/copy-and-cast
 tail janice-rand-essential-aide/reveal-until-land
@@ -4858,6 +4865,10 @@ tail zimones-experiment/creatures-then-rest
 tail zombie-apocalypse/destroy-humans
 tail zukos-exile/after-exile
 tapcost waterbend
+vote secret/call-to-the-void
+vote secret/gollum-scheming-guide
+vote secret/itazura-lingering-wick
+vote secret/toymakers-trap
 vote vote/bite-of-the-black-rose
 vote vote/capital-punishment
 vote vote/cirdan-the-shipwright

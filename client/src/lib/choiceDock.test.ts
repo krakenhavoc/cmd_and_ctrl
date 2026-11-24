@@ -20,6 +20,7 @@ import {
   ballotNote,
   choiceRequest,
   councilVoteRequest,
+  SECRET_NUMBER_OPTION,
   gameOverRequest,
   INLINE_LABEL_MAX,
   INLINE_OPTION_MAX,
@@ -477,6 +478,37 @@ describe("voteRequest and gameOverRequest", () => {
     expect(cy?.row?.map((r) => r.note)).toEqual([undefined, undefined]);
     // Bob's own ballot shows no tally either.
     expect([0, 1].map((i) => ballotNote(secretBallot([]), i))).toEqual([undefined, undefined]);
+  });
+
+  it("a secret choice round (#5948) words it as choosing and shows the viewer's own number", () => {
+    const seats = [
+      { id: "a", name: "Ann" },
+      { id: "b", name: "Bob" },
+      { id: "c", name: "Cy" },
+    ];
+    // Itazura: each opponent secretly names a number on a pay_amount.
+    const numberAsk = (ballots: { voter: string; option: number; number?: number }[]) =>
+      choice({
+        kind: "pay_amount",
+        chooser: "c",
+        reason: "Itazura, Lingering Wick — secretly choose a number 0 or greater",
+        council_vote: {
+          controller: "a",
+          voter: "c",
+          options: [],
+          tally: [],
+          ballots,
+          offered: [],
+          secret: true,
+          choice: true,
+          voted: ["b"],
+        },
+      });
+    const bob = councilVoteRequest(numberAsk([{ voter: "b", option: SECRET_NUMBER_OPTION, number: 7 }]), "b", seats);
+    expect(bob?.label).toBe("secret choice");
+    expect(bob?.detail).toBe("Cy is choosing in secret · 1 chose so far · you chose 7, waiting for the others");
+    const ann = councilVoteRequest(numberAsk([]), "a", seats);
+    expect(ann?.detail).toBe("Cy is choosing in secret · 1 chose so far");
   });
 
   it("names who is choosing for whom when someone else casts the ballot (Illusion of Choice)", () => {
