@@ -158,6 +158,10 @@ var knownUnmatchedTokens = map[string]string{
 	"2/2 green Monkey": "no Monkey token card was printed for Monkey Cage",
 	// Questing Phelddagrif (Secret Lair Drop) makes "a 1/1 green Hippo creature token"; the only Hippo token card in the dump is a 3/3.
 	"1/1 green Hippo": "no 1/1 green Hippo token card in the dump; Questing Phelddagrif prints the token in its text",
+	// Marath, Will of the Wild (Commander Legends) creates "an X/X green Elemental creature
+	// token". The printed token card is */*, which a fixed size can never match; the template is
+	// 0/0 and the card sets X/X as it creates the token.
+	"0/0 green Elemental": "the printed token card is */*; Marath, Will of the Wild sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
