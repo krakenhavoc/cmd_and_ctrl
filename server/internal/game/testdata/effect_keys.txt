@@ -452,6 +452,7 @@ body remnant-of-the-rising-star/counters
 body renown/grow
 body repeated-reverberation/copy-twice
 body repository-skaab/return
+body resplendent-marshal/counters
 body return/the-objects-together-under-your-control
 body return/vanish-into-memory
 body rewrite-history/return
@@ -1383,6 +1384,7 @@ choose choose-cards/relic-of-progenitus-exile
 choose choose-cards/rent-is-due-tap-two
 choose choose-cards/research-shuffle
 choose choose-cards/resonance-technician-investigate-twice
+choose choose-cards/resplendent-marshal-exile
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
 choose choose-cards/ring-bearer
@@ -4211,6 +4213,7 @@ tail release-to-memory/spirit-per-creature-card
 tail renegade-bull/copy-exiled
 tail reno-and-rude/exiled
 tail replicating-ring/check
+tail resplendent-marshal/exiled
 tail rex-cyber-hound/after-exile
 tail rhino-terrible-trampler/counters-and-trample
 tail riders-of-the-mark/human-soldiers

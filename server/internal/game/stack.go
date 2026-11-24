@@ -438,6 +438,15 @@ type StackItem struct {
 	// the same fact on EventCast). Added in S22.
 	CastFromZone ZoneKind
 
+	// CastOrdinal is which spell this was among the spells its caster cast
+	// this turn (1 for the first), stamped as the spell became cast
+	// (CR 601.2i) from the per-turn tally, so a spell cast in response does
+	// not move it. Zero for an item that is not a cast spell. Carried onto
+	// the permanent's CastProvenance (CR 400.7d): Codespell Cleric's "if it
+	// was the second spell you cast this turn". Additive within the
+	// snapshot version.
+	CastOrdinal int
+
 	// AltCost is the Key of the alternative cost paid to cast this
 	// spell — "overload", "evoke", "cleave" — or empty when the
 	// caster paid the printed mana cost (CR 118.9). Read back at

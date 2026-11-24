@@ -981,6 +981,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,
+		CastOrdinal:      s.CastOrdinal,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
