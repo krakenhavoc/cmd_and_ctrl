@@ -1206,8 +1206,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// off the permission the announcement is made under, as the engine's
 	// pricer reads it off the one the cast claims.
 	grantLess, grantMore := 0, 0
+	var grantMoreMana *game.ParsedCost
 	if perm != nil {
 		grantLess, grantMore = perm.CostLess, perm.CostMore
+		// #6091: the permission's coloured additional cost.
+		grantMoreMana = game.CostMoreManaOf(perm)
 	}
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
@@ -1407,6 +1410,7 @@ modeLoop:
 				AltFlashback:          offer != nil && offer.Key == "flashback",
 				GrantReduction:        grantLess,
 				GrantIncrease:         grantMore,
+				GrantIncreaseMana:     grantMoreMana,
 				ExilingFromHand:       len(handExile),
 				TappingToPay:          len(tapAny),
 				OptionalCosts:         chosen,
@@ -1535,6 +1539,7 @@ modeLoop:
 					AltFlashback:          offer != nil && offer.Key == "flashback",
 					GrantReduction:        grantLess,
 					GrantIncrease:         grantMore,
+					GrantIncreaseMana:     grantMoreMana,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
 					OptionalCosts:         chosen,
@@ -1620,6 +1625,7 @@ modeLoop:
 							AltFlashback:          offer != nil && offer.Key == "flashback",
 							GrantReduction:        grantLess,
 							GrantIncrease:         grantMore,
+							GrantIncreaseMana:     grantMoreMana,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
 							OptionalCosts:         chosen,
