@@ -83,6 +83,11 @@ import (
 // (maxRequirementAssignment). Only creatures that carry a requirement
 // take part: one with none adds nothing, and leaving it home is always
 // at least as good.
+//
+// A player-level requirement ("each opponent must attack with at least
+// one creature", #6087) is one requirement however many creatures carry
+// it, and the search adds it as a reward the first obeying attack
+// collects: see attack_requirements_player.go.
 
 // AttackRequirement is one CR 508.1d requirement on one creature.
 //
@@ -170,6 +175,26 @@ type AttackRequirement struct {
 	// binary that drops it misreads only last-known information, which
 	// no attack declaration is judged against.
 	IfSourceAttacks bool
+	// AtLeastOneCreature, when set, makes the requirement its creature's
+	// CONTROLLER's rather than the creature's own: "each opponent must
+	// attack with at least one creature each combat if able" (Seeker of
+	// Slaanesh, Trove of Temptation, #6087). It is ONE requirement for
+	// CR 508.1d's count however many creatures carry it, obeyed when at
+	// least one of that player's attacking creatures attacks a target its
+	// shape accepts. Only two shapes are read with it: the plain one
+	// (anything) and AttacksPlayerOrTheirPlaneswalkers. See
+	// attack_requirements_player.go.
+	AtLeastOneCreature bool
+	// AttacksPlayerOrTheirPlaneswalkers, when set, makes this "attacks
+	// AttacksPlayerOrTheirPlaneswalkers or a planeswalker they control if
+	// able" (Trove of Temptation's "you or a planeswalker you control",
+	// #6087): obeyed by an attack on that player or on a planeswalker that
+	// player controls as the attack is judged, never on a battle.
+	//
+	// Both fields are additive in the snapshot for IfSourceAttacks's
+	// reason: they ride last-known characteristics only, and their zero
+	// values are every requirement before them.
+	AttacksPlayerOrTheirPlaneswalkers uuid.UUID
 }
 
 // AnyPlayerSentinel is the OtherThan of "attacks a player each combat if
@@ -195,6 +220,13 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 	}
 	if r.MustAttack != uuid.Nil {
 		return target == r.MustAttack
+	}
+	if p := r.AttacksPlayerOrTheirPlaneswalkers; p != uuid.Nil {
+		if target == p {
+			return g.classifyAttackTargetLocked(target) == AttackTargetPlayer
+		}
+		c := findBattlefieldCard(g, target)
+		return c != nil && c.Controller == p && g.classifyAttackTargetLocked(target) == AttackTargetPlaneswalker
 	}
 	if r.MustAttackPermanent.ID != uuid.Nil {
 		if target != r.MustAttackPermanent.ID {
@@ -300,11 +332,13 @@ func (g *Game) attackRequirementsOfLocked(c *Card, assign map[uuid.UUID]uuid.UUI
 }
 
 // requirementWeightLocked is how many of `reqs` an attack at `target`
-// obeys. Caller must hold g.mu.
+// obeys. A player-level requirement (AtLeastOneCreature, #6087) is not
+// the creature's own and is counted once per declaration instead
+// (attackGroupsLocked). Caller must hold g.mu.
 func (g *Game) requirementWeightLocked(reqs []AttackRequirement, target uuid.UUID) int {
 	n := 0
 	for _, r := range reqs {
-		if r.obeyedBy(g, target) {
+		if !r.AtLeastOneCreature && r.obeyedBy(g, target) {
 			n++
 		}
 	}
@@ -350,7 +384,11 @@ type reqPair struct {
 // zero is not counted, so a requirement never forces a payment.
 //
 // Caller must hold g.mu with fresh layers.
-func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.UUID]uuid.UUID) []reqCandidate {
+//
+// `gb` is the player-level requirements (#6087) the declaration does not
+// obey yet: a pair that obeys none of the creature's own requirements is
+// still offered when its target would obey one of those.
+func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.UUID]uuid.UUID, gb groupBonus) []reqCandidate {
 	if ap == uuid.Nil || g.Battlefield == nil {
 		return nil
 	}
@@ -372,7 +410,7 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 			continue
 		}
 		reqs := g.attackRequirementsOfLocked(c, assign)
-		if len(reqs) == 0 {
+		if len(reqs) == 0 && gb.empty() {
 			continue
 		}
 		if targets == nil {
@@ -395,7 +433,7 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 				continue
 			}
 			w := g.requirementWeightLocked(reqs, t.ID)
-			if w == 0 {
+			if w == 0 && gb.gain(t.ID) == 0 {
 				continue
 			}
 			if !g.priceAttackDeclarationLocked([]AttackDeclaration{{Attacker: c.InstanceID, Target: t.ID}}).IsFree() {
@@ -485,6 +523,19 @@ func (g *Game) attackCapacityLocked(assign map[uuid.UUID]uuid.UUID) attackCapaci
 // residual graph never grows one, which is what keeps Bellman-Ford
 // exact here.
 func maxRequirementAssignment(cands []reqCandidate, cp attackCapacity) (int, map[uuid.UUID]uuid.UUID) {
+	return maxRequirementAssignmentWithGroups(cands, cp, groupBonus{})
+}
+
+// maxRequirementAssignmentWithGroups is maxRequirementAssignment with
+// the player-level requirements `gb` (#6087) on top: each is worth one
+// to the FIRST creature whose attack obeys it and nothing to the rest, a
+// concave reward the network carries as a pair of parallel arcs (a
+// cap-1 arc that pays it, beside a free arc), so successive shortest
+// paths still solve it exactly. The requirements are laminar — "any
+// attack" on the combat-wide node, "that player or their planeswalkers"
+// on a node per player between the targets and it — which is what lets
+// one network hold them.
+func maxRequirementAssignmentWithGroups(cands []reqCandidate, cp attackCapacity, gb groupBonus) (int, map[uuid.UUID]uuid.UUID) {
 	if len(cands) == 0 {
 		return 0, nil
 	}
@@ -500,7 +551,21 @@ func maxRequirementAssignment(cands []reqCandidate, cp attackCapacity) (int, map
 		}
 	}
 	n, m := len(cands), len(targets)
-	src, gnode, sink := 0, 1+n+m, 2+n+m
+	// Player nodes (#6087), one per player a residual "that player or
+	// their planeswalkers" requirement names, between the targets and
+	// the combat-wide node.
+	var players []uuid.UUID
+	pIndex := map[uuid.UUID]int{}
+	for _, t := range targets {
+		if p, ok := gb.playerOf[t]; ok && gb.perPlayer[p] > 0 {
+			if _, seen := pIndex[p]; !seen {
+				pIndex[p] = len(players)
+				players = append(players, p)
+			}
+		}
+	}
+	np := len(players)
+	src, gnode, sink := 0, 1+n+m+np, 2+n+m+np
 	nodes := sink + 1
 	const inf = 1 << 30
 
@@ -510,9 +575,12 @@ func maxRequirementAssignment(cands []reqCandidate, cp attackCapacity) (int, map
 		graph[u] = append(graph[u], arc{to: v, rev: len(graph[v]), cap: capacity, cost: cost})
 		graph[v] = append(graph[v], arc{to: u, rev: len(graph[u]) - 1, cap: 0, cost: -cost})
 	}
+	pairArc := make([]map[int]bool, n)
 	for i, c := range cands {
 		addArc(src, 1+i, 1, 0)
+		pairArc[i] = map[int]bool{}
 		for _, p := range c.pairs {
+			pairArc[i][len(graph[1+i])] = true
 			addArc(1+i, 1+n+tIndex[p.target], 1, -p.weight)
 		}
 	}
@@ -521,13 +589,30 @@ func maxRequirementAssignment(cands []reqCandidate, cp attackCapacity) (int, map
 		if r, ok := cp.perTarget[t]; ok {
 			room = r
 		}
-		addArc(1+n+j, gnode, room, 0)
+		next := gnode
+		if p, ok := gb.playerOf[t]; ok {
+			if pi, ok := pIndex[p]; ok {
+				next = 1 + n + m + pi
+			}
+		}
+		addArc(1+n+j, next, room, 0)
+	}
+	for pi, p := range players {
+		addArc(1+n+m+pi, gnode, 1, -gb.perPlayer[p])
+		addArc(1+n+m+pi, gnode, inf, 0)
 	}
 	global := inf
 	if cp.global >= 0 {
 		global = cp.global
 	}
-	addArc(gnode, sink, global, 0)
+	if gb.any > 0 && global > 0 {
+		addArc(gnode, sink, 1, -gb.any)
+		if global > 1 {
+			addArc(gnode, sink, global-1, 0)
+		}
+	} else {
+		addArc(gnode, sink, global, 0)
+	}
 
 	total := 0
 	for {
@@ -571,8 +656,8 @@ func maxRequirementAssignment(cands []reqCandidate, cp attackCapacity) (int, map
 	}
 	witness := map[uuid.UUID]uuid.UUID{}
 	for i, c := range cands {
-		for _, a := range graph[1+i] {
-			if a.to > n && a.to <= n+m && a.cap == 0 && a.cost < 0 {
+		for ai, a := range graph[1+i] {
+			if pairArc[i][ai] && a.cap == 0 {
 				witness[c.id] = targets[a.to-1-n]
 			}
 		}
@@ -608,12 +693,15 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 		}
 		out.obeyed += g.requirementWeightLocked(g.attackRequirementsOfLocked(c, assign), target)
 	}
-	out.cands = g.attackRequirementCandidatesLocked(ap, assign)
+	// #6087: the player-level requirements, each counted once.
+	groupsObeyed, gb := g.attackGroupsLocked(ap, assign)
+	out.obeyed += groupsObeyed
+	out.cands = g.attackRequirementCandidatesLocked(ap, assign, gb)
 	cp := g.attackCapacityLocked(assign)
 	loners := g.onlyAloneAttackersLocked()
 	best := func(cands []reqCandidate) (int, map[uuid.UUID]uuid.UUID) {
 		if len(loners) == 0 {
-			return maxRequirementAssignment(cands, cp)
+			return maxRequirementAssignmentWithGroups(cands, cp, gb)
 		}
 		// "Can only attack alone" (AttackLimitOnlyAlone, CR 506.5): such
 		// a creature can join only an empty declaration, and then nothing
@@ -629,7 +717,7 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 				rest = append(rest, c)
 			}
 		}
-		addition, witness := maxRequirementAssignment(rest, cp)
+		addition, witness := maxRequirementAssignmentWithGroups(rest, cp, gb)
 		if len(assign) > 0 || cp.global == 0 {
 			return addition, witness
 		}
@@ -644,8 +732,8 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 				if r, ok := cp.perTarget[p.target]; ok && r <= 0 {
 					continue
 				}
-				if p.weight > addition {
-					addition = p.weight
+				if w := p.weight + gb.gain(p.target); w > addition {
+					addition = w
 					witness = map[uuid.UUID]uuid.UUID{c.id: p.target}
 				}
 			}
@@ -720,7 +808,8 @@ type AttackRequirementError struct {
 	// Requirement names, for the sentence.
 	GoaderName    string
 	OtherThanName string
-	// MustAttackName is the display name of Requirement.MustAttack.
+	// MustAttackName is the display name of Requirement.MustAttack, or
+	// of Requirement.AttacksPlayerOrTheirPlaneswalkers (#6087).
 	MustAttackName string
 	// MustAttackPermanentName is the name of the permanent
 	// Requirement.MustAttackPermanent names (#2567), read as the refusal
@@ -746,6 +835,7 @@ func (e *AttackRequirementError) Unwrap() error { return ErrAttackRequirement }
 //	"Galactus, Devourer of Worlds must attack an opponent with the most life if able."
 //	"Grizzly Bears must attack Gideon Jura if able."
 //	"Grizzly Bears must attack if able, because Viashino Bey is attacking."
+//	"At least one creature must attack this combat if able (Seeker of Slaanesh)."
 func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	who := nameOr(e.AttackerName, "That creature")
 	r := e.Requirement
@@ -754,6 +844,22 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 			return "you"
 		}
 		return nameOr(name, "that player")
+	}
+	if r.AtLeastOneCreature {
+		// #6087: the requirement is the player's, so the sentence names
+		// no creature.
+		s := "At least one creature must attack this combat if able"
+		if p := r.AttacksPlayerOrTheirPlaneswalkers; p != uuid.Nil {
+			if p == viewer {
+				s = "At least one creature must attack you or a planeswalker you control this combat if able"
+			} else {
+				s = "At least one creature must attack " + nameOr(e.MustAttackName, "that player") + " or a planeswalker they control this combat if able"
+			}
+		}
+		if r.SourceName != "" {
+			s += " (" + r.SourceName + ")"
+		}
+		return s + "."
 	}
 	if r.MostLifeOpponentOf != uuid.Nil {
 		s := who + " must attack an opponent with the most life if able"
@@ -817,9 +923,17 @@ func (g *Game) attackRequirementErrorLocked(id uuid.UUID, reqs []AttackRequireme
 	if c := findBattlefieldCard(g, id); c != nil {
 		e.AttackerName = c.Effective().Name
 	}
-	for _, r := range reqs {
-		if r.obeyedBy(g, could) && !r.obeyedBy(g, lost) {
-			e.Requirement = r
+	// The creature's own requirements first, then a player-level one
+	// (#6087) its attack would obey.
+	found := false
+	for _, group := range []bool{false, true} {
+		for _, r := range reqs {
+			if r.AtLeastOneCreature == group && r.obeyedBy(g, could) && !r.obeyedBy(g, lost) {
+				e.Requirement, found = r, true
+				break
+			}
+		}
+		if found {
 			break
 		}
 	}
@@ -830,6 +944,9 @@ func (g *Game) attackRequirementErrorLocked(id uuid.UUID, reqs []AttackRequireme
 		e.OtherThanName = p.Name
 	}
 	if p := g.playerByIDLocked(e.Requirement.MustAttack); p != nil {
+		e.MustAttackName = p.Name
+	}
+	if p := g.playerByIDLocked(e.Requirement.AttacksPlayerOrTheirPlaneswalkers); p != nil {
 		e.MustAttackName = p.Name
 	}
 	if id := e.Requirement.MustAttackPermanent.ID; id != uuid.Nil {
@@ -878,7 +995,7 @@ func (g *Game) explainReachDropLocked(ap uuid.UUID, beforeAssign, afterAssign ma
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if t, ok := before.witness[c.InstanceID]; ok {
-			return g.attackRequirementErrorLocked(c.InstanceID, g.attackRequirementsOfLocked(c, beforeAssign), uuid.Nil, t)
+			return g.attackRequirementErrorLocked(c.InstanceID, g.withoutObeyedGroupsLocked(g.attackRequirementsOfLocked(c, beforeAssign), beforeAssign), uuid.Nil, t)
 		}
 	}
 	return &AttackRequirementError{}
@@ -953,7 +1070,7 @@ func (g *Game) attackRequirementsUnmetLocked() *AttackRequirementError {
 		if !ok {
 			continue
 		}
-		return g.attackRequirementErrorLocked(c.InstanceID, g.attackRequirementsOfLocked(c, assign), uuid.Nil, t)
+		return g.attackRequirementErrorLocked(c.InstanceID, g.withoutObeyedGroupsLocked(g.attackRequirementsOfLocked(c, assign), assign), uuid.Nil, t)
 	}
 	return &AttackRequirementError{}
 }

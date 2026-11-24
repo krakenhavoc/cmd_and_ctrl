@@ -492,6 +492,13 @@ type TriggeredAbility struct {
 	// data, never persisted.
 	XFromCast bool
 
+	// XFromEventAmount sizes a CountFromX target clause by the
+	// triggering event's Amount: "When you cycle this card, destroy up
+	// to X target artifacts" (Rampaging War Mammoth, #6085), where X is
+	// the cycling cost's X that EventCycle carries. See
+	// trigger_event_x.go. Catalog data, never persisted.
+	XFromEventAmount bool
+
 	// PerCounter is "whenever a [kind] counter is put on ~": the
 	// counter kind whose placement this ability triggers on ONCE PER
 	// COUNTER (#1841, CR 603.2c and the Fathom Mage rulings). The

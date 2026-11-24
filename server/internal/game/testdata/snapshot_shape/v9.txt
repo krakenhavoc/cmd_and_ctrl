@@ -4642,6 +4642,8 @@ frozenEntries[].event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements	array
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
+frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -4751,6 +4753,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttack
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].SourceName	string
 frozenEntries[].event.damageTail.sourceLki.BlockRequirements	array
@@ -13915,6 +13918,8 @@ frozenEntries[].event.sourceLki.AttackBlockPowerFloor	number:int
 frozenEntries[].event.sourceLki.AttackRequirements	array
 frozenEntries[].event.sourceLki.AttackRequirements[]	object
 frozenEntries[].event.sourceLki.AttackRequirements[].AfterTurn	number:int
+frozenEntries[].event.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+frozenEntries[].event.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 frozenEntries[].event.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -14024,6 +14029,7 @@ frozenEntries[].event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].SourceName	string
 frozenEntries[].event.sourceLki.BlockRequirements	array
@@ -20932,6 +20938,8 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackBlockPowerFloor	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[]	object
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AfterTurn	number:int
+heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AtLeastOneCreature	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].IfSourceAttacks	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -21041,6 +21049,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].OnlyAttack
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].SourceName	string
 heldCombatDamage.answers[].frame.SourceLKI.BlockRequirements	array
@@ -21156,6 +21165,8 @@ lastKnownBattlefield{}.AttackBlockPowerFloor	number:int
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].AfterTurn	number:int
+lastKnownBattlefield{}.AttackRequirements[].AtLeastOneCreature	bool
+lastKnownBattlefield{}.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].IfSourceAttacks	bool
 lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -21265,6 +21276,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].OnlyAttackersMatching[].Supert
 lastKnownBattlefield{}.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].SourceName	string
 lastKnownBattlefield{}.BlockRequirements	array
@@ -21384,6 +21396,8 @@ lastKnownPermanents{}[].characteristic.AttackBlockPowerFloor	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].AfterTurn	number:int
+lastKnownPermanents{}[].characteristic.AttackRequirements[].AtLeastOneCreature	bool
+lastKnownPermanents{}[].characteristic.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].IfSourceAttacks	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -21493,6 +21507,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].OnlyAttackersM
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].SourceName	string
 lastKnownPermanents{}[].characteristic.BlockRequirements	array
@@ -25997,6 +26012,8 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[]	object
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
+movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -26106,6 +26123,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttack
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].SourceName	string
 movesAwaitingTokens[].damageTail.sourceLki.BlockRequirements	array
@@ -35270,6 +35288,8 @@ movesAwaitingTokens[].sourceLki.AttackBlockPowerFloor	number:int
 movesAwaitingTokens[].sourceLki.AttackRequirements	array
 movesAwaitingTokens[].sourceLki.AttackRequirements[]	object
 movesAwaitingTokens[].sourceLki.AttackRequirements[].AfterTurn	number:int
+movesAwaitingTokens[].sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+movesAwaitingTokens[].sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements[].IfSourceAttacks	bool
 movesAwaitingTokens[].sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -35379,6 +35399,7 @@ movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].SourceName	string
 movesAwaitingTokens[].sourceLki.BlockRequirements	array
@@ -46761,6 +46782,8 @@ pendingChoices[].damageAssignment.SourceLKI.AttackBlockPowerFloor	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -46870,6 +46893,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].OnlyAttac
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements	array
@@ -47713,6 +47737,8 @@ pendingChoices[].divideShield.staged[].lki.AttackBlockPowerFloor	number:int
 pendingChoices[].divideShield.staged[].lki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -47822,6 +47848,7 @@ pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].OnlyAttack
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].divideShield.staged[].lki.BlockRequirements	array
@@ -47926,6 +47953,8 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackBlockPowerFloor	number:in
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[]	object
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -48035,6 +48064,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Only
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].divideShield.staged[].sourceLki.BlockRequirements	array
@@ -54179,6 +54209,8 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockPowerFl
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -54288,6 +54320,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestri
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BlockRequirements	array
@@ -63452,6 +63485,8 @@ pendingChoices[].replacementResume.event.sourceLki.AttackBlockPowerFloor	number:
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements	array
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[]	object
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -63561,6 +63596,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].On
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].replacementResume.event.sourceLki.BlockRequirements	array
@@ -72161,6 +72197,8 @@ pendingChoices[].targetWalk.frame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].targetWalk.frame.lki.AttackRequirements	array
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[]	object
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -72270,6 +72308,7 @@ pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].OnlyAttackersMa
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].targetWalk.frame.lki.BlockRequirements	array
@@ -73004,6 +73043,8 @@ pendingChoices[].triggerFrame.lki.AttackBlockPowerFloor	number:int
 pendingChoices[].triggerFrame.lki.AttackRequirements	array
 pendingChoices[].triggerFrame.lki.AttackRequirements[]	object
 pendingChoices[].triggerFrame.lki.AttackRequirements[].AfterTurn	number:int
+pendingChoices[].triggerFrame.lki.AttackRequirements[].AtLeastOneCreature	bool
+pendingChoices[].triggerFrame.lki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].triggerFrame.lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -73113,6 +73154,7 @@ pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].OnlyAttackersMatchi
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].triggerFrame.lki.BlockRequirements	array

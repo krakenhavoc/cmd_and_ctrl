@@ -518,6 +518,9 @@ func (g *Game) triggerTargetsLocked(t TriggeredAbility, tc TriggerContext, sourc
 	if t.XFromCast && t.Targets != nil && t.Targets.CountFromX {
 		return xCountedTriggerTargets(t.Targets, source)
 	}
+	if t.XFromEventAmount && t.Targets != nil && t.Targets.CountFromX {
+		return eventCountedTriggerTargets(t.Targets, tc.Event)
+	}
 	if t.XFromCast && t.Targets != nil && t.Targets.Total != nil && t.Targets.Total.MaxIsX {
 		return xBoundTotalTriggerTargets(t.Targets, source)
 	}

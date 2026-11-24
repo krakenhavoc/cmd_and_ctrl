@@ -1052,7 +1052,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							if !ok {
 								continue
 							}
-							for _, cc := range counterChoices {
+							ccs := counterChoices
+							if game.CounterCountIsX(ab.Cost.RemoveCounters) {
+								// #6085: the counters removed are the
+								// announced X, so the two are chosen together.
+								ccs, tapXValue = counterChoicesAtX(counterChoices, tapXValue, counterCountIsXFloor(source, ab.Cost))
+							}
+							for _, cc := range ccs {
 								if budget <= 0 {
 									// ADR 0122 §6.2: a payment the budget
 									// never built.
@@ -1152,7 +1158,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								var xv *MoveValue
 								if (ab.Cost.XSlots() > 0 || ab.Cost.EnergyX || ab.Cost.LifeX) && ann.xValue < 0 && !ann.bounded && dist == nil &&
 									len(waterbendIDs) == 0 && !game.SacrificeCountFromX(ab.Cost.SacrificeOther) &&
-									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
+									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) &&
+									!game.CounterCountIsX(ab.Cost.RemoveCounters) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
 								}
 								// ADR 0142: the row's declared answers, by tier
