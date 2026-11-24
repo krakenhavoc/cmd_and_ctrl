@@ -1491,6 +1491,8 @@ choose choose-cards/sacrifice-choice
 choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
 choose choose-cards/saheeli-filigree-master-tap-artifact
+choose choose-cards/sakashimas-will-copy
+choose choose-cards/sakashimas-will-steal
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
