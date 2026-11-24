@@ -303,6 +303,7 @@ body jace-architect-of-thought/attacker-gets-minus-one-zero
 body jace-reality-sculptor/attacker-gets-minus-five
 body jailbreak/return-equal-or-lesser
 body jaya-fiery-negotiator/damage
+body kardurs-vicious-return/damage
 body kelsien-the-plague/experience-counter
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
@@ -381,6 +382,8 @@ body old-b036/mount-velus-manticore-strike
 body old-b042/rushed-rebirth-search
 body old-b049/devouring-tendrils-gain-2
 body old-b050/blocker-controller-loses-1
+body old-b059/draw-two-then-discard-one
+body old-b059/look-at-that-hand-and-draw
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -506,6 +509,7 @@ body share-the-spoils/exile-their-top
 body shield-counter/remove
 body shire-shirriff/exile-body
 body shirei/return-if-still-on-the-battlefield
+body showdown-of-the-skalds/counter
 body shrapnel-slinger/destroy
 body shriek-treblemaker/cant-block
 body sigil-of-myrkul/boost
@@ -1555,6 +1559,7 @@ choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grand-evolution-put
 choose choose-cards/the-grim-captain-put
 choose choose-cards/the-key-to-the-vault
+choose choose-cards/the-ravens-warning-top
 choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-seventh-doctor-chosen
@@ -1780,6 +1785,8 @@ condition ltb/ugin-the-ineffable-spirit
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition old-b050/any-creature-blocks
+condition old-b059/flying-creatures-hit-a-player
+condition old-b059/you-cast-mv-5-or-more
 condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
@@ -2041,6 +2048,7 @@ confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
 confirm confirm/the-second-doctor-draw
 confirm confirm/the-seventh-doctor-guess
+confirm confirm/the-trickster-gods-heist-exchange
 confirm confirm/titan-of-littjara-loot
 confirm confirm/tivash-gloom-summoner-demon
 confirm confirm/transcendent-archaic-draw
@@ -3015,6 +3023,7 @@ run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
 run prompt-run/fall-of-the-first-civilization-keep
+run prompt-run/fall-of-the-impostor-exile
 run prompt-run/fanatic-of-the-harrowing-draw
 run prompt-run/fatal-grudge-draw
 run prompt-run/feed-the-pack-wolves
@@ -3065,6 +3074,7 @@ run prompt-run/indoctrination-attendant-return
 run prompt-run/infernal-offering-sacrificed
 run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
+run prompt-run/kardurs-vicious-return-sacrifice
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/kethek-crucible-goliath-sacrifice
@@ -4352,6 +4362,7 @@ tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/insatiable-appetite-sacrifice
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
+tail sacrificed-one/prompt-run/kardurs-vicious-return-sacrifice
 tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
 tail sacrificed-one/prompt-run/kill-zone-acrobat-flying
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
@@ -4947,6 +4958,7 @@ tail through-the-forest-gate/shuffle-and-gain-8
 tail thunderbolts-conspiracy/hero
 tail thunderous-debut/shuffle-after-put
 tail tinybones-bauble-burglar/after-exile
+tail together/kardurs-vicious-return-boost
 tail together/revival-experiment-life
 tail together/s82-old-b054-chosen-returns
 tail token-and-attach-source/attach
