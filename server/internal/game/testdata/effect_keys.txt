@@ -804,6 +804,7 @@ choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
+choose choose-cards/coveted-prize-cast
 choose choose-cards/crashing-wave-stun-among
 choose choose-cards/crashing-wave-stun-two
 choose choose-cards/creeping-inn-exile
@@ -2372,6 +2373,7 @@ option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/master-of-ceremonies-answer
+option option-pick/master-of-winds-base-pt
 option option-pick/me-the-immortal-counter
 option option-pick/meandering-towershell-attacks
 option option-pick/memories-returning-opponent
@@ -4672,6 +4674,7 @@ tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/congregation-at-dawn-order
 tail then/councils-deliberation-draw
+tail then/coveted-prize-free-cast
 tail then/created-gain-keyword-until-eot
 tail then/creeping-chill-drain
 tail then/crippling-fear-type-chosen
