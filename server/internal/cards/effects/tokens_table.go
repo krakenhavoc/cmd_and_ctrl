@@ -669,4 +669,8 @@ var TokenTable = map[string]game.Card{
 	"1/1 blue Merfolk Wizard": {Name: "Merfolk Wizard", TypeLine: "Token Creature — Merfolk Wizard", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"4/4 green Elemental":     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"5/5 white Giant Warrior": {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 5, Toughness: 5, Colors: []string{"W"}},
+	// S82 GAP2 batch 12 (#6100): The Curse of Fenric's Mutant and The Sea
+	// Devils' Alien Salamander.
+	"3/3 green Mutant with deathtouch":           {Name: "Mutant", TypeLine: "Token Creature — Mutant", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"deathtouch"}},
+	"2/2 green Alien Salamander with islandwalk": {Name: "Alien Salamander", TypeLine: "Token Creature — Alien Salamander", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"islandwalk"}},
 }
