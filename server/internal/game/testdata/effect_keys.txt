@@ -1627,6 +1627,7 @@ choose sticker/choose-object
 coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
+coinflip coin-flip/chaotic-goo
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
@@ -4854,6 +4855,7 @@ tail yawgmoths-vile-offering/destroy-then-exile-this
 tail yenna-redtooth-regent/after-copy
 tail yggdrasil/haste
 tail zara-renegade-recruiter/return-at-end-step
+tail zethi/kick-counters
 tail zimones-experiment/creatures-then-rest
 tail zombie-apocalypse/destroy-humans
 tail zukos-exile/after-exile
