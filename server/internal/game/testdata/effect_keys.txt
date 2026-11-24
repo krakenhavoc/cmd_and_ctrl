@@ -2080,6 +2080,7 @@ drawthen discard:Anvil of Bogardan — discard a card
 drawthen discard:Arni, Humble Scribe — discard a card
 drawthen discard:Depth Defiler — discard a card
 drawthen discard:Temmet, Naktamun's Will — discard a card
+drawthen discard:The Royal Scions — draw a card, then discard a card
 drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
@@ -3568,6 +3569,7 @@ tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail dire-strain-rampage/search
 tail distant-memories/offer
+tail divine-gambit/after-exile
 tail dmu-b07/haste-then-sacrifice
 tail dominion-infiltration/haste-and-exile-copies
 tail dose-of-dawnglow/blight
