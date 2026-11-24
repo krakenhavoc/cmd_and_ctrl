@@ -84,7 +84,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		StartingLoyalty: 5,
 		Activated: []effects.ActivatedAbility{{
-			Label: "0: Roll a six-sided die. 1 or 2 — [+2], then create two 1/1 green Squirrel creature tokens. They gain haste until end of turn. 3 — [−1], then return a card with mana value 2 or less from your graveyard to your hand. 4 or 5 — Comet deals damage equal to the number of loyalty counters on him to a creature or player, then [−2]. 6 — [+1], and you may activate Comet's loyalty ability two more times this turn.",
+			Label: "0: Roll a six-sided die.",
 			Cost:  effects.LoyaltyCost(0),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return effects.RollDice{Sides: 6, N: 1, Then: cometRolled}.Apply(effects.NewContext(g, item))
