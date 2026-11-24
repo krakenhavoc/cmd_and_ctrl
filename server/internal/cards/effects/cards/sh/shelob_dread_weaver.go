@@ -51,10 +51,10 @@ func init() {
 				Label: "{2}{B}, Put a creature card exiled with Shelob into its owner's graveyard: Put two +1/+1 counters on Shelob. Draw a card.",
 				Cost: effects.Plus(effects.ManaCost("{2}{B}"), effects.ProcessCardExiledWithThis("a creature card exiled with Shelob",
 					func(c game.Card) bool { return c.IsCreature() })),
-				Purpose: game.Purpose{Draws: 1},
+				Purpose: game.Purpose{Draws: 1, Answers: game.AnswerPump},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := effects.NewContext(g, item)
-					if effects.OnBattlefield(g, item.SourceCardID) {
+					if !effects.SourceIsNewObject(g, item) && effects.OnBattlefield(g, item.SourceCardID) {
 						if err := g.AddCounterForEffect(item.SourceCardID, game.CounterPlusOne, 2); err != nil {
 							return err
 						}

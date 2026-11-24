@@ -59,3 +59,20 @@ func PerOpponentGraveyardClauses(noun string, what ...CardPredicate) *game.Targe
 	}
 	return Clauses(out[0], out[1:]...)
 }
+
+// MarkTriggeringSpellExilesLinked marks the spell a cast trigger fired on
+// to be exiled, as it resolves, instead of going to a graveyard, linked to
+// the trigger's source object (CR 607.2a; Game.MarkSpellExilesLinkedForEffect):
+// "exile it instead of putting it into a graveyard as it resolves" (Rod of
+// Absorption, River Song's Diary). A source with no object reference links
+// nothing.
+func MarkTriggeringSpellExilesLinked(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	spell := ctx.Trigger().Event.CardID
+	ref, ok := ctx.SourceRef()
+	if !ok || spell == uuid.Nil {
+		return nil
+	}
+	g.MarkSpellExilesLinkedForEffect(spell, game.PermissionCardRef(ref))
+	return nil
+}

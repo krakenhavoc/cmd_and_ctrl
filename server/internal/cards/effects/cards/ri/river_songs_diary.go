@@ -47,7 +47,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventCast, riverSongsDiaryCastFromHand,
 				"River Song's Diary — exile that spell instead of putting it into a graveyard as it resolves",
-				riverSongsDiaryMark),
+				effects.MarkTriggeringSpellExilesLinked),
 			effects.InterveningIf(riverSongsDiaryFourOrMore{}, upkeep),
 		},
 	})
@@ -61,18 +61,6 @@ func riverSongsDiaryCastFromHand(ev game.Event, _ *game.Card, _ game.Characteris
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && (spell.IsInstant() || spell.IsSorcery())
-}
-
-// riverSongsDiaryMark links the spell's resolution exile to this Diary.
-func riverSongsDiaryMark(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	spell := ctx.Trigger().Event.CardID
-	ref, ok := ctx.SourceRef()
-	if !ok || spell == uuid.Nil {
-		return nil
-	}
-	g.MarkSpellExilesLinkedForEffect(spell, game.PermissionCardRef(ref))
-	return nil
 }
 
 // riverSongsDiaryFourOrMore is "if there are four or more cards exiled
