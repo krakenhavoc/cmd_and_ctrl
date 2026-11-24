@@ -193,6 +193,7 @@ body exile-and-return/hand
 body exile-top/play-until-end-of-your-next-turn
 body exile/glimpse-the-impossible-bin
 body exile/listed-cards
+body exile/s82-old-b061-fire-giants-fury
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
@@ -1107,6 +1108,7 @@ choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
+choose choose-cards/masked-vandal-exile
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/mat-distribute-counters-among
 choose choose-cards/meanders-guide-tap
@@ -1448,6 +1450,8 @@ choose choose-cards/s82-old-b021-hokori-untap-a-land
 choose choose-cards/s82-old-b046-illuminate-history
 choose choose-cards/s82-old-b054-first-picked
 choose choose-cards/s82-old-b054-second-picked
+choose choose-cards/s82-old-b061-blessing-of-frost-creatures
+choose choose-cards/s82-old-b061-burning-rune-demon-picked
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2221,6 +2225,7 @@ number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
 number number/s82-gap-b153-scrounging-bandar-move
+number number/s82-old-b061-blessing-of-frost-share
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
@@ -2436,6 +2441,7 @@ option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
 option option-pick/s82-old-b046-ingenious-mastery-opponent
+option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3607,6 +3613,7 @@ tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
+tail destroy-then/smashing-success-treasure
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
@@ -3807,6 +3814,7 @@ tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/lazotep-quarry
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/masked-vandal-target
 tail exile-then/mysterious-limousine-return-others
 tail exile-then/skywarp-skaab-draw
 tail exile-then/trystan-penitent-culler
@@ -4543,6 +4551,8 @@ tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
 tail tail/old-b051-will-elementals
+tail tail/old-b070-open-the-omenpaths-first-color
+tail tail/old-b070-open-the-omenpaths-second-color
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
@@ -4857,6 +4867,7 @@ tail then/s82-gap-b156-ib-halfheart-sacrificed
 tail then/s82-gap-b157-choose-one-play
 tail then/s82-mid-scry-n
 tail then/s82-old-b023-kogla-indestructible
+tail then/s82-old-b061-burning-rune-demon-found
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
