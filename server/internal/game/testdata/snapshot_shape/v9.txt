@@ -1065,6 +1065,7 @@ events[].actor	custom(uuid.UUID)
 events[].already_attached	bool
 events[].amount	number:int
 events[].answer_key	string
+events[].attacking_alone	bool
 events[].attacking_target	custom(uuid.UUID)
 events[].ballots	array
 events[].ballots[]	object
@@ -1074,6 +1075,7 @@ events[].batch	number:uint64
 events[].batch_seq	number:uint64
 events[].became_token	bool
 events[].blocked	bool
+events[].blocking_alone	bool
 events[].blocking_target	custom(uuid.UUID)
 events[].boast	bool
 events[].call	string
@@ -1915,6 +1917,7 @@ followUpParks[].then.asked.trigger.Event.actor	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.already_attached	bool
 followUpParks[].then.asked.trigger.Event.amount	number:int
 followUpParks[].then.asked.trigger.Event.answer_key	string
+followUpParks[].then.asked.trigger.Event.attacking_alone	bool
 followUpParks[].then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.ballots	array
 followUpParks[].then.asked.trigger.Event.ballots[]	object
@@ -1924,6 +1927,7 @@ followUpParks[].then.asked.trigger.Event.batch	number:uint64
 followUpParks[].then.asked.trigger.Event.batch_seq	number:uint64
 followUpParks[].then.asked.trigger.Event.became_token	bool
 followUpParks[].then.asked.trigger.Event.blocked	bool
+followUpParks[].then.asked.trigger.Event.blocking_alone	bool
 followUpParks[].then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.boast	bool
 followUpParks[].then.asked.trigger.Event.call	string
@@ -2619,6 +2623,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.actor	custom(uuid.UUI
 frozenEntries[].event.counterTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.counterTail.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.ballots[]	object
@@ -2628,6 +2633,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.counterTail.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.counterTail.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.counterTail.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.call	string
@@ -3301,6 +3307,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.actor	custom(uuid
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.amount	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.answer_key	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.ballots	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.ballots[]	object
@@ -3310,6 +3317,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.batch	number:uint
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.became_token	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.blocked	bool
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.boast	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.call	string
@@ -3974,6 +3982,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.actor	custom(uuid
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.ballots[]	object
@@ -3983,6 +3992,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.batch	number:uint
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.call	string
@@ -4865,6 +4875,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.actor	custom(uuid.UUID
 frozenEntries[].event.damageTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.damageTail.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.ballots[]	object
@@ -4874,6 +4885,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.damageTail.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.damageTail.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.damageTail.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.call	string
@@ -5661,6 +5673,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.acto
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.ballots[]	object
@@ -5670,6 +5683,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.batc
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.call	string
@@ -6410,6 +6424,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.actor	custom(uuid
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.ballots[]	object
@@ -6419,6 +6434,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.batch	number:uint
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.call	string
@@ -7083,6 +7099,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.actor	custom(uuid.UUID
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.answer_key	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.ballots	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.ballots[]	object
@@ -7092,6 +7109,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.became_token	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.blocked	bool
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.boast	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.call	string
@@ -7789,6 +7807,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.actor	c
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.answer_key	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.ballots	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.ballots[]	object
@@ -7798,6 +7817,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.batch	n
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.became_token	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.blocked	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.boast	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.call	string
@@ -8483,6 +8503,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.actor	custom(uui
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.ballots[]	object
@@ -8492,6 +8513,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.batch	number:uin
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.call	string
@@ -9614,6 +9636,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.actor	custom(uu
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.ballots[]	object
@@ -9623,6 +9646,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.batch	number:ui
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.call	string
@@ -10311,6 +10335,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.actor	custom(uuid.U
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.ballots[]	object
@@ -10320,6 +10345,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.call	string
@@ -10987,6 +11013,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.ballots[]	object
@@ -10996,6 +11023,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.call	string
@@ -12535,6 +12563,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.actor	custom(uuid.UU
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.ballots[]	object
@@ -12544,6 +12573,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.call	string
@@ -13206,6 +13236,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.millTail.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.millTail.then.asked.trigger.Event.ballots[]	object
@@ -13215,6 +13246,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.millTail.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.millTail.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.millTail.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.call	string
@@ -14303,6 +14335,7 @@ frozenEntries[].event.stackItem.trigger.Event.actor	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.already_attached	bool
 frozenEntries[].event.stackItem.trigger.Event.amount	number:int
 frozenEntries[].event.stackItem.trigger.Event.answer_key	string
+frozenEntries[].event.stackItem.trigger.Event.attacking_alone	bool
 frozenEntries[].event.stackItem.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.ballots	array
 frozenEntries[].event.stackItem.trigger.Event.ballots[]	object
@@ -14312,6 +14345,7 @@ frozenEntries[].event.stackItem.trigger.Event.batch	number:uint64
 frozenEntries[].event.stackItem.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.stackItem.trigger.Event.became_token	bool
 frozenEntries[].event.stackItem.trigger.Event.blocked	bool
+frozenEntries[].event.stackItem.trigger.Event.blocking_alone	bool
 frozenEntries[].event.stackItem.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.boast	bool
 frozenEntries[].event.stackItem.trigger.Event.call	string
@@ -14945,6 +14979,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.ballots[]	object
@@ -14954,6 +14989,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.batch	number:uint64
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.call	string
@@ -16955,6 +16991,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.actor	cu
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.ballots[]	object
@@ -16964,6 +17001,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.batch	nu
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.call	string
@@ -17661,6 +17699,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ac
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.answer_key	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ballots	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ballots[]	object
@@ -17670,6 +17709,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ba
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.became_token	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocked	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.boast	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.call	string
@@ -18332,6 +18372,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.actor	custom(
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.ballots[]	object
@@ -18341,6 +18382,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.batch	number:
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.call	string
@@ -19023,6 +19065,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.actor	custo
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.ballots[]	object
@@ -19032,6 +19075,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.batch	numbe
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.call	string
@@ -19783,6 +19827,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.actor	cust
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.already_attached	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.amount	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.answer_key	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_alone	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.ballots	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.ballots[]	object
@@ -19792,6 +19837,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.batch	numb
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.batch_seq	number:uint64
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.became_token	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.blocked	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.blocking_alone	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.boast	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.call	string
@@ -20854,6 +20900,8 @@ frozenEntries[].event.zoneRoute.source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.stateBased	bool
 frozenEntries[].event.zoneRoute.toBottom	bool
 frozenEntries[].event.zoneRoute.viaBattlefieldLeave	bool
+hadToAttack	map:array
+hadToAttack{}	bool
 heldCombatDamage	object
 heldCombatDamage.answers	array
 heldCombatDamage.answers[]	object
@@ -22273,6 +22321,7 @@ lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.already_attached	bool
 lastKnownStack[].item.trigger.Event.amount	number:int
 lastKnownStack[].item.trigger.Event.answer_key	string
+lastKnownStack[].item.trigger.Event.attacking_alone	bool
 lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.ballots	array
 lastKnownStack[].item.trigger.Event.ballots[]	object
@@ -22282,6 +22331,7 @@ lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
 lastKnownStack[].item.trigger.Event.became_token	bool
 lastKnownStack[].item.trigger.Event.blocked	bool
+lastKnownStack[].item.trigger.Event.blocking_alone	bool
 lastKnownStack[].item.trigger.Event.blocking_target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.boast	bool
 lastKnownStack[].item.trigger.Event.call	string
@@ -23928,6 +23978,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.actor	custom(uuid.UUI
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.ballots[]	object
@@ -23937,6 +23988,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.call	string
@@ -24610,6 +24662,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.actor	custom(uuid
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.ballots[]	object
@@ -24619,6 +24672,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.batch	number:uint
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.call	string
@@ -25283,6 +25337,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.actor	custom(uuid
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.ballots[]	object
@@ -25292,6 +25347,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.batch	number:uint
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.call	string
@@ -26174,6 +26230,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.actor	custom(uuid.UUID
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.ballots[]	object
@@ -26183,6 +26240,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.call	string
@@ -26970,6 +27028,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.acto
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.ballots[]	object
@@ -26979,6 +27038,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.batc
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.call	string
@@ -27719,6 +27779,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.actor	custom(uuid
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.ballots[]	object
@@ -27728,6 +27789,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.batch	number:uint
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.call	string
@@ -28392,6 +28454,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.actor	custom(uuid.UUID
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.ballots[]	object
@@ -28401,6 +28464,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.call	string
@@ -29098,6 +29162,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.actor	c
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.ballots[]	object
@@ -29107,6 +29172,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.batch	n
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.call	string
@@ -29792,6 +29858,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.actor	custom(uui
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.ballots[]	object
@@ -29801,6 +29868,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.batch	number:uin
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.call	string
@@ -30923,6 +30991,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.actor	custom(uu
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.ballots[]	object
@@ -30932,6 +31001,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.batch	number:ui
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.call	string
@@ -31620,6 +31690,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.actor	custom(uuid.U
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.ballots[]	object
@@ -31629,6 +31700,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.call	string
@@ -32296,6 +32368,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.ballots[]	object
@@ -32305,6 +32378,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.call	string
@@ -33844,6 +33918,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.actor	custom(uuid.UU
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.ballots[]	object
@@ -33853,6 +33928,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.call	string
@@ -34515,6 +34591,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.ballots[]	object
@@ -34524,6 +34601,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.call	string
@@ -35612,6 +35690,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.actor	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.already_attached	bool
 movesAwaitingTokens[].stackItem.trigger.Event.amount	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.answer_key	string
+movesAwaitingTokens[].stackItem.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].stackItem.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.ballots	array
 movesAwaitingTokens[].stackItem.trigger.Event.ballots[]	object
@@ -35621,6 +35700,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].stackItem.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].stackItem.trigger.Event.became_token	bool
 movesAwaitingTokens[].stackItem.trigger.Event.blocked	bool
+movesAwaitingTokens[].stackItem.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].stackItem.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.boast	bool
 movesAwaitingTokens[].stackItem.trigger.Event.call	string
@@ -36254,6 +36334,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.actor	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.ballots[]	object
@@ -36263,6 +36344,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.batch	number:uint64
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.call	string
@@ -38264,6 +38346,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.actor	cu
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.ballots[]	object
@@ -38273,6 +38356,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.batch	nu
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.call	string
@@ -38970,6 +39054,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ac
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ballots[]	object
@@ -38979,6 +39064,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ba
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.call	string
@@ -39641,6 +39727,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.actor	custom(
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.ballots[]	object
@@ -39650,6 +39737,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.batch	number:
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.call	string
@@ -40332,6 +40420,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.actor	custo
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.ballots[]	object
@@ -40341,6 +40430,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.batch	numbe
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.call	string
@@ -41092,6 +41182,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.actor	cust
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.already_attached	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.amount	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.answer_key	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_alone	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.ballots	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.ballots[]	object
@@ -41101,6 +41192,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.batch	numb
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.batch_seq	number:uint64
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.became_token	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.blocked	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.blocking_alone	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.boast	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.call	string
@@ -42434,6 +42526,7 @@ pausedModeWalk.item.trigger.Event.actor	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.already_attached	bool
 pausedModeWalk.item.trigger.Event.amount	number:int
 pausedModeWalk.item.trigger.Event.answer_key	string
+pausedModeWalk.item.trigger.Event.attacking_alone	bool
 pausedModeWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.ballots	array
 pausedModeWalk.item.trigger.Event.ballots[]	object
@@ -42443,6 +42536,7 @@ pausedModeWalk.item.trigger.Event.batch	number:uint64
 pausedModeWalk.item.trigger.Event.batch_seq	number:uint64
 pausedModeWalk.item.trigger.Event.became_token	bool
 pausedModeWalk.item.trigger.Event.blocked	bool
+pausedModeWalk.item.trigger.Event.blocking_alone	bool
 pausedModeWalk.item.trigger.Event.blocking_target	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.boast	bool
 pausedModeWalk.item.trigger.Event.call	string
@@ -42810,6 +42904,7 @@ pausedResolutionTail.item.trigger.Event.actor	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.already_attached	bool
 pausedResolutionTail.item.trigger.Event.amount	number:int
 pausedResolutionTail.item.trigger.Event.answer_key	string
+pausedResolutionTail.item.trigger.Event.attacking_alone	bool
 pausedResolutionTail.item.trigger.Event.attacking_target	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.ballots	array
 pausedResolutionTail.item.trigger.Event.ballots[]	object
@@ -42819,6 +42914,7 @@ pausedResolutionTail.item.trigger.Event.batch	number:uint64
 pausedResolutionTail.item.trigger.Event.batch_seq	number:uint64
 pausedResolutionTail.item.trigger.Event.became_token	bool
 pausedResolutionTail.item.trigger.Event.blocked	bool
+pausedResolutionTail.item.trigger.Event.blocking_alone	bool
 pausedResolutionTail.item.trigger.Event.blocking_target	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.boast	bool
 pausedResolutionTail.item.trigger.Event.call	string
@@ -43180,6 +43276,7 @@ pausedStepWalk.item.trigger.Event.actor	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.already_attached	bool
 pausedStepWalk.item.trigger.Event.amount	number:int
 pausedStepWalk.item.trigger.Event.answer_key	string
+pausedStepWalk.item.trigger.Event.attacking_alone	bool
 pausedStepWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.ballots	array
 pausedStepWalk.item.trigger.Event.ballots[]	object
@@ -43189,6 +43286,7 @@ pausedStepWalk.item.trigger.Event.batch	number:uint64
 pausedStepWalk.item.trigger.Event.batch_seq	number:uint64
 pausedStepWalk.item.trigger.Event.became_token	bool
 pausedStepWalk.item.trigger.Event.blocked	bool
+pausedStepWalk.item.trigger.Event.blocking_alone	bool
 pausedStepWalk.item.trigger.Event.blocking_target	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.boast	bool
 pausedStepWalk.item.trigger.Event.call	string
@@ -43389,6 +43487,7 @@ pendingChoices[].asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.already_attached	bool
 pendingChoices[].asked.trigger.Event.amount	number:int
 pendingChoices[].asked.trigger.Event.answer_key	string
+pendingChoices[].asked.trigger.Event.attacking_alone	bool
 pendingChoices[].asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.ballots	array
 pendingChoices[].asked.trigger.Event.ballots[]	object
@@ -43398,6 +43497,7 @@ pendingChoices[].asked.trigger.Event.batch	number:uint64
 pendingChoices[].asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].asked.trigger.Event.became_token	bool
 pendingChoices[].asked.trigger.Event.blocked	bool
+pendingChoices[].asked.trigger.Event.blocking_alone	bool
 pendingChoices[].asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.boast	bool
 pendingChoices[].asked.trigger.Event.call	string
@@ -44666,6 +44766,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.already_attached	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.amount	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.answer_key	string
+pendingChoices[].attackSplit.tail.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.ballots	array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.ballots[]	object
@@ -44675,6 +44776,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.batch	number:uint64
 pendingChoices[].attackSplit.tail.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].attackSplit.tail.asked.trigger.Event.became_token	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.blocked	bool
+pendingChoices[].attackSplit.tail.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.boast	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.call	string
@@ -45995,6 +46097,7 @@ pendingChoices[].copyWalk.item.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.already_attached	bool
 pendingChoices[].copyWalk.item.trigger.Event.amount	number:int
 pendingChoices[].copyWalk.item.trigger.Event.answer_key	string
+pendingChoices[].copyWalk.item.trigger.Event.attacking_alone	bool
 pendingChoices[].copyWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.ballots	array
 pendingChoices[].copyWalk.item.trigger.Event.ballots[]	object
@@ -46004,6 +46107,7 @@ pendingChoices[].copyWalk.item.trigger.Event.batch	number:uint64
 pendingChoices[].copyWalk.item.trigger.Event.batch_seq	number:uint64
 pendingChoices[].copyWalk.item.trigger.Event.became_token	bool
 pendingChoices[].copyWalk.item.trigger.Event.blocked	bool
+pendingChoices[].copyWalk.item.trigger.Event.blocking_alone	bool
 pendingChoices[].copyWalk.item.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.boast	bool
 pendingChoices[].copyWalk.item.trigger.Event.call	string
@@ -46914,6 +47018,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.amount	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.answer_key	string
+pendingChoices[].diceRoll.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.ballots	array
 pendingChoices[].diceRoll.then.asked.trigger.Event.ballots[]	object
@@ -46923,6 +47028,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.batch	number:uint64
 pendingChoices[].diceRoll.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].diceRoll.then.asked.trigger.Event.became_token	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.blocked	bool
+pendingChoices[].diceRoll.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.boast	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.call	string
@@ -48058,6 +48164,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.actor	custom(uuid.UU
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.already_attached	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.amount	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.answer_key	string
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.ballots	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.ballots[]	object
@@ -48067,6 +48174,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.batch	number:uint64
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.became_token	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.blocked	bool
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.boast	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.call	string
@@ -48731,6 +48839,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.actor	custom(uuid.UU
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.amount	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.answer_key	string
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.ballots	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.ballots[]	object
@@ -48740,6 +48849,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.batch	number:uint64
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.became_token	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.blocked	bool
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.boast	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.call	string
@@ -49410,6 +49520,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.amount	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.answer_key	string
+pendingChoices[].libraryOrder.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.ballots	array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.ballots[]	object
@@ -49419,6 +49530,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.batch	number:uint64
 pendingChoices[].libraryOrder.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].libraryOrder.then.asked.trigger.Event.became_token	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.blocked	bool
+pendingChoices[].libraryOrder.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.boast	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.call	string
@@ -50144,6 +50256,7 @@ pendingChoices[].nameThen.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.already_attached	bool
 pendingChoices[].nameThen.asked.trigger.Event.amount	number:int
 pendingChoices[].nameThen.asked.trigger.Event.answer_key	string
+pendingChoices[].nameThen.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].nameThen.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.ballots	array
 pendingChoices[].nameThen.asked.trigger.Event.ballots[]	object
@@ -50153,6 +50266,7 @@ pendingChoices[].nameThen.asked.trigger.Event.batch	number:uint64
 pendingChoices[].nameThen.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].nameThen.asked.trigger.Event.became_token	bool
 pendingChoices[].nameThen.asked.trigger.Event.blocked	bool
+pendingChoices[].nameThen.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].nameThen.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.boast	bool
 pendingChoices[].nameThen.asked.trigger.Event.call	string
@@ -50824,6 +50938,7 @@ pendingChoices[].ordered.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.already_attached	bool
 pendingChoices[].ordered.asked.trigger.Event.amount	number:int
 pendingChoices[].ordered.asked.trigger.Event.answer_key	string
+pendingChoices[].ordered.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].ordered.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.ballots	array
 pendingChoices[].ordered.asked.trigger.Event.ballots[]	object
@@ -50833,6 +50948,7 @@ pendingChoices[].ordered.asked.trigger.Event.batch	number:uint64
 pendingChoices[].ordered.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].ordered.asked.trigger.Event.became_token	bool
 pendingChoices[].ordered.asked.trigger.Event.blocked	bool
+pendingChoices[].ordered.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].ordered.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.boast	bool
 pendingChoices[].ordered.asked.trigger.Event.call	string
@@ -51324,6 +51440,7 @@ pendingChoices[].pickTail.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].pickTail.asked.trigger.Event.amount	number:int
 pendingChoices[].pickTail.asked.trigger.Event.answer_key	string
+pendingChoices[].pickTail.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].pickTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.ballots	array
 pendingChoices[].pickTail.asked.trigger.Event.ballots[]	object
@@ -51333,6 +51450,7 @@ pendingChoices[].pickTail.asked.trigger.Event.batch	number:uint64
 pendingChoices[].pickTail.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].pickTail.asked.trigger.Event.became_token	bool
 pendingChoices[].pickTail.asked.trigger.Event.blocked	bool
+pendingChoices[].pickTail.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].pickTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.boast	bool
 pendingChoices[].pickTail.asked.trigger.Event.call	string
@@ -52042,6 +52160,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ac
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ballots[]	object
@@ -52051,6 +52170,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ba
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.call	string
@@ -52724,6 +52844,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.ballots[]	object
@@ -52733,6 +52854,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.call	string
@@ -53397,6 +53519,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.ballots[]	object
@@ -53406,6 +53529,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.call	string
@@ -54288,6 +54412,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.act
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.ballots[]	object
@@ -54297,6 +54422,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.bat
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.call	string
@@ -55084,6 +55210,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.ballots[]	object
@@ -55093,6 +55220,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.call	string
@@ -55833,6 +55961,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.ballots[]	object
@@ -55842,6 +55971,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.call	string
@@ -56506,6 +56636,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.act
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.ballots[]	object
@@ -56515,6 +56646,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.bat
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.call	string
@@ -57212,6 +57344,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.ballots[]	object
@@ -57221,6 +57354,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.call	string
@@ -57906,6 +58040,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.ballots[]	object
@@ -57915,6 +58050,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.call	string
@@ -59037,6 +59173,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.ballots[]	object
@@ -59046,6 +59183,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.call	string
@@ -59734,6 +59872,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.ballots[]	object
@@ -59743,6 +59882,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.call	string
@@ -60410,6 +60550,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.actor
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.ballots[]	object
@@ -60419,6 +60560,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.batch
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.call	string
@@ -61958,6 +62100,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.a
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.ballots[]	object
@@ -61967,6 +62110,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.b
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.call	string
@@ -62629,6 +62773,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.actor
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.ballots[]	object
@@ -62638,6 +62783,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.batch
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.call	string
@@ -63726,6 +63872,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.actor	custom(uu
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.ballots[]	object
@@ -63735,6 +63882,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.batch	number:ui
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.call	string
@@ -64368,6 +64516,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.acto
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.ballots[]	object
@@ -64377,6 +64526,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.batc
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.call	string
@@ -66378,6 +66528,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.ballots[]	object
@@ -66387,6 +66538,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.call	string
@@ -67084,6 +67236,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ballots[]	object
@@ -67093,6 +67246,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.call	string
@@ -67755,6 +67909,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.ballots[]	object
@@ -67764,6 +67919,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.call	string
@@ -68446,6 +68602,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.ballots[]	object
@@ -68455,6 +68612,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.call	string
@@ -69206,6 +69364,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.already_attached	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.amount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.answer_key	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.ballots	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.ballots[]	object
@@ -69215,6 +69374,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.became_token	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.blocked	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.boast	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.call	string
@@ -70343,6 +70503,7 @@ pendingChoices[].scryThen.asked.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.already_attached	bool
 pendingChoices[].scryThen.asked.trigger.Event.amount	number:int
 pendingChoices[].scryThen.asked.trigger.Event.answer_key	string
+pendingChoices[].scryThen.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].scryThen.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.ballots	array
 pendingChoices[].scryThen.asked.trigger.Event.ballots[]	object
@@ -70352,6 +70513,7 @@ pendingChoices[].scryThen.asked.trigger.Event.batch	number:uint64
 pendingChoices[].scryThen.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].scryThen.asked.trigger.Event.became_token	bool
 pendingChoices[].scryThen.asked.trigger.Event.blocked	bool
+pendingChoices[].scryThen.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].scryThen.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.boast	bool
 pendingChoices[].scryThen.asked.trigger.Event.call	string
@@ -71062,6 +71224,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.actor	custom(uui
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.already_attached	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.amount	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.answer_key	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.attacking_alone	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.ballots	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.ballots[]	object
@@ -71071,6 +71234,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.batch	number:uin
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.batch_seq	number:uint64
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.became_token	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.blocked	bool
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.blocking_alone	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.boast	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.call	string
@@ -72668,6 +72832,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.already_attached	bool
 pendingChoices[].targetWalk.frame.trigger.Event.amount	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.answer_key	string
+pendingChoices[].targetWalk.frame.trigger.Event.attacking_alone	bool
 pendingChoices[].targetWalk.frame.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.ballots	array
 pendingChoices[].targetWalk.frame.trigger.Event.ballots[]	object
@@ -72677,6 +72842,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.batch	number:uint64
 pendingChoices[].targetWalk.frame.trigger.Event.batch_seq	number:uint64
 pendingChoices[].targetWalk.frame.trigger.Event.became_token	bool
 pendingChoices[].targetWalk.frame.trigger.Event.blocked	bool
+pendingChoices[].targetWalk.frame.trigger.Event.blocking_alone	bool
 pendingChoices[].targetWalk.frame.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.boast	bool
 pendingChoices[].targetWalk.frame.trigger.Event.call	string
@@ -73509,6 +73675,7 @@ pendingChoices[].triggerFrame.trigger.Event.actor	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.already_attached	bool
 pendingChoices[].triggerFrame.trigger.Event.amount	number:int
 pendingChoices[].triggerFrame.trigger.Event.answer_key	string
+pendingChoices[].triggerFrame.trigger.Event.attacking_alone	bool
 pendingChoices[].triggerFrame.trigger.Event.attacking_target	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.ballots	array
 pendingChoices[].triggerFrame.trigger.Event.ballots[]	object
@@ -73518,6 +73685,7 @@ pendingChoices[].triggerFrame.trigger.Event.batch	number:uint64
 pendingChoices[].triggerFrame.trigger.Event.batch_seq	number:uint64
 pendingChoices[].triggerFrame.trigger.Event.became_token	bool
 pendingChoices[].triggerFrame.trigger.Event.blocked	bool
+pendingChoices[].triggerFrame.trigger.Event.blocking_alone	bool
 pendingChoices[].triggerFrame.trigger.Event.blocking_target	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.boast	bool
 pendingChoices[].triggerFrame.trigger.Event.call	string
@@ -73887,6 +74055,7 @@ pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.already_attached	bool
 pendingTriggers[].trigger.Event.amount	number:int
 pendingTriggers[].trigger.Event.answer_key	string
+pendingTriggers[].trigger.Event.attacking_alone	bool
 pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.ballots	array
 pendingTriggers[].trigger.Event.ballots[]	object
@@ -73896,6 +74065,7 @@ pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
 pendingTriggers[].trigger.Event.became_token	bool
 pendingTriggers[].trigger.Event.blocked	bool
+pendingTriggers[].trigger.Event.blocking_alone	bool
 pendingTriggers[].trigger.Event.blocking_target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.boast	bool
 pendingTriggers[].trigger.Event.call	string
@@ -75680,6 +75850,7 @@ promptRuns[].asked.trigger.Event.actor	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.already_attached	bool
 promptRuns[].asked.trigger.Event.amount	number:int
 promptRuns[].asked.trigger.Event.answer_key	string
+promptRuns[].asked.trigger.Event.attacking_alone	bool
 promptRuns[].asked.trigger.Event.attacking_target	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.ballots	array
 promptRuns[].asked.trigger.Event.ballots[]	object
@@ -75689,6 +75860,7 @@ promptRuns[].asked.trigger.Event.batch	number:uint64
 promptRuns[].asked.trigger.Event.batch_seq	number:uint64
 promptRuns[].asked.trigger.Event.became_token	bool
 promptRuns[].asked.trigger.Event.blocked	bool
+promptRuns[].asked.trigger.Event.blocking_alone	bool
 promptRuns[].asked.trigger.Event.blocking_target	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.boast	bool
 promptRuns[].asked.trigger.Event.call	string
@@ -76509,6 +76681,7 @@ resolving.item.trigger.Event.actor	custom(uuid.UUID)
 resolving.item.trigger.Event.already_attached	bool
 resolving.item.trigger.Event.amount	number:int
 resolving.item.trigger.Event.answer_key	string
+resolving.item.trigger.Event.attacking_alone	bool
 resolving.item.trigger.Event.attacking_target	custom(uuid.UUID)
 resolving.item.trigger.Event.ballots	array
 resolving.item.trigger.Event.ballots[]	object
@@ -76518,6 +76691,7 @@ resolving.item.trigger.Event.batch	number:uint64
 resolving.item.trigger.Event.batch_seq	number:uint64
 resolving.item.trigger.Event.became_token	bool
 resolving.item.trigger.Event.blocked	bool
+resolving.item.trigger.Event.blocking_alone	bool
 resolving.item.trigger.Event.blocking_target	custom(uuid.UUID)
 resolving.item.trigger.Event.boast	bool
 resolving.item.trigger.Event.call	string
@@ -82291,6 +82465,7 @@ stackMeta[].trigger.Event.actor	custom(uuid.UUID)
 stackMeta[].trigger.Event.already_attached	bool
 stackMeta[].trigger.Event.amount	number:int
 stackMeta[].trigger.Event.answer_key	string
+stackMeta[].trigger.Event.attacking_alone	bool
 stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)
 stackMeta[].trigger.Event.ballots	array
 stackMeta[].trigger.Event.ballots[]	object
@@ -82300,6 +82475,7 @@ stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
 stackMeta[].trigger.Event.became_token	bool
 stackMeta[].trigger.Event.blocked	bool
+stackMeta[].trigger.Event.blocking_alone	bool
 stackMeta[].trigger.Event.blocking_target	custom(uuid.UUID)
 stackMeta[].trigger.Event.boast	bool
 stackMeta[].trigger.Event.call	string

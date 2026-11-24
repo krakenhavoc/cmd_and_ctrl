@@ -728,6 +728,14 @@ type GameSnapshot struct {
 	// bump.
 	FirstStrikeStepParticipants map[uuid.UUID]bool `json:"firstStrikeStepParticipants,omitempty"`
 
+	// HadToAttack is this combat's record of the creatures that had to
+	// attack (#6098, CR 508.1d): those carrying an attack requirement as
+	// the declaration passed its checkpoint. A file written before it
+	// restores as empty, which reads as "nothing had to attack" — only a
+	// file paused mid-combat after the declaration differs. Additive, no
+	// schema bump.
+	HadToAttack map[uuid.UUID]bool `json:"hadToAttack,omitempty"`
+
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
 	// but carried so a round-trip is exact rather than nearly exact.
@@ -2700,6 +2708,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.AttacksDeclared = g.attacksDeclared
 	s.CombatHadAttackers = g.combatHadAttackers
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	s.HadToAttack = copyBoolMap(g.hadToAttack)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -4006,6 +4015,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.attacksDeclared = s.AttacksDeclared
 	g.combatHadAttackers = s.CombatHadAttackers
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
+	g.hadToAttack = copyBoolMap(s.HadToAttack)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)

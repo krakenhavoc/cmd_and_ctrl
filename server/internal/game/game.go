@@ -854,6 +854,14 @@ type Game struct {
 	// first-striker hit twice.
 	firstStrikeStepParticipants map[uuid.UUID]bool
 
+	// hadToAttack is THIS combat's CR 508.1d record (#6098,
+	// had_to_attack.go): the active player's creatures that carried an
+	// attack requirement as the attack declaration passed its
+	// checkpoint. Firkraag, Cunning Instigator's "if that creature had
+	// to attack this combat" reads it. Cleared with the rest of combat
+	// and carried by Clone / RestoreFrom and the persisted snapshot.
+	hadToAttack map[uuid.UUID]bool
+
 	// heldCombatDamage is a combat damage step's damage waiting on its
 	// damage-assignment prompts (#3665, CR 510.2): nothing of the step
 	// is dealt until the last one is answered. Nil otherwise. Carried

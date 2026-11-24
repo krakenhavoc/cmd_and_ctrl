@@ -4728,6 +4728,7 @@ tail then/xenagos-the-reveler-exiled
 tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
+tail thijarian-witness/investigate
 tail thrasios-triton-hero/reveal-top
 tail threats-undetected/choose
 tail through-the-breach/entered
