@@ -292,6 +292,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 073 (#5506), roll-up old-4.
 	"Arcane Artisan": "when it leaves, it exiles only the tokens it created itself, not anyone else's permanents: not a board wipe",
+
+	// S82 OLD batch 058 (#5504).
+	"Author of Shadows": "its enters trigger exiles the opponents' graveyards, no permanents: not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
