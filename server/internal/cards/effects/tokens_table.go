@@ -198,6 +198,9 @@ var TokenTable = map[string]game.Card{
 	"1/1 red Goblin Wizard with prowess":                               {Name: "Goblin Wizard", TypeLine: "Token Creature — Goblin Wizard", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 red Monk with prowess":                                        {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 white Monk with prowess":                                      {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"prowess"}},
+	"1/0 blue Elemental":                                               {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 1, Toughness: 0, Colors: []string{"U"}}, // Master of Waves
+	"2/2 black Walker":                                                 {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},       // Enkira, Hostile Scavenger
+	"1/1 green Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"G"}},             // Rin and Seri, Inseparable
 	"1/1 white Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Dog":                                                    {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Cat Soldier with vigilance":                             {Name: "Cat Soldier", TypeLine: "Token Creature — Cat Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
