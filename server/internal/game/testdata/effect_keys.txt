@@ -4943,6 +4943,7 @@ vote vote/fateful-tempest
 vote vote/galadriel-elven-queen
 vote vote/lieutenants-of-the-guard
 vote vote/magister-of-worth
+vote vote/malik-grim-manipulator
 vote vote/messenger-jays
 vote vote/mob-verdict
 vote vote/orchard-elemental

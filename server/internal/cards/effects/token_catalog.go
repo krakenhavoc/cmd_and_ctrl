@@ -557,6 +557,7 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
 	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
 	printedGapB43TarmogoyfToken,
+	printedOldB10VoiceElementalToken,
 
 	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
 	// (Commander Masters, S82 GAP batch 104, #5948).
