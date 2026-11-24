@@ -1597,7 +1597,11 @@ export function castBlightOffer(
   // #5948: a mandatory "put a -1/-1 counter on a creature you control"
   // (Lethal Sting) is blight 1 in the mandatory slot: the same pick.
   if (mandatory?.blight !== undefined && mandatory.blight > 0) {
-    return { offer: mandatory, n: mandatory.blight, options: mandatory.blight_options?.cards ?? [] };
+    return {
+      offer: mandatory,
+      n: mandatory.blight,
+      options: mandatory.blight_options?.cards ?? [],
+    };
   }
   const branch = costBranchesOf(card).length > 0 ? castAdditionalCost(card, choices) : undefined;
   if (branch?.blight !== undefined && branch.blight > 0) {
