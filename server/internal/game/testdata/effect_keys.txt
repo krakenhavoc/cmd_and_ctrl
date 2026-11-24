@@ -210,6 +210,7 @@ body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
 body fireblade-artist/damage
 body fires-of-mount-doom/damage-each-player
+body flamethrower-sonata/damage
 body flanking/shrink
 body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
@@ -1392,6 +1393,8 @@ choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
 choose choose-cards/s82-mom-b21-djeru-exile
 choose choose-cards/s82-mom-b21-omnath-reveal
+choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
+choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -4029,6 +4032,7 @@ tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
 tail oona-queen-of-the-fae/after-mill
 tail orcus-prince-of-undeath/gain-haste-until-eot
+tail oriq-loremage/instant-or-sorcery-counter
 tail ormos-archive-keeper/then-draw
 tail ostrich-horse/after-mill
 tail outlaw-stitcher/token-counters
