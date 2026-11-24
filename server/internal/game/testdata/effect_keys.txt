@@ -1452,6 +1452,7 @@ choose choose-cards/s82-old-b054-first-picked
 choose choose-cards/s82-old-b054-second-picked
 choose choose-cards/s82-old-b061-blessing-of-frost-creatures
 choose choose-cards/s82-old-b061-burning-rune-demon-picked
+choose choose-cards/s82-old-b062-egon-exile-two
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1937,6 +1938,7 @@ confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
 confirm confirm/lim-duls-vault-again
 confirm confirm/living-lore-sacrifice
+confirm confirm/livio-oathsworn-sentinel-exile
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -2183,6 +2185,7 @@ drawthen the-theorist/counters-equal-to-hand
 drawthen trade-route-envoy-counter-unless-drew
 drawthen wiretapping/after-draw
 drawthen yunas-decision/put
+keywordinstead eligeth-draw-instead-of-scry
 keywordinstead return-this-instead-of-learning
 maycast may-cast/free-play-back-land-or-hand
 maycast may-cast/free-play-land-or-hand
@@ -2442,6 +2445,7 @@ option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
 option option-pick/s82-old-b046-ingenious-mastery-opponent
 option option-pick/s82-old-b061-burning-rune-demon-opponent
+option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3150,6 +3154,7 @@ run prompt-run/ruthless-technomancer-treasures
 run prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-neo-sokenzan-smelter-construct
+run prompt-run/s82-old-b062-master-skald-exile
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -4044,6 +4049,7 @@ tail liliana-heretical-healer/zombie
 tail liliana-untouched-by-death/after-mill
 tail living-death/return-exiled
 tail living-death/sacrifice-creatures
+tail livio-oathsworn-sentinel/aegis-counter
 tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
@@ -4868,6 +4874,7 @@ tail then/s82-gap-b157-choose-one-play
 tail then/s82-mid-scry-n
 tail then/s82-old-b023-kogla-indestructible
 tail then/s82-old-b061-burning-rune-demon-found
+tail then/s82-old-b062-master-skald-return
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
