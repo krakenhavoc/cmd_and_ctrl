@@ -1934,6 +1934,7 @@ confirm confirm/sanctuary-wall-stun
 confirm confirm/sanguine-spy-pay-life-draw
 confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/savra-pay-life-edict
+confirm confirm/search-for-azcanta-transform
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
@@ -1950,6 +1951,7 @@ confirm confirm/spare-dagger-sacrifice
 confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
+confirm confirm/stardew-valley-gain-control
 confirm confirm/start-the-tardis-planeswalk
 confirm confirm/stensia-uprising-sacrifice
 confirm confirm/stromgald-spy-reveal-hand
@@ -2350,6 +2352,7 @@ option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
+option option-pick/scrying-sheets-top-card
 option option-pick/season-of-gathering-type
 option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
@@ -2365,6 +2368,7 @@ option option-pick/sorcerous-spyglass-look
 option option-pick/sphinx-of-clear-skies-splitter
 option option-pick/split-the-spoils-chosen
 option option-pick/stadium-vendors-player
+option option-pick/stardew-valley-player
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/steel-seraph-keyword
@@ -4273,6 +4277,7 @@ tail sauron-lord-of-the-rings/mill-then-return
 tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
+tail search-for-azcanta/after-surveil
 tail search-then/tend-the-sprigs
 tail seed-of-hope/after-mill
 tail seek-thrills/after-mill
