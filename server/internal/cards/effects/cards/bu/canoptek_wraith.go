@@ -33,7 +33,9 @@ func init() {
 		OracleID:     "61849685-b407-4ed0-aafc-ec3a003200b9",
 		Name:         "Canoptek Wraith",
 		Completeness: effects.CompletenessFull,
-		Static:       []game.StaticAbility{effects.RestrictSelf(game.CantBeBlocked)},
+		// Ramp (ADR 0126): up to two lands, tapped.
+		Purpose: game.Purpose{Lands: 2},
+		Static:  []game.StaticAbility{effects.RestrictSelf(game.CantBeBlocked)},
 		Triggered: []game.TriggeredAbility{
 			effects.WheneverThisDealsCombatDamageToAPlayer(
 				"Canoptek Wraith — Transdimensional Scout: you may pay {3} and sacrifice it to search for up to two basic lands named like a land you control",
