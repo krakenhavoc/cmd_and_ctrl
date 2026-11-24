@@ -83224,6 +83224,10 @@ turnTally.diedSubtypes{}	number:int
 turnTally.entered	map:array
 turnTally.enteredCardTypes	map:string
 turnTally.enteredCardTypes{}	number:int
+turnTally.enteredCreatures	array
+turnTally.enteredCreatures[]	object
+turnTally.enteredCreatures[].card	custom(uuid.UUID)
+turnTally.enteredCreatures[].controller	custom(uuid.UUID)
 turnTally.enteredFliers	array
 turnTally.enteredFliers[]	object
 turnTally.enteredFliers[].card	custom(uuid.UUID)
@@ -83327,6 +83331,10 @@ turnTally.players{}.tokensCreated	number:int
 turnTally.players{}.waterbends	number:int
 turnTally.plusOneCountersPut	map:string
 turnTally.plusOneCountersPut{}	number:int
+turnTally.prevEnteredCreatures	array
+turnTally.prevEnteredCreatures[]	object
+turnTally.prevEnteredCreatures[].card	custom(uuid.UUID)
+turnTally.prevEnteredCreatures[].controller	custom(uuid.UUID)
 turnTally.prevLifeLosers	array
 turnTally.prevLifeLosers[]	custom(uuid.UUID)
 turnTally.prevNoncombatVictims	array

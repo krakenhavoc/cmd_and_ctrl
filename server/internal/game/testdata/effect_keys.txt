@@ -2664,6 +2664,7 @@ payunless pay-unless/nim-deathmantle-return-and-attach
 payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
 payunless pay-unless/old-b033-squirrel-sanctuary-return
+payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/overencumbered-no-attack
@@ -3542,6 +3543,7 @@ tail dice/lightfoot-rogue-table
 tail dice/loathsome-troll-rolled
 tail dice/luck-bobblehead-results
 tail dice/maddening-hex-burn-and-move
+tail dice/mathise-surge-channeler-rolled
 tail dice/myrkuls-edict-rolled
 tail dice/netherese-puzzle-ward-scry
 tail dice/nothic-table
