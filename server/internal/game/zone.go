@@ -349,6 +349,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.ChosenPermanent = ObjectRef{}
 		c.LinkedPermanent = ObjectRef{}
 		c.ChosenCard = ObjectRef{}
+		c.Notes = nil
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's

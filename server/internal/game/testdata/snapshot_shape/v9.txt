@@ -303,6 +303,8 @@ battlefield.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 battlefield.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 battlefield.cards[].noAbilitiesText	number:uint8
+battlefield.cards[].notes	array
+battlefield.cards[].notes[]	string
 battlefield.cards[].objectEpoch	number:int
 battlefield.cards[].oracleId	string
 battlefield.cards[].owner	custom(uuid.UUID)
@@ -882,6 +884,8 @@ enteringTokens[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 enteringTokens[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 enteringTokens[].nextUntapSkips[].while.SourceEpoch	number:int
 enteringTokens[].noAbilitiesText	number:uint8
+enteringTokens[].notes	array
+enteringTokens[].notes[]	string
 enteringTokens[].objectEpoch	number:int
 enteringTokens[].oracleId	string
 enteringTokens[].owner	custom(uuid.UUID)
@@ -1429,6 +1433,8 @@ exile.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 exile.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 exile.cards[].noAbilitiesText	number:uint8
+exile.cards[].notes	array
+exile.cards[].notes[]	string
 exile.cards[].objectEpoch	number:int
 exile.cards[].oracleId	string
 exile.cards[].owner	custom(uuid.UUID)
@@ -9371,6 +9377,8 @@ frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while.Source	
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.noAbilitiesText	number:uint8
+frozenEntries[].event.keywordActionTail.armyToken.notes	array
+frozenEntries[].event.keywordActionTail.armyToken.notes[]	string
 frozenEntries[].event.keywordActionTail.armyToken.objectEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.oracleId	string
 frozenEntries[].event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
@@ -11855,6 +11863,8 @@ frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while.Source	custo
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].noAbilitiesText	number:uint8
+frozenEntries[].event.millTail.run.planned[].notes	array
+frozenEntries[].event.millTail.run.planned[].notes[]	string
 frozenEntries[].event.millTail.run.planned[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].oracleId	string
 frozenEntries[].event.millTail.run.planned[].owner	custom(uuid.UUID)
@@ -12284,6 +12294,8 @@ frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while.Source	custom(u
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].noAbilitiesText	number:uint8
+frozenEntries[].event.millTail.run.seen[].notes	array
+frozenEntries[].event.millTail.run.seen[].notes[]	string
 frozenEntries[].event.millTail.run.seen[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].oracleId	string
 frozenEntries[].event.millTail.run.seen[].owner	custom(uuid.UUID)
@@ -14684,6 +14696,8 @@ frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while.Source	custo
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.noAbilitiesText	number:uint8
+frozenEntries[].event.tokenGroups[].template.notes	array
+frozenEntries[].event.tokenGroups[].template.notes[]	string
 frozenEntries[].event.tokenGroups[].template.objectEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.oracleId	string
 frozenEntries[].event.tokenGroups[].template.owner	custom(uuid.UUID)
@@ -15805,6 +15819,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.nextUntapSkips[].while
 frozenEntries[].event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.noAbilitiesText	number:uint8
+frozenEntries[].event.tokensAfterMove[].groups[].template.notes	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.notes[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.oracleId	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
@@ -16247,6 +16263,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:uint8
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].notes	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].notes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
@@ -16676,6 +16694,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.Sou
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uint8
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].notes	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].notes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
@@ -20600,6 +20620,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.Source
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
+frozenEntries[].event.zoneRoute.simultaneousExit[].notes	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].notes[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].oracleId	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
@@ -21509,6 +21531,8 @@ lastKnownPermanents{}[].linkedPermanent.epoch	number:int
 lastKnownPermanents{}[].linkedPermanent.id	custom(uuid.UUID)
 lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
+lastKnownPermanents{}[].notes	array
+lastKnownPermanents{}[].notes[]	string
 lastKnownPermanents{}[].power	number:int
 lastKnownPermanents{}[].renowned	bool
 lastKnownPermanents{}[].ringBearer	bool
@@ -21787,6 +21811,8 @@ lastKnownStack[].card.nextUntapSkips[].while.Source	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while.SourceEnteredAt	number:int64
 lastKnownStack[].card.nextUntapSkips[].while.SourceEpoch	number:int
 lastKnownStack[].card.noAbilitiesText	number:uint8
+lastKnownStack[].card.notes	array
+lastKnownStack[].card.notes[]	string
 lastKnownStack[].card.objectEpoch	number:int
 lastKnownStack[].card.oracleId	string
 lastKnownStack[].card.owner	custom(uuid.UUID)
@@ -22714,6 +22740,8 @@ match.decks[].fixed[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 match.decks[].fixed[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 match.decks[].fixed[].nextUntapSkips[].while.SourceEpoch	number:int
 match.decks[].fixed[].noAbilitiesText	number:uint8
+match.decks[].fixed[].notes	array
+match.decks[].fixed[].notes[]	string
 match.decks[].fixed[].objectEpoch	number:int
 match.decks[].fixed[].oracleId	string
 match.decks[].fixed[].owner	custom(uuid.UUID)
@@ -23141,6 +23169,8 @@ match.decks[].main[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 match.decks[].main[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 match.decks[].main[].nextUntapSkips[].while.SourceEpoch	number:int
 match.decks[].main[].noAbilitiesText	number:uint8
+match.decks[].main[].notes	array
+match.decks[].main[].notes[]	string
 match.decks[].main[].objectEpoch	number:int
 match.decks[].main[].oracleId	string
 match.decks[].main[].owner	custom(uuid.UUID)
@@ -23571,6 +23601,8 @@ match.decks[].side[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 match.decks[].side[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 match.decks[].side[].nextUntapSkips[].while.SourceEpoch	number:int
 match.decks[].side[].noAbilitiesText	number:uint8
+match.decks[].side[].notes	array
+match.decks[].side[].notes[]	string
 match.decks[].side[].objectEpoch	number:int
 match.decks[].side[].oracleId	string
 match.decks[].side[].owner	custom(uuid.UUID)
@@ -30584,6 +30616,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.nextUntapSkips[].while.Source	
 movesAwaitingTokens[].keywordActionTail.armyToken.nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].keywordActionTail.armyToken.nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.noAbilitiesText	number:uint8
+movesAwaitingTokens[].keywordActionTail.armyToken.notes	array
+movesAwaitingTokens[].keywordActionTail.armyToken.notes[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.objectEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.oracleId	string
 movesAwaitingTokens[].keywordActionTail.armyToken.owner	custom(uuid.UUID)
@@ -33068,6 +33102,8 @@ movesAwaitingTokens[].millTail.run.planned[].nextUntapSkips[].while.Source	custo
 movesAwaitingTokens[].millTail.run.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].millTail.run.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].millTail.run.planned[].notes	array
+movesAwaitingTokens[].millTail.run.planned[].notes[]	string
 movesAwaitingTokens[].millTail.run.planned[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].oracleId	string
 movesAwaitingTokens[].millTail.run.planned[].owner	custom(uuid.UUID)
@@ -33497,6 +33533,8 @@ movesAwaitingTokens[].millTail.run.seen[].nextUntapSkips[].while.Source	custom(u
 movesAwaitingTokens[].millTail.run.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].millTail.run.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].millTail.run.seen[].notes	array
+movesAwaitingTokens[].millTail.run.seen[].notes[]	string
 movesAwaitingTokens[].millTail.run.seen[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].oracleId	string
 movesAwaitingTokens[].millTail.run.seen[].owner	custom(uuid.UUID)
@@ -35897,6 +35935,8 @@ movesAwaitingTokens[].tokenGroups[].template.nextUntapSkips[].while.Source	custo
 movesAwaitingTokens[].tokenGroups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].tokenGroups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.noAbilitiesText	number:uint8
+movesAwaitingTokens[].tokenGroups[].template.notes	array
+movesAwaitingTokens[].tokenGroups[].template.notes[]	string
 movesAwaitingTokens[].tokenGroups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.oracleId	string
 movesAwaitingTokens[].tokenGroups[].template.owner	custom(uuid.UUID)
@@ -37018,6 +37058,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.nextUntapSkips[].while
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.noAbilitiesText	number:uint8
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.notes	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.notes[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.oracleId	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
@@ -37460,6 +37502,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].notes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].notes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
@@ -37889,6 +37933,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.Sou
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].notes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].notes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
@@ -41813,6 +41859,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].nextUntapSkips[].while.Source
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].notes	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].notes[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].oracleId	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
@@ -43811,6 +43859,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while.So
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.noAbilitiesText	number:uint8
+pendingChoices[].attackSplit.settled.chosen[].template.notes	array
+pendingChoices[].attackSplit.settled.chosen[].template.notes[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.oracleId	string
 pendingChoices[].attackSplit.settled.chosen[].template.owner	custom(uuid.UUID)
@@ -44260,6 +44310,8 @@ pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while.So
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.noAbilitiesText	number:uint8
+pendingChoices[].attackSplit.settled.groups[].template.notes	array
+pendingChoices[].attackSplit.settled.groups[].template.notes[]	string
 pendingChoices[].attackSplit.settled.groups[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.oracleId	string
 pendingChoices[].attackSplit.settled.groups[].template.owner	custom(uuid.UUID)
@@ -45361,6 +45413,8 @@ pendingChoices[].attackSplit.template.nextUntapSkips[].while.Source	custom(uuid.
 pendingChoices[].attackSplit.template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].attackSplit.template.noAbilitiesText	number:uint8
+pendingChoices[].attackSplit.template.notes	array
+pendingChoices[].attackSplit.template.notes[]	string
 pendingChoices[].attackSplit.template.objectEpoch	number:int
 pendingChoices[].attackSplit.template.oracleId	string
 pendingChoices[].attackSplit.template.owner	custom(uuid.UUID)
@@ -46207,6 +46261,8 @@ pendingChoices[].copyWalk.src.nextUntapSkips[].while.Source	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].copyWalk.src.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].copyWalk.src.noAbilitiesText	number:uint8
+pendingChoices[].copyWalk.src.notes	array
+pendingChoices[].copyWalk.src.notes[]	string
 pendingChoices[].copyWalk.src.objectEpoch	number:int
 pendingChoices[].copyWalk.src.oracleId	string
 pendingChoices[].copyWalk.src.owner	custom(uuid.UUID)
@@ -58591,6 +58647,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSk
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.notes	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.notes[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.objectEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.oracleId	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
@@ -61075,6 +61133,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[]
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.millTail.run.planned[].notes	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].notes[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].owner	custom(uuid.UUID)
@@ -61504,6 +61564,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].wh
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.millTail.run.seen[].notes	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].notes[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].owner	custom(uuid.UUID)
@@ -63904,6 +63966,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[]
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.tokenGroups[].template.notes	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.notes[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.owner	custom(uuid.UUID)
@@ -65025,6 +65089,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.nex
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.notes	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.notes[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
@@ -65467,6 +65533,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].next
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].notes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].notes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
@@ -65896,6 +65964,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUnt
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].notes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].notes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
@@ -69820,6 +69890,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapS
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].notes	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].notes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
@@ -72200,6 +72272,8 @@ pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while.Source	custom(uu
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].targetWalk.frame.source.noAbilitiesText	number:uint8
+pendingChoices[].targetWalk.frame.source.notes	array
+pendingChoices[].targetWalk.frame.source.notes[]	string
 pendingChoices[].targetWalk.frame.source.objectEpoch	number:int
 pendingChoices[].targetWalk.frame.source.oracleId	string
 pendingChoices[].targetWalk.frame.source.owner	custom(uuid.UUID)
@@ -73035,6 +73109,8 @@ pendingChoices[].triggerFrame.source.nextUntapSkips[].while.Source	custom(uuid.U
 pendingChoices[].triggerFrame.source.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].triggerFrame.source.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].triggerFrame.source.noAbilitiesText	number:uint8
+pendingChoices[].triggerFrame.source.notes	array
+pendingChoices[].triggerFrame.source.notes[]	string
 pendingChoices[].triggerFrame.source.objectEpoch	number:int
 pendingChoices[].triggerFrame.source.oracleId	string
 pendingChoices[].triggerFrame.source.owner	custom(uuid.UUID)
@@ -74241,6 +74317,8 @@ phasedOut.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 phasedOut.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 phasedOut.cards[].noAbilitiesText	number:uint8
+phasedOut.cards[].notes	array
+phasedOut.cards[].notes[]	string
 phasedOut.cards[].objectEpoch	number:int
 phasedOut.cards[].oracleId	string
 phasedOut.cards[].owner	custom(uuid.UUID)
@@ -74673,6 +74751,8 @@ planechase.deck.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 planechase.deck.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 planechase.deck.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 planechase.deck.cards[].noAbilitiesText	number:uint8
+planechase.deck.cards[].notes	array
+planechase.deck.cards[].notes[]	string
 planechase.deck.cards[].objectEpoch	number:int
 planechase.deck.cards[].oracleId	string
 planechase.deck.cards[].owner	custom(uuid.UUID)
@@ -75105,6 +75185,8 @@ planechase.faceUp.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 planechase.faceUp.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 planechase.faceUp.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 planechase.faceUp.cards[].noAbilitiesText	number:uint8
+planechase.faceUp.cards[].notes	array
+planechase.faceUp.cards[].notes[]	string
 planechase.faceUp.cards[].objectEpoch	number:int
 planechase.faceUp.cards[].oracleId	string
 planechase.faceUp.cards[].owner	custom(uuid.UUID)
@@ -75789,6 +75871,8 @@ resolving.card.nextUntapSkips[].while.Source	custom(uuid.UUID)
 resolving.card.nextUntapSkips[].while.SourceEnteredAt	number:int64
 resolving.card.nextUntapSkips[].while.SourceEpoch	number:int
 resolving.card.noAbilitiesText	number:uint8
+resolving.card.notes	array
+resolving.card.notes[]	string
 resolving.card.objectEpoch	number:int
 resolving.card.oracleId	string
 resolving.card.owner	custom(uuid.UUID)
@@ -76859,6 +76943,8 @@ seats[].attractionDeck.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].attractionDeck.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].attractionDeck.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].attractionDeck.cards[].noAbilitiesText	number:uint8
+seats[].attractionDeck.cards[].notes	array
+seats[].attractionDeck.cards[].notes[]	string
 seats[].attractionDeck.cards[].objectEpoch	number:int
 seats[].attractionDeck.cards[].oracleId	string
 seats[].attractionDeck.cards[].owner	custom(uuid.UUID)
@@ -77473,6 +77559,8 @@ seats[].command.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].command.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].command.cards[].noAbilitiesText	number:uint8
+seats[].command.cards[].notes	array
+seats[].command.cards[].notes[]	string
 seats[].command.cards[].objectEpoch	number:int
 seats[].command.cards[].oracleId	string
 seats[].command.cards[].owner	custom(uuid.UUID)
@@ -77907,6 +77995,8 @@ seats[].companion.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].companion.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].companion.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].companion.cards[].noAbilitiesText	number:uint8
+seats[].companion.cards[].notes	array
+seats[].companion.cards[].notes[]	string
 seats[].companion.cards[].objectEpoch	number:int
 seats[].companion.cards[].oracleId	string
 seats[].companion.cards[].owner	custom(uuid.UUID)
@@ -78350,6 +78440,8 @@ seats[].emblems.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].emblems.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].emblems.cards[].noAbilitiesText	number:uint8
+seats[].emblems.cards[].notes	array
+seats[].emblems.cards[].notes[]	string
 seats[].emblems.cards[].objectEpoch	number:int
 seats[].emblems.cards[].oracleId	string
 seats[].emblems.cards[].owner	custom(uuid.UUID)
@@ -78880,6 +78972,8 @@ seats[].graveyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].graveyard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].graveyard.cards[].noAbilitiesText	number:uint8
+seats[].graveyard.cards[].notes	array
+seats[].graveyard.cards[].notes[]	string
 seats[].graveyard.cards[].objectEpoch	number:int
 seats[].graveyard.cards[].oracleId	string
 seats[].graveyard.cards[].owner	custom(uuid.UUID)
@@ -79310,6 +79404,8 @@ seats[].hand.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].hand.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].hand.cards[].noAbilitiesText	number:uint8
+seats[].hand.cards[].notes	array
+seats[].hand.cards[].notes[]	string
 seats[].hand.cards[].objectEpoch	number:int
 seats[].hand.cards[].oracleId	string
 seats[].hand.cards[].owner	custom(uuid.UUID)
@@ -79745,6 +79841,8 @@ seats[].junkyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].junkyard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].junkyard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].junkyard.cards[].noAbilitiesText	number:uint8
+seats[].junkyard.cards[].notes	array
+seats[].junkyard.cards[].notes[]	string
 seats[].junkyard.cards[].objectEpoch	number:int
 seats[].junkyard.cards[].oracleId	string
 seats[].junkyard.cards[].owner	custom(uuid.UUID)
@@ -80201,6 +80299,8 @@ seats[].library.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].library.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].library.cards[].noAbilitiesText	number:uint8
+seats[].library.cards[].notes	array
+seats[].library.cards[].notes[]	string
 seats[].library.cards[].objectEpoch	number:int
 seats[].library.cards[].oracleId	string
 seats[].library.cards[].owner	custom(uuid.UUID)
@@ -80672,6 +80772,8 @@ seats[].sideboard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].sideboard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].sideboard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].sideboard.cards[].noAbilitiesText	number:uint8
+seats[].sideboard.cards[].notes	array
+seats[].sideboard.cards[].notes[]	string
 seats[].sideboard.cards[].objectEpoch	number:int
 seats[].sideboard.cards[].oracleId	string
 seats[].sideboard.cards[].owner	custom(uuid.UUID)
@@ -81505,6 +81607,8 @@ stack.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 stack.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 stack.cards[].noAbilitiesText	number:uint8
+stack.cards[].notes	array
+stack.cards[].notes[]	string
 stack.cards[].objectEpoch	number:int
 stack.cards[].oracleId	string
 stack.cards[].owner	custom(uuid.UUID)
