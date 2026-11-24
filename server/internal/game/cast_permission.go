@@ -839,6 +839,17 @@ type CastPermission struct {
 	// permission written before this.
 	CostMore int `json:"costMore,omitempty"`
 
+	// CostMoreMana is "by paying {R}{R} in addition to its other costs"
+	// (Ogre Battlecaster, #6091): mana, coloured or not, in Scryfall brace
+	// notation, added to the price of a spell cast through this permission
+	// as an additional cost (CR 601.2f). CostMore's coloured sibling: it is
+	// added with the increases, before any reduction comes off, by the one
+	// pricer (costAfterModifiersLocked) and by the enumerator from the
+	// permission it holds. A land has no cost to raise. Empty adds nothing,
+	// which is every permission written before it. Additive within a
+	// snapshot version.
+	CostMoreMana string `json:"costMoreMana,omitempty"`
+
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
 	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
@@ -1170,6 +1181,15 @@ type CastPermission struct {
 	// the end of the turn the cast is made in, rather than for as long as the
 	// permanent is on the battlefield. Additive; false writes nothing.
 	GainsUntilEndOfTurn bool `json:"gainsUntilEndOfTurn,omitempty"`
+
+	// GainsExileInsteadOfLeaving is "If you do, it gains 'If this permanent
+	// would leave the battlefield, exile it instead of putting it anywhere
+	// else.'" (The Eighth Doctor, #6091): the permanent a spell cast, or a
+	// land played, through this permission becomes has that replacement
+	// (CR 614.1a) for as long as it is on the battlefield as that object
+	// (CR 400.7), registered with the gains above before it can leave
+	// (Game.grantGainsForCastLocked). Additive within a snapshot version.
+	GainsExileInsteadOfLeaving bool `json:"gainsExileInsteadOfLeaving,omitempty"`
 
 	// EntersWithCounterKind and EntersWithCounters are "If you cast a
 	// creature spell this way, that creature enters with an additional

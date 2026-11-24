@@ -5129,3 +5129,36 @@ additive fields, no decision above changed.
   permission is derived off the battlefield, so nothing new is stored for this card. No func reachable from `Game`.
 - **Tests.** `game/permission_filter_colors_test.go` and `cards/effects/niv_mizzet_supreme_test.go`.
 - **Card.** Niv-Mizzet, Supreme (Full).
+
+## Amendment — 2026-11-24 (#6091): a coloured additional cost, a gained leave-the-battlefield replacement, and a delayed trigger on the play
+
+Three additive pieces from the GAP2 one-shot play and cast offers (#5948, batch 7). No decision above changed.
+
+- **A coloured additional cost.** Ogre Battlecaster: "you may cast target instant or sorcery card from your graveyard by
+  paying {R}{R} in addition to its other costs". `CostMore` adds generic mana only. The new `CastPermission.CostMoreMana`
+  names mana in brace notation, coloured or not, and the one pricer adds it as an additional cost (CR 601.2f) in the same
+  place it adds `CostMore`, before any reduction (`CostQuery.GrantIncreaseMana`, `game/grant_increase_mana.go`). The
+  enumerator (`legal/cast.go`) reads it off the permission it announces under, so the payment, the preview and the bot
+  agree. A hand or command-zone cast claims no stored permission and adds nothing; a string that does not parse adds
+  nothing.
+- **A gained replacement.** The Eighth Doctor: "If you do, it gains 'If this permanent would leave the battlefield, exile
+  it instead of putting it anywhere else.'" The new `CastPermission.GainsExileInsteadOfLeaving` is one more cast rider,
+  read where the permission is consumed with the others (`permissionCastGainsOf`). It registers `ModExileInsteadOfLeaving`
+  (unearth's, CR 614.1a) pinned to the spell's instance for `ForThePermanentThisSpellBecomesDuration`, so it is in place
+  before the permanent can leave and ends when that object leaves (CR 400.7). A land played through the permission gets
+  it as its entry finishes, with the land's other gains, and a paused land entry carries it
+  (`LandGainsExileInsteadOf`).
+- **A delayed trigger on the play.** Fires of Mount Doom's "When you play a card this way, ..." and Ogre Battlecaster's
+  "When you cast that spell, ..." are delayed triggered abilities created by the granting ability (CR 603.7a), whose
+  source is that ability's source and whose controller is the player who controlled it (CR 603.7e). Share the Spoils's
+  `QueueTriggerForPermissionPlayForEffect` needs its permanent on the battlefield; the new
+  `QueueDelayedTriggerForPermissionPlayForEffect` creates the trigger from the permission's follow-up whether or not the
+  source is still there, reading it by last-known information (CR 608.2h). A permission whose `FollowUpObject` names its
+  `Source` carries the source object's epoch to it.
+- **Snapshot.** Additive: `costMoreMana` and `gainsExileInsteadOfLeaving` (omitempty), recorded in `v9.txt`, and the
+  paused land entry's `landGainsExileInsteadOf`. No func reachable from `Game`.
+- **Tests.** `game/gap2_b07_seams_test.go`, and each card's test.
+- **Cards.** Fires of Mount Doom, Lobelia, Defender of Bag End, Ogre Battlecaster, The Eighth Doctor, The Face of Boe and
+  Anrakyr the Traveller (Full). Lobelia's one free play, The Face of Boe's suspend-cost cast and Anrakyr's hand-or-graveyard
+  life cast needed no new field: a `CastsLeft` of one (spent by a land play too, #3955), a hand permission per card with
+  its own `Cost` tied by `BudgetGroup`, and two permissions tied the same way.

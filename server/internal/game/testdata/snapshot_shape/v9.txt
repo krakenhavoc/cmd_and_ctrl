@@ -2128,6 +2128,7 @@ followUpParks[].then.permission.condition.subtype	string
 followUpParks[].then.permission.cost	string
 followUpParks[].then.permission.costLess	number:int
 followUpParks[].then.permission.costMore	number:int
+followUpParks[].then.permission.costMoreMana	string
 followUpParks[].then.permission.discardCard	bool
 followUpParks[].then.permission.discardCardInAddition	bool
 followUpParks[].then.permission.discardLandCard	bool
@@ -2226,6 +2227,7 @@ followUpParks[].then.permission.followUpOnLandPlay	bool
 followUpParks[].then.permission.forage	bool
 followUpParks[].then.permission.gainsAbilities	array
 followUpParks[].then.permission.gainsAbilities[]	string
+followUpParks[].then.permission.gainsExileInsteadOfLeaving	bool
 followUpParks[].then.permission.gainsKeywords	array
 followUpParks[].then.permission.gainsKeywords[]	string
 followUpParks[].then.permission.gainsSubtypes	array
@@ -2831,6 +2833,7 @@ frozenEntries[].event.counterTail.then.permission.condition.subtype	string
 frozenEntries[].event.counterTail.then.permission.cost	string
 frozenEntries[].event.counterTail.then.permission.costLess	number:int
 frozenEntries[].event.counterTail.then.permission.costMore	number:int
+frozenEntries[].event.counterTail.then.permission.costMoreMana	string
 frozenEntries[].event.counterTail.then.permission.discardCard	bool
 frozenEntries[].event.counterTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.counterTail.then.permission.discardLandCard	bool
@@ -2929,6 +2932,7 @@ frozenEntries[].event.counterTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.counterTail.then.permission.forage	bool
 frozenEntries[].event.counterTail.then.permission.gainsAbilities	array
 frozenEntries[].event.counterTail.then.permission.gainsAbilities[]	string
+frozenEntries[].event.counterTail.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.counterTail.then.permission.gainsKeywords	array
 frozenEntries[].event.counterTail.then.permission.gainsKeywords[]	string
 frozenEntries[].event.counterTail.then.permission.gainsSubtypes	array
@@ -3512,6 +3516,7 @@ frozenEntries[].event.damageTail.each.each.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.each.permission.cost	string
 frozenEntries[].event.damageTail.each.each.permission.costLess	number:int
 frozenEntries[].event.damageTail.each.each.permission.costMore	number:int
+frozenEntries[].event.damageTail.each.each.permission.costMoreMana	string
 frozenEntries[].event.damageTail.each.each.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discardCardInAddition	bool
 frozenEntries[].event.damageTail.each.each.permission.discardLandCard	bool
@@ -3610,6 +3615,7 @@ frozenEntries[].event.damageTail.each.each.permission.followUpOnLandPlay	bool
 frozenEntries[].event.damageTail.each.each.permission.forage	bool
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities[]	string
+frozenEntries[].event.damageTail.each.each.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords[]	string
 frozenEntries[].event.damageTail.each.each.permission.gainsSubtypes	array
@@ -4184,6 +4190,7 @@ frozenEntries[].event.damageTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.each.then.permission.cost	string
 frozenEntries[].event.damageTail.each.then.permission.costLess	number:int
 frozenEntries[].event.damageTail.each.then.permission.costMore	number:int
+frozenEntries[].event.damageTail.each.then.permission.costMoreMana	string
 frozenEntries[].event.damageTail.each.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discardCardInAddition	bool
 frozenEntries[].event.damageTail.each.then.permission.discardLandCard	bool
@@ -4282,6 +4289,7 @@ frozenEntries[].event.damageTail.each.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.damageTail.each.then.permission.forage	bool
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities[]	string
+frozenEntries[].event.damageTail.each.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords[]	string
 frozenEntries[].event.damageTail.each.then.permission.gainsSubtypes	array
@@ -5074,6 +5082,7 @@ frozenEntries[].event.damageTail.then.permission.condition.subtype	string
 frozenEntries[].event.damageTail.then.permission.cost	string
 frozenEntries[].event.damageTail.then.permission.costLess	number:int
 frozenEntries[].event.damageTail.then.permission.costMore	number:int
+frozenEntries[].event.damageTail.then.permission.costMoreMana	string
 frozenEntries[].event.damageTail.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.damageTail.then.permission.discardLandCard	bool
@@ -5172,6 +5181,7 @@ frozenEntries[].event.damageTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.damageTail.then.permission.forage	bool
 frozenEntries[].event.damageTail.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.then.permission.gainsAbilities[]	string
+frozenEntries[].event.damageTail.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.damageTail.then.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.then.permission.gainsKeywords[]	string
 frozenEntries[].event.damageTail.then.permission.gainsSubtypes	array
@@ -5869,6 +5879,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.condition.sub
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costLess	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMore	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMoreMana	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
@@ -5967,6 +5978,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpOnLan
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.forage	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsSubtypes	array
@@ -6617,6 +6629,7 @@ frozenEntries[].event.entryTail.batch.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.batch.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.then.permission.costLess	number:int
 frozenEntries[].event.entryTail.batch.then.permission.costMore	number:int
+frozenEntries[].event.entryTail.batch.then.permission.costMoreMana	string
 frozenEntries[].event.entryTail.batch.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardLandCard	bool
@@ -6715,6 +6728,7 @@ frozenEntries[].event.entryTail.batch.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.batch.then.permission.forage	bool
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities[]	string
+frozenEntries[].event.entryTail.batch.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords[]	string
 frozenEntries[].event.entryTail.batch.then.permission.gainsSubtypes	array
@@ -7289,6 +7303,7 @@ frozenEntries[].event.entryTail.keyed.permission.condition.subtype	string
 frozenEntries[].event.entryTail.keyed.permission.cost	string
 frozenEntries[].event.entryTail.keyed.permission.costLess	number:int
 frozenEntries[].event.entryTail.keyed.permission.costMore	number:int
+frozenEntries[].event.entryTail.keyed.permission.costMoreMana	string
 frozenEntries[].event.entryTail.keyed.permission.discardCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.keyed.permission.discardLandCard	bool
@@ -7387,6 +7402,7 @@ frozenEntries[].event.entryTail.keyed.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.keyed.permission.forage	bool
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities[]	string
+frozenEntries[].event.entryTail.keyed.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords[]	string
 frozenEntries[].event.entryTail.keyed.permission.gainsSubtypes	array
@@ -7994,6 +8010,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.condition.subtyp
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.cost	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costLess	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMore	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMoreMana	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
@@ -8092,6 +8109,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpOnLandPl
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.forage	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsSubtypes	array
@@ -8687,6 +8705,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.condition.subtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.cost	string
 frozenEntries[].event.entryTail.tokens.then.permission.costLess	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.costMore	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.costMoreMana	string
 frozenEntries[].event.entryTail.tokens.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardLandCard	bool
@@ -8785,6 +8804,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.entryTail.tokens.then.permission.forage	bool
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities[]	string
+frozenEntries[].event.entryTail.tokens.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.gainsSubtypes	array
@@ -9811,6 +9831,7 @@ frozenEntries[].event.keywordActionTail.then.permission.condition.subtype	string
 frozenEntries[].event.keywordActionTail.then.permission.cost	string
 frozenEntries[].event.keywordActionTail.then.permission.costLess	number:int
 frozenEntries[].event.keywordActionTail.then.permission.costMore	number:int
+frozenEntries[].event.keywordActionTail.then.permission.costMoreMana	string
 frozenEntries[].event.keywordActionTail.then.permission.discardCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardLandCard	bool
@@ -9909,6 +9930,7 @@ frozenEntries[].event.keywordActionTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.keywordActionTail.then.permission.forage	bool
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities[]	string
+frozenEntries[].event.keywordActionTail.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords[]	string
 frozenEntries[].event.keywordActionTail.then.permission.gainsSubtypes	array
@@ -10213,6 +10235,7 @@ frozenEntries[].event.keywordInstead.source	custom(uuid.UUID)
 frozenEntries[].event.kind	string
 frozenEntries[].event.landGainsAbilities	array
 frozenEntries[].event.landGainsAbilities[]	string
+frozenEntries[].event.landGainsExileInsteadOf	bool
 frozenEntries[].event.landGainsKeywords	array
 frozenEntries[].event.landGainsKeywords[]	string
 frozenEntries[].event.landGainsLabel	string
@@ -10507,6 +10530,7 @@ frozenEntries[].event.lifeTail.each.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.each.then.permission.cost	string
 frozenEntries[].event.lifeTail.each.then.permission.costLess	number:int
 frozenEntries[].event.lifeTail.each.then.permission.costMore	number:int
+frozenEntries[].event.lifeTail.each.then.permission.costMoreMana	string
 frozenEntries[].event.lifeTail.each.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardCardInAddition	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardLandCard	bool
@@ -10605,6 +10629,7 @@ frozenEntries[].event.lifeTail.each.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.lifeTail.each.then.permission.forage	bool
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities[]	string
+frozenEntries[].event.lifeTail.each.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords[]	string
 frozenEntries[].event.lifeTail.each.then.permission.gainsSubtypes	array
@@ -11182,6 +11207,7 @@ frozenEntries[].event.lifeTail.then.permission.condition.subtype	string
 frozenEntries[].event.lifeTail.then.permission.cost	string
 frozenEntries[].event.lifeTail.then.permission.costLess	number:int
 frozenEntries[].event.lifeTail.then.permission.costMore	number:int
+frozenEntries[].event.lifeTail.then.permission.costMoreMana	string
 frozenEntries[].event.lifeTail.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.lifeTail.then.permission.discardLandCard	bool
@@ -11280,6 +11306,7 @@ frozenEntries[].event.lifeTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.lifeTail.then.permission.forage	bool
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities[]	string
+frozenEntries[].event.lifeTail.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords	array
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords[]	string
 frozenEntries[].event.lifeTail.then.permission.gainsSubtypes	array
@@ -12717,6 +12744,7 @@ frozenEntries[].event.millTail.run.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.run.then.permission.cost	string
 frozenEntries[].event.millTail.run.then.permission.costLess	number:int
 frozenEntries[].event.millTail.run.then.permission.costMore	number:int
+frozenEntries[].event.millTail.run.then.permission.costMoreMana	string
 frozenEntries[].event.millTail.run.then.permission.discardCard	bool
 frozenEntries[].event.millTail.run.then.permission.discardCardInAddition	bool
 frozenEntries[].event.millTail.run.then.permission.discardLandCard	bool
@@ -12815,6 +12843,7 @@ frozenEntries[].event.millTail.run.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.millTail.run.then.permission.forage	bool
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities[]	string
+frozenEntries[].event.millTail.run.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords	array
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords[]	string
 frozenEntries[].event.millTail.run.then.permission.gainsSubtypes	array
@@ -13387,6 +13416,7 @@ frozenEntries[].event.millTail.then.permission.condition.subtype	string
 frozenEntries[].event.millTail.then.permission.cost	string
 frozenEntries[].event.millTail.then.permission.costLess	number:int
 frozenEntries[].event.millTail.then.permission.costMore	number:int
+frozenEntries[].event.millTail.then.permission.costMoreMana	string
 frozenEntries[].event.millTail.then.permission.discardCard	bool
 frozenEntries[].event.millTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.millTail.then.permission.discardLandCard	bool
@@ -13485,6 +13515,7 @@ frozenEntries[].event.millTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.millTail.then.permission.forage	bool
 frozenEntries[].event.millTail.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.then.permission.gainsAbilities[]	string
+frozenEntries[].event.millTail.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.millTail.then.permission.gainsKeywords	array
 frozenEntries[].event.millTail.then.permission.gainsKeywords[]	string
 frozenEntries[].event.millTail.then.permission.gainsSubtypes	array
@@ -15118,6 +15149,7 @@ frozenEntries[].event.tokenTail.then.permission.condition.subtype	string
 frozenEntries[].event.tokenTail.then.permission.cost	string
 frozenEntries[].event.tokenTail.then.permission.costLess	number:int
 frozenEntries[].event.tokenTail.then.permission.costMore	number:int
+frozenEntries[].event.tokenTail.then.permission.costMoreMana	string
 frozenEntries[].event.tokenTail.then.permission.discardCard	bool
 frozenEntries[].event.tokenTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.tokenTail.then.permission.discardLandCard	bool
@@ -15216,6 +15248,7 @@ frozenEntries[].event.tokenTail.then.permission.followUpOnLandPlay	bool
 frozenEntries[].event.tokenTail.then.permission.forage	bool
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities	array
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities[]	string
+frozenEntries[].event.tokenTail.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords	array
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords[]	string
 frozenEntries[].event.tokenTail.then.permission.gainsSubtypes	array
@@ -17109,6 +17142,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.condition.subtype
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMoreMana	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
@@ -17207,6 +17241,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpOnLandPla
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsSubtypes	array
@@ -17814,6 +17849,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.condition.s
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMoreMana	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
@@ -17912,6 +17948,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpOnL
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes	array
@@ -18484,6 +18521,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.condition.subtype	stri
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMore	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMoreMana	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
@@ -18582,6 +18620,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpOnLandPlay	boo
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsSubtypes	array
@@ -19174,6 +19213,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.condition.subtype	st
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMore	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMoreMana	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
@@ -19272,6 +19312,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpOnLandPlay	b
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsSubtypes	array
@@ -19933,6 +19974,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.condition.subtype	s
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMoreMana	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
@@ -20031,6 +20073,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpOnLandPlay	
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsExileInsteadOfLeaving	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsSubtypes	array
@@ -24044,6 +24087,7 @@ movesAwaitingTokens[].counterTail.then.permission.condition.subtype	string
 movesAwaitingTokens[].counterTail.then.permission.cost	string
 movesAwaitingTokens[].counterTail.then.permission.costLess	number:int
 movesAwaitingTokens[].counterTail.then.permission.costMore	number:int
+movesAwaitingTokens[].counterTail.then.permission.costMoreMana	string
 movesAwaitingTokens[].counterTail.then.permission.discardCard	bool
 movesAwaitingTokens[].counterTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].counterTail.then.permission.discardLandCard	bool
@@ -24142,6 +24186,7 @@ movesAwaitingTokens[].counterTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].counterTail.then.permission.forage	bool
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].counterTail.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].counterTail.then.permission.gainsSubtypes	array
@@ -24725,6 +24770,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.condition.subtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.cost	string
 movesAwaitingTokens[].damageTail.each.each.permission.costLess	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.costMore	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.costMoreMana	string
 movesAwaitingTokens[].damageTail.each.each.permission.discardCard	bool
 movesAwaitingTokens[].damageTail.each.each.permission.discardCardInAddition	bool
 movesAwaitingTokens[].damageTail.each.each.permission.discardLandCard	bool
@@ -24823,6 +24869,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].damageTail.each.each.permission.forage	bool
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities[]	string
+movesAwaitingTokens[].damageTail.each.each.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.gainsSubtypes	array
@@ -25397,6 +25444,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.condition.subtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.cost	string
 movesAwaitingTokens[].damageTail.each.then.permission.costLess	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.costMore	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.costMoreMana	string
 movesAwaitingTokens[].damageTail.each.then.permission.discardCard	bool
 movesAwaitingTokens[].damageTail.each.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].damageTail.each.then.permission.discardLandCard	bool
@@ -25495,6 +25543,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].damageTail.each.then.permission.forage	bool
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].damageTail.each.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.gainsSubtypes	array
@@ -26287,6 +26336,7 @@ movesAwaitingTokens[].damageTail.then.permission.condition.subtype	string
 movesAwaitingTokens[].damageTail.then.permission.cost	string
 movesAwaitingTokens[].damageTail.then.permission.costLess	number:int
 movesAwaitingTokens[].damageTail.then.permission.costMore	number:int
+movesAwaitingTokens[].damageTail.then.permission.costMoreMana	string
 movesAwaitingTokens[].damageTail.then.permission.discardCard	bool
 movesAwaitingTokens[].damageTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].damageTail.then.permission.discardLandCard	bool
@@ -26385,6 +26435,7 @@ movesAwaitingTokens[].damageTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].damageTail.then.permission.forage	bool
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].damageTail.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].damageTail.then.permission.gainsSubtypes	array
@@ -27082,6 +27133,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.condition.sub
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.cost	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costMore	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costMoreMana	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.discardLandCard	bool
@@ -27180,6 +27232,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpOnLan
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsSubtypes	array
@@ -27830,6 +27883,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.condition.subtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.cost	string
 movesAwaitingTokens[].entryTail.batch.then.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.costMore	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.costMoreMana	string
 movesAwaitingTokens[].entryTail.batch.then.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.discardLandCard	bool
@@ -27928,6 +27982,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].entryTail.batch.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsSubtypes	array
@@ -28502,6 +28557,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.condition.subtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.cost	string
 movesAwaitingTokens[].entryTail.keyed.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.costMore	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.costMoreMana	string
 movesAwaitingTokens[].entryTail.keyed.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.keyed.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.keyed.permission.discardLandCard	bool
@@ -28600,6 +28656,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.keyed.permission.forage	bool
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities[]	string
+movesAwaitingTokens[].entryTail.keyed.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.gainsSubtypes	array
@@ -29207,6 +29264,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.condition.subtyp
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.cost	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costMore	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costMoreMana	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.discardLandCard	bool
@@ -29305,6 +29363,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpOnLandPl
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.forage	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsSubtypes	array
@@ -29900,6 +29959,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.condition.subtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.cost	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.costMore	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.costMoreMana	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.discardLandCard	bool
@@ -29998,6 +30058,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsSubtypes	array
@@ -31024,6 +31085,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.condition.subtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.cost	string
 movesAwaitingTokens[].keywordActionTail.then.permission.costLess	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.costMore	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.costMoreMana	string
 movesAwaitingTokens[].keywordActionTail.then.permission.discardCard	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.discardLandCard	bool
@@ -31122,6 +31184,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.forage	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].keywordActionTail.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsSubtypes	array
@@ -31426,6 +31489,7 @@ movesAwaitingTokens[].keywordInstead.source	custom(uuid.UUID)
 movesAwaitingTokens[].kind	string
 movesAwaitingTokens[].landGainsAbilities	array
 movesAwaitingTokens[].landGainsAbilities[]	string
+movesAwaitingTokens[].landGainsExileInsteadOf	bool
 movesAwaitingTokens[].landGainsKeywords	array
 movesAwaitingTokens[].landGainsKeywords[]	string
 movesAwaitingTokens[].landGainsLabel	string
@@ -31720,6 +31784,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.condition.subtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.cost	string
 movesAwaitingTokens[].lifeTail.each.then.permission.costLess	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.costMore	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.costMoreMana	string
 movesAwaitingTokens[].lifeTail.each.then.permission.discardCard	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.discardLandCard	bool
@@ -31818,6 +31883,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.forage	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].lifeTail.each.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsSubtypes	array
@@ -32395,6 +32461,7 @@ movesAwaitingTokens[].lifeTail.then.permission.condition.subtype	string
 movesAwaitingTokens[].lifeTail.then.permission.cost	string
 movesAwaitingTokens[].lifeTail.then.permission.costLess	number:int
 movesAwaitingTokens[].lifeTail.then.permission.costMore	number:int
+movesAwaitingTokens[].lifeTail.then.permission.costMoreMana	string
 movesAwaitingTokens[].lifeTail.then.permission.discardCard	bool
 movesAwaitingTokens[].lifeTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].lifeTail.then.permission.discardLandCard	bool
@@ -32493,6 +32560,7 @@ movesAwaitingTokens[].lifeTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].lifeTail.then.permission.forage	bool
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].lifeTail.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].lifeTail.then.permission.gainsSubtypes	array
@@ -33930,6 +33998,7 @@ movesAwaitingTokens[].millTail.run.then.permission.condition.subtype	string
 movesAwaitingTokens[].millTail.run.then.permission.cost	string
 movesAwaitingTokens[].millTail.run.then.permission.costLess	number:int
 movesAwaitingTokens[].millTail.run.then.permission.costMore	number:int
+movesAwaitingTokens[].millTail.run.then.permission.costMoreMana	string
 movesAwaitingTokens[].millTail.run.then.permission.discardCard	bool
 movesAwaitingTokens[].millTail.run.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].millTail.run.then.permission.discardLandCard	bool
@@ -34028,6 +34097,7 @@ movesAwaitingTokens[].millTail.run.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].millTail.run.then.permission.forage	bool
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].millTail.run.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].millTail.run.then.permission.gainsSubtypes	array
@@ -34600,6 +34670,7 @@ movesAwaitingTokens[].millTail.then.permission.condition.subtype	string
 movesAwaitingTokens[].millTail.then.permission.cost	string
 movesAwaitingTokens[].millTail.then.permission.costLess	number:int
 movesAwaitingTokens[].millTail.then.permission.costMore	number:int
+movesAwaitingTokens[].millTail.then.permission.costMoreMana	string
 movesAwaitingTokens[].millTail.then.permission.discardCard	bool
 movesAwaitingTokens[].millTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].millTail.then.permission.discardLandCard	bool
@@ -34698,6 +34769,7 @@ movesAwaitingTokens[].millTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].millTail.then.permission.forage	bool
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].millTail.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].millTail.then.permission.gainsSubtypes	array
@@ -36331,6 +36403,7 @@ movesAwaitingTokens[].tokenTail.then.permission.condition.subtype	string
 movesAwaitingTokens[].tokenTail.then.permission.cost	string
 movesAwaitingTokens[].tokenTail.then.permission.costLess	number:int
 movesAwaitingTokens[].tokenTail.then.permission.costMore	number:int
+movesAwaitingTokens[].tokenTail.then.permission.costMoreMana	string
 movesAwaitingTokens[].tokenTail.then.permission.discardCard	bool
 movesAwaitingTokens[].tokenTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].tokenTail.then.permission.discardLandCard	bool
@@ -36429,6 +36502,7 @@ movesAwaitingTokens[].tokenTail.then.permission.followUpOnLandPlay	bool
 movesAwaitingTokens[].tokenTail.then.permission.forage	bool
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].tokenTail.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].tokenTail.then.permission.gainsSubtypes	array
@@ -38322,6 +38396,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.condition.subtype
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costMore	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costMoreMana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
@@ -38420,6 +38495,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpOnLandPla
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsSubtypes	array
@@ -39027,6 +39103,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.condition.s
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.cost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costMoreMana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
@@ -39125,6 +39202,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpOnL
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes	array
@@ -39697,6 +39775,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.condition.subtype	stri
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costMore	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costMoreMana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.discardLandCard	bool
@@ -39795,6 +39874,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpOnLandPlay	boo
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsSubtypes	array
@@ -40387,6 +40467,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.condition.subtype	st
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costMore	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costMoreMana	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.discardLandCard	bool
@@ -40485,6 +40566,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpOnLandPlay	b
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsSubtypes	array
@@ -41146,6 +41228,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.condition.subtype	s
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costMore	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costMoreMana	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
@@ -41244,6 +41327,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpOnLandPlay	
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsExileInsteadOfLeaving	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsSubtypes	array
@@ -44698,6 +44782,7 @@ pendingChoices[].attackSplit.tail.permission.condition.subtype	string
 pendingChoices[].attackSplit.tail.permission.cost	string
 pendingChoices[].attackSplit.tail.permission.costLess	number:int
 pendingChoices[].attackSplit.tail.permission.costMore	number:int
+pendingChoices[].attackSplit.tail.permission.costMoreMana	string
 pendingChoices[].attackSplit.tail.permission.discardCard	bool
 pendingChoices[].attackSplit.tail.permission.discardCardInAddition	bool
 pendingChoices[].attackSplit.tail.permission.discardLandCard	bool
@@ -44796,6 +44881,7 @@ pendingChoices[].attackSplit.tail.permission.followUpOnLandPlay	bool
 pendingChoices[].attackSplit.tail.permission.forage	bool
 pendingChoices[].attackSplit.tail.permission.gainsAbilities	array
 pendingChoices[].attackSplit.tail.permission.gainsAbilities[]	string
+pendingChoices[].attackSplit.tail.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].attackSplit.tail.permission.gainsKeywords	array
 pendingChoices[].attackSplit.tail.permission.gainsKeywords[]	string
 pendingChoices[].attackSplit.tail.permission.gainsSubtypes	array
@@ -46930,6 +47016,7 @@ pendingChoices[].diceRoll.then.permission.condition.subtype	string
 pendingChoices[].diceRoll.then.permission.cost	string
 pendingChoices[].diceRoll.then.permission.costLess	number:int
 pendingChoices[].diceRoll.then.permission.costMore	number:int
+pendingChoices[].diceRoll.then.permission.costMoreMana	string
 pendingChoices[].diceRoll.then.permission.discardCard	bool
 pendingChoices[].diceRoll.then.permission.discardCardInAddition	bool
 pendingChoices[].diceRoll.then.permission.discardLandCard	bool
@@ -47028,6 +47115,7 @@ pendingChoices[].diceRoll.then.permission.followUpOnLandPlay	bool
 pendingChoices[].diceRoll.then.permission.forage	bool
 pendingChoices[].diceRoll.then.permission.gainsAbilities	array
 pendingChoices[].diceRoll.then.permission.gainsAbilities[]	string
+pendingChoices[].diceRoll.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].diceRoll.then.permission.gainsKeywords	array
 pendingChoices[].diceRoll.then.permission.gainsKeywords[]	string
 pendingChoices[].diceRoll.then.permission.gainsSubtypes	array
@@ -48073,6 +48161,7 @@ pendingChoices[].divideShield.walk.each.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.each.permission.cost	string
 pendingChoices[].divideShield.walk.each.permission.costLess	number:int
 pendingChoices[].divideShield.walk.each.permission.costMore	number:int
+pendingChoices[].divideShield.walk.each.permission.costMoreMana	string
 pendingChoices[].divideShield.walk.each.permission.discardCard	bool
 pendingChoices[].divideShield.walk.each.permission.discardCardInAddition	bool
 pendingChoices[].divideShield.walk.each.permission.discardLandCard	bool
@@ -48171,6 +48260,7 @@ pendingChoices[].divideShield.walk.each.permission.followUpOnLandPlay	bool
 pendingChoices[].divideShield.walk.each.permission.forage	bool
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities[]	string
+pendingChoices[].divideShield.walk.each.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords	array
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords[]	string
 pendingChoices[].divideShield.walk.each.permission.gainsSubtypes	array
@@ -48745,6 +48835,7 @@ pendingChoices[].divideShield.walk.then.permission.condition.subtype	string
 pendingChoices[].divideShield.walk.then.permission.cost	string
 pendingChoices[].divideShield.walk.then.permission.costLess	number:int
 pendingChoices[].divideShield.walk.then.permission.costMore	number:int
+pendingChoices[].divideShield.walk.then.permission.costMoreMana	string
 pendingChoices[].divideShield.walk.then.permission.discardCard	bool
 pendingChoices[].divideShield.walk.then.permission.discardCardInAddition	bool
 pendingChoices[].divideShield.walk.then.permission.discardLandCard	bool
@@ -48843,6 +48934,7 @@ pendingChoices[].divideShield.walk.then.permission.followUpOnLandPlay	bool
 pendingChoices[].divideShield.walk.then.permission.forage	bool
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities[]	string
+pendingChoices[].divideShield.walk.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords	array
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords[]	string
 pendingChoices[].divideShield.walk.then.permission.gainsSubtypes	array
@@ -49423,6 +49515,7 @@ pendingChoices[].libraryOrder.then.permission.condition.subtype	string
 pendingChoices[].libraryOrder.then.permission.cost	string
 pendingChoices[].libraryOrder.then.permission.costLess	number:int
 pendingChoices[].libraryOrder.then.permission.costMore	number:int
+pendingChoices[].libraryOrder.then.permission.costMoreMana	string
 pendingChoices[].libraryOrder.then.permission.discardCard	bool
 pendingChoices[].libraryOrder.then.permission.discardCardInAddition	bool
 pendingChoices[].libraryOrder.then.permission.discardLandCard	bool
@@ -49521,6 +49614,7 @@ pendingChoices[].libraryOrder.then.permission.followUpOnLandPlay	bool
 pendingChoices[].libraryOrder.then.permission.forage	bool
 pendingChoices[].libraryOrder.then.permission.gainsAbilities	array
 pendingChoices[].libraryOrder.then.permission.gainsAbilities[]	string
+pendingChoices[].libraryOrder.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].libraryOrder.then.permission.gainsKeywords	array
 pendingChoices[].libraryOrder.then.permission.gainsKeywords[]	string
 pendingChoices[].libraryOrder.then.permission.gainsSubtypes	array
@@ -50155,6 +50249,7 @@ pendingChoices[].nameThen.permission.condition.subtype	string
 pendingChoices[].nameThen.permission.cost	string
 pendingChoices[].nameThen.permission.costLess	number:int
 pendingChoices[].nameThen.permission.costMore	number:int
+pendingChoices[].nameThen.permission.costMoreMana	string
 pendingChoices[].nameThen.permission.discardCard	bool
 pendingChoices[].nameThen.permission.discardCardInAddition	bool
 pendingChoices[].nameThen.permission.discardLandCard	bool
@@ -50253,6 +50348,7 @@ pendingChoices[].nameThen.permission.followUpOnLandPlay	bool
 pendingChoices[].nameThen.permission.forage	bool
 pendingChoices[].nameThen.permission.gainsAbilities	array
 pendingChoices[].nameThen.permission.gainsAbilities[]	string
+pendingChoices[].nameThen.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].nameThen.permission.gainsKeywords	array
 pendingChoices[].nameThen.permission.gainsKeywords[]	string
 pendingChoices[].nameThen.permission.gainsSubtypes	array
@@ -51334,6 +51430,7 @@ pendingChoices[].pickTail.permission.condition.subtype	string
 pendingChoices[].pickTail.permission.cost	string
 pendingChoices[].pickTail.permission.costLess	number:int
 pendingChoices[].pickTail.permission.costMore	number:int
+pendingChoices[].pickTail.permission.costMoreMana	string
 pendingChoices[].pickTail.permission.discardCard	bool
 pendingChoices[].pickTail.permission.discardCardInAddition	bool
 pendingChoices[].pickTail.permission.discardLandCard	bool
@@ -51432,6 +51529,7 @@ pendingChoices[].pickTail.permission.followUpOnLandPlay	bool
 pendingChoices[].pickTail.permission.forage	bool
 pendingChoices[].pickTail.permission.gainsAbilities	array
 pendingChoices[].pickTail.permission.gainsAbilities[]	string
+pendingChoices[].pickTail.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].pickTail.permission.gainsKeywords	array
 pendingChoices[].pickTail.permission.gainsKeywords[]	string
 pendingChoices[].pickTail.permission.gainsSubtypes	array
@@ -52051,6 +52149,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.condition.s
 pendingChoices[].replacementResume.event.counterTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardLandCard	bool
@@ -52149,6 +52248,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.followUpOnL
 pendingChoices[].replacementResume.event.counterTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsSubtypes	array
@@ -52732,6 +52832,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costLess	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMore	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardLandCard	bool
@@ -52830,6 +52931,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.followU
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsSubtypes	array
@@ -53404,6 +53506,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.conditi
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardLandCard	bool
@@ -53502,6 +53605,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.followU
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsSubtypes	array
@@ -54294,6 +54398,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.condition.su
 pendingChoices[].replacementResume.event.damageTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardLandCard	bool
@@ -54392,6 +54497,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.followUpOnLa
 pendingChoices[].replacementResume.event.damageTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsSubtypes	array
@@ -55089,6 +55195,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
@@ -55187,6 +55294,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsSubtypes	array
@@ -55837,6 +55945,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.conditi
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardLandCard	bool
@@ -55935,6 +56044,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followU
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsSubtypes	array
@@ -56509,6 +56619,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.condition.su
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMore	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardLandCard	bool
@@ -56607,6 +56718,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpOnLa
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsSubtypes	array
@@ -57214,6 +57326,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMore	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
@@ -57312,6 +57425,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsSubtypes	array
@@ -57907,6 +58021,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.condit
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardLandCard	bool
@@ -58005,6 +58120,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.follow
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsSubtypes	array
@@ -59031,6 +59147,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.condi
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardLandCard	bool
@@ -59129,6 +59246,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.follo
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsSubtypes	array
@@ -59433,6 +59551,7 @@ pendingChoices[].replacementResume.event.keywordInstead.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.kind	string
 pendingChoices[].replacementResume.event.landGainsAbilities	array
 pendingChoices[].replacementResume.event.landGainsAbilities[]	string
+pendingChoices[].replacementResume.event.landGainsExileInsteadOf	bool
 pendingChoices[].replacementResume.event.landGainsKeywords	array
 pendingChoices[].replacementResume.event.landGainsKeywords[]	string
 pendingChoices[].replacementResume.event.landGainsLabel	string
@@ -59727,6 +59846,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.condition
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardLandCard	bool
@@ -59825,6 +59945,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpO
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.forage	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsSubtypes	array
@@ -60402,6 +60523,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.condition.subt
 pendingChoices[].replacementResume.event.lifeTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardLandCard	bool
@@ -60500,6 +60622,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpOnLand
 pendingChoices[].replacementResume.event.lifeTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsSubtypes	array
@@ -61937,6 +62060,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.condition.
 pendingChoices[].replacementResume.event.millTail.run.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardLandCard	bool
@@ -62035,6 +62159,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpOn
 pendingChoices[].replacementResume.event.millTail.run.then.permission.forage	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsSubtypes	array
@@ -62607,6 +62732,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.condition.subt
 pendingChoices[].replacementResume.event.millTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardLandCard	bool
@@ -62705,6 +62831,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.followUpOnLand
 pendingChoices[].replacementResume.event.millTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.millTail.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsSubtypes	array
@@ -64338,6 +64465,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.condition.sub
 pendingChoices[].replacementResume.event.tokenTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardLandCard	bool
@@ -64436,6 +64564,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpOnLan
 pendingChoices[].replacementResume.event.tokenTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsSubtypes	array
@@ -66329,6 +66458,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
@@ -66427,6 +66557,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsSubtypes	array
@@ -67034,6 +67165,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
@@ -67132,6 +67264,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes	array
@@ -67704,6 +67837,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.con
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
@@ -67802,6 +67936,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fol
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsSubtypes	array
@@ -68394,6 +68529,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.c
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
@@ -68492,6 +68628,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsSubtypes	array
@@ -69153,6 +69290,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.cost	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMoreMana	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
@@ -69251,6 +69389,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsSubtypes	array
@@ -70283,6 +70422,7 @@ pendingChoices[].scryThen.permission.condition.subtype	string
 pendingChoices[].scryThen.permission.cost	string
 pendingChoices[].scryThen.permission.costLess	number:int
 pendingChoices[].scryThen.permission.costMore	number:int
+pendingChoices[].scryThen.permission.costMoreMana	string
 pendingChoices[].scryThen.permission.discardCard	bool
 pendingChoices[].scryThen.permission.discardCardInAddition	bool
 pendingChoices[].scryThen.permission.discardLandCard	bool
@@ -70381,6 +70521,7 @@ pendingChoices[].scryThen.permission.followUpOnLandPlay	bool
 pendingChoices[].scryThen.permission.forage	bool
 pendingChoices[].scryThen.permission.gainsAbilities	array
 pendingChoices[].scryThen.permission.gainsAbilities[]	string
+pendingChoices[].scryThen.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].scryThen.permission.gainsKeywords	array
 pendingChoices[].scryThen.permission.gainsKeywords[]	string
 pendingChoices[].scryThen.permission.gainsSubtypes	array
@@ -71001,6 +71142,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.condition.subtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.cost	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.costLess	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.costMore	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.costMoreMana	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCardInAddition	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardLandCard	bool
@@ -71099,6 +71241,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.followUpOnLandPlay	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.forage	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities[]	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.gainsExileInsteadOfLeaving	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsSubtypes	array
@@ -77052,6 +77195,7 @@ seats[].castPermissions[].condition.subtype	string
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].costLess	number:int
 seats[].castPermissions[].costMore	number:int
+seats[].castPermissions[].costMoreMana	string
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardCardInAddition	bool
 seats[].castPermissions[].discardLandCard	bool
@@ -77150,6 +77294,7 @@ seats[].castPermissions[].followUpOnLandPlay	bool
 seats[].castPermissions[].forage	bool
 seats[].castPermissions[].gainsAbilities	array
 seats[].castPermissions[].gainsAbilities[]	string
+seats[].castPermissions[].gainsExileInsteadOfLeaving	bool
 seats[].castPermissions[].gainsKeywords	array
 seats[].castPermissions[].gainsKeywords[]	string
 seats[].castPermissions[].gainsSubtypes	array

@@ -4107,6 +4107,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
 		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
+		// and its "{R}{R} in addition" (Ogre Battlecaster, #6091).
+		GrantIncreaseMana: g.grantIncreaseManaLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err

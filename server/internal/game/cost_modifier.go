@@ -328,6 +328,13 @@ type CostQuery struct {
 	// the one pricer and by the enumerator, as GrantReduction is.
 	GrantIncrease int
 
+	// GrantIncreaseMana is the mana, coloured or not, a cast permission
+	// adds to the spell cast through it as an additional cost
+	// (CastPermission.CostMoreMana, #6091): Ogre Battlecaster's "by paying
+	// {R}{R} in addition to its other costs". Added with GrantIncrease.
+	// Nil adds nothing.
+	GrantIncreaseMana *ParsedCost
+
 	// Cost is the cost as it stands at the moment this modifier is
 	// consulted: after the alternative-cost swap and the commander
 	// tax, after every increase for a reduction, after everything
@@ -998,6 +1005,7 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 		// The cast permission's "costs {N} more" (CastPermission.CostMore)
 		// is an increase, so it is in before any reduction comes off.
 		base = increaseBy(base, q.GrantIncrease, nil)
+		base = increaseByGrantMana(base, q.GrantIncreaseMana)
 		// #5657, CR 702.48a: and offering's, by a mana cost.
 		base = reduceByManaCost(reduceByManaCost(base, powerUp), q.SacrificedManaCost)
 		return reduceGeneric(reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
@@ -1031,6 +1039,7 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// And the cast permission's own "costs {N} more" (Zero, Incorporeal
 	// Sensate), one more increase among them.
 	cost = increaseBy(cost, q.GrantIncrease, nil)
+	cost = increaseByGrantMana(cost, q.GrantIncreaseMana)
 	// CR 601.2f step 4, first the reductions with a one-mana floor
 	// (KeepsOneMana, Training Grounds): the player may apply reductions
 	// in any order, and floored ones first leaves the least to pay.
