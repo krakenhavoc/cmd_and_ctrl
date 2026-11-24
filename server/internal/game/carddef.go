@@ -683,6 +683,12 @@ type CardDef struct {
 	// closes; see opening_hand.go. Nil for every other card.
 	OpeningHand *OpeningHandAction
 
+	// ChoosesCommanderColor is CR 903.4b's "If <this> is your
+	// commander, choose a color before the game begins. <This> is the
+	// chosen color." Read through CatalogChoosesCommanderColor; see
+	// commander_color.go.
+	ChoosesCommanderColor bool
+
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
 	// at the top card of your library any time" is LibraryTopOwner,
@@ -1395,6 +1401,12 @@ func init() {
 			return d.GrantedAlternativeCosts
 		}
 		return nil
+	}
+	CatalogChoosesCommanderColor = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.ChoosesCommanderColor
+		}
+		return false
 	}
 	CatalogOpeningHand = func(key string) *OpeningHandAction {
 		if d := catalogDef(key); d != nil {

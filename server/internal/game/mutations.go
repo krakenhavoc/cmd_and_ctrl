@@ -9945,6 +9945,12 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 	if len(colors) == 0 {
 		colors = distinctColorsInManaCost(cost)
 	}
+	// CR 903.4b: a commander's colour chosen before the game is part of
+	// its colour identity (commander_color.go). It is the card's own
+	// attribute, so a copy effect on the commander does not remove it.
+	if col := c.CommanderColor; col != "" && !containsColor(colors, col) {
+		colors = append(append([]string(nil), colors...), col)
+	}
 	if len(colors) > 0 {
 		return colors, true
 	}

@@ -119,6 +119,11 @@ func printedInputsOf(c *Card) printedInputs {
 		colorCDADropped: c.ColorCDADropped,
 		lostKeywords:    c.LostKeywords,
 	}
+	// CR 903.4b, 604.3: "<This> is the chosen color" defines the colour
+	// in every zone (commander_color.go).
+	if cda := c.commanderColorCDA(); cda != "" {
+		in.colors = []string{cda}
+	}
 	// The gate is the catalog KEY and not an oracle ID (ADR 0083
 	// decision 3): a token has a key of its own since #521, so a
 	// template that declares PrintedKeywords in its catalog entry is

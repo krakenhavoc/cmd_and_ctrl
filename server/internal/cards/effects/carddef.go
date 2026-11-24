@@ -301,6 +301,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		CastTimings:                         spec.CastTimings,
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
+		ChoosesCommanderColor:               spec.ChoosesCommanderColor,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
 		LibraryTopVisibleWhen:               spec.LibraryTopVisibleWhen,
 		HandsRevealed:                       spec.HandsRevealed,

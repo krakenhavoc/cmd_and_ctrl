@@ -307,14 +307,12 @@ func validateCommander(list *List) error {
 	// subset of the commander's identity. Uses string set ops on the
 	// single-letter WUBRG values.
 	//
-	// Two commanders' identities combine (CR 702.124c, 903.4).
+	// Two commanders' identities combine (CR 702.124c, 903.4), and a
+	// commander's colour chosen before the game counts (CR 903.4b).
 	if len(list.Commanders) == 1 || len(list.Commanders) == 2 {
-		allowed := map[string]struct{}{}
-		for _, cmd := range list.Commanders {
-			for sym := range identitySet(cmd.ColorIdentity) {
-				allowed[sym] = struct{}{}
-			}
-		}
+		// A CR 903.4b commander's chosen colour is read off the deck
+		// (commander_color.go).
+		allowed := commanderAllowedIdentity(list)
 		// A Rulebreaker commander (rulebreaker.go) widens what a deck may hold.
 		vs = append(vs, colorIdentityViolations(list, allowed)...)
 	}

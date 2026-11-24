@@ -640,6 +640,9 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// attribution, tax, a future "commander spell" check — would see
 	// the copy as one.
 	copyCard.IsCommander = false
+	// CR 903.4b: the chosen colour belongs to the commander card, not
+	// to a copy of its spell (CR 707.2).
+	copyCard.CommanderColor = ""
 	g.Stack.PushTop(copyCard)
 	// A spell on the stack is public information, copy or not.
 	g.markCardKnownInZoneLocked(g.Stack, copyCard.InstanceID)

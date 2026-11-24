@@ -1124,6 +1124,10 @@ type cardSnapshot struct {
 	// unstamped threshold sorts at the permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
+	// CommanderColor is Card.CommanderColor (CR 903.4b, #5948). Additive
+	// within the version; absent means no colour was chosen, which is
+	// every card in every file written before the choice existed.
+	CommanderColor string `json:"commanderColor,omitempty"`
 	// IsCompanion is Card.IsCompanion (ADR 0172 §4). Additive within
 	// v8; absent means not a companion, which is every card in every
 	// file written before companions could be seated. An older binary
@@ -3195,6 +3199,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderColor:           c.CommanderColor,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
 		AstrotoriumBack:          c.AstrotoriumBack,
@@ -4369,6 +4374,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderColor:           c.CommanderColor,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
 		AstrotoriumBack:          c.AstrotoriumBack,

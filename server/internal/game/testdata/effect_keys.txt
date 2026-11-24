@@ -3531,6 +3531,7 @@ tail engine/awaken-animate
 tail engine/become-monstrous
 tail engine/become-renowned
 tail engine/cleanup-discarded
+tail engine/commander-color-chosen
 tail engine/counter-exiled-instead
 tail engine/countered-onto-battlefield
 tail engine/countered-to-library

@@ -241,12 +241,7 @@ func companionViolations(list *List, spec game.FormatSpec) []Violation {
 		})
 	}
 	if len(list.Commanders) == 1 || len(list.Commanders) == 2 {
-		allowed := map[string]struct{}{}
-		for _, cmd := range list.Commanders {
-			for sym := range identitySet(cmd.ColorIdentity) {
-				allowed[sym] = struct{}{}
-			}
-		}
+		allowed := commanderAllowedIdentity(list) // CR 903.4b too
 		for _, sym := range c.ColorIdentity {
 			if _, ok := allowed[sym]; !ok {
 				vs = append(vs, Violation{

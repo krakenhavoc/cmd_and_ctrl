@@ -1813,6 +1813,15 @@ type Spec struct {
 	// shape and has no slot yet.
 	OpeningHand *game.OpeningHandAction
 
+	// ChoosesCommanderColor declares CR 903.4b's "If <this> is your
+	// commander, choose a color before the game begins. <This> is the
+	// chosen color." (The Prismatic Piper, Faceless One, Clara Oswald.)
+	// The deck checker reads the printed sentence itself
+	// (internal/deck/commander_color.go); this is the engine's half: the
+	// colour is revealed or asked for when the mulligan window closes,
+	// and the card is that colour in every zone (game/commander_color.go).
+	ChoosesCommanderColor bool
+
 	// LibraryTopVisible declares the printed clause that makes this
 	// permanent's controller's top library card visible (CR 401.5) —
 	// game.LibraryTopOwner for "you may look at the top card of your
