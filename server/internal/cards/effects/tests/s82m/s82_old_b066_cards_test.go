@@ -185,10 +185,6 @@ func TestOldB066CodespellClericNotCastDoesNothing(t *testing.T) {
 	}
 }
 
-func oldB066Elf(name string) game.Card {
-	return game.Card{Name: name, TypeLine: "Creature — Elf Warrior", Power: 2, Toughness: 2}
-}
-
 func TestOldB066ResplendentMarshalEntersAndExilesForCounters(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
