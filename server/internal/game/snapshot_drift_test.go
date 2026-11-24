@@ -586,6 +586,8 @@ var cardFields = plan(
 	// copied devoid. Carried: nothing else on the card says so.
 	"ColorCDADropped", carried, "",
 	"LostKeywords", carried, "",
+	"PerpetualKeywords", carried, "",
+	"Conjured", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",

@@ -285,7 +285,18 @@ func (g *Game) enterBattlefieldThroughPipelineLocked(ev *ReplacementEvent) (ente
 func (g *Game) moveRedirectedEntryLocked(ev *ReplacementEvent) error {
 	src := g.findCardZoneLocked(ev.CardID)
 	if src == nil {
-		g.dropEnteringTokenLocked(ev.CardID)
+		// A conjured CARD staged like a token (conjure.go) is a card, so
+		// a redirected entry puts it where the replacement said rather
+		// than ending it: only a token ceases to exist outside the
+		// battlefield (CR 111.7).
+		if c, staged := g.takeEnteringTokenLocked(ev.CardID); staged && !c.IsToken() {
+			g.restoreEntryControllerLocked(ev)
+			c.Controller = c.Owner
+			if dst, _, err := g.routeDestinationLocked(uuid.Nil, ev.NewZone, c.Owner); err == nil && dst != nil {
+				dst.PushTop(c)
+				g.EmitEvent(Event{Kind: EventZoneMove, Actor: ev.Actor, CardID: c.InstanceID, NewZone: ev.NewZone})
+			}
+		}
 		return nil
 	}
 	if src.Kind != ev.OldZone || src.Kind == ZoneBattlefield {

@@ -91,6 +91,7 @@ battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
 battlefield.cards[].colors[]	string
 battlefield.cards[].commanderReturnDue	bool
+battlefield.cards[].conjured	bool
 battlefield.cards[].controlledSinceUpkeep	number:int
 battlefield.cards[].controller	custom(uuid.UUID)
 battlefield.cards[].counterStampedAt	map:string
@@ -307,6 +308,8 @@ battlefield.cards[].objectEpoch	number:int
 battlefield.cards[].oracleId	string
 battlefield.cards[].owner	custom(uuid.UUID)
 battlefield.cards[].pairedWith	custom(uuid.UUID)
+battlefield.cards[].perpetualKeywords	array
+battlefield.cards[].perpetualKeywords[]	string
 battlefield.cards[].phaseInBarredBy	custom(uuid.UUID)
 battlefield.cards[].phaseInBarredEpoch	number:int
 battlefield.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -670,6 +673,7 @@ enteringTokens[].colorIdentity[]	string
 enteringTokens[].colors	array
 enteringTokens[].colors[]	string
 enteringTokens[].commanderReturnDue	bool
+enteringTokens[].conjured	bool
 enteringTokens[].controlledSinceUpkeep	number:int
 enteringTokens[].controller	custom(uuid.UUID)
 enteringTokens[].counterStampedAt	map:string
@@ -886,6 +890,8 @@ enteringTokens[].objectEpoch	number:int
 enteringTokens[].oracleId	string
 enteringTokens[].owner	custom(uuid.UUID)
 enteringTokens[].pairedWith	custom(uuid.UUID)
+enteringTokens[].perpetualKeywords	array
+enteringTokens[].perpetualKeywords[]	string
 enteringTokens[].phaseInBarredBy	custom(uuid.UUID)
 enteringTokens[].phaseInBarredEpoch	number:int
 enteringTokens[].phaseInBarredFor	custom(uuid.UUID)
@@ -1217,6 +1223,7 @@ exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
 exile.cards[].colors[]	string
 exile.cards[].commanderReturnDue	bool
+exile.cards[].conjured	bool
 exile.cards[].controlledSinceUpkeep	number:int
 exile.cards[].controller	custom(uuid.UUID)
 exile.cards[].counterStampedAt	map:string
@@ -1433,6 +1440,8 @@ exile.cards[].objectEpoch	number:int
 exile.cards[].oracleId	string
 exile.cards[].owner	custom(uuid.UUID)
 exile.cards[].pairedWith	custom(uuid.UUID)
+exile.cards[].perpetualKeywords	array
+exile.cards[].perpetualKeywords[]	string
 exile.cards[].phaseInBarredBy	custom(uuid.UUID)
 exile.cards[].phaseInBarredEpoch	number:int
 exile.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -8395,6 +8404,7 @@ frozenEntries[].event.entryTail.search.spec.unbounded	bool
 frozenEntries[].event.entryTail.search.spec.upTo	bool
 frozenEntries[].event.entryTail.tokens	object
 frozenEntries[].event.entryTail.tokens.blocking	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.conjured	bool
 frozenEntries[].event.entryTail.tokens.created	array
 frozenEntries[].event.entryTail.tokens.created[]	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.notCreated	bool
@@ -9159,6 +9169,7 @@ frozenEntries[].event.keywordActionTail.armyToken.colorIdentity[]	string
 frozenEntries[].event.keywordActionTail.armyToken.colors	array
 frozenEntries[].event.keywordActionTail.armyToken.colors[]	string
 frozenEntries[].event.keywordActionTail.armyToken.commanderReturnDue	bool
+frozenEntries[].event.keywordActionTail.armyToken.conjured	bool
 frozenEntries[].event.keywordActionTail.armyToken.controlledSinceUpkeep	number:int
 frozenEntries[].event.keywordActionTail.armyToken.controller	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.counterStampedAt	map:string
@@ -9375,6 +9386,8 @@ frozenEntries[].event.keywordActionTail.armyToken.objectEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.oracleId	string
 frozenEntries[].event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.pairedWith	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.perpetualKeywords	array
+frozenEntries[].event.keywordActionTail.armyToken.perpetualKeywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
@@ -11643,6 +11656,7 @@ frozenEntries[].event.millTail.run.planned[].colorIdentity[]	string
 frozenEntries[].event.millTail.run.planned[].colors	array
 frozenEntries[].event.millTail.run.planned[].colors[]	string
 frozenEntries[].event.millTail.run.planned[].commanderReturnDue	bool
+frozenEntries[].event.millTail.run.planned[].conjured	bool
 frozenEntries[].event.millTail.run.planned[].controlledSinceUpkeep	number:int
 frozenEntries[].event.millTail.run.planned[].controller	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].counterStampedAt	map:string
@@ -11859,6 +11873,8 @@ frozenEntries[].event.millTail.run.planned[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].oracleId	string
 frozenEntries[].event.millTail.run.planned[].owner	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].pairedWith	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].perpetualKeywords	array
+frozenEntries[].event.millTail.run.planned[].perpetualKeywords[]	string
 frozenEntries[].event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -12072,6 +12088,7 @@ frozenEntries[].event.millTail.run.seen[].colorIdentity[]	string
 frozenEntries[].event.millTail.run.seen[].colors	array
 frozenEntries[].event.millTail.run.seen[].colors[]	string
 frozenEntries[].event.millTail.run.seen[].commanderReturnDue	bool
+frozenEntries[].event.millTail.run.seen[].conjured	bool
 frozenEntries[].event.millTail.run.seen[].controlledSinceUpkeep	number:int
 frozenEntries[].event.millTail.run.seen[].controller	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].counterStampedAt	map:string
@@ -12288,6 +12305,8 @@ frozenEntries[].event.millTail.run.seen[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].oracleId	string
 frozenEntries[].event.millTail.run.seen[].owner	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].pairedWith	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].perpetualKeywords	array
+frozenEntries[].event.millTail.run.seen[].perpetualKeywords[]	string
 frozenEntries[].event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -14472,6 +14491,7 @@ frozenEntries[].event.tokenGroups[].template.colorIdentity[]	string
 frozenEntries[].event.tokenGroups[].template.colors	array
 frozenEntries[].event.tokenGroups[].template.colors[]	string
 frozenEntries[].event.tokenGroups[].template.commanderReturnDue	bool
+frozenEntries[].event.tokenGroups[].template.conjured	bool
 frozenEntries[].event.tokenGroups[].template.controlledSinceUpkeep	number:int
 frozenEntries[].event.tokenGroups[].template.controller	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.counterStampedAt	map:string
@@ -14688,6 +14708,8 @@ frozenEntries[].event.tokenGroups[].template.objectEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.oracleId	string
 frozenEntries[].event.tokenGroups[].template.owner	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.pairedWith	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.perpetualKeywords	array
+frozenEntries[].event.tokenGroups[].template.perpetualKeywords[]	string
 frozenEntries[].event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -15593,6 +15615,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.colorIdentity[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.colors	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.colors[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.commanderReturnDue	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.conjured	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.controlledSinceUpkeep	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.controller	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.counterStampedAt	map:string
@@ -15809,6 +15832,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.oracleId	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.pairedWith	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.perpetualKeywords	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.perpetualKeywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -16035,6 +16060,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colorIdentity[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].commanderReturnDue	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].conjured	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].controlledSinceUpkeep	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].counterStampedAt	map:string
@@ -16251,6 +16277,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].pairedWith	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].perpetualKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -16464,6 +16492,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colorIdentity[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].commanderReturnDue	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].conjured	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].controlledSinceUpkeep	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].counterStampedAt	map:string
@@ -16680,6 +16709,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].pairedWith	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].perpetualKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -20388,6 +20419,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].colorIdentity[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].colors	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].colors[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].commanderReturnDue	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].conjured	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].controlledSinceUpkeep	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].controller	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].counterStampedAt	map:string
@@ -20604,6 +20636,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].oracleId	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].pairedWith	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].perpetualKeywords	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
@@ -21575,6 +21609,7 @@ lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
 lastKnownStack[].card.colors[]	string
 lastKnownStack[].card.commanderReturnDue	bool
+lastKnownStack[].card.conjured	bool
 lastKnownStack[].card.controlledSinceUpkeep	number:int
 lastKnownStack[].card.controller	custom(uuid.UUID)
 lastKnownStack[].card.counterStampedAt	map:string
@@ -21791,6 +21826,8 @@ lastKnownStack[].card.objectEpoch	number:int
 lastKnownStack[].card.oracleId	string
 lastKnownStack[].card.owner	custom(uuid.UUID)
 lastKnownStack[].card.pairedWith	custom(uuid.UUID)
+lastKnownStack[].card.perpetualKeywords	array
+lastKnownStack[].card.perpetualKeywords[]	string
 lastKnownStack[].card.phaseInBarredBy	custom(uuid.UUID)
 lastKnownStack[].card.phaseInBarredEpoch	number:int
 lastKnownStack[].card.phaseInBarredFor	custom(uuid.UUID)
@@ -22502,6 +22539,7 @@ match.decks[].fixed[].colorIdentity[]	string
 match.decks[].fixed[].colors	array
 match.decks[].fixed[].colors[]	string
 match.decks[].fixed[].commanderReturnDue	bool
+match.decks[].fixed[].conjured	bool
 match.decks[].fixed[].controlledSinceUpkeep	number:int
 match.decks[].fixed[].controller	custom(uuid.UUID)
 match.decks[].fixed[].counterStampedAt	map:string
@@ -22718,6 +22756,8 @@ match.decks[].fixed[].objectEpoch	number:int
 match.decks[].fixed[].oracleId	string
 match.decks[].fixed[].owner	custom(uuid.UUID)
 match.decks[].fixed[].pairedWith	custom(uuid.UUID)
+match.decks[].fixed[].perpetualKeywords	array
+match.decks[].fixed[].perpetualKeywords[]	string
 match.decks[].fixed[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].fixed[].phaseInBarredEpoch	number:int
 match.decks[].fixed[].phaseInBarredFor	custom(uuid.UUID)
@@ -22929,6 +22969,7 @@ match.decks[].main[].colorIdentity[]	string
 match.decks[].main[].colors	array
 match.decks[].main[].colors[]	string
 match.decks[].main[].commanderReturnDue	bool
+match.decks[].main[].conjured	bool
 match.decks[].main[].controlledSinceUpkeep	number:int
 match.decks[].main[].controller	custom(uuid.UUID)
 match.decks[].main[].counterStampedAt	map:string
@@ -23145,6 +23186,8 @@ match.decks[].main[].objectEpoch	number:int
 match.decks[].main[].oracleId	string
 match.decks[].main[].owner	custom(uuid.UUID)
 match.decks[].main[].pairedWith	custom(uuid.UUID)
+match.decks[].main[].perpetualKeywords	array
+match.decks[].main[].perpetualKeywords[]	string
 match.decks[].main[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].main[].phaseInBarredEpoch	number:int
 match.decks[].main[].phaseInBarredFor	custom(uuid.UUID)
@@ -23359,6 +23402,7 @@ match.decks[].side[].colorIdentity[]	string
 match.decks[].side[].colors	array
 match.decks[].side[].colors[]	string
 match.decks[].side[].commanderReturnDue	bool
+match.decks[].side[].conjured	bool
 match.decks[].side[].controlledSinceUpkeep	number:int
 match.decks[].side[].controller	custom(uuid.UUID)
 match.decks[].side[].counterStampedAt	map:string
@@ -23575,6 +23619,8 @@ match.decks[].side[].objectEpoch	number:int
 match.decks[].side[].oracleId	string
 match.decks[].side[].owner	custom(uuid.UUID)
 match.decks[].side[].pairedWith	custom(uuid.UUID)
+match.decks[].side[].perpetualKeywords	array
+match.decks[].side[].perpetualKeywords[]	string
 match.decks[].side[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].side[].phaseInBarredEpoch	number:int
 match.decks[].side[].phaseInBarredFor	custom(uuid.UUID)
@@ -29608,6 +29654,7 @@ movesAwaitingTokens[].entryTail.search.spec.unbounded	bool
 movesAwaitingTokens[].entryTail.search.spec.upTo	bool
 movesAwaitingTokens[].entryTail.tokens	object
 movesAwaitingTokens[].entryTail.tokens.blocking	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.conjured	bool
 movesAwaitingTokens[].entryTail.tokens.created	array
 movesAwaitingTokens[].entryTail.tokens.created[]	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.notCreated	bool
@@ -30372,6 +30419,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.colorIdentity[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.colors	array
 movesAwaitingTokens[].keywordActionTail.armyToken.colors[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.commanderReturnDue	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.conjured	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.controlledSinceUpkeep	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.controller	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.counterStampedAt	map:string
@@ -30588,6 +30636,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.objectEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.oracleId	string
 movesAwaitingTokens[].keywordActionTail.armyToken.owner	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.perpetualKeywords	array
+movesAwaitingTokens[].keywordActionTail.armyToken.perpetualKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
@@ -32856,6 +32906,7 @@ movesAwaitingTokens[].millTail.run.planned[].colorIdentity[]	string
 movesAwaitingTokens[].millTail.run.planned[].colors	array
 movesAwaitingTokens[].millTail.run.planned[].colors[]	string
 movesAwaitingTokens[].millTail.run.planned[].commanderReturnDue	bool
+movesAwaitingTokens[].millTail.run.planned[].conjured	bool
 movesAwaitingTokens[].millTail.run.planned[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].millTail.run.planned[].controller	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].counterStampedAt	map:string
@@ -33072,6 +33123,8 @@ movesAwaitingTokens[].millTail.run.planned[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].oracleId	string
 movesAwaitingTokens[].millTail.run.planned[].owner	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].perpetualKeywords	array
+movesAwaitingTokens[].millTail.run.planned[].perpetualKeywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -33285,6 +33338,7 @@ movesAwaitingTokens[].millTail.run.seen[].colorIdentity[]	string
 movesAwaitingTokens[].millTail.run.seen[].colors	array
 movesAwaitingTokens[].millTail.run.seen[].colors[]	string
 movesAwaitingTokens[].millTail.run.seen[].commanderReturnDue	bool
+movesAwaitingTokens[].millTail.run.seen[].conjured	bool
 movesAwaitingTokens[].millTail.run.seen[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].millTail.run.seen[].controller	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].counterStampedAt	map:string
@@ -33501,6 +33555,8 @@ movesAwaitingTokens[].millTail.run.seen[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].oracleId	string
 movesAwaitingTokens[].millTail.run.seen[].owner	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].perpetualKeywords	array
+movesAwaitingTokens[].millTail.run.seen[].perpetualKeywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -35685,6 +35741,7 @@ movesAwaitingTokens[].tokenGroups[].template.colorIdentity[]	string
 movesAwaitingTokens[].tokenGroups[].template.colors	array
 movesAwaitingTokens[].tokenGroups[].template.colors[]	string
 movesAwaitingTokens[].tokenGroups[].template.commanderReturnDue	bool
+movesAwaitingTokens[].tokenGroups[].template.conjured	bool
 movesAwaitingTokens[].tokenGroups[].template.controlledSinceUpkeep	number:int
 movesAwaitingTokens[].tokenGroups[].template.controller	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.counterStampedAt	map:string
@@ -35901,6 +35958,8 @@ movesAwaitingTokens[].tokenGroups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.oracleId	string
 movesAwaitingTokens[].tokenGroups[].template.owner	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.perpetualKeywords	array
+movesAwaitingTokens[].tokenGroups[].template.perpetualKeywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -36806,6 +36865,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.colorIdentity[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.colors	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.colors[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.commanderReturnDue	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.conjured	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.controlledSinceUpkeep	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.controller	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.counterStampedAt	map:string
@@ -37022,6 +37082,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.oracleId	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.perpetualKeywords	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.perpetualKeywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -37248,6 +37310,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colorIdentity[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].commanderReturnDue	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].conjured	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].counterStampedAt	map:string
@@ -37464,6 +37527,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].perpetualKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -37677,6 +37742,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colorIdentity[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].commanderReturnDue	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].conjured	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].counterStampedAt	map:string
@@ -37893,6 +37959,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].perpetualKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -41601,6 +41669,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].colorIdentity[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].colors	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].colors[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].commanderReturnDue	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].conjured	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].controller	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].counterStampedAt	map:string
@@ -41817,6 +41886,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].oracleId	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].pairedWith	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].perpetualKeywords	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
@@ -43599,6 +43670,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.colorIdentity[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.colors	array
 pendingChoices[].attackSplit.settled.chosen[].template.colors[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.commanderReturnDue	bool
+pendingChoices[].attackSplit.settled.chosen[].template.conjured	bool
 pendingChoices[].attackSplit.settled.chosen[].template.controlledSinceUpkeep	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.controller	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.counterStampedAt	map:string
@@ -43815,6 +43887,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.oracleId	string
 pendingChoices[].attackSplit.settled.chosen[].template.owner	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.pairedWith	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.perpetualKeywords	array
+pendingChoices[].attackSplit.settled.chosen[].template.perpetualKeywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -44048,6 +44122,7 @@ pendingChoices[].attackSplit.settled.groups[].template.colorIdentity[]	string
 pendingChoices[].attackSplit.settled.groups[].template.colors	array
 pendingChoices[].attackSplit.settled.groups[].template.colors[]	string
 pendingChoices[].attackSplit.settled.groups[].template.commanderReturnDue	bool
+pendingChoices[].attackSplit.settled.groups[].template.conjured	bool
 pendingChoices[].attackSplit.settled.groups[].template.controlledSinceUpkeep	number:int
 pendingChoices[].attackSplit.settled.groups[].template.controller	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.counterStampedAt	map:string
@@ -44264,6 +44339,8 @@ pendingChoices[].attackSplit.settled.groups[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.oracleId	string
 pendingChoices[].attackSplit.settled.groups[].template.owner	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.pairedWith	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.perpetualKeywords	array
+pendingChoices[].attackSplit.settled.groups[].template.perpetualKeywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -45149,6 +45226,7 @@ pendingChoices[].attackSplit.template.colorIdentity[]	string
 pendingChoices[].attackSplit.template.colors	array
 pendingChoices[].attackSplit.template.colors[]	string
 pendingChoices[].attackSplit.template.commanderReturnDue	bool
+pendingChoices[].attackSplit.template.conjured	bool
 pendingChoices[].attackSplit.template.controlledSinceUpkeep	number:int
 pendingChoices[].attackSplit.template.controller	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.counterStampedAt	map:string
@@ -45365,6 +45443,8 @@ pendingChoices[].attackSplit.template.objectEpoch	number:int
 pendingChoices[].attackSplit.template.oracleId	string
 pendingChoices[].attackSplit.template.owner	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.pairedWith	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.perpetualKeywords	array
+pendingChoices[].attackSplit.template.perpetualKeywords[]	string
 pendingChoices[].attackSplit.template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.template.phaseInBarredFor	custom(uuid.UUID)
@@ -45995,6 +46075,7 @@ pendingChoices[].copyWalk.src.colorIdentity[]	string
 pendingChoices[].copyWalk.src.colors	array
 pendingChoices[].copyWalk.src.colors[]	string
 pendingChoices[].copyWalk.src.commanderReturnDue	bool
+pendingChoices[].copyWalk.src.conjured	bool
 pendingChoices[].copyWalk.src.controlledSinceUpkeep	number:int
 pendingChoices[].copyWalk.src.controller	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.counterStampedAt	map:string
@@ -46211,6 +46292,8 @@ pendingChoices[].copyWalk.src.objectEpoch	number:int
 pendingChoices[].copyWalk.src.oracleId	string
 pendingChoices[].copyWalk.src.owner	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.pairedWith	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.perpetualKeywords	array
+pendingChoices[].copyWalk.src.perpetualKeywords[]	string
 pendingChoices[].copyWalk.src.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phaseInBarredEpoch	number:int
 pendingChoices[].copyWalk.src.phaseInBarredFor	custom(uuid.UUID)
@@ -57615,6 +57698,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.unbounded	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.upTo	bool
 pendingChoices[].replacementResume.event.entryTail.tokens	object
 pendingChoices[].replacementResume.event.entryTail.tokens.blocking	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.conjured	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.created	array
 pendingChoices[].replacementResume.event.entryTail.tokens.created[]	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.notCreated	bool
@@ -58379,6 +58463,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colorIdenti
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colors	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colors[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.commanderReturnDue	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.conjured	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.counterStampedAt	map:string
@@ -58595,6 +58680,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.objectEpoch
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.oracleId	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.perpetualKeywords	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
@@ -60863,6 +60950,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].colorIdentity[]	
 pendingChoices[].replacementResume.event.millTail.run.planned[].colors	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].colors[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].commanderReturnDue	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].conjured	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].counterStampedAt	map:string
@@ -61079,6 +61167,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].objectEpoch	numb
 pendingChoices[].replacementResume.event.millTail.run.planned[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].perpetualKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -61292,6 +61382,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].colorIdentity[]	str
 pendingChoices[].replacementResume.event.millTail.run.seen[].colors	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].colors[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].commanderReturnDue	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].conjured	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].counterStampedAt	map:string
@@ -61508,6 +61599,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].objectEpoch	number:
 pendingChoices[].replacementResume.event.millTail.run.seen[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].perpetualKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -63692,6 +63785,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.colorIdentity[]	
 pendingChoices[].replacementResume.event.tokenGroups[].template.colors	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.colors[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.commanderReturnDue	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.conjured	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.counterStampedAt	map:string
@@ -63908,6 +64002,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.objectEpoch	numb
 pendingChoices[].replacementResume.event.tokenGroups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.perpetualKeywords	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -64813,6 +64909,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.col
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.colors	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.colors[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.commanderReturnDue	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.conjured	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.counterStampedAt	map:string
@@ -65029,6 +65126,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.obj
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.perpetualKeywords	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -65255,6 +65354,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colo
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].commanderReturnDue	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].conjured	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].counterStampedAt	map:string
@@ -65471,6 +65571,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].obje
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].perpetualKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -65684,6 +65786,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colorId
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].commanderReturnDue	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].conjured	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].counterStampedAt	map:string
@@ -65900,6 +66003,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].objectE
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].perpetualKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -69608,6 +69713,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colorIdent
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colors	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].commanderReturnDue	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].conjured	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].controller	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].counterStampedAt	map:string
@@ -69824,6 +69930,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].objectEpoc
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].pairedWith	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].perpetualKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
@@ -71988,6 +72096,7 @@ pendingChoices[].targetWalk.frame.source.colorIdentity[]	string
 pendingChoices[].targetWalk.frame.source.colors	array
 pendingChoices[].targetWalk.frame.source.colors[]	string
 pendingChoices[].targetWalk.frame.source.commanderReturnDue	bool
+pendingChoices[].targetWalk.frame.source.conjured	bool
 pendingChoices[].targetWalk.frame.source.controlledSinceUpkeep	number:int
 pendingChoices[].targetWalk.frame.source.controller	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.counterStampedAt	map:string
@@ -72204,6 +72313,8 @@ pendingChoices[].targetWalk.frame.source.objectEpoch	number:int
 pendingChoices[].targetWalk.frame.source.oracleId	string
 pendingChoices[].targetWalk.frame.source.owner	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.pairedWith	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.perpetualKeywords	array
+pendingChoices[].targetWalk.frame.source.perpetualKeywords[]	string
 pendingChoices[].targetWalk.frame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phaseInBarredEpoch	number:int
 pendingChoices[].targetWalk.frame.source.phaseInBarredFor	custom(uuid.UUID)
@@ -72823,6 +72934,7 @@ pendingChoices[].triggerFrame.source.colorIdentity[]	string
 pendingChoices[].triggerFrame.source.colors	array
 pendingChoices[].triggerFrame.source.colors[]	string
 pendingChoices[].triggerFrame.source.commanderReturnDue	bool
+pendingChoices[].triggerFrame.source.conjured	bool
 pendingChoices[].triggerFrame.source.controlledSinceUpkeep	number:int
 pendingChoices[].triggerFrame.source.controller	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.counterStampedAt	map:string
@@ -73039,6 +73151,8 @@ pendingChoices[].triggerFrame.source.objectEpoch	number:int
 pendingChoices[].triggerFrame.source.oracleId	string
 pendingChoices[].triggerFrame.source.owner	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.pairedWith	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.perpetualKeywords	array
+pendingChoices[].triggerFrame.source.perpetualKeywords[]	string
 pendingChoices[].triggerFrame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phaseInBarredEpoch	number:int
 pendingChoices[].triggerFrame.source.phaseInBarredFor	custom(uuid.UUID)
@@ -74029,6 +74143,7 @@ phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
 phasedOut.cards[].colors[]	string
 phasedOut.cards[].commanderReturnDue	bool
+phasedOut.cards[].conjured	bool
 phasedOut.cards[].controlledSinceUpkeep	number:int
 phasedOut.cards[].controller	custom(uuid.UUID)
 phasedOut.cards[].counterStampedAt	map:string
@@ -74245,6 +74360,8 @@ phasedOut.cards[].objectEpoch	number:int
 phasedOut.cards[].oracleId	string
 phasedOut.cards[].owner	custom(uuid.UUID)
 phasedOut.cards[].pairedWith	custom(uuid.UUID)
+phasedOut.cards[].perpetualKeywords	array
+phasedOut.cards[].perpetualKeywords[]	string
 phasedOut.cards[].phaseInBarredBy	custom(uuid.UUID)
 phasedOut.cards[].phaseInBarredEpoch	number:int
 phasedOut.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -74461,6 +74578,7 @@ planechase.deck.cards[].colorIdentity[]	string
 planechase.deck.cards[].colors	array
 planechase.deck.cards[].colors[]	string
 planechase.deck.cards[].commanderReturnDue	bool
+planechase.deck.cards[].conjured	bool
 planechase.deck.cards[].controlledSinceUpkeep	number:int
 planechase.deck.cards[].controller	custom(uuid.UUID)
 planechase.deck.cards[].counterStampedAt	map:string
@@ -74677,6 +74795,8 @@ planechase.deck.cards[].objectEpoch	number:int
 planechase.deck.cards[].oracleId	string
 planechase.deck.cards[].owner	custom(uuid.UUID)
 planechase.deck.cards[].pairedWith	custom(uuid.UUID)
+planechase.deck.cards[].perpetualKeywords	array
+planechase.deck.cards[].perpetualKeywords[]	string
 planechase.deck.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.deck.cards[].phaseInBarredEpoch	number:int
 planechase.deck.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -74893,6 +75013,7 @@ planechase.faceUp.cards[].colorIdentity[]	string
 planechase.faceUp.cards[].colors	array
 planechase.faceUp.cards[].colors[]	string
 planechase.faceUp.cards[].commanderReturnDue	bool
+planechase.faceUp.cards[].conjured	bool
 planechase.faceUp.cards[].controlledSinceUpkeep	number:int
 planechase.faceUp.cards[].controller	custom(uuid.UUID)
 planechase.faceUp.cards[].counterStampedAt	map:string
@@ -75109,6 +75230,8 @@ planechase.faceUp.cards[].objectEpoch	number:int
 planechase.faceUp.cards[].oracleId	string
 planechase.faceUp.cards[].owner	custom(uuid.UUID)
 planechase.faceUp.cards[].pairedWith	custom(uuid.UUID)
+planechase.faceUp.cards[].perpetualKeywords	array
+planechase.faceUp.cards[].perpetualKeywords[]	string
 planechase.faceUp.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phaseInBarredEpoch	number:int
 planechase.faceUp.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -75577,6 +75700,7 @@ resolving.card.colorIdentity[]	string
 resolving.card.colors	array
 resolving.card.colors[]	string
 resolving.card.commanderReturnDue	bool
+resolving.card.conjured	bool
 resolving.card.controlledSinceUpkeep	number:int
 resolving.card.controller	custom(uuid.UUID)
 resolving.card.counterStampedAt	map:string
@@ -75793,6 +75917,8 @@ resolving.card.objectEpoch	number:int
 resolving.card.oracleId	string
 resolving.card.owner	custom(uuid.UUID)
 resolving.card.pairedWith	custom(uuid.UUID)
+resolving.card.perpetualKeywords	array
+resolving.card.perpetualKeywords[]	string
 resolving.card.phaseInBarredBy	custom(uuid.UUID)
 resolving.card.phaseInBarredEpoch	number:int
 resolving.card.phaseInBarredFor	custom(uuid.UUID)
@@ -76647,6 +76773,7 @@ seats[].attractionDeck.cards[].colorIdentity[]	string
 seats[].attractionDeck.cards[].colors	array
 seats[].attractionDeck.cards[].colors[]	string
 seats[].attractionDeck.cards[].commanderReturnDue	bool
+seats[].attractionDeck.cards[].conjured	bool
 seats[].attractionDeck.cards[].controlledSinceUpkeep	number:int
 seats[].attractionDeck.cards[].controller	custom(uuid.UUID)
 seats[].attractionDeck.cards[].counterStampedAt	map:string
@@ -76863,6 +76990,8 @@ seats[].attractionDeck.cards[].objectEpoch	number:int
 seats[].attractionDeck.cards[].oracleId	string
 seats[].attractionDeck.cards[].owner	custom(uuid.UUID)
 seats[].attractionDeck.cards[].pairedWith	custom(uuid.UUID)
+seats[].attractionDeck.cards[].perpetualKeywords	array
+seats[].attractionDeck.cards[].perpetualKeywords[]	string
 seats[].attractionDeck.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phaseInBarredEpoch	number:int
 seats[].attractionDeck.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -77261,6 +77390,7 @@ seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
 seats[].command.cards[].colors[]	string
 seats[].command.cards[].commanderReturnDue	bool
+seats[].command.cards[].conjured	bool
 seats[].command.cards[].controlledSinceUpkeep	number:int
 seats[].command.cards[].controller	custom(uuid.UUID)
 seats[].command.cards[].counterStampedAt	map:string
@@ -77477,6 +77607,8 @@ seats[].command.cards[].objectEpoch	number:int
 seats[].command.cards[].oracleId	string
 seats[].command.cards[].owner	custom(uuid.UUID)
 seats[].command.cards[].pairedWith	custom(uuid.UUID)
+seats[].command.cards[].perpetualKeywords	array
+seats[].command.cards[].perpetualKeywords[]	string
 seats[].command.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].command.cards[].phaseInBarredEpoch	number:int
 seats[].command.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -77695,6 +77827,7 @@ seats[].companion.cards[].colorIdentity[]	string
 seats[].companion.cards[].colors	array
 seats[].companion.cards[].colors[]	string
 seats[].companion.cards[].commanderReturnDue	bool
+seats[].companion.cards[].conjured	bool
 seats[].companion.cards[].controlledSinceUpkeep	number:int
 seats[].companion.cards[].controller	custom(uuid.UUID)
 seats[].companion.cards[].counterStampedAt	map:string
@@ -77911,6 +78044,8 @@ seats[].companion.cards[].objectEpoch	number:int
 seats[].companion.cards[].oracleId	string
 seats[].companion.cards[].owner	custom(uuid.UUID)
 seats[].companion.cards[].pairedWith	custom(uuid.UUID)
+seats[].companion.cards[].perpetualKeywords	array
+seats[].companion.cards[].perpetualKeywords[]	string
 seats[].companion.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].companion.cards[].phaseInBarredEpoch	number:int
 seats[].companion.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -78138,6 +78273,7 @@ seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
 seats[].emblems.cards[].colors[]	string
 seats[].emblems.cards[].commanderReturnDue	bool
+seats[].emblems.cards[].conjured	bool
 seats[].emblems.cards[].controlledSinceUpkeep	number:int
 seats[].emblems.cards[].controller	custom(uuid.UUID)
 seats[].emblems.cards[].counterStampedAt	map:string
@@ -78354,6 +78490,8 @@ seats[].emblems.cards[].objectEpoch	number:int
 seats[].emblems.cards[].oracleId	string
 seats[].emblems.cards[].owner	custom(uuid.UUID)
 seats[].emblems.cards[].pairedWith	custom(uuid.UUID)
+seats[].emblems.cards[].perpetualKeywords	array
+seats[].emblems.cards[].perpetualKeywords[]	string
 seats[].emblems.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].emblems.cards[].phaseInBarredEpoch	number:int
 seats[].emblems.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -78668,6 +78806,7 @@ seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
 seats[].graveyard.cards[].colors[]	string
 seats[].graveyard.cards[].commanderReturnDue	bool
+seats[].graveyard.cards[].conjured	bool
 seats[].graveyard.cards[].controlledSinceUpkeep	number:int
 seats[].graveyard.cards[].controller	custom(uuid.UUID)
 seats[].graveyard.cards[].counterStampedAt	map:string
@@ -78884,6 +79023,8 @@ seats[].graveyard.cards[].objectEpoch	number:int
 seats[].graveyard.cards[].oracleId	string
 seats[].graveyard.cards[].owner	custom(uuid.UUID)
 seats[].graveyard.cards[].pairedWith	custom(uuid.UUID)
+seats[].graveyard.cards[].perpetualKeywords	array
+seats[].graveyard.cards[].perpetualKeywords[]	string
 seats[].graveyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phaseInBarredEpoch	number:int
 seats[].graveyard.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -79098,6 +79239,7 @@ seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
 seats[].hand.cards[].colors[]	string
 seats[].hand.cards[].commanderReturnDue	bool
+seats[].hand.cards[].conjured	bool
 seats[].hand.cards[].controlledSinceUpkeep	number:int
 seats[].hand.cards[].controller	custom(uuid.UUID)
 seats[].hand.cards[].counterStampedAt	map:string
@@ -79314,6 +79456,8 @@ seats[].hand.cards[].objectEpoch	number:int
 seats[].hand.cards[].oracleId	string
 seats[].hand.cards[].owner	custom(uuid.UUID)
 seats[].hand.cards[].pairedWith	custom(uuid.UUID)
+seats[].hand.cards[].perpetualKeywords	array
+seats[].hand.cards[].perpetualKeywords[]	string
 seats[].hand.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].hand.cards[].phaseInBarredEpoch	number:int
 seats[].hand.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -79533,6 +79677,7 @@ seats[].junkyard.cards[].colorIdentity[]	string
 seats[].junkyard.cards[].colors	array
 seats[].junkyard.cards[].colors[]	string
 seats[].junkyard.cards[].commanderReturnDue	bool
+seats[].junkyard.cards[].conjured	bool
 seats[].junkyard.cards[].controlledSinceUpkeep	number:int
 seats[].junkyard.cards[].controller	custom(uuid.UUID)
 seats[].junkyard.cards[].counterStampedAt	map:string
@@ -79749,6 +79894,8 @@ seats[].junkyard.cards[].objectEpoch	number:int
 seats[].junkyard.cards[].oracleId	string
 seats[].junkyard.cards[].owner	custom(uuid.UUID)
 seats[].junkyard.cards[].pairedWith	custom(uuid.UUID)
+seats[].junkyard.cards[].perpetualKeywords	array
+seats[].junkyard.cards[].perpetualKeywords[]	string
 seats[].junkyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phaseInBarredEpoch	number:int
 seats[].junkyard.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -79989,6 +80136,7 @@ seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
 seats[].library.cards[].colors[]	string
 seats[].library.cards[].commanderReturnDue	bool
+seats[].library.cards[].conjured	bool
 seats[].library.cards[].controlledSinceUpkeep	number:int
 seats[].library.cards[].controller	custom(uuid.UUID)
 seats[].library.cards[].counterStampedAt	map:string
@@ -80205,6 +80353,8 @@ seats[].library.cards[].objectEpoch	number:int
 seats[].library.cards[].oracleId	string
 seats[].library.cards[].owner	custom(uuid.UUID)
 seats[].library.cards[].pairedWith	custom(uuid.UUID)
+seats[].library.cards[].perpetualKeywords	array
+seats[].library.cards[].perpetualKeywords[]	string
 seats[].library.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].library.cards[].phaseInBarredEpoch	number:int
 seats[].library.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -80460,6 +80610,7 @@ seats[].sideboard.cards[].colorIdentity[]	string
 seats[].sideboard.cards[].colors	array
 seats[].sideboard.cards[].colors[]	string
 seats[].sideboard.cards[].commanderReturnDue	bool
+seats[].sideboard.cards[].conjured	bool
 seats[].sideboard.cards[].controlledSinceUpkeep	number:int
 seats[].sideboard.cards[].controller	custom(uuid.UUID)
 seats[].sideboard.cards[].counterStampedAt	map:string
@@ -80676,6 +80827,8 @@ seats[].sideboard.cards[].objectEpoch	number:int
 seats[].sideboard.cards[].oracleId	string
 seats[].sideboard.cards[].owner	custom(uuid.UUID)
 seats[].sideboard.cards[].pairedWith	custom(uuid.UUID)
+seats[].sideboard.cards[].perpetualKeywords	array
+seats[].sideboard.cards[].perpetualKeywords[]	string
 seats[].sideboard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phaseInBarredEpoch	number:int
 seats[].sideboard.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -81293,6 +81446,7 @@ stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
 stack.cards[].colors[]	string
 stack.cards[].commanderReturnDue	bool
+stack.cards[].conjured	bool
 stack.cards[].controlledSinceUpkeep	number:int
 stack.cards[].controller	custom(uuid.UUID)
 stack.cards[].counterStampedAt	map:string
@@ -81509,6 +81663,8 @@ stack.cards[].objectEpoch	number:int
 stack.cards[].oracleId	string
 stack.cards[].owner	custom(uuid.UUID)
 stack.cards[].pairedWith	custom(uuid.UUID)
+stack.cards[].perpetualKeywords	array
+stack.cards[].perpetualKeywords[]	string
 stack.cards[].phaseInBarredBy	custom(uuid.UUID)
 stack.cards[].phaseInBarredEpoch	number:int
 stack.cards[].phaseInBarredFor	custom(uuid.UUID)

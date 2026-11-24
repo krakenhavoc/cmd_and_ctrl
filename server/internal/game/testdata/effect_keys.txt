@@ -104,6 +104,7 @@ body combat/untap-and-remove-the-payload
 body commander/return-listed-to-command-zone
 body conduit-of-emrakul/add-colorless
 body conduit-of-storms/add-red
+body conjure/sigardian-evangel-discard
 body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/surge-to-victory-exiled-card
@@ -178,6 +179,7 @@ body enlist/pump
 body erica-ortegas/return-a-land-you-control
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
+body euru-acorn-scrounger/conjure-chitterspitter
 body evereth-viceroy-of-plunder/damage
 body evie-frye/unblockable
 body evoke/sacrifice
@@ -2490,6 +2492,7 @@ payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/estwald-shieldbasher-indestructible
 payunless pay-unless/eternal-taskmaster-return
+payunless pay-unless/euru-acorn-scrounger-conjure
 payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezio-auditore-lose
@@ -2841,6 +2844,7 @@ run prompt-run/entish-restoration-search
 run prompt-run/entrapment-maneuver-soldiers
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
+run prompt-run/euru-acorn-scrounger-acorns
 run prompt-run/exploit-colonel-autumn
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
@@ -3353,6 +3357,7 @@ tail combustible-gearhulk/burn-total-mana-value
 tail compelling-deterrence/discard
 tail condemn/gain-life
 tail conflux/next-search
+tail conjure/sigardian-evangel-discard-later
 tail connive/change-of-plans
 tail connive/each
 tail connive/kamiz-obscura-oculus
@@ -4109,6 +4114,7 @@ tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/dreamshaper-shaman-sacrifice
+tail sacrificed-one/prompt-run/euru-acorn-scrounger-acorns
 tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger

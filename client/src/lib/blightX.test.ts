@@ -37,3 +37,25 @@ describe("blight X", () => {
     expect(castBlightOffer(soul([]), {})).toBeUndefined();
   });
 });
+
+// #5948: Lethal Sting's mandatory "put a -1/-1 counter on a creature you
+// control" is blight 1 in the mandatory slot, with the same pick.
+describe("mandatory blight N", () => {
+  it("asks for the one creature that takes the counter", () => {
+    const sting: CardView = {
+      instance_id: "spell",
+      name: "Lethal Sting",
+      owner: "me",
+      controller: "me",
+      mana_cost: "{2}{B}",
+      additional_cost: {
+        label: "Put a -1/-1 counter on a creature you control",
+        blight: 1,
+        blight_options: { cards: ["bear"], min: 1, max: 1 },
+      },
+    };
+    const offer = castBlightOffer(sting, {});
+    expect(offer?.n).toBe(1);
+    expect(offer?.options).toEqual(["bear"]);
+  });
+});

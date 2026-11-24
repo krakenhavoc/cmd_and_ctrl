@@ -663,6 +663,9 @@ func deepenCard(out *Card) {
 	if len(out.LostKeywords) > 0 {
 		out.LostKeywords = append([]string(nil), out.LostKeywords...)
 	}
+	if len(out.PerpetualKeywords) > 0 {
+		out.PerpetualKeywords = append([]string(nil), out.PerpetualKeywords...)
+	}
 	if len(out.ExileGrants) > 0 {
 		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
 	}

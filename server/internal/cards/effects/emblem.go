@@ -139,6 +139,15 @@ type EmblemSpec struct {
 	// which is as long as the game (CR 114.2).
 	CastPermissions []game.CastPermission
 
+	// Boon makes this a one-time boon rather than an emblem (ADR 0099
+	// amendment 2026-11-24, #5948): "You get a one-time boon with 'When
+	// you cast a creature spell, …'" (Tenacious Pup). It is made by the
+	// same CreateEmblem primitive and lives beside the player's emblems,
+	// but it has exactly one triggered ability, which triggers only once,
+	// and the boon is gone the moment it has (game.EmblemDef.Boon). The
+	// guard makes the trigger OnlyOnce for the card file.
+	Boon bool
+
 	// Replacements are the emblem's replacement and prevention effects
 	// (#4192, CR 114.3, CR 614, CR 615): the `Spec.Replacements` slot one
 	// zone over, built with the same constructors. The replacement gather
@@ -216,7 +225,7 @@ func emblemActivatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 func buildEmblemDef(e EmblemSpec) *game.CardDef {
 	return &game.CardDef{
 		Static:            e.Static,
-		Triggered:         e.Triggered,
+		Triggered:         boonTriggers(e),
 		UntapStep:         e.UntapStep,
 		DrawStep:          e.DrawStep,
 		ActivationTimings: e.ActivationTimings,
@@ -238,8 +247,22 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		CostModifiers:           e.CostModifiers,
 		// #5868: activated from the command zone by the emblem's owner.
 		Activated: emblemActivatedShapes(e.Activated),
-		Emblem:    &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
+		Emblem:    &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines, Boon: e.Boon},
 	}
+}
+
+// boonTriggers is a boon's one triggered ability made "triggers only
+// once" (EmblemSpec.Boon): the record the engine reads to use the boon
+// up.
+func boonTriggers(e EmblemSpec) []game.TriggeredAbility {
+	if !e.Boon {
+		return e.Triggered
+	}
+	out := make([]game.TriggeredAbility, len(e.Triggered))
+	for i, t := range e.Triggered {
+		out[i] = TriggersOnlyOnce(t)
+	}
+	return out
 }
 
 // checkEmblemSpec is the registration guard. Every failure here is a
@@ -260,6 +283,17 @@ func CheckEmblemSpec(name string, e *EmblemSpec) {
 		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 &&
 		len(e.Replacements) == 0 && len(e.HandSize) == 0 && len(e.GrantedAlternativeCosts) == 0 && len(e.CostModifiers) == 0 && len(e.Activated) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
+	}
+	if e.Boon {
+		// A boon is one triggered ability and nothing else (Alchemy's
+		// "one-time boon with '<trigger>'").
+		if len(e.Triggered) != 1 || len(e.Static) != 0 || len(e.Activated) != 0 || len(e.Replacements) != 0 ||
+			len(e.CastPermissions) != 0 || len(e.CostModifiers) != 0 || len(e.Lines) != 0 {
+			panic("effects.Register: " + name + " declares a Boon that is not exactly one triggered ability")
+		}
+		if e.Triggered[0].Key == "" || e.Triggered[0].State != "" {
+			panic("effects.Register: " + name + " declares a Boon whose trigger has no Key or is a state trigger")
+		}
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
 	checkEmblemActivated(name, e.Activated)

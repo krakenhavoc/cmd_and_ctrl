@@ -1409,6 +1409,11 @@ export type LogKind =
   // zone it was. A spawn into a hidden zone names the zone and NOT
   // the card, so `label` is absent there for everyone.
   | "spawn"
+  // ADR 0099 amendment 2026-11-24 (#5948): a card's effect conjured a
+  // card, a real card that was in nobody's deck. `label` is its name,
+  // `new_zone` where it went and `seat` who conjured (and owns) it. A
+  // conjure into a hand or a library names the zone and NOT the card.
+  | "conjure"
   // ADR 0086 (#1238): a storm trigger settled on its count
   // (CR 702.40a). `card_id` is the storm spell and `amount` the
   // number of OTHER spells cast before it this turn, which is how
@@ -3358,6 +3363,8 @@ export interface AdditionalCostView {
   // Branches only: the branch's identity, its mana ("{5}", joins the
   // total the preview prices once `cost_branch` is sent), its fixed
   // life, its blight N and the creatures that could take the counters.
+  // A blight N may also be the mandatory cost itself (Lethal Sting,
+  // #5948).
   key?: string;
   mana_cost?: string;
   pay_life?: number;

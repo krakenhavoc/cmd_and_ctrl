@@ -100,6 +100,7 @@ type printedInputs struct {
 	catalogKeywords []string // CatalogPrintedKeywords(CatalogKey(c))
 	colorCDADropped bool     // Card.ColorCDADropped: devoid is not a printed keyword here (CR 707.9d)
 	lostKeywords    []string // Card.LostKeywords: printed keywords a copy exception took (CR 707.9b)
+	perpetual       []string // Card.PerpetualKeywords: keywords the card gained perpetually (#5948)
 }
 
 // printedInputsOf reads the inputs off a face-up card. The slices
@@ -118,6 +119,7 @@ func printedInputsOf(c *Card) printedInputs {
 
 		colorCDADropped: c.ColorCDADropped,
 		lostKeywords:    c.LostKeywords,
+		perpetual:       c.PerpetualKeywords,
 	}
 	// The gate is the catalog KEY and not an oracle ID (ADR 0083
 	// decision 3): a token has a key of its own since #521, so a
@@ -173,6 +175,11 @@ func (in *printedInputs) characteristicFrom(supertypes, types, subtypes []string
 	}
 	// CR 707.9b: "except it loses <keyword>" (#5675).
 	abilities = withoutKeywordsFold(abilities, in.lostKeywords)
+	// #5948: a keyword the card gained perpetually is part of the card
+	// from then on, in every zone (ADR 0099 amendment 2026-11-24).
+	if len(in.perpetual) > 0 {
+		abilities = mergePrintedKeywords(abilities, in.perpetual)
+	}
 	return Characteristic{
 		Power:      in.power,
 		Toughness:  in.toughness,
@@ -210,7 +217,8 @@ func (in *printedInputs) sameAs(o *printedInputs) bool {
 		sameStrings(in.keywords, o.keywords) &&
 		sameStrings(in.catalogKeywords, o.catalogKeywords) &&
 		in.colorCDADropped == o.colorCDADropped &&
-		sameStrings(in.lostKeywords, o.lostKeywords)
+		sameStrings(in.lostKeywords, o.lostKeywords) &&
+		sameStrings(in.perpetual, o.perpetual)
 }
 
 func sameStrings(a, b []string) bool {
@@ -239,6 +247,7 @@ func newPrintedEntry(in printedInputs) *printedEntry {
 	in.colors = ownStrings(in.colors)
 	in.keywords = ownStrings(in.keywords)
 	in.catalogKeywords = ownStrings(in.catalogKeywords)
+	in.perpetual = ownStrings(in.perpetual)
 	ch.Types = clipStrings(ch.Types)
 	ch.Subtypes = clipStrings(ch.Subtypes)
 	ch.Supertypes = clipStrings(ch.Supertypes)

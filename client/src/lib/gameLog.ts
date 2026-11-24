@@ -208,6 +208,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",
+  // #5948: a conjured card arrives as part of the ability that made it.
+  conjure: "tone-quiet",
   // ADR 0086 (#1238). A storm count is the announcement that N copies
   // of the spell above it are on their way, so it is toned like the
   // cast it belongs to rather than like a whisper: the copies each

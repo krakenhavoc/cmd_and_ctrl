@@ -1441,6 +1441,12 @@ type cardSnapshot struct {
 	// restore that dropped it would hand a token copy its keyword back.
 	// Additive.
 	LostKeywords []string `json:"lostKeywords,omitempty"`
+	// PerpetualKeywords is Card.PerpetualKeywords and Conjured is
+	// Card.Conjured (ADR 0099 amendment 2026-11-24, #5948). Additive:
+	// a file without them is a card that was never perpetually changed
+	// and came from a deck, which every card before them was.
+	PerpetualKeywords []string `json:"perpetualKeywords,omitempty"`
+	Conjured          bool     `json:"conjured,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -3271,6 +3277,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SuspectedAt:              c.SuspectedAt,
 		PairedWith:               c.PairedWith,
 		LostKeywords:             append([]string(nil), c.LostKeywords...),
+		PerpetualKeywords:        append([]string(nil), c.PerpetualKeywords...),
+		Conjured:                 c.Conjured,
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -4444,6 +4452,8 @@ func restoreCard(c *cardSnapshot) Card {
 		SuspectedAt:              c.SuspectedAt,
 		PairedWith:               c.PairedWith,
 		LostKeywords:             append([]string(nil), c.LostKeywords...),
+		PerpetualKeywords:        append([]string(nil), c.PerpetualKeywords...),
+		Conjured:                 c.Conjured,
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
