@@ -319,6 +319,7 @@ body lichs-relic/destroy
 body life/aphelia-half-their-life
 body lithobraking/damage-each-creature
 body loamcrafter-faun/return-to-hand
+body loathsome-curator/destroy
 body lockjaw/unblockable
 body long-river-lurker/flicker-that-creature
 body ltb/sacrifice-the-source
@@ -2954,6 +2955,7 @@ run prompt-run/exploit-fell-stinger
 run prompt-run/exploit-graf-reaver
 run prompt-run/exploit-henry-wu-ingen-geneticist
 run prompt-run/exploit-infernal-captor
+run prompt-run/exploit-loathsome-curator
 run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
 run prompt-run/exploit-qarsi-sadist
@@ -4264,6 +4266,7 @@ tail sacrificed-one/prompt-run/exploit-fell-stinger
 tail sacrificed-one/prompt-run/exploit-graf-reaver
 tail sacrificed-one/prompt-run/exploit-henry-wu-ingen-geneticist
 tail sacrificed-one/prompt-run/exploit-infernal-captor
+tail sacrificed-one/prompt-run/exploit-loathsome-curator
 tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
 tail sacrificed-one/prompt-run/exploit-qarsi-sadist

@@ -286,6 +286,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 023 (#5462).
 	"Leveler": "its enters trigger exiles the cards in its controller's own library, not permanents: not a board wipe",
+
+	// S82 older sets batch 35 (#5501).
+	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
