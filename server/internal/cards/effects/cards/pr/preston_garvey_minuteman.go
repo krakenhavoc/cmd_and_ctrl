@@ -1,8 +1,6 @@
 package cardspr
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -36,7 +34,7 @@ func init() {
 				"Preston Garvey — create a Settlement Aura token attached to up to one target land you control",
 				prestonSettlement),
 				effects.TargetPermanent("up to one target land you control", effects.Land(), effects.YouControl()).WithCount(0, 1)),
-			effects.WheneverThisAttacks("Preston Garvey — untap each enchanted permanent you control", prestonUntap),
+			effects.WheneverThisAttacks("Preston Garvey — untap each enchanted permanent you control", effects.OldB006UntapEachEnchantedPermanentYouControl),
 		},
 	})
 }
@@ -49,20 +47,4 @@ func prestonSettlement(g *game.Game, item *game.StackItem) error {
 	}
 	_, err := g.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(effects.GapB63SettlementToken()), 1, opts)
 	return err
-}
-
-func prestonUntap(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	var ids []uuid.UUID
-	for _, c := range effects.MatchingBattlefield(ctx, effects.YouControl()) {
-		if c.Tapped && effects.B18AurasAttachedTo(g, c.InstanceID) > 0 {
-			ids = append(ids, c.InstanceID)
-		}
-	}
-	for _, id := range ids {
-		if err := (effects.UntapTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }

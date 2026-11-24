@@ -2267,6 +2267,7 @@ option option-pick/intellectual-offering-draw
 option option-pick/intellectual-offering-untap
 option option-pick/intrude-on-the-mind-chooser
 option option-pick/invasion-of-arcavios-zones
+option option-pick/kaya-ghost-assassin-exile
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
@@ -3857,6 +3858,7 @@ tail kami-of-industry/entered
 tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-geist-hunter/spirits
+tail kaya-ghost-assassin/schedule-upkeep-return
 tail kaya-intangible-slayer/ask-next
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kiki-jiki-mirror-breaker/sacrifice-the-token
@@ -4017,6 +4019,7 @@ tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
+tail old-b006/estrid-return-auras
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage

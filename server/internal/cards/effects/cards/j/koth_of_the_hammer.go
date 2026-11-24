@@ -1,8 +1,6 @@
 package cardsj
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -60,7 +58,7 @@ func init() {
 				Cost:  effects.LoyaltyCost(-2),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := effects.NewContext(g, item)
-					n := kothOfTheHammerMountains(g, item.Controller, ctx.TextSubtype("Mountain"))
+					n := effects.S82OneB20LandsControlled(g, item.Controller, ctx.TextSubtype("Mountain"))
 					return effects.AddMana{Amount: effects.ManaN(n, "{R}")}.Apply(ctx)
 				},
 			},
@@ -73,16 +71,6 @@ func init() {
 			},
 		},
 	})
-}
-
-func kothOfTheHammerMountains(g *game.Game, controller uuid.UUID, sub string) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.HasSubtype(sub) {
-			n++
-		}
-	}
-	return n
 }
 
 func kothOfTheHammerAnimate(g *game.Game, item *game.StackItem) error {
@@ -101,7 +89,7 @@ func kothOfTheHammerAnimate(g *game.Game, item *game.StackItem) error {
 				game.AddSubtypesMod(ctx.TextSubtypes("Elemental")...),
 				game.SetBasePowerMod(4),
 				game.SetBaseToughnessMod(4),
-				game.SetColorsMod("R"),
+				game.SetColorsMod(ctx.TextColor("R")),
 			},
 			Duration: effects.DurationUntilEndOfTurn(ctx),
 			Label:    "Koth of the Hammer — becomes a 4/4 red Elemental creature until end of turn",
