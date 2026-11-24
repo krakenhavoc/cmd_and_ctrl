@@ -878,6 +878,10 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	// #5948: a timed "spells your opponents cast cost {N} more" held as a
 	// scoped record (Tax Collector, scoped_cost_tax.go).
 	out = g.appendScopedCostTaxLocked(out, q)
+	// #6093: a timed "spells <a player> casts cost {N} less" held as a
+	// scoped record (Commander Liara Portyr, Will Kenrith;
+	// scoped_cost_reduction.go).
+	out = g.appendScopedCostReductionLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the
