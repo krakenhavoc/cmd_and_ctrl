@@ -22433,6 +22433,10 @@ loyaltyExtraActivationsThisTurn{}	number:int
 loyaltyExtraActivationsUsedThisTurn	map:array
 loyaltyExtraActivationsUsedThisTurn{}	map:array
 loyaltyExtraActivationsUsedThisTurn{}{}	number:int
+loyaltyPermanentExtraThisTurn	map:array
+loyaltyPermanentExtraThisTurn{}	number:int
+loyaltyPermanentExtraUsedThisTurn	map:array
+loyaltyPermanentExtraUsedThisTurn{}	number:int
 loyaltyPermanentTwiceThisTurn	map:array
 loyaltyPermanentTwiceThisTurn{}	bool
 loyaltyTwiceThisTurn	map:array

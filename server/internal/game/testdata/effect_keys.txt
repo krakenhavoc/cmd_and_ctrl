@@ -178,6 +178,7 @@ body enlist/pump
 body erica-ortegas/return-a-land-you-control
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
+body etched-slith/you-may-remove-a-counter
 body evereth-viceroy-of-plunder/damage
 body evie-frye/unblockable
 body evoke/sacrifice
@@ -372,6 +373,7 @@ body overlook/cabaretti-courtyard-fetch
 body overlook/maestros-theater-fetch
 body overlook/obscura-storefront-fetch
 body overlook/riveteers-overlook-fetch
+body overseer-of-vault-76/counters-and-vigilance
 body pact/pay-or-lose
 body paradigm/copy
 body paramecia-coloniex/tuck
@@ -549,6 +551,7 @@ body the-mindskinner/each-opponent-mills
 body the-motherlode/destroy-and-no-blocks
 body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
+body the-sea-devils/salamander-deals-that-much-to-target-creature
 body the-thing/double-counters
 body the-war-games/exile-all-warriors
 body the-wrath-of-khan/gain-control-of-that-creature
@@ -752,6 +755,8 @@ choose choose-cards/cmdr2-s53-siphon-insight-exile
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
+choose choose-cards/comet-stellar-pup-damage-creature
+choose choose-cards/comet-stellar-pup-return-to-hand
 choose choose-cards/commander-into-hand
 choose choose-cards/commune-with-evil-take
 choose choose-cards/compulsive-research-discard
@@ -1529,6 +1534,7 @@ choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
 choose choose-cards/vault-101-attach
 choose choose-cards/vault-101-put
+choose choose-cards/vault-13-dwellers-journey-return-two
 choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
@@ -1655,6 +1661,7 @@ condition cast/you-next-cast-or-activate-x
 condition cast/you-next-cast-x-in-mana-cost
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
+condition combat-damage/a-salamander-to-a-player
 condition combat-damage/dovin-grand-arbiter-creature-connects
 condition combat-damage/subira-small-creature-connects
 condition combat/each-attacker-not-blocked
@@ -1754,6 +1761,7 @@ confirm confirm/clash-of-elements-top-or-bottom
 confirm confirm/cloak-of-confusion-no-damage
 confirm confirm/cmdr2-s45-ink-eyes-reanimate
 confirm confirm/combustible-gearhulk-draw-or-mill
+confirm confirm/comet-stellar-pup-creature-or-player
 confirm confirm/commander-spock-land
 confirm confirm/copy-this-spell
 confirm confirm/cori-steel-cutter-attach
@@ -1860,11 +1868,13 @@ confirm confirm/mystic-remora-draw
 confirm confirm/narset-jeskai-waymaster-discard-hand
 confirm confirm/necroskitter-return
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
+confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
 confirm confirm/ophidian-draw
 confirm confirm/orcish-squatters-gain-control
+confirm confirm/overseer-of-vault-76-remove-three-quest-counters
 confirm confirm/painful-quandary-discard-or-lose-life
 confirm confirm/palantir-of-orthanc-draw-or-mill
 confirm confirm/parnesse-the-subtle-brush-copy
@@ -2091,6 +2101,7 @@ number number/cemetery-desecrator-remove-counters
 number number/cmdr2-aetherborn-marauder-move
 number number/deal-that-much-damage-to-the-target
 number number/die-young-minus-one-for-each
+number number/etched-slith-remove-a-counter
 number number/expel-the-interlopers-destroy-power-at-least
 number number/fatal-lore-draw-up-to-three
 number number/forgotten-ancient-move-counters
@@ -2101,6 +2112,7 @@ number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
+number number/overseer-of-vault-76-split-quest-counters
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plague-of-vermin-paid
 number number/plunge-into-darkness-look-at-that-many
@@ -2165,6 +2177,7 @@ option option-pick/cloak-and-dagger-entwined-choice
 option option-pick/clockspinning-counter
 option option-pick/cmdr2-s18-arthur-marigold-knight-attack
 option option-pick/coin-of-fate-opponent
+option option-pick/comet-stellar-pup-damage-player
 option option-pick/contractual-safeguard-kind
 option option-pick/contractual-safeguard-shield
 option option-pick/court-of-ambition-answer-3
@@ -3434,6 +3447,7 @@ tail dice/bucknards-everfull-purse
 tail dice/chaos-channeler-exile
 tail dice/chaos-dragon-each-player-rolls
 tail dice/clown-car-results
+tail dice/comet-stellar-pup-roll
 tail dice/component-pouch-counters
 tail dice/contact-other-plane-table
 tail dice/contraband-livestock-rolled
@@ -4326,6 +4340,7 @@ tail tail/time-reaper-gain-life
 tail tail/uchuulon-copy
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
+tail tail/vault-13-dwellers-journey-tuck-rest
 tail tail/winter-cynical-opportunist-exiled
 tail tail/yarus-turn-face-up
 tail tainted-pact/after-mill
@@ -4656,6 +4671,7 @@ tail then/temporary-lockdown-exiled-one
 tail then/thalia-and-the-gitrog-monster-draw
 tail then/the-black-arrow-destroy-dragon
 tail then/the-cloning-of-shredder-copy
+tail then/the-curse-of-fenric-mutants
 tail then/the-falcon-when-you-do
 tail then/the-fantasticar-constructs
 tail then/the-key-to-the-vault-bottom-then-cast
