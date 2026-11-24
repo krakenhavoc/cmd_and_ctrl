@@ -4011,8 +4011,8 @@ tail gul-dukat/drain-each-opponent
 tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
-tail harald-unites-the-elves/after-mill
 tail hans-eriksson/entered
+tail harald-unites-the-elves/after-mill
 tail harried-dronesmith/haste-then-sacrifice
 tail hate-mirage/haste-and-exile-copies
 tail heartless-conscription/play-exiled-then-exile-this
