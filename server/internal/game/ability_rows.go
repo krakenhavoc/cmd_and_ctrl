@@ -300,6 +300,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ExtraVote", label: extraVoteRows},
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
 	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
+	{field: "OpponentsSearchTopN", label: searchTopNRows},
+	{field: "DrawsFromBottom", label: boolRow("You draw cards from the bottom of your library rather than the top.")},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
 	{field: "DrawLimits", fallback: "Limits how many cards players draw", ownLabel: true},
@@ -312,6 +314,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "DamageLastLoyalty", fallback: "Damage can't remove a planeswalker's last loyalty counter", ownLabel: true},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
+	{field: "GameActionReplacements", label: gameActionReplacementRows},
 	{field: "CoinFlipRules", fallback: "Coin flips come up heads", ownLabel: true},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},
 	{field: "ConditionalLandPlays", label: conditionalLandPlayRows},
@@ -418,6 +421,14 @@ func attachOnlyToRows(v reflect.Value) []string {
 		return []string{"Can be attached only to some objects"}
 	}
 	return []string{"Can be attached only to " + spec.Label + "."}
+}
+
+// searchTopNRows is the OpponentsSearchTopN slot's row (#6090).
+func searchTopNRows(v reflect.Value) []string {
+	if n := v.Int(); n > 0 {
+		return []string{fmt.Sprintf("If an opponent would search a library, that player searches the top %d cards of that library instead.", n)}
+	}
+	return nil
 }
 
 // extraVoteRows is the ExtraVote slot's row (ADR 0146).

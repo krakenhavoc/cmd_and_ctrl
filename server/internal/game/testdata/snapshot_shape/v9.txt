@@ -219,6 +219,9 @@ battlefield.cards[].goads[].forRestOfGame	bool
 battlefield.cards[].grantedAbilities	array
 battlefield.cards[].grantedAbilities[]	string
 battlefield.cards[].harnessed	bool
+battlefield.cards[].hauntedEpoch	number:int
+battlefield.cards[].hauntedId	custom(uuid.UUID)
+battlefield.cards[].hauntingEpoch	number:int
 battlefield.cards[].hiddenBy	object
 battlefield.cards[].hiddenBy.epoch	number:int
 battlefield.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -303,6 +306,8 @@ battlefield.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 battlefield.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 battlefield.cards[].noAbilitiesText	number:uint8
+battlefield.cards[].notes	array
+battlefield.cards[].notes[]	string
 battlefield.cards[].objectEpoch	number:int
 battlefield.cards[].oracleId	string
 battlefield.cards[].owner	custom(uuid.UUID)
@@ -799,6 +804,9 @@ enteringTokens[].goads[].forRestOfGame	bool
 enteringTokens[].grantedAbilities	array
 enteringTokens[].grantedAbilities[]	string
 enteringTokens[].harnessed	bool
+enteringTokens[].hauntedEpoch	number:int
+enteringTokens[].hauntedId	custom(uuid.UUID)
+enteringTokens[].hauntingEpoch	number:int
 enteringTokens[].hiddenBy	object
 enteringTokens[].hiddenBy.epoch	number:int
 enteringTokens[].hiddenBy.id	custom(uuid.UUID)
@@ -883,6 +891,8 @@ enteringTokens[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 enteringTokens[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 enteringTokens[].nextUntapSkips[].while.SourceEpoch	number:int
 enteringTokens[].noAbilitiesText	number:uint8
+enteringTokens[].notes	array
+enteringTokens[].notes[]	string
 enteringTokens[].objectEpoch	number:int
 enteringTokens[].oracleId	string
 enteringTokens[].owner	custom(uuid.UUID)
@@ -1347,6 +1357,9 @@ exile.cards[].goads[].forRestOfGame	bool
 exile.cards[].grantedAbilities	array
 exile.cards[].grantedAbilities[]	string
 exile.cards[].harnessed	bool
+exile.cards[].hauntedEpoch	number:int
+exile.cards[].hauntedId	custom(uuid.UUID)
+exile.cards[].hauntingEpoch	number:int
 exile.cards[].hiddenBy	object
 exile.cards[].hiddenBy.epoch	number:int
 exile.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -1431,6 +1444,8 @@ exile.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 exile.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 exile.cards[].noAbilitiesText	number:uint8
+exile.cards[].notes	array
+exile.cards[].notes[]	string
 exile.cards[].objectEpoch	number:int
 exile.cards[].oracleId	string
 exile.cards[].owner	custom(uuid.UUID)
@@ -2109,6 +2124,7 @@ followUpParks[].then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 followUpParks[].then.paid.offer.picks[].seat	custom(uuid.UUID)
 followUpParks[].then.permission	object
 followUpParks[].then.permission.affinityFor	string
+followUpParks[].then.permission.allGraveyards	bool
 followUpParks[].then.permission.altCostKey	string
 followUpParks[].then.permission.anyColor	bool
 followUpParks[].then.permission.anyColorFrom	string
@@ -2812,6 +2828,7 @@ frozenEntries[].event.counterTail.then.paid.offer.picks[].cards[]	custom(uuid.UU
 frozenEntries[].event.counterTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission	object
 frozenEntries[].event.counterTail.then.permission.affinityFor	string
+frozenEntries[].event.counterTail.then.permission.allGraveyards	bool
 frozenEntries[].event.counterTail.then.permission.altCostKey	string
 frozenEntries[].event.counterTail.then.permission.anyColor	bool
 frozenEntries[].event.counterTail.then.permission.anyColorFrom	string
@@ -3493,6 +3510,7 @@ frozenEntries[].event.damageTail.each.each.paid.offer.picks[].cards[]	custom(uui
 frozenEntries[].event.damageTail.each.each.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission	object
 frozenEntries[].event.damageTail.each.each.permission.affinityFor	string
+frozenEntries[].event.damageTail.each.each.permission.allGraveyards	bool
 frozenEntries[].event.damageTail.each.each.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.each.permission.anyColor	bool
 frozenEntries[].event.damageTail.each.each.permission.anyColorFrom	string
@@ -4165,6 +4183,7 @@ frozenEntries[].event.damageTail.each.then.paid.offer.picks[].cards[]	custom(uui
 frozenEntries[].event.damageTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission	object
 frozenEntries[].event.damageTail.each.then.permission.affinityFor	string
+frozenEntries[].event.damageTail.each.then.permission.allGraveyards	bool
 frozenEntries[].event.damageTail.each.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.then.permission.anyColor	bool
 frozenEntries[].event.damageTail.each.then.permission.anyColorFrom	string
@@ -5055,6 +5074,7 @@ frozenEntries[].event.damageTail.then.paid.offer.picks[].cards[]	custom(uuid.UUI
 frozenEntries[].event.damageTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission	object
 frozenEntries[].event.damageTail.then.permission.affinityFor	string
+frozenEntries[].event.damageTail.then.permission.allGraveyards	bool
 frozenEntries[].event.damageTail.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.then.permission.anyColor	bool
 frozenEntries[].event.damageTail.then.permission.anyColorFrom	string
@@ -5850,6 +5870,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[].cards
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.affinityFor	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColorFrom	string
@@ -6598,6 +6619,7 @@ frozenEntries[].event.entryTail.batch.then.paid.offer.picks[].cards[]	custom(uui
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission	object
 frozenEntries[].event.entryTail.batch.then.permission.affinityFor	string
+frozenEntries[].event.entryTail.batch.then.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.batch.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.batch.then.permission.anyColorFrom	string
@@ -7270,6 +7292,7 @@ frozenEntries[].event.entryTail.keyed.paid.offer.picks[].cards[]	custom(uuid.UUI
 frozenEntries[].event.entryTail.keyed.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission	object
 frozenEntries[].event.entryTail.keyed.permission.affinityFor	string
+frozenEntries[].event.entryTail.keyed.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.keyed.permission.altCostKey	string
 frozenEntries[].event.entryTail.keyed.permission.anyColor	bool
 frozenEntries[].event.entryTail.keyed.permission.anyColorFrom	string
@@ -7975,6 +7998,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[].cards[]	
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.permission	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.affinityFor	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.altCostKey	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColor	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColorFrom	string
@@ -8668,6 +8692,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[].cards[]	custom(uu
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission	object
 frozenEntries[].event.entryTail.tokens.then.permission.affinityFor	string
+frozenEntries[].event.entryTail.tokens.then.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.tokens.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.tokens.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.tokens.then.permission.anyColorFrom	string
@@ -9290,6 +9315,9 @@ frozenEntries[].event.keywordActionTail.armyToken.goads[].forRestOfGame	bool
 frozenEntries[].event.keywordActionTail.armyToken.grantedAbilities	array
 frozenEntries[].event.keywordActionTail.armyToken.grantedAbilities[]	string
 frozenEntries[].event.keywordActionTail.armyToken.harnessed	bool
+frozenEntries[].event.keywordActionTail.armyToken.hauntedEpoch	number:int
+frozenEntries[].event.keywordActionTail.armyToken.hauntedId	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.hauntingEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.hiddenBy	object
 frozenEntries[].event.keywordActionTail.armyToken.hiddenBy.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.hiddenBy.id	custom(uuid.UUID)
@@ -9374,6 +9402,8 @@ frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while.Source	
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.noAbilitiesText	number:uint8
+frozenEntries[].event.keywordActionTail.armyToken.notes	array
+frozenEntries[].event.keywordActionTail.armyToken.notes[]	string
 frozenEntries[].event.keywordActionTail.armyToken.objectEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.oracleId	string
 frozenEntries[].event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
@@ -9793,6 +9823,7 @@ frozenEntries[].event.keywordActionTail.then.paid.offer.picks[].cards[]	custom(u
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission	object
 frozenEntries[].event.keywordActionTail.then.permission.affinityFor	string
+frozenEntries[].event.keywordActionTail.then.permission.allGraveyards	bool
 frozenEntries[].event.keywordActionTail.then.permission.altCostKey	string
 frozenEntries[].event.keywordActionTail.then.permission.anyColor	bool
 frozenEntries[].event.keywordActionTail.then.permission.anyColorFrom	string
@@ -10489,6 +10520,7 @@ frozenEntries[].event.lifeTail.each.then.paid.offer.picks[].cards[]	custom(uuid.
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission	object
 frozenEntries[].event.lifeTail.each.then.permission.affinityFor	string
+frozenEntries[].event.lifeTail.each.then.permission.allGraveyards	bool
 frozenEntries[].event.lifeTail.each.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.each.then.permission.anyColor	bool
 frozenEntries[].event.lifeTail.each.then.permission.anyColorFrom	string
@@ -11164,6 +11196,7 @@ frozenEntries[].event.lifeTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission	object
 frozenEntries[].event.lifeTail.then.permission.affinityFor	string
+frozenEntries[].event.lifeTail.then.permission.allGraveyards	bool
 frozenEntries[].event.lifeTail.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.then.permission.anyColor	bool
 frozenEntries[].event.lifeTail.then.permission.anyColorFrom	string
@@ -11775,6 +11808,9 @@ frozenEntries[].event.millTail.run.planned[].goads[].forRestOfGame	bool
 frozenEntries[].event.millTail.run.planned[].grantedAbilities	array
 frozenEntries[].event.millTail.run.planned[].grantedAbilities[]	string
 frozenEntries[].event.millTail.run.planned[].harnessed	bool
+frozenEntries[].event.millTail.run.planned[].hauntedEpoch	number:int
+frozenEntries[].event.millTail.run.planned[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].hauntingEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].hiddenBy	object
 frozenEntries[].event.millTail.run.planned[].hiddenBy.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -11859,6 +11895,8 @@ frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while.Source	custo
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.millTail.run.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].noAbilitiesText	number:uint8
+frozenEntries[].event.millTail.run.planned[].notes	array
+frozenEntries[].event.millTail.run.planned[].notes[]	string
 frozenEntries[].event.millTail.run.planned[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].oracleId	string
 frozenEntries[].event.millTail.run.planned[].owner	custom(uuid.UUID)
@@ -12205,6 +12243,9 @@ frozenEntries[].event.millTail.run.seen[].goads[].forRestOfGame	bool
 frozenEntries[].event.millTail.run.seen[].grantedAbilities	array
 frozenEntries[].event.millTail.run.seen[].grantedAbilities[]	string
 frozenEntries[].event.millTail.run.seen[].harnessed	bool
+frozenEntries[].event.millTail.run.seen[].hauntedEpoch	number:int
+frozenEntries[].event.millTail.run.seen[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].hauntingEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].hiddenBy	object
 frozenEntries[].event.millTail.run.seen[].hiddenBy.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -12289,6 +12330,8 @@ frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while.Source	custom(u
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.millTail.run.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].noAbilitiesText	number:uint8
+frozenEntries[].event.millTail.run.seen[].notes	array
+frozenEntries[].event.millTail.run.seen[].notes[]	string
 frozenEntries[].event.millTail.run.seen[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].oracleId	string
 frozenEntries[].event.millTail.run.seen[].owner	custom(uuid.UUID)
@@ -12701,6 +12744,7 @@ frozenEntries[].event.millTail.run.then.paid.offer.picks[].cards[]	custom(uuid.U
 frozenEntries[].event.millTail.run.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission	object
 frozenEntries[].event.millTail.run.then.permission.affinityFor	string
+frozenEntries[].event.millTail.run.then.permission.allGraveyards	bool
 frozenEntries[].event.millTail.run.then.permission.altCostKey	string
 frozenEntries[].event.millTail.run.then.permission.anyColor	bool
 frozenEntries[].event.millTail.run.then.permission.anyColorFrom	string
@@ -13371,6 +13415,7 @@ frozenEntries[].event.millTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission	object
 frozenEntries[].event.millTail.then.permission.affinityFor	string
+frozenEntries[].event.millTail.then.permission.allGraveyards	bool
 frozenEntries[].event.millTail.then.permission.altCostKey	string
 frozenEntries[].event.millTail.then.permission.anyColor	bool
 frozenEntries[].event.millTail.then.permission.anyColorFrom	string
@@ -14606,6 +14651,9 @@ frozenEntries[].event.tokenGroups[].template.goads[].forRestOfGame	bool
 frozenEntries[].event.tokenGroups[].template.grantedAbilities	array
 frozenEntries[].event.tokenGroups[].template.grantedAbilities[]	string
 frozenEntries[].event.tokenGroups[].template.harnessed	bool
+frozenEntries[].event.tokenGroups[].template.hauntedEpoch	number:int
+frozenEntries[].event.tokenGroups[].template.hauntedId	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.hauntingEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.hiddenBy	object
 frozenEntries[].event.tokenGroups[].template.hiddenBy.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -14690,6 +14738,8 @@ frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while.Source	custo
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.tokenGroups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.noAbilitiesText	number:uint8
+frozenEntries[].event.tokenGroups[].template.notes	array
+frozenEntries[].event.tokenGroups[].template.notes[]	string
 frozenEntries[].event.tokenGroups[].template.objectEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.oracleId	string
 frozenEntries[].event.tokenGroups[].template.owner	custom(uuid.UUID)
@@ -15103,6 +15153,7 @@ frozenEntries[].event.tokenTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID
 frozenEntries[].event.tokenTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission	object
 frozenEntries[].event.tokenTail.then.permission.affinityFor	string
+frozenEntries[].event.tokenTail.then.permission.allGraveyards	bool
 frozenEntries[].event.tokenTail.then.permission.altCostKey	string
 frozenEntries[].event.tokenTail.then.permission.anyColor	bool
 frozenEntries[].event.tokenTail.then.permission.anyColorFrom	string
@@ -15728,6 +15779,9 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.goads[].forRestOfGame	
 frozenEntries[].event.tokensAfterMove[].groups[].template.grantedAbilities	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.grantedAbilities[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.harnessed	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.hauntedEpoch	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.hauntedId	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.hauntingEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.hiddenBy	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.hiddenBy.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -15812,6 +15866,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.nextUntapSkips[].while
 frozenEntries[].event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.noAbilitiesText	number:uint8
+frozenEntries[].event.tokensAfterMove[].groups[].template.notes	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.notes[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.oracleId	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
@@ -16171,6 +16227,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].goads[].forRestOfGame	b
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].grantedAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].grantedAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].harnessed	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hauntedEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hauntingEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hiddenBy	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hiddenBy.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -16255,6 +16314,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:uint8
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].notes	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].notes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
@@ -16601,6 +16662,9 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].goads[].forRestOfGame	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].grantedAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].grantedAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].harnessed	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hauntedEpoch	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hauntingEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hiddenBy	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hiddenBy.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -16685,6 +16749,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.Sou
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uint8
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].notes	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].notes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
@@ -17097,6 +17163,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards[]	c
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
@@ -17802,6 +17869,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].car
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
@@ -18472,6 +18540,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[].cards[]	custom
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColorFrom	string
@@ -19162,6 +19231,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[].cards[]	cust
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.permission	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColorFrom	string
@@ -19921,6 +19991,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[].cards[]	cus
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
@@ -20526,6 +20597,9 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].goads[].forRestOfGame	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].grantedAbilities	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].grantedAbilities[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].harnessed	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].hauntedEpoch	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].hauntedId	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].hauntingEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].hiddenBy	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].hiddenBy.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].hiddenBy.id	custom(uuid.UUID)
@@ -20610,6 +20684,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.Source
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
+frozenEntries[].event.zoneRoute.simultaneousExit[].notes	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].notes[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].oracleId	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
@@ -21520,6 +21596,8 @@ lastKnownPermanents{}[].linkedPermanent.epoch	number:int
 lastKnownPermanents{}[].linkedPermanent.id	custom(uuid.UUID)
 lastKnownPermanents{}[].manaValue	number:int
 lastKnownPermanents{}[].namedTribe	string
+lastKnownPermanents{}[].notes	array
+lastKnownPermanents{}[].notes[]	string
 lastKnownPermanents{}[].power	number:int
 lastKnownPermanents{}[].renowned	bool
 lastKnownPermanents{}[].ringBearer	bool
@@ -21714,6 +21792,9 @@ lastKnownStack[].card.goads[].forRestOfGame	bool
 lastKnownStack[].card.grantedAbilities	array
 lastKnownStack[].card.grantedAbilities[]	string
 lastKnownStack[].card.harnessed	bool
+lastKnownStack[].card.hauntedEpoch	number:int
+lastKnownStack[].card.hauntedId	custom(uuid.UUID)
+lastKnownStack[].card.hauntingEpoch	number:int
 lastKnownStack[].card.hiddenBy	object
 lastKnownStack[].card.hiddenBy.epoch	number:int
 lastKnownStack[].card.hiddenBy.id	custom(uuid.UUID)
@@ -21798,6 +21879,8 @@ lastKnownStack[].card.nextUntapSkips[].while.Source	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while.SourceEnteredAt	number:int64
 lastKnownStack[].card.nextUntapSkips[].while.SourceEpoch	number:int
 lastKnownStack[].card.noAbilitiesText	number:uint8
+lastKnownStack[].card.notes	array
+lastKnownStack[].card.notes[]	string
 lastKnownStack[].card.objectEpoch	number:int
 lastKnownStack[].card.oracleId	string
 lastKnownStack[].card.owner	custom(uuid.UUID)
@@ -22642,6 +22725,9 @@ match.decks[].fixed[].goads[].forRestOfGame	bool
 match.decks[].fixed[].grantedAbilities	array
 match.decks[].fixed[].grantedAbilities[]	string
 match.decks[].fixed[].harnessed	bool
+match.decks[].fixed[].hauntedEpoch	number:int
+match.decks[].fixed[].hauntedId	custom(uuid.UUID)
+match.decks[].fixed[].hauntingEpoch	number:int
 match.decks[].fixed[].hiddenBy	object
 match.decks[].fixed[].hiddenBy.epoch	number:int
 match.decks[].fixed[].hiddenBy.id	custom(uuid.UUID)
@@ -22726,6 +22812,8 @@ match.decks[].fixed[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 match.decks[].fixed[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 match.decks[].fixed[].nextUntapSkips[].while.SourceEpoch	number:int
 match.decks[].fixed[].noAbilitiesText	number:uint8
+match.decks[].fixed[].notes	array
+match.decks[].fixed[].notes[]	string
 match.decks[].fixed[].objectEpoch	number:int
 match.decks[].fixed[].oracleId	string
 match.decks[].fixed[].owner	custom(uuid.UUID)
@@ -23070,6 +23158,9 @@ match.decks[].main[].goads[].forRestOfGame	bool
 match.decks[].main[].grantedAbilities	array
 match.decks[].main[].grantedAbilities[]	string
 match.decks[].main[].harnessed	bool
+match.decks[].main[].hauntedEpoch	number:int
+match.decks[].main[].hauntedId	custom(uuid.UUID)
+match.decks[].main[].hauntingEpoch	number:int
 match.decks[].main[].hiddenBy	object
 match.decks[].main[].hiddenBy.epoch	number:int
 match.decks[].main[].hiddenBy.id	custom(uuid.UUID)
@@ -23154,6 +23245,8 @@ match.decks[].main[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 match.decks[].main[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 match.decks[].main[].nextUntapSkips[].while.SourceEpoch	number:int
 match.decks[].main[].noAbilitiesText	number:uint8
+match.decks[].main[].notes	array
+match.decks[].main[].notes[]	string
 match.decks[].main[].objectEpoch	number:int
 match.decks[].main[].oracleId	string
 match.decks[].main[].owner	custom(uuid.UUID)
@@ -23501,6 +23594,9 @@ match.decks[].side[].goads[].forRestOfGame	bool
 match.decks[].side[].grantedAbilities	array
 match.decks[].side[].grantedAbilities[]	string
 match.decks[].side[].harnessed	bool
+match.decks[].side[].hauntedEpoch	number:int
+match.decks[].side[].hauntedId	custom(uuid.UUID)
+match.decks[].side[].hauntingEpoch	number:int
 match.decks[].side[].hiddenBy	object
 match.decks[].side[].hiddenBy.epoch	number:int
 match.decks[].side[].hiddenBy.id	custom(uuid.UUID)
@@ -23585,6 +23681,8 @@ match.decks[].side[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 match.decks[].side[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 match.decks[].side[].nextUntapSkips[].while.SourceEpoch	number:int
 match.decks[].side[].noAbilitiesText	number:uint8
+match.decks[].side[].notes	array
+match.decks[].side[].notes[]	string
 match.decks[].side[].objectEpoch	number:int
 match.decks[].side[].oracleId	string
 match.decks[].side[].owner	custom(uuid.UUID)
@@ -24037,6 +24135,7 @@ movesAwaitingTokens[].counterTail.then.paid.offer.picks[].cards[]	custom(uuid.UU
 movesAwaitingTokens[].counterTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.permission	object
 movesAwaitingTokens[].counterTail.then.permission.affinityFor	string
+movesAwaitingTokens[].counterTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].counterTail.then.permission.altCostKey	string
 movesAwaitingTokens[].counterTail.then.permission.anyColor	bool
 movesAwaitingTokens[].counterTail.then.permission.anyColorFrom	string
@@ -24718,6 +24817,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[].cards[]	custom(uui
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.permission	object
 movesAwaitingTokens[].damageTail.each.each.permission.affinityFor	string
+movesAwaitingTokens[].damageTail.each.each.permission.allGraveyards	bool
 movesAwaitingTokens[].damageTail.each.each.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.each.each.permission.anyColor	bool
 movesAwaitingTokens[].damageTail.each.each.permission.anyColorFrom	string
@@ -25390,6 +25490,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[].cards[]	custom(uui
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.permission	object
 movesAwaitingTokens[].damageTail.each.then.permission.affinityFor	string
+movesAwaitingTokens[].damageTail.each.then.permission.allGraveyards	bool
 movesAwaitingTokens[].damageTail.each.then.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.each.then.permission.anyColor	bool
 movesAwaitingTokens[].damageTail.each.then.permission.anyColorFrom	string
@@ -26280,6 +26381,7 @@ movesAwaitingTokens[].damageTail.then.paid.offer.picks[].cards[]	custom(uuid.UUI
 movesAwaitingTokens[].damageTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.permission	object
 movesAwaitingTokens[].damageTail.then.permission.affinityFor	string
+movesAwaitingTokens[].damageTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].damageTail.then.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.then.permission.anyColor	bool
 movesAwaitingTokens[].damageTail.then.permission.anyColorFrom	string
@@ -27075,6 +27177,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[].cards
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyColorFrom	string
@@ -27823,6 +27926,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[].cards[]	custom(uui
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.permission	object
 movesAwaitingTokens[].entryTail.batch.then.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.batch.then.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.batch.then.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.anyColorFrom	string
@@ -28495,6 +28599,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[].cards[]	custom(uuid.UUI
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.permission	object
 movesAwaitingTokens[].entryTail.keyed.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.keyed.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.keyed.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.keyed.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.keyed.permission.anyColorFrom	string
@@ -29200,6 +29305,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[].cards[]	
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyColorFrom	string
@@ -29893,6 +29999,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[].cards[]	custom(uu
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.permission	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyColorFrom	string
@@ -30515,6 +30622,9 @@ movesAwaitingTokens[].keywordActionTail.armyToken.goads[].forRestOfGame	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.grantedAbilities	array
 movesAwaitingTokens[].keywordActionTail.armyToken.grantedAbilities[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.harnessed	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.hauntedEpoch	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.hauntingEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.hiddenBy	object
 movesAwaitingTokens[].keywordActionTail.armyToken.hiddenBy.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.hiddenBy.id	custom(uuid.UUID)
@@ -30599,6 +30709,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.nextUntapSkips[].while.Source	
 movesAwaitingTokens[].keywordActionTail.armyToken.nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].keywordActionTail.armyToken.nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.noAbilitiesText	number:uint8
+movesAwaitingTokens[].keywordActionTail.armyToken.notes	array
+movesAwaitingTokens[].keywordActionTail.armyToken.notes[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.objectEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.oracleId	string
 movesAwaitingTokens[].keywordActionTail.armyToken.owner	custom(uuid.UUID)
@@ -31018,6 +31130,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[].cards[]	custom(u
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.permission	object
 movesAwaitingTokens[].keywordActionTail.then.permission.affinityFor	string
+movesAwaitingTokens[].keywordActionTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.altCostKey	string
 movesAwaitingTokens[].keywordActionTail.then.permission.anyColor	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.anyColorFrom	string
@@ -31714,6 +31827,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[].cards[]	custom(uuid.
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.permission	object
 movesAwaitingTokens[].lifeTail.each.then.permission.affinityFor	string
+movesAwaitingTokens[].lifeTail.each.then.permission.allGraveyards	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.altCostKey	string
 movesAwaitingTokens[].lifeTail.each.then.permission.anyColor	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.anyColorFrom	string
@@ -32389,6 +32503,7 @@ movesAwaitingTokens[].lifeTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission	object
 movesAwaitingTokens[].lifeTail.then.permission.affinityFor	string
+movesAwaitingTokens[].lifeTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].lifeTail.then.permission.altCostKey	string
 movesAwaitingTokens[].lifeTail.then.permission.anyColor	bool
 movesAwaitingTokens[].lifeTail.then.permission.anyColorFrom	string
@@ -33000,6 +33115,9 @@ movesAwaitingTokens[].millTail.run.planned[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].millTail.run.planned[].grantedAbilities	array
 movesAwaitingTokens[].millTail.run.planned[].grantedAbilities[]	string
 movesAwaitingTokens[].millTail.run.planned[].harnessed	bool
+movesAwaitingTokens[].millTail.run.planned[].hauntedEpoch	number:int
+movesAwaitingTokens[].millTail.run.planned[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].hauntingEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].hiddenBy	object
 movesAwaitingTokens[].millTail.run.planned[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -33084,6 +33202,8 @@ movesAwaitingTokens[].millTail.run.planned[].nextUntapSkips[].while.Source	custo
 movesAwaitingTokens[].millTail.run.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].millTail.run.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].millTail.run.planned[].notes	array
+movesAwaitingTokens[].millTail.run.planned[].notes[]	string
 movesAwaitingTokens[].millTail.run.planned[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].oracleId	string
 movesAwaitingTokens[].millTail.run.planned[].owner	custom(uuid.UUID)
@@ -33430,6 +33550,9 @@ movesAwaitingTokens[].millTail.run.seen[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].millTail.run.seen[].grantedAbilities	array
 movesAwaitingTokens[].millTail.run.seen[].grantedAbilities[]	string
 movesAwaitingTokens[].millTail.run.seen[].harnessed	bool
+movesAwaitingTokens[].millTail.run.seen[].hauntedEpoch	number:int
+movesAwaitingTokens[].millTail.run.seen[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].hauntingEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].hiddenBy	object
 movesAwaitingTokens[].millTail.run.seen[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -33514,6 +33637,8 @@ movesAwaitingTokens[].millTail.run.seen[].nextUntapSkips[].while.Source	custom(u
 movesAwaitingTokens[].millTail.run.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].millTail.run.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].millTail.run.seen[].notes	array
+movesAwaitingTokens[].millTail.run.seen[].notes[]	string
 movesAwaitingTokens[].millTail.run.seen[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].oracleId	string
 movesAwaitingTokens[].millTail.run.seen[].owner	custom(uuid.UUID)
@@ -33926,6 +34051,7 @@ movesAwaitingTokens[].millTail.run.then.paid.offer.picks[].cards[]	custom(uuid.U
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.permission	object
 movesAwaitingTokens[].millTail.run.then.permission.affinityFor	string
+movesAwaitingTokens[].millTail.run.then.permission.allGraveyards	bool
 movesAwaitingTokens[].millTail.run.then.permission.altCostKey	string
 movesAwaitingTokens[].millTail.run.then.permission.anyColor	bool
 movesAwaitingTokens[].millTail.run.then.permission.anyColorFrom	string
@@ -34596,6 +34722,7 @@ movesAwaitingTokens[].millTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission	object
 movesAwaitingTokens[].millTail.then.permission.affinityFor	string
+movesAwaitingTokens[].millTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].millTail.then.permission.altCostKey	string
 movesAwaitingTokens[].millTail.then.permission.anyColor	bool
 movesAwaitingTokens[].millTail.then.permission.anyColorFrom	string
@@ -35831,6 +35958,9 @@ movesAwaitingTokens[].tokenGroups[].template.goads[].forRestOfGame	bool
 movesAwaitingTokens[].tokenGroups[].template.grantedAbilities	array
 movesAwaitingTokens[].tokenGroups[].template.grantedAbilities[]	string
 movesAwaitingTokens[].tokenGroups[].template.harnessed	bool
+movesAwaitingTokens[].tokenGroups[].template.hauntedEpoch	number:int
+movesAwaitingTokens[].tokenGroups[].template.hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.hauntingEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.hiddenBy	object
 movesAwaitingTokens[].tokenGroups[].template.hiddenBy.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -35915,6 +36045,8 @@ movesAwaitingTokens[].tokenGroups[].template.nextUntapSkips[].while.Source	custo
 movesAwaitingTokens[].tokenGroups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].tokenGroups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.noAbilitiesText	number:uint8
+movesAwaitingTokens[].tokenGroups[].template.notes	array
+movesAwaitingTokens[].tokenGroups[].template.notes[]	string
 movesAwaitingTokens[].tokenGroups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.oracleId	string
 movesAwaitingTokens[].tokenGroups[].template.owner	custom(uuid.UUID)
@@ -36328,6 +36460,7 @@ movesAwaitingTokens[].tokenTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.permission	object
 movesAwaitingTokens[].tokenTail.then.permission.affinityFor	string
+movesAwaitingTokens[].tokenTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].tokenTail.then.permission.altCostKey	string
 movesAwaitingTokens[].tokenTail.then.permission.anyColor	bool
 movesAwaitingTokens[].tokenTail.then.permission.anyColorFrom	string
@@ -36953,6 +37086,9 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.goads[].forRestOfGame	
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.grantedAbilities	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.grantedAbilities[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.harnessed	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.hauntedEpoch	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.hauntingEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.hiddenBy	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.hiddenBy.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -37037,6 +37173,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.nextUntapSkips[].while
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.noAbilitiesText	number:uint8
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.notes	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.notes[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.oracleId	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
@@ -37396,6 +37534,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].goads[].forRestOfGame	b
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].grantedAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].grantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].harnessed	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hauntedEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hauntingEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hiddenBy	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -37480,6 +37621,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].notes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].notes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
@@ -37826,6 +37969,9 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].grantedAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].grantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].harnessed	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hauntedEpoch	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hauntingEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hiddenBy	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -37910,6 +38056,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.Sou
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].notes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].notes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
@@ -38322,6 +38470,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards[]	c
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
@@ -39027,6 +39176,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].car
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
@@ -39697,6 +39847,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[].cards[]	custom
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyColorFrom	string
@@ -40387,6 +40538,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[].cards[]	cust
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyColorFrom	string
@@ -41146,6 +41298,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[].cards[]	cus
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
@@ -41751,6 +41904,9 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].goads[].forRestOfGame	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].grantedAbilities	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].grantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].harnessed	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].hauntedEpoch	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].hauntedId	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].hauntingEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].hiddenBy	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].hiddenBy.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].hiddenBy.id	custom(uuid.UUID)
@@ -41835,6 +41991,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].nextUntapSkips[].while.Source
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].notes	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].notes[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].oracleId	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
@@ -43750,6 +43908,9 @@ pendingChoices[].attackSplit.settled.chosen[].template.goads[].forRestOfGame	boo
 pendingChoices[].attackSplit.settled.chosen[].template.grantedAbilities	array
 pendingChoices[].attackSplit.settled.chosen[].template.grantedAbilities[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.harnessed	bool
+pendingChoices[].attackSplit.settled.chosen[].template.hauntedEpoch	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.hauntingEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.hiddenBy	object
 pendingChoices[].attackSplit.settled.chosen[].template.hiddenBy.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.hiddenBy.id	custom(uuid.UUID)
@@ -43834,6 +43995,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while.So
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.noAbilitiesText	number:uint8
+pendingChoices[].attackSplit.settled.chosen[].template.notes	array
+pendingChoices[].attackSplit.settled.chosen[].template.notes[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.oracleId	string
 pendingChoices[].attackSplit.settled.chosen[].template.owner	custom(uuid.UUID)
@@ -44200,6 +44363,9 @@ pendingChoices[].attackSplit.settled.groups[].template.goads[].forRestOfGame	boo
 pendingChoices[].attackSplit.settled.groups[].template.grantedAbilities	array
 pendingChoices[].attackSplit.settled.groups[].template.grantedAbilities[]	string
 pendingChoices[].attackSplit.settled.groups[].template.harnessed	bool
+pendingChoices[].attackSplit.settled.groups[].template.hauntedEpoch	number:int
+pendingChoices[].attackSplit.settled.groups[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.hauntingEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.hiddenBy	object
 pendingChoices[].attackSplit.settled.groups[].template.hiddenBy.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -44284,6 +44450,8 @@ pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while.So
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.noAbilitiesText	number:uint8
+pendingChoices[].attackSplit.settled.groups[].template.notes	array
+pendingChoices[].attackSplit.settled.groups[].template.notes[]	string
 pendingChoices[].attackSplit.settled.groups[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.oracleId	string
 pendingChoices[].attackSplit.settled.groups[].template.owner	custom(uuid.UUID)
@@ -44701,6 +44869,7 @@ pendingChoices[].attackSplit.tail.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission	object
 pendingChoices[].attackSplit.tail.permission.affinityFor	string
+pendingChoices[].attackSplit.tail.permission.allGraveyards	bool
 pendingChoices[].attackSplit.tail.permission.altCostKey	string
 pendingChoices[].attackSplit.tail.permission.anyColor	bool
 pendingChoices[].attackSplit.tail.permission.anyColorFrom	string
@@ -45302,6 +45471,9 @@ pendingChoices[].attackSplit.template.goads[].forRestOfGame	bool
 pendingChoices[].attackSplit.template.grantedAbilities	array
 pendingChoices[].attackSplit.template.grantedAbilities[]	string
 pendingChoices[].attackSplit.template.harnessed	bool
+pendingChoices[].attackSplit.template.hauntedEpoch	number:int
+pendingChoices[].attackSplit.template.hauntedId	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.hauntingEpoch	number:int
 pendingChoices[].attackSplit.template.hiddenBy	object
 pendingChoices[].attackSplit.template.hiddenBy.epoch	number:int
 pendingChoices[].attackSplit.template.hiddenBy.id	custom(uuid.UUID)
@@ -45386,6 +45558,8 @@ pendingChoices[].attackSplit.template.nextUntapSkips[].while.Source	custom(uuid.
 pendingChoices[].attackSplit.template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].attackSplit.template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].attackSplit.template.noAbilitiesText	number:uint8
+pendingChoices[].attackSplit.template.notes	array
+pendingChoices[].attackSplit.template.notes[]	string
 pendingChoices[].attackSplit.template.objectEpoch	number:int
 pendingChoices[].attackSplit.template.oracleId	string
 pendingChoices[].attackSplit.template.owner	custom(uuid.UUID)
@@ -46149,6 +46323,9 @@ pendingChoices[].copyWalk.src.goads[].forRestOfGame	bool
 pendingChoices[].copyWalk.src.grantedAbilities	array
 pendingChoices[].copyWalk.src.grantedAbilities[]	string
 pendingChoices[].copyWalk.src.harnessed	bool
+pendingChoices[].copyWalk.src.hauntedEpoch	number:int
+pendingChoices[].copyWalk.src.hauntedId	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.hauntingEpoch	number:int
 pendingChoices[].copyWalk.src.hiddenBy	object
 pendingChoices[].copyWalk.src.hiddenBy.epoch	number:int
 pendingChoices[].copyWalk.src.hiddenBy.id	custom(uuid.UUID)
@@ -46233,6 +46410,8 @@ pendingChoices[].copyWalk.src.nextUntapSkips[].while.Source	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].copyWalk.src.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].copyWalk.src.noAbilitiesText	number:uint8
+pendingChoices[].copyWalk.src.notes	array
+pendingChoices[].copyWalk.src.notes[]	string
 pendingChoices[].copyWalk.src.objectEpoch	number:int
 pendingChoices[].copyWalk.src.oracleId	string
 pendingChoices[].copyWalk.src.owner	custom(uuid.UUID)
@@ -46935,6 +47114,7 @@ pendingChoices[].diceRoll.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission	object
 pendingChoices[].diceRoll.then.permission.affinityFor	string
+pendingChoices[].diceRoll.then.permission.allGraveyards	bool
 pendingChoices[].diceRoll.then.permission.altCostKey	string
 pendingChoices[].diceRoll.then.permission.anyColor	bool
 pendingChoices[].diceRoll.then.permission.anyColorFrom	string
@@ -48078,6 +48258,7 @@ pendingChoices[].divideShield.walk.each.paid.offer.picks[].cards[]	custom(uuid.U
 pendingChoices[].divideShield.walk.each.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission	object
 pendingChoices[].divideShield.walk.each.permission.affinityFor	string
+pendingChoices[].divideShield.walk.each.permission.allGraveyards	bool
 pendingChoices[].divideShield.walk.each.permission.altCostKey	string
 pendingChoices[].divideShield.walk.each.permission.anyColor	bool
 pendingChoices[].divideShield.walk.each.permission.anyColorFrom	string
@@ -48750,6 +48931,7 @@ pendingChoices[].divideShield.walk.then.paid.offer.picks[].cards[]	custom(uuid.U
 pendingChoices[].divideShield.walk.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission	object
 pendingChoices[].divideShield.walk.then.permission.affinityFor	string
+pendingChoices[].divideShield.walk.then.permission.allGraveyards	bool
 pendingChoices[].divideShield.walk.then.permission.altCostKey	string
 pendingChoices[].divideShield.walk.then.permission.anyColor	bool
 pendingChoices[].divideShield.walk.then.permission.anyColorFrom	string
@@ -49428,6 +49610,7 @@ pendingChoices[].libraryOrder.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission	object
 pendingChoices[].libraryOrder.then.permission.affinityFor	string
+pendingChoices[].libraryOrder.then.permission.allGraveyards	bool
 pendingChoices[].libraryOrder.then.permission.altCostKey	string
 pendingChoices[].libraryOrder.then.permission.anyColor	bool
 pendingChoices[].libraryOrder.then.permission.anyColorFrom	string
@@ -50160,6 +50343,7 @@ pendingChoices[].nameThen.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].nameThen.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].nameThen.permission	object
 pendingChoices[].nameThen.permission.affinityFor	string
+pendingChoices[].nameThen.permission.allGraveyards	bool
 pendingChoices[].nameThen.permission.altCostKey	string
 pendingChoices[].nameThen.permission.anyColor	bool
 pendingChoices[].nameThen.permission.anyColorFrom	string
@@ -51339,6 +51523,7 @@ pendingChoices[].pickTail.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].pickTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].pickTail.permission	object
 pendingChoices[].pickTail.permission.affinityFor	string
+pendingChoices[].pickTail.permission.allGraveyards	bool
 pendingChoices[].pickTail.permission.altCostKey	string
 pendingChoices[].pickTail.permission.anyColor	bool
 pendingChoices[].pickTail.permission.anyColorFrom	string
@@ -52056,6 +52241,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[].car
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.permission	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyColorFrom	string
@@ -52737,6 +52923,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[]
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.permission	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.affinityFor	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColorFrom	string
@@ -53409,6 +53596,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[]
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.permission	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColorFrom	string
@@ -54299,6 +54487,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[].card
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.permission	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyColorFrom	string
@@ -55094,6 +55283,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColorFrom	string
@@ -55842,6 +56032,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[]
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColorFrom	string
@@ -56514,6 +56705,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[].card
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.permission	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColorFrom	string
@@ -57219,6 +57411,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.off
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColorFrom	string
@@ -57912,6 +58105,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColorFrom	string
@@ -58534,6 +58728,9 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.goads[].for
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.grantedAbilities	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.grantedAbilities[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.harnessed	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hiddenBy	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.hiddenBy.id	custom(uuid.UUID)
@@ -58618,6 +58815,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSk
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.notes	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.notes[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.objectEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.oracleId	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
@@ -59037,6 +59236,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColorFrom	string
@@ -59733,6 +59933,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[].c
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColorFrom	string
@@ -60408,6 +60609,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[].cards[
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.permission	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColorFrom	string
@@ -61019,6 +61221,9 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].goads[].forRestO
 pendingChoices[].replacementResume.event.millTail.run.planned[].grantedAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].harnessed	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].hiddenBy	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -61103,6 +61308,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[]
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.millTail.run.planned[].notes	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].notes[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].owner	custom(uuid.UUID)
@@ -61449,6 +61656,9 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].goads[].forRestOfGa
 pendingChoices[].replacementResume.event.millTail.run.seen[].grantedAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].harnessed	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].hiddenBy	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -61533,6 +61743,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].wh
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.millTail.run.seen[].notes	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].notes[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].owner	custom(uuid.UUID)
@@ -61945,6 +62157,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[].ca
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.permission	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColorFrom	string
@@ -62615,6 +62828,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[].cards[
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.permission	object
 pendingChoices[].replacementResume.event.millTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.millTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.millTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.anyColorFrom	string
@@ -63850,6 +64064,9 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.goads[].forRestO
 pendingChoices[].replacementResume.event.tokenGroups[].template.grantedAbilities	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.grantedAbilities[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.harnessed	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.hiddenBy	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -63934,6 +64151,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[]
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.tokenGroups[].template.notes	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.notes[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.owner	custom(uuid.UUID)
@@ -64347,6 +64566,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[].cards
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.permission	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColorFrom	string
@@ -64972,6 +65192,9 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.goa
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.grantedAbilities	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.grantedAbilities[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.harnessed	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hiddenBy	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.hiddenBy.id	custom(uuid.UUID)
@@ -65056,6 +65279,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.nex
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.notes	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.notes[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
@@ -65415,6 +65640,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].goad
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].grantedAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].harnessed	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hiddenBy	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].hiddenBy.id	custom(uuid.UUID)
@@ -65499,6 +65727,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].next
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].notes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].notes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
@@ -65845,6 +66075,9 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].goads[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].grantedAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].harnessed	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hiddenBy	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].hiddenBy.id	custom(uuid.UUID)
@@ -65929,6 +66162,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUnt
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].notes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].notes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
@@ -66341,6 +66576,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offe
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
@@ -67046,6 +67282,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
@@ -67716,6 +67953,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.pic
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColorFrom	string
@@ -68406,6 +68644,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.p
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColorFrom	string
@@ -69165,6 +69404,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
@@ -69770,6 +70010,9 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].goads[].fo
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].grantedAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].grantedAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].harnessed	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hauntedEpoch	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hauntedId	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hauntingEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hiddenBy	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hiddenBy.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].hiddenBy.id	custom(uuid.UUID)
@@ -69854,6 +70097,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapS
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].notes	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].notes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
@@ -70296,6 +70541,7 @@ pendingChoices[].scryThen.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].scryThen.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].scryThen.permission	object
 pendingChoices[].scryThen.permission.affinityFor	string
+pendingChoices[].scryThen.permission.allGraveyards	bool
 pendingChoices[].scryThen.permission.altCostKey	string
 pendingChoices[].scryThen.permission.anyColor	bool
 pendingChoices[].scryThen.permission.anyColorFrom	string
@@ -71014,6 +71260,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[].cards[]	custom(uu
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.affinityFor	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.allGraveyards	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.altCostKey	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyColor	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyColorFrom	string
@@ -72151,6 +72398,9 @@ pendingChoices[].targetWalk.frame.source.goads[].forRestOfGame	bool
 pendingChoices[].targetWalk.frame.source.grantedAbilities	array
 pendingChoices[].targetWalk.frame.source.grantedAbilities[]	string
 pendingChoices[].targetWalk.frame.source.harnessed	bool
+pendingChoices[].targetWalk.frame.source.hauntedEpoch	number:int
+pendingChoices[].targetWalk.frame.source.hauntedId	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.hauntingEpoch	number:int
 pendingChoices[].targetWalk.frame.source.hiddenBy	object
 pendingChoices[].targetWalk.frame.source.hiddenBy.epoch	number:int
 pendingChoices[].targetWalk.frame.source.hiddenBy.id	custom(uuid.UUID)
@@ -72235,6 +72485,8 @@ pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while.Source	custom(uu
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].targetWalk.frame.source.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].targetWalk.frame.source.noAbilitiesText	number:uint8
+pendingChoices[].targetWalk.frame.source.notes	array
+pendingChoices[].targetWalk.frame.source.notes[]	string
 pendingChoices[].targetWalk.frame.source.objectEpoch	number:int
 pendingChoices[].targetWalk.frame.source.oracleId	string
 pendingChoices[].targetWalk.frame.source.owner	custom(uuid.UUID)
@@ -72987,6 +73239,9 @@ pendingChoices[].triggerFrame.source.goads[].forRestOfGame	bool
 pendingChoices[].triggerFrame.source.grantedAbilities	array
 pendingChoices[].triggerFrame.source.grantedAbilities[]	string
 pendingChoices[].triggerFrame.source.harnessed	bool
+pendingChoices[].triggerFrame.source.hauntedEpoch	number:int
+pendingChoices[].triggerFrame.source.hauntedId	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.hauntingEpoch	number:int
 pendingChoices[].triggerFrame.source.hiddenBy	object
 pendingChoices[].triggerFrame.source.hiddenBy.epoch	number:int
 pendingChoices[].triggerFrame.source.hiddenBy.id	custom(uuid.UUID)
@@ -73071,6 +73326,8 @@ pendingChoices[].triggerFrame.source.nextUntapSkips[].while.Source	custom(uuid.U
 pendingChoices[].triggerFrame.source.nextUntapSkips[].while.SourceEnteredAt	number:int64
 pendingChoices[].triggerFrame.source.nextUntapSkips[].while.SourceEpoch	number:int
 pendingChoices[].triggerFrame.source.noAbilitiesText	number:uint8
+pendingChoices[].triggerFrame.source.notes	array
+pendingChoices[].triggerFrame.source.notes[]	string
 pendingChoices[].triggerFrame.source.objectEpoch	number:int
 pendingChoices[].triggerFrame.source.oracleId	string
 pendingChoices[].triggerFrame.source.owner	custom(uuid.UUID)
@@ -74194,6 +74451,9 @@ phasedOut.cards[].goads[].forRestOfGame	bool
 phasedOut.cards[].grantedAbilities	array
 phasedOut.cards[].grantedAbilities[]	string
 phasedOut.cards[].harnessed	bool
+phasedOut.cards[].hauntedEpoch	number:int
+phasedOut.cards[].hauntedId	custom(uuid.UUID)
+phasedOut.cards[].hauntingEpoch	number:int
 phasedOut.cards[].hiddenBy	object
 phasedOut.cards[].hiddenBy.epoch	number:int
 phasedOut.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -74278,6 +74538,8 @@ phasedOut.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 phasedOut.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 phasedOut.cards[].noAbilitiesText	number:uint8
+phasedOut.cards[].notes	array
+phasedOut.cards[].notes[]	string
 phasedOut.cards[].objectEpoch	number:int
 phasedOut.cards[].oracleId	string
 phasedOut.cards[].owner	custom(uuid.UUID)
@@ -74627,6 +74889,9 @@ planechase.deck.cards[].goads[].forRestOfGame	bool
 planechase.deck.cards[].grantedAbilities	array
 planechase.deck.cards[].grantedAbilities[]	string
 planechase.deck.cards[].harnessed	bool
+planechase.deck.cards[].hauntedEpoch	number:int
+planechase.deck.cards[].hauntedId	custom(uuid.UUID)
+planechase.deck.cards[].hauntingEpoch	number:int
 planechase.deck.cards[].hiddenBy	object
 planechase.deck.cards[].hiddenBy.epoch	number:int
 planechase.deck.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -74711,6 +74976,8 @@ planechase.deck.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 planechase.deck.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 planechase.deck.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 planechase.deck.cards[].noAbilitiesText	number:uint8
+planechase.deck.cards[].notes	array
+planechase.deck.cards[].notes[]	string
 planechase.deck.cards[].objectEpoch	number:int
 planechase.deck.cards[].oracleId	string
 planechase.deck.cards[].owner	custom(uuid.UUID)
@@ -75060,6 +75327,9 @@ planechase.faceUp.cards[].goads[].forRestOfGame	bool
 planechase.faceUp.cards[].grantedAbilities	array
 planechase.faceUp.cards[].grantedAbilities[]	string
 planechase.faceUp.cards[].harnessed	bool
+planechase.faceUp.cards[].hauntedEpoch	number:int
+planechase.faceUp.cards[].hauntedId	custom(uuid.UUID)
+planechase.faceUp.cards[].hauntingEpoch	number:int
 planechase.faceUp.cards[].hiddenBy	object
 planechase.faceUp.cards[].hiddenBy.epoch	number:int
 planechase.faceUp.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -75144,6 +75414,8 @@ planechase.faceUp.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 planechase.faceUp.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 planechase.faceUp.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 planechase.faceUp.cards[].noAbilitiesText	number:uint8
+planechase.faceUp.cards[].notes	array
+planechase.faceUp.cards[].notes[]	string
 planechase.faceUp.cards[].objectEpoch	number:int
 planechase.faceUp.cards[].oracleId	string
 planechase.faceUp.cards[].owner	custom(uuid.UUID)
@@ -75745,6 +76017,9 @@ resolving.card.goads[].forRestOfGame	bool
 resolving.card.grantedAbilities	array
 resolving.card.grantedAbilities[]	string
 resolving.card.harnessed	bool
+resolving.card.hauntedEpoch	number:int
+resolving.card.hauntedId	custom(uuid.UUID)
+resolving.card.hauntingEpoch	number:int
 resolving.card.hiddenBy	object
 resolving.card.hiddenBy.epoch	number:int
 resolving.card.hiddenBy.id	custom(uuid.UUID)
@@ -75829,6 +76104,8 @@ resolving.card.nextUntapSkips[].while.Source	custom(uuid.UUID)
 resolving.card.nextUntapSkips[].while.SourceEnteredAt	number:int64
 resolving.card.nextUntapSkips[].while.SourceEpoch	number:int
 resolving.card.noAbilitiesText	number:uint8
+resolving.card.notes	array
+resolving.card.notes[]	string
 resolving.card.objectEpoch	number:int
 resolving.card.oracleId	string
 resolving.card.owner	custom(uuid.UUID)
@@ -76816,6 +77093,9 @@ seats[].attractionDeck.cards[].goads[].forRestOfGame	bool
 seats[].attractionDeck.cards[].grantedAbilities	array
 seats[].attractionDeck.cards[].grantedAbilities[]	string
 seats[].attractionDeck.cards[].harnessed	bool
+seats[].attractionDeck.cards[].hauntedEpoch	number:int
+seats[].attractionDeck.cards[].hauntedId	custom(uuid.UUID)
+seats[].attractionDeck.cards[].hauntingEpoch	number:int
 seats[].attractionDeck.cards[].hiddenBy	object
 seats[].attractionDeck.cards[].hiddenBy.epoch	number:int
 seats[].attractionDeck.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -76900,6 +77180,8 @@ seats[].attractionDeck.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].attractionDeck.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].attractionDeck.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].attractionDeck.cards[].noAbilitiesText	number:uint8
+seats[].attractionDeck.cards[].notes	array
+seats[].attractionDeck.cards[].notes[]	string
 seats[].attractionDeck.cards[].objectEpoch	number:int
 seats[].attractionDeck.cards[].oracleId	string
 seats[].attractionDeck.cards[].owner	custom(uuid.UUID)
@@ -77072,6 +77354,7 @@ seats[].botTier	string
 seats[].castPermissions	array
 seats[].castPermissions[]	object
 seats[].castPermissions[].affinityFor	string
+seats[].castPermissions[].allGraveyards	bool
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
 seats[].castPermissions[].anyColorFrom	string
@@ -77431,6 +77714,9 @@ seats[].command.cards[].goads[].forRestOfGame	bool
 seats[].command.cards[].grantedAbilities	array
 seats[].command.cards[].grantedAbilities[]	string
 seats[].command.cards[].harnessed	bool
+seats[].command.cards[].hauntedEpoch	number:int
+seats[].command.cards[].hauntedId	custom(uuid.UUID)
+seats[].command.cards[].hauntingEpoch	number:int
 seats[].command.cards[].hiddenBy	object
 seats[].command.cards[].hiddenBy.epoch	number:int
 seats[].command.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -77515,6 +77801,8 @@ seats[].command.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].command.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].command.cards[].noAbilitiesText	number:uint8
+seats[].command.cards[].notes	array
+seats[].command.cards[].notes[]	string
 seats[].command.cards[].objectEpoch	number:int
 seats[].command.cards[].oracleId	string
 seats[].command.cards[].owner	custom(uuid.UUID)
@@ -77866,6 +78154,9 @@ seats[].companion.cards[].goads[].forRestOfGame	bool
 seats[].companion.cards[].grantedAbilities	array
 seats[].companion.cards[].grantedAbilities[]	string
 seats[].companion.cards[].harnessed	bool
+seats[].companion.cards[].hauntedEpoch	number:int
+seats[].companion.cards[].hauntedId	custom(uuid.UUID)
+seats[].companion.cards[].hauntingEpoch	number:int
 seats[].companion.cards[].hiddenBy	object
 seats[].companion.cards[].hiddenBy.epoch	number:int
 seats[].companion.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -77950,6 +78241,8 @@ seats[].companion.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].companion.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].companion.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].companion.cards[].noAbilitiesText	number:uint8
+seats[].companion.cards[].notes	array
+seats[].companion.cards[].notes[]	string
 seats[].companion.cards[].objectEpoch	number:int
 seats[].companion.cards[].oracleId	string
 seats[].companion.cards[].owner	custom(uuid.UUID)
@@ -78310,6 +78603,9 @@ seats[].emblems.cards[].goads[].forRestOfGame	bool
 seats[].emblems.cards[].grantedAbilities	array
 seats[].emblems.cards[].grantedAbilities[]	string
 seats[].emblems.cards[].harnessed	bool
+seats[].emblems.cards[].hauntedEpoch	number:int
+seats[].emblems.cards[].hauntedId	custom(uuid.UUID)
+seats[].emblems.cards[].hauntingEpoch	number:int
 seats[].emblems.cards[].hiddenBy	object
 seats[].emblems.cards[].hiddenBy.epoch	number:int
 seats[].emblems.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -78394,6 +78690,8 @@ seats[].emblems.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].emblems.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].emblems.cards[].noAbilitiesText	number:uint8
+seats[].emblems.cards[].notes	array
+seats[].emblems.cards[].notes[]	string
 seats[].emblems.cards[].objectEpoch	number:int
 seats[].emblems.cards[].oracleId	string
 seats[].emblems.cards[].owner	custom(uuid.UUID)
@@ -78841,6 +79139,9 @@ seats[].graveyard.cards[].goads[].forRestOfGame	bool
 seats[].graveyard.cards[].grantedAbilities	array
 seats[].graveyard.cards[].grantedAbilities[]	string
 seats[].graveyard.cards[].harnessed	bool
+seats[].graveyard.cards[].hauntedEpoch	number:int
+seats[].graveyard.cards[].hauntedId	custom(uuid.UUID)
+seats[].graveyard.cards[].hauntingEpoch	number:int
 seats[].graveyard.cards[].hiddenBy	object
 seats[].graveyard.cards[].hiddenBy.epoch	number:int
 seats[].graveyard.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -78925,6 +79226,8 @@ seats[].graveyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].graveyard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].graveyard.cards[].noAbilitiesText	number:uint8
+seats[].graveyard.cards[].notes	array
+seats[].graveyard.cards[].notes[]	string
 seats[].graveyard.cards[].objectEpoch	number:int
 seats[].graveyard.cards[].oracleId	string
 seats[].graveyard.cards[].owner	custom(uuid.UUID)
@@ -79272,6 +79575,9 @@ seats[].hand.cards[].goads[].forRestOfGame	bool
 seats[].hand.cards[].grantedAbilities	array
 seats[].hand.cards[].grantedAbilities[]	string
 seats[].hand.cards[].harnessed	bool
+seats[].hand.cards[].hauntedEpoch	number:int
+seats[].hand.cards[].hauntedId	custom(uuid.UUID)
+seats[].hand.cards[].hauntingEpoch	number:int
 seats[].hand.cards[].hiddenBy	object
 seats[].hand.cards[].hiddenBy.epoch	number:int
 seats[].hand.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -79356,6 +79662,8 @@ seats[].hand.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].hand.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].hand.cards[].noAbilitiesText	number:uint8
+seats[].hand.cards[].notes	array
+seats[].hand.cards[].notes[]	string
 seats[].hand.cards[].objectEpoch	number:int
 seats[].hand.cards[].oracleId	string
 seats[].hand.cards[].owner	custom(uuid.UUID)
@@ -79708,6 +80016,9 @@ seats[].junkyard.cards[].goads[].forRestOfGame	bool
 seats[].junkyard.cards[].grantedAbilities	array
 seats[].junkyard.cards[].grantedAbilities[]	string
 seats[].junkyard.cards[].harnessed	bool
+seats[].junkyard.cards[].hauntedEpoch	number:int
+seats[].junkyard.cards[].hauntedId	custom(uuid.UUID)
+seats[].junkyard.cards[].hauntingEpoch	number:int
 seats[].junkyard.cards[].hiddenBy	object
 seats[].junkyard.cards[].hiddenBy.epoch	number:int
 seats[].junkyard.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -79792,6 +80103,8 @@ seats[].junkyard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].junkyard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].junkyard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].junkyard.cards[].noAbilitiesText	number:uint8
+seats[].junkyard.cards[].notes	array
+seats[].junkyard.cards[].notes[]	string
 seats[].junkyard.cards[].objectEpoch	number:int
 seats[].junkyard.cards[].oracleId	string
 seats[].junkyard.cards[].owner	custom(uuid.UUID)
@@ -80165,6 +80478,9 @@ seats[].library.cards[].goads[].forRestOfGame	bool
 seats[].library.cards[].grantedAbilities	array
 seats[].library.cards[].grantedAbilities[]	string
 seats[].library.cards[].harnessed	bool
+seats[].library.cards[].hauntedEpoch	number:int
+seats[].library.cards[].hauntedId	custom(uuid.UUID)
+seats[].library.cards[].hauntingEpoch	number:int
 seats[].library.cards[].hiddenBy	object
 seats[].library.cards[].hiddenBy.epoch	number:int
 seats[].library.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -80249,6 +80565,8 @@ seats[].library.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].library.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].library.cards[].noAbilitiesText	number:uint8
+seats[].library.cards[].notes	array
+seats[].library.cards[].notes[]	string
 seats[].library.cards[].objectEpoch	number:int
 seats[].library.cards[].oracleId	string
 seats[].library.cards[].owner	custom(uuid.UUID)
@@ -80637,6 +80955,9 @@ seats[].sideboard.cards[].goads[].forRestOfGame	bool
 seats[].sideboard.cards[].grantedAbilities	array
 seats[].sideboard.cards[].grantedAbilities[]	string
 seats[].sideboard.cards[].harnessed	bool
+seats[].sideboard.cards[].hauntedEpoch	number:int
+seats[].sideboard.cards[].hauntedId	custom(uuid.UUID)
+seats[].sideboard.cards[].hauntingEpoch	number:int
 seats[].sideboard.cards[].hiddenBy	object
 seats[].sideboard.cards[].hiddenBy.epoch	number:int
 seats[].sideboard.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -80721,6 +81042,8 @@ seats[].sideboard.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 seats[].sideboard.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 seats[].sideboard.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 seats[].sideboard.cards[].noAbilitiesText	number:uint8
+seats[].sideboard.cards[].notes	array
+seats[].sideboard.cards[].notes[]	string
 seats[].sideboard.cards[].objectEpoch	number:int
 seats[].sideboard.cards[].oracleId	string
 seats[].sideboard.cards[].owner	custom(uuid.UUID)
@@ -81471,6 +81794,9 @@ stack.cards[].goads[].forRestOfGame	bool
 stack.cards[].grantedAbilities	array
 stack.cards[].grantedAbilities[]	string
 stack.cards[].harnessed	bool
+stack.cards[].hauntedEpoch	number:int
+stack.cards[].hauntedId	custom(uuid.UUID)
+stack.cards[].hauntingEpoch	number:int
 stack.cards[].hiddenBy	object
 stack.cards[].hiddenBy.epoch	number:int
 stack.cards[].hiddenBy.id	custom(uuid.UUID)
@@ -81555,6 +81881,8 @@ stack.cards[].nextUntapSkips[].while.Source	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while.SourceEnteredAt	number:int64
 stack.cards[].nextUntapSkips[].while.SourceEpoch	number:int
 stack.cards[].noAbilitiesText	number:uint8
+stack.cards[].notes	array
+stack.cards[].notes[]	string
 stack.cards[].objectEpoch	number:int
 stack.cards[].oracleId	string
 stack.cards[].owner	custom(uuid.UUID)

@@ -554,6 +554,18 @@ type Card struct {
 	// then: the two still agree.
 	TurnOvers int
 
+	// HauntedID and HauntedEpoch are haunt's link (CR 702.55b, #6083): set
+	// on a card a haunt ability exiled, they name the OBJECT it haunts —
+	// the creature the ability targeted, at the epoch it had then (an
+	// instance ID survives a zone change; CR 400.7). HauntingEpoch is this
+	// card's own ObjectEpoch as it arrived in exile, so the link holds only
+	// for that object: a card that leaves exile and comes back haunts
+	// nothing. Written once by HauntForEffect, never in place; uuid.Nil is
+	// no link. See haunt.go.
+	HauntedID     uuid.UUID
+	HauntedEpoch  int
+	HauntingEpoch int
+
 	// ControlledSinceUpkeep is the value of the controller's
 	// Player.UpkeepsBegun when this permanent last came under that
 	// player's control: as it entered the battlefield, and at each
@@ -1002,6 +1014,22 @@ type Card struct {
 	// (CR 707.2). Written by Game.SetChosenCardForEffect and read with
 	// Game.ChosenExiledCardOf (chosen_card.go).
 	ChosenCard ObjectRef
+
+	// Notes are the words this object's abilities have noted or chosen
+	// for it, in order, each once: Long List of the Ents' and Volo's
+	// Journal's "a creature type that hasn't been noted for this <object>",
+	// Day of the Moon's "a name chosen for this enchantment" (#6097). A
+	// per-object list a later ability of the same object reads back, so
+	// "hasn't been noted" spans chapters, turns and abilities. Nil is
+	// "nothing noted".
+	//
+	// ChosenCard's lifecycle: per INSTANCE, carried by the snapshot and by
+	// clone, cleared when this permanent leaves the battlefield (CR 400.7:
+	// a Saga that returns is a new object nothing was noted for), and NOT a
+	// copiable value (CR 707.2). Always replaced, never appended in place
+	// (clone shares the backing array). Written by Game.AddNoteForEffect and
+	// read with Game.NotesForEffect (notes.go).
+	Notes []string
 
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it

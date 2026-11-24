@@ -271,6 +271,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 231 (#5948).
 	"Cloudkill": "-X/-X to every creature where X is the greatest mana value of a commander its caster owns on the battlefield or in the command zone: no fixed amount a sweep can declare, and zero with no commander",
+
+	// S82 GAP2 batch 2 (#5948).
+	"Orzhov Pontiff": "its -1/-1 to the creatures its controller doesn't control is one of two modes of an enters-or-haunted-dies trigger: a mode of a trigger, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

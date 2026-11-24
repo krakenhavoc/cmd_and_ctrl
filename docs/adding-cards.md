@@ -5896,6 +5896,13 @@ pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
 
+**"Put a creature card exiled with <this> into its owner's graveyard"
+(#6092):** `ProcessCardExiledWithThis(label, match)` — Shelob, Dread
+Weaver. The processing component with `ExileCost.ExiledWithSource`: the
+picks are the cards exiled WITH the paying object (`Card.ExiledWith`
+against the source as it is now, CR 607.2a, 400.7), whoever owns them,
+and each still goes to its owner's graveyard.
+
 **"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
 composed with `Plus` — Synthesis Pod is
 `Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl())`. It is

@@ -887,6 +887,14 @@ type CastPermission struct {
 	// grants, one per other seat, so a resolved Trance stores no new
 	// record; an older binary drops the key.
 	GraveyardsAreYours bool `json:"graveyardsAreYours,omitempty"`
+	// AllGraveyards is a STANDING permission over every graveyard, not
+	// only its holder's: Coram, the Undertaker's "you may play a land and
+	// cast a spell from among cards in graveyards that were put there from
+	// libraries this turn" (#6092). permissionReachesPileLocked lets it
+	// reach a card in any player's graveyard; the filter still narrows
+	// which cards. Meaningless on any other zone. A derived permission
+	// stores nothing, so the key is never written for it; additive.
+	AllGraveyards bool `json:"allGraveyards,omitempty"`
 
 	// DiscardLandCard is retrace's "discarding a land card in addition
 	// to paying its other costs" (CR 702.81a), Six's grant. It makes
@@ -2781,6 +2789,10 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 		return false
 	}
 	if card.Owner == perm.PileOwnerFor(holder) {
+		return true
+	}
+	// #6092: "cards in graveyards" (Coram, the Undertaker).
+	if zone == ZoneGraveyard && perm.AllGraveyards {
 		return true
 	}
 	// Shaman's Trance (#4177): "as though those cards were in your

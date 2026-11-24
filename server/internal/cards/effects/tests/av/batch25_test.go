@@ -105,13 +105,10 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 	// b27ExiledWith (which did not exist when this batch ran) plus
 	// ordinary primitives — see currency_converter.go — with no new
 	// engine seam needed.
-	for oracle, name := range map[string]string{
-		"5b3b5f6a-375e-4479-9384-a942eda83f9b": "Gandalf the White",
-	} {
-		if _, ok := effects.Lookup(oracle); ok {
-			t.Errorf("%s is declared skipped on #387 but is registered — update the issue", name)
-		}
-	}
+	//
+	// Gandalf the White, the last declared skip, came off with S82 GAP2
+	// batch 10 (#5948): its "entering or leaving the battlefield" doubler
+	// is DoublesEnteringOrLeaving (gandalf_the_white.go).
 }
 
 // --- the mana sources ----------------------------------------------
