@@ -25,3 +25,16 @@ func DurationUntilEndOfCombatOnYourNextTurn(ctx *Context, player uuid.UUID) game
 func RemoveAPlusOneCounterInsteadOfUntapping(label string) game.UntapCounterRemoval {
 	return game.UntapCounterRemoval{Counter: game.CounterPlusOne, Label: label}
 }
+
+// TargetPlayerGetsTheEmblem is "Target player gets an emblem with …" as an
+// activated ability's whole effect (Rowan Kenrith's and Will Kenrith's −8):
+// the card's EmblemSpec goes to the first still-legal target player (CR
+// 114.2), and "you" on the emblem is that player.
+func TargetPlayerGetsTheEmblem(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	p, ok := FirstLegalPlayerTarget(ctx)
+	if !ok {
+		return nil
+	}
+	return CreateEmblem{Player: p}.Apply(ctx)
+}
