@@ -113,6 +113,9 @@ var gameFields = plan(
 	// ADR 0121 §1: the open opening roll. Plain data; a restored game
 	// mid-roll continues where it stopped.
 	"OpeningRoll", carried, "",
+	// ADR 0227: a deal waiting for a hidden agenda's name. Plain data; a
+	// restored game mid-agenda deals once the name is chosen.
+	"PendingDealSeat", carried, "",
 	// ADR 0216 §3: the Planechase option's planar controller and die
 	// count, and the two planar containers, in the snapshot's
 	// `planechase` object.

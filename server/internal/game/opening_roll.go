@@ -449,6 +449,15 @@ func (g *Game) chooseStartingSeatLocked(seat int) {
 // draw on each seat's shuffle stream — the same draw it was when the
 // deal came first.
 func (g *Game) dealAndBeginLocked(startingSeat int) {
+	// CR 315.2 / 905.4 (#6102, ADR 0227): conspiracies go into the command
+	// zone before the libraries are shuffled, and a hidden agenda's name is
+	// chosen as it goes in, so no hand is dealt until every name is.
+	// dealIfAgendasChosenLocked comes back here with the same seat.
+	if g.placeConspiraciesLocked() || g.agendaPromptsOpenLocked() {
+		seat := startingSeat
+		g.PendingDealSeat = &seat
+		return
+	}
 	// CR 103.2b: companions are revealed once the starting player is
 	// known, before the libraries are shuffled and hands drawn (ADR
 	// 0172 §5).

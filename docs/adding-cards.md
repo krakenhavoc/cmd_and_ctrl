@@ -135,6 +135,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
 
   - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
   - [Ante cards: built, with their ante text inert (#5724, CR 407)](#ante-cards-built-with-their-ante-text-inert-5724-cr-407)
+  - [Conspiracy cards and hidden agenda (#6102, ADR 0227, CR 315)](#conspiracy-cards-and-hidden-agenda-6102-adr-0227-cr-315)
   - [When in doubt](#when-in-doubt)
 
 ### Where a card goes
@@ -15569,6 +15570,30 @@ Inert ante text is how the card plays here, not a simplification, so a card whos
 other text is exact is `CompletenessFull` with no `Caveats`. Say in its header
 comment that the ante clause is inert and link this section. If the non-ante text
 needs a seam the engine lacks, the usual rule applies: leave the card out.
+
+### Conspiracy cards and hidden agenda (#6102, ADR 0227, CR 315)
+
+A conspiracy card is built like any other card: one file, one `init()`, keyed by
+oracle ID. The engine does the rest ([ADR 0227](decisions/0227-conspiracies-in-the-command-zone-and-hidden-agenda.md)):
+a conspiracy in a player's sideboard starts the game in their command zone, face
+up, or face down with a secretly chosen name when it has hidden agenda, and its
+abilities work from there only while it is face up (CR 315.5). The reveal is the
+`reveal_agenda` special action.
+
+- **Hidden agenda** is `Spec.HiddenAgenda: effects.HiddenAgendaOneName`;
+  double agenda is `effects.HiddenAgendaTwoNames`. Declare nothing else for the
+  keyword.
+- **"The chosen name"** reads the conspiracy's own `ChosenName` (and
+  `ChosenSecondName`), through `effects/hidden_agenda.go`:
+  `CreaturesYouControlWithTheChosenName` (a static's `AppliesTo`),
+  `SpellsWithTheChosenNameYouCast()` (a `CostPredicate`) and
+  `YouCastASpellWithTheChosenName(spell)` (a cast trigger's `When`). Never compare
+  `Card.Name ==` yourself.
+- A face-up conspiracy (Weight Advantage) declares its static or trigger with the
+  conspiracy as the source; "you" is its owner.
+- **Draft-time text** ("reveal this card as you draft it", "draft this card face
+  up", a value noted during the draft) is not decided yet: leave those cards out
+  until #6102's owner question is answered.
 
 ### When in doubt
 

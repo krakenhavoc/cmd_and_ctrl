@@ -182,6 +182,14 @@ type Game struct {
 	// snapshot.
 	OpeningRoll *OpeningRoll
 
+	// PendingDealSeat is the starting seat of a deal that waits for a
+	// hidden agenda's name (CR 702.106a, #6102, ADR 0227): the
+	// conspiracies are in the command zone and at least one agenda
+	// prompt is unanswered, so no hand has been dealt. Nil at every
+	// other time. dealIfAgendasChosenLocked deals once the last name is
+	// chosen. Carried by Clone, RestoreFrom and the snapshot.
+	PendingDealSeat *int
+
 	// Planechase is the Planechase option's planar controller and die
 	// count (CR 901, ADR 0216), nil when the table is not playing
 	// Planechase. Every Planechase code path is behind a nil check, so
@@ -1781,6 +1789,8 @@ func (g *Game) End() {
 		// runs, on the other door out of an active game — an admin
 		// ending the table, and every caller that ends it outright.
 		g.revealForetoldAtGameEndLocked()
+		// CR 702.106e (ADR 0227): and every face-down conspiracy.
+		g.revealHiddenAgendasLocked(uuid.Nil, "hidden agenda revealed as the game ends")
 	}
 	if g.State == StateBetweenGames {
 		// ADR 0222 §3: a match closed between two games has no result.

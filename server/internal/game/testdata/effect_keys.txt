@@ -3542,6 +3542,7 @@ tail connive/change-of-plans
 tail connive/each
 tail connive/kamiz-obscura-oculus
 tail connive/x
+tail conspiracy/agenda-named
 tail copy-and-cast/cast-copies-then-exile-self
 tail cori-steel-cutter/offer-attach
 tail corpse-appraiser/look-at-top-three

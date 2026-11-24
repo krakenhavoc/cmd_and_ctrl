@@ -224,6 +224,11 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	if co := CompanionOffer(c); co != nil {
 		out = append(out, *co)
 	}
+	// ADR 0227: a face-down conspiracy's reveal (CR 702.106c). Asked
+	// only in the command zone (specialActionZone).
+	if ra := RevealAgendaOffer(c); ra != nil {
+		out = append(out, *ra)
+	}
 	// ADR 0103: the unlock offers are derived from the card too — a
 	// face-up Room with a locked door (CR 709.5e).
 	out = append(out, UnlockOffers(c)...)
@@ -290,6 +295,8 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 		return ZoneBattlefield
 	case SpecialActionCompanion:
 		return ZoneOutside
+	case SpecialActionRevealAgenda:
+		return ZoneCommand
 	}
 	return ""
 }
@@ -454,6 +461,14 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// — the plot row exactly, on a Planechase table only. The
 		// card is ignored: the action is taken on none.
 		return g.Planechase != nil && g.SorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionRevealAgenda:
+		// CR 116.2j / 702.106c: "any time you have priority". Asked here
+		// as well as by the dispatcher, whose check lets an action
+		// through while nobody holds priority (the pregame, the untap
+		// step): a hidden agenda is not revealed then. Like
+		// turn_face_up it is legal under split second.
+		return g.holdsPriorityLocked(playerID)
 
 	case SpecialActionCompanion:
 		// CR 116.2g: "any time they have priority and the stack is
@@ -648,6 +663,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).unlockLocked
 	case SpecialActionCompanion:
 		return (*Game).companionLocked
+	case SpecialActionRevealAgenda:
+		return (*Game).revealAgendaLocked
 	}
 	return nil
 }
@@ -700,6 +717,15 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 				if c.InstanceID == cardID {
 					return c, zone, nil
 				}
+			}
+		}
+		return Card{}, "", ErrCardNotFound
+	case ZoneCommand:
+		// ADR 0227: a conspiracy the actor controls, which is one they
+		// own (CR 315.6), so their own container is the check.
+		for _, c := range g.ConspiraciesOf(p.ID) {
+			if c.InstanceID == cardID {
+				return c, zone, nil
 			}
 		}
 		return Card{}, "", ErrCardNotFound

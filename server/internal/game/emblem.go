@@ -205,8 +205,16 @@ func (g *Game) EmblemsForPlayer(playerID uuid.UUID) []EmblemView {
 	if p == nil || p.Emblems == nil || len(p.Emblems.Cards) == 0 {
 		return nil
 	}
+	if len(g.ConspiraciesOf(playerID)) == len(p.Emblems.Cards) {
+		return nil
+	}
 	out := make([]EmblemView, 0, len(p.Emblems.Cards))
 	for _, c := range p.Emblems.Cards {
+		// ADR 0227: a conspiracy shares the container and is not an
+		// emblem; ConspiraciesOf reads it.
+		if IsConspiracy(c) {
+			continue
+		}
 		v := EmblemView{InstanceID: c.InstanceID, Label: c.Name, Level: c.RingTemptations}
 		if def := catalogDef(CatalogKey(c)); def != nil && def.Emblem != nil {
 			v.Label = def.Emblem.Label

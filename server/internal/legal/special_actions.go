@@ -75,6 +75,13 @@ func (e *enumerator) specialActionMoves() {
 	if c, ok := p.CompanionCard(); ok {
 		e.specialActionMovesForCard(c, game.ZoneOutside)
 	}
+	// ADR 0227: the seat's face-down conspiracies, revealed with
+	// reveal_agenda (CR 702.106c), asked about the command zone.
+	for _, c := range g.ConspiraciesOf(e.seat) {
+		if c.FaceDown {
+			e.specialActionMovesForCard(c, game.ZoneCommand)
+		}
+	}
 	// ADR 0082 decision 6: turn_face_up is the first kind whose card
 	// is not in a hand. The seat's own FACE-DOWN permanents are the
 	// only battlefield cards that offer anything —
@@ -151,6 +158,9 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		// The label alone is the whole of what the seat is choosing
 		// between.
 		switch {
+		case sa.Kind == game.SpecialActionRevealAgenda:
+			// ADR 0227: the offer's own label says which agenda.
+			label = sa.Label + " (" + card.Name + ")"
 		case sa.Kind == game.SpecialActionCompanion:
 			// ADR 0172 §7: one sentence a seat can choose by.
 			label = "Pay " + sa.Cost + ": put " + card.Name + " into your hand (companion)"

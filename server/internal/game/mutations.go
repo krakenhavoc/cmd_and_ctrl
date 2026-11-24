@@ -11899,6 +11899,10 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 		// ADR 0121 §1: no hand has been dealt yet.
 		return ErrOpeningRollOpen
 	}
+	if g.PendingDealSeat != nil {
+		// ADR 0227: nor while the deal waits for a hidden agenda.
+		return ErrDealPending
+	}
 	if newHandSize < 0 {
 		return ErrInvalidParam
 	}
@@ -11967,6 +11971,10 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	if g.OpeningRoll != nil {
 		// ADR 0121 §1: no hand has been dealt yet.
 		return ErrOpeningRollOpen
+	}
+	if g.PendingDealSeat != nil {
+		// ADR 0227: nor while the deal waits for a hidden agenda.
+		return ErrDealPending
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {

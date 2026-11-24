@@ -134,6 +134,12 @@ type Player struct {
 	//
 	// Kind is ZoneCommand because it IS the command zone. Added in
 	// S40 (#623).
+	//
+	// It also holds this player's conspiracy cards (CR 315, #6102, ADR
+	// 0227), for the same reasons: they are in the command zone, they
+	// are not commanders, and nothing may move, cast or target them
+	// (CR 315.3). IsConspiracy tells the two apart; EmblemsForPlayer
+	// skips conspiracies and ConspiraciesOf reads only them.
 	Emblems *Zone
 
 	// Companion holds the companion this player revealed (CR 702.139a,
