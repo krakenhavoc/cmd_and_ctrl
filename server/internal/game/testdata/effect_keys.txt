@@ -648,6 +648,8 @@ choose avatar-b30/azula-experience-after-discard
 choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/acquisitions-expert-discard
+choose choose-cards/acquisitions-expert-reveal
 choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
@@ -1020,6 +1022,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/legion-angel-take
 choose choose-cards/leonardo-da-vinci-discarded
 choose choose-cards/leyline-dowser-milled
 choose choose-cards/lichs-mastery-exile

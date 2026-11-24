@@ -1,8 +1,6 @@
 package cardsto
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -54,17 +52,9 @@ func init() {
 				return nil
 			}
 			return effects.ChoosePermanents{
-				Question: "Tragic Lesson — return a land you control to its owner's hand, or discard a card",
-				Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-					var out []uuid.UUID
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == of && c.IsLand() {
-							out = append(out, c.InstanceID)
-						}
-					}
-					return out, 0, 1
-				},
-				Keyed: tragicLessonReturnOrDiscard,
+				Question:   "Tragic Lesson — return a land you control to its owner's hand, or discard a card",
+				Candidates: effects.OldB093OptionalLandYouControl,
+				Keyed:      tragicLessonReturnOrDiscard,
 			}.Apply(ctx)
 		},
 	})
