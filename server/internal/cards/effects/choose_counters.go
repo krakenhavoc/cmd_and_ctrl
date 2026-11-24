@@ -150,12 +150,18 @@ func (cc *counterChoice) ChooseExactly(ctx *Context, perm uuid.UUID, extra []uui
 }
 
 func (cc *counterChoice) chooseTotal(ctx *Context, perm uuid.UUID, extra []uuid.UUID, ceiling int, exact bool, question string) error {
-	c, ok := ctx.Game.LookupCardForEffect(perm)
-	if !ok {
+	var counters map[string]int
+	if c, ok := ctx.Game.LookupCardForEffect(perm); ok {
+		counters = c.Counters
+	} else if p := ctx.Game.PlayerByIDForEffect(perm); p != nil {
+		// #6100: a player's counters (poison, energy, experience, rad),
+		// for "remove a counter from target … opponent" (Etched Slith).
+		counters = p.Counters
+	} else {
 		return cc.final(ctx, perm, extra, map[string]int{})
 	}
 	var kinds []string
-	for kind, n := range c.Counters {
+	for kind, n := range counters {
 		if n > 0 {
 			kinds = append(kinds, kind)
 		}
@@ -163,7 +169,7 @@ func (cc *counterChoice) chooseTotal(ctx *Context, perm uuid.UUID, extra []uuid.
 	sort.Strings(kinds)
 	have := make([]int, len(kinds))
 	for i, kind := range kinds {
-		have[i] = c.Counters[kind]
+		have[i] = counters[kind]
 	}
 	return cc.Ask(ctx, counterAsk{
 		perm: perm, extra: extra, question: question, kinds: kinds, have: have,
