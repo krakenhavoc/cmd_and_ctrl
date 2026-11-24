@@ -794,6 +794,7 @@ func (g *Game) emptyAllManaPoolsLocked() {
 			Actor:  p.ID,
 			Amount: n,
 		})
+		g.manaBurnLocked(p, n)
 	}
 }
 

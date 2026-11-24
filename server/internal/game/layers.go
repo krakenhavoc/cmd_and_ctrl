@@ -1314,6 +1314,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	// #4678: "can't attack or block unless its power is N or greater",
 	// read off the finished power (CR 613.11).
 	g.foldPowerFloorLocked()
+	// "Creatures without flying or islandwalk can't attack": read off the
+	// finished ability list, like the folds above.
+	g.foldAttackNeedsKeywordLocked()
 }
 
 // recordBasePowerLocked stamps every permanent's power as it stands

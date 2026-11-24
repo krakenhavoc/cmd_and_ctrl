@@ -678,7 +678,13 @@ func (g *Game) canAttackTargetWithLocked(attacker *Card, target uuid.UUID) error
 	// waiver may name whom the creature can attack (Weathered
 	// Sentinels). Last, as the single verb always refused it after the
 	// target checks.
-	return g.defenderRefusalLocked(attacker, target)
+	if err := g.defenderRefusalLocked(attacker, target); err != nil {
+		return err
+	}
+	// CR 302.6, CR 609.4: summoning sickness, asked of this target, because
+	// an "as though it had haste" static may name whom the creature can
+	// attack (Frenzied Saddlebrute, attack_haste_waiver.go).
+	return g.sicknessRefusalLocked(attacker, target)
 }
 
 // AttackTargetsForAttackerForEffect lists every target `attacker` may
@@ -696,7 +702,8 @@ func (g *Game) AttackTargetsForAttackerForEffect(attacker *Card) []AttackTargetR
 	}
 	all := g.AttackTargetsForEffect(attacker.Controller)
 	if len(attacker.Effective().AttackTargetRestrictions) == 0 && !g.playerHasCantAttackGrantLocked(attacker.Controller) &&
-		!HasKeyword(attacker, "defender") && !g.attackDirectionInForceLocked(attacker.Controller) {
+		!HasKeyword(attacker, "defender") && !g.attackDirectionInForceLocked(attacker.Controller) &&
+		!hasAttackHasteWaiver(attacker) {
 		return all
 	}
 	out := all[:0:0]
@@ -704,7 +711,8 @@ func (g *Game) AttackTargetsForAttackerForEffect(attacker *Card) []AttackTargetR
 		if g.playerCantAttackRefusalLocked(attacker, t.ID) == nil &&
 			g.attackDirectionRefusalLocked(attacker, t.ID) == nil &&
 			g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil &&
-			g.defenderRefusalLocked(attacker, t.ID) == nil {
+			g.defenderRefusalLocked(attacker, t.ID) == nil &&
+			g.sicknessRefusalLocked(attacker, t.ID) == nil {
 			out = append(out, t)
 		}
 	}
