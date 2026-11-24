@@ -482,6 +482,8 @@ body s82-neo-b06/dokuchi-silencer-destroy
 body s82-neo-b06/kappa-tech-wrecker-exile
 body s82-neo-b18/kirin-touched-orochi-counter
 body s82-neo-b18/kirin-touched-orochi-spirit
+body s82-old-b046/make-your-mark-spirit
+body s82-old-b046/valentin-pest-offer
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1433,6 +1435,7 @@ choose choose-cards/s82-old-b021-hokori-untap-a-land
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
+choose choose-cards/s82-old-b046-illuminate-history
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2404,6 +2407,7 @@ option option-pick/s82-gap-b36-assassin-initiate-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
+option option-pick/s82-old-b046-ingenious-mastery-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -2749,6 +2753,8 @@ payunless pay-unless/s82-mom-b21-elenda-and-azor-vampire-knights
 payunless pay-unless/s82-neo-sokenzan-smelter
 payunless pay-unless/s82-old-b022-leshracs-sigil
 payunless pay-unless/s82-old-b024-depala-reveal
+payunless pay-unless/s82-old-b046-lisette-counters
+payunless pay-unless/s82-old-b046-valentin-pest
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4264,6 +4270,7 @@ tail s82-gap-b142/orims-thunder-damage
 tail s82-gap-b144/monkey-cage-tokens
 tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
+tail s82-old-b046/culmination-of-studies-exiled
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards

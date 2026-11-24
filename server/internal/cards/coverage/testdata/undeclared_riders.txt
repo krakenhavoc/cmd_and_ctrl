@@ -60,6 +60,7 @@ Hopeful Vigil | scry | on a triggered row that is not the card's enters effect, 
 Hopeless Nightmare | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Hyperion's Atomic Vision | scry | the text makes it conditional or optional
 In the Darkness Bind Them | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Ingenious Mastery | scry | the text makes it conditional or optional
 Insectoid Exterminator | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Iron-Fist Pulverizer | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Jace's Sanctum | scry | on a triggered row that is not the card's enters effect, which nothing prices
