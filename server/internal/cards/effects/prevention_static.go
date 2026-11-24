@@ -67,6 +67,11 @@ const (
 	// any permanent on the battlefield the static's controller controls
 	// except the one with the static (The Wanderer, #5948).
 	ToOtherPermanentsYouControl
+	// ToAttackingCreaturesYouControl is "to attacking creatures you
+	// control": an attacking creature (CR 506.4) on the battlefield the
+	// static's controller controls, read as the damage would be dealt
+	// (Iroas, God of Victory).
+	ToAttackingCreaturesYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -254,6 +259,9 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 	case ToOtherPermanentsYouControl:
 		c, ok := g.LookupCardForEffect(target)
 		return ok && target != src.InstanceID && c.Controller == src.Controller && g.Battlefield.Contains(target)
+	case ToAttackingCreaturesYouControl:
+		c, ok := g.LookupCardForEffect(target)
+		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target) && c.AttackingTarget != uuid.Nil
 	}
 	return false
 }

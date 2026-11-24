@@ -450,6 +450,12 @@ type GameSnapshot struct {
 	// whose loyalty abilities may be activated twice this turn. Additive.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyPermanentTwiceThisTurn,omitempty"`
 
+	// LoyaltyPermanentExtraThisTurn and LoyaltyPermanentExtraUsedThisTurn
+	// are Game's (#6100): a permanent's extra loyalty activations granted
+	// and spent this turn. Additive.
+	LoyaltyPermanentExtraThisTurn     map[uuid.UUID]int `json:"loyaltyPermanentExtraThisTurn,omitempty"`
+	LoyaltyPermanentExtraUsedThisTurn map[uuid.UUID]int `json:"loyaltyPermanentExtraUsedThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -727,6 +733,14 @@ type GameSnapshot struct {
 	// two steps, which could not exist before the steps did. No schema
 	// bump.
 	FirstStrikeStepParticipants map[uuid.UUID]bool `json:"firstStrikeStepParticipants,omitempty"`
+
+	// HadToAttack is this combat's record of the creatures that had to
+	// attack (#6098, CR 508.1d): those carrying an attack requirement as
+	// the declaration passed its checkpoint. A file written before it
+	// restores as empty, which reads as "nothing had to attack" — only a
+	// file paused mid-combat after the declaration differs. Additive, no
+	// schema bump.
+	HadToAttack map[uuid.UUID]bool `json:"hadToAttack,omitempty"`
 
 	// LastKnownBattlefield is CR 603.10 LKI. Empty in steady state —
 	// entries live for the duration of one LTB-emitting mutation —
@@ -1124,6 +1138,10 @@ type cardSnapshot struct {
 	// unstamped threshold sorts at the permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
+	// CommanderColor is Card.CommanderColor (CR 903.4b, #5948). Additive
+	// within the version; absent means no colour was chosen, which is
+	// every card in every file written before the choice existed.
+	CommanderColor string `json:"commanderColor,omitempty"`
 	// IsCompanion is Card.IsCompanion (ADR 0172 §4). Additive within
 	// v8; absent means not a companion, which is every card in every
 	// file written before companions could be seated. An older binary
@@ -1238,6 +1256,12 @@ type cardSnapshot struct {
 	// a restore that lost it would leave a Cavern of Souls producing
 	// mana for a tribe nobody named.
 	NamedTribe string `json:"namedTribe,omitempty"`
+	// HauntedID, HauntedEpoch and HauntingEpoch are Card's haunt link
+	// (#6083, haunt.go). Additive within the version and absent when
+	// there is no link, which is every card in an earlier file.
+	HauntedID     *uuid.UUID `json:"hauntedId,omitempty"`
+	HauntedEpoch  int        `json:"hauntedEpoch,omitempty"`
+	HauntingEpoch int        `json:"hauntingEpoch,omitempty"`
 	// ChosenColor is the "as this enters, choose a color" answer
 	// (#742). Carried for NamedTribe's reason: a player made it and
 	// nothing can re-derive it.
@@ -1299,6 +1323,12 @@ type cardSnapshot struct {
 	// for ChosenPermanent's reason: a player chose it and nothing can
 	// re-derive it. Old snapshots have no key and read "none chosen".
 	ChosenCard *ObjectRef `json:"chosenCard,omitempty"`
+	// Notes are the words this permanent's abilities noted for it
+	// (#6097): Long List of the Ents' creature types, Day of the Moon's
+	// names. Carried for ChosenCard's reason: a player chose them and
+	// nothing can re-derive them. Old snapshots have no key and read
+	// "nothing noted".
+	Notes []string `json:"notes,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -1533,8 +1563,11 @@ type cardSnapshot struct {
 	PhaseInBarredBy    uuid.UUID `json:"phaseInBarredBy,omitempty"`
 	PhaseInBarredEpoch int       `json:"phaseInBarredEpoch,omitempty"`
 	PhaseInBarredFor   uuid.UUID `json:"phaseInBarredFor,omitempty"`
-	PhasedOutIndirect  bool      `json:"phasedOutIndirect,omitempty"`
-	TapOnPhaseIn       bool      `json:"tapOnPhaseIn,omitempty"`
+	// #6095: The Pandorica's "for as long as ~ remains tapped" form of
+	// the bar. Additive; absent on every card no such effect names.
+	PhaseInBarredWhileTapped bool `json:"phaseInBarredWhileTapped,omitempty"`
+	PhasedOutIndirect        bool `json:"phasedOutIndirect,omitempty"`
+	TapOnPhaseIn             bool `json:"tapOnPhaseIn,omitempty"`
 
 	// ManaAbilityCount / ActivatedAbilityCount record that the card
 	// HAD intrinsic ability closures, so restore can tell the
@@ -1852,6 +1885,10 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileAndReturn is Feather, the Redeemed's mark: exile the resolving
+	// spell and return it to its controller's hand at the beginning of the
+	// next end step. Carried for the reason ExileWithCounter is.
+	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
 	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
 	// resolving spell with this many time counters and give it suspend.
 	// Carried for the reason ExileWithCounter is.
@@ -2688,6 +2725,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.AttacksDeclared = g.attacksDeclared
 	s.CombatHadAttackers = g.combatHadAttackers
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	s.HadToAttack = copyBoolMap(g.hadToAttack)
 	cen := &s.Continuations
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
@@ -2745,6 +2783,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
+	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
+	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
@@ -3195,6 +3235,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderColor:           c.CommanderColor,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
 		AstrotoriumBack:          c.AstrotoriumBack,
@@ -3226,6 +3267,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Surveilled:               c.Surveilled,
 		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
+		HauntedID:                uuidPtrOrNil(c.HauntedID),
+		HauntedEpoch:             c.HauntedEpoch,
+		HauntingEpoch:            c.HauntingEpoch,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -3252,6 +3296,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
 		ChosenCard:               objectRefPtr(c.ChosenCard),
+		Notes:                    append([]string(nil), c.Notes...),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -3292,6 +3337,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PhaseInBarredBy:          c.PhaseInBarredBy,
 		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
 		PhaseInBarredFor:         c.PhaseInBarredFor,
+		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -3458,6 +3504,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
@@ -3990,6 +4037,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.attacksDeclared = s.AttacksDeclared
 	g.combatHadAttackers = s.CombatHadAttackers
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
+	g.hadToAttack = copyBoolMap(s.HadToAttack)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
 	g.Stack = restoreZone(s.Stack, ZoneStack)
@@ -4114,6 +4162,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
+	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
+	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
@@ -4369,6 +4419,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		CommanderColor:           c.CommanderColor,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
 		AstrotoriumBack:          c.AstrotoriumBack,
@@ -4399,6 +4450,9 @@ func restoreCard(c *cardSnapshot) Card {
 		Surveilled:               c.Surveilled,
 		Milled:                   c.Milled,
 		SuspendGranted:           c.SuspendGranted,
+		HauntedID:                uuidOrNil(c.HauntedID),
+		HauntedEpoch:             c.HauntedEpoch,
+		HauntingEpoch:            c.HauntingEpoch,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
@@ -4425,6 +4479,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
 		ChosenCard:               objectRefValue(c.ChosenCard),
+		Notes:                    append([]string(nil), c.Notes...),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -4465,6 +4520,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PhaseInBarredBy:          c.PhaseInBarredBy,
 		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
 		PhaseInBarredFor:         c.PhaseInBarredFor,
+		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
 		TapOnPhaseIn:             c.TapOnPhaseIn,
 		StartingDefense:          c.StartingDefense,
@@ -4678,6 +4734,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,

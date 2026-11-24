@@ -68,6 +68,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
   - ["Activates a mana ability of each land" (ADR 0200, #3952)](#activates-a-mana-ability-of-each-land-adr-0200-3952)
   - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
+  - [Secret choices, numbers and guesses (ADR 0180 amendment 2026-11-24, #5948)](#secret-choices-numbers-and-guesses-adr-0180-amendment-2026-11-24-5948)
   - ["Reveals their hand. You choose a … card from it" (ADR 0116, #2078)](#reveals-their-hand-you-choose-a--card-from-it-adr-0116-2078)
   - [Adding a `PendingChoiceKind` (#730, #794)](#adding-a-pendingchoicekind-730-794)
   - [Cumulative upkeep (#567, CR 702.24)](#cumulative-upkeep-567-cr-70224)
@@ -1341,6 +1342,7 @@ func init() {
 | "until your next turn" | `DurationUntilYourNextTurn(ctx, player)` | as that player's next turn begins, before untap — and when a departed player's turn *would have* begun (CR 800.4m) |
 | "until your next upkeep" | `DurationUntilYourNextUpkeep(ctx, player)` | as that player's next upkeep step begins, after untap and before the upkeep's triggers go on the stack (CR 503.1a); a second upkeep in one turn ends it, a skipped one doesn't, and a departed player's ends as their turn *would have* begun (CR 800.4m) (#5737) |
 | "this turn and next turn" | `DurationThisTurnAndNextTurn(ctx)` | at the cleanup step of the turn after this one, whoever takes it: two turns, never a round, and an extra turn taken right after this one is the next turn (CR 500.7, 514.2) (#5718) |
+| "until end of combat on your next turn" | `DurationUntilEndOfCombatOnYourNextTurn(ctx, player)` | as the first combat phase of that player's next turn ends, or as that turn moves past a skipped combat (CR 511.3); any later turn of theirs ends it too (#6093) |
 | "for as long as ~ remains on the battlefield" / "for as long as you control ~" | `DurationWhileSourceRemains(ctx, src)` / `DurationWhileYouControlSource(ctx, src, p)` | when the condition goes false, checked at the top of every layer pass (CR 611.2b) |
 | "this combat" / "until end of combat" | `DurationUntilEndOfCombat(ctx)` (second return false outside a combat phase: register nothing) | as the end of combat step ends, or an effect ends the phase (CR 511.3, 724.2d); an additional combat phase is a different combat (#2027) |
 | no duration printed at all | `game.IndefiniteDuration()` | never (CR 611.2a) |
@@ -5054,6 +5056,12 @@ battlefield unattached. With nothing attached the ability can't be activated. A 
 `Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
 the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
 
+`Plus(ManaCost("{R}{W}"), UnattachThisEquipment())` is Sunforger's "{R}{W}, Unattach this Equipment:": the ability's own
+source, an Equipment, is the thing unattached (`game.AbilityCost.UnattachThis`, paid at announce through
+`UnattachForEffect`, so a "becomes unattached" watcher sees it). It names no pick. Pair it with
+`Condition: SourceAttachedToACreature()`: an Equipment attached to nothing can't pay it (CR 118.3), and the engine
+refuses the activation too.
+
 ### Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)
 
 `Plus(ManaCost("{1}"), TapCost(), TapTheGrantor())` in an `AbilityGrant` bundle is Fishing Pole's equipped creature
@@ -5894,6 +5902,13 @@ as the cost is paid. Nothing is recorded on `ctx.Exiled()`. A face-down
 pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
+
+**"Put a creature card exiled with <this> into its owner's graveyard"
+(#6092):** `ProcessCardExiledWithThis(label, match)` — Shelob, Dread
+Weaver. The processing component with `ExileCost.ExiledWithSource`: the
+picks are the cards exiled WITH the paying object (`Card.ExiledWith`
+against the source as it is now, CR 607.2a, 400.7), whoever owns them,
+and each still goes to its owner's graveyard.
 
 **"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
 composed with `Plus` — Synthesis Pod is
@@ -10295,6 +10310,24 @@ every spell-copy door (See Double, ADR 0043 amendment).
 trigger is declared and again at the top of the `Effect`; the second read
 is the one a response can change (CR 603.4).
 
+### Secret choices, numbers and guesses (ADR 0180 amendment 2026-11-24, #5948)
+
+"Each opponent secretly chooses a number", "each player secretly chooses a
+creature they control and a creature they don't control", "an opponent
+guesses which number you chose": write `effects.SecretChoices{Options or
+Words, Asks, Then, Carry}.Apply(ctx)`. Each `game.VoteAsk` is one question to
+one player: `Allowed` (option indices), `Relation` (`game.VoteAskControls` /
+`game.VoteAskDoesNotControl`) or `Number: &game.VoteNumber{…}`. Every answer
+is hidden from every other seat until the last is in; then they are revealed
+together and `Then` (an `effects.VoteResultThen("secret/<card>", …)`) runs,
+reading each ask's answer with `r.AnswerTo(i)` (a number is `Option ==
+game.VoteNumberIndex`, value in `Number`). Bot hints (`ForController`,
+`ForOpponents`) are public: never build them from a hidden card. Precedents:
+Call to the Void, The Toymaker's Trap, Gollum, Scheming Guide, Itazura,
+Lingering Wick. A per-object list a later ability reads ("a number that
+hasn't been chosen") is `Game.AddNoteForEffect` / `NotesForEffect`, shown on
+the card as `CardView.notes`.
+
 ### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
 
 "Target player reveals their hand. You choose a nonland card from it.
@@ -11792,6 +11825,9 @@ A spell that takes the turn and then puts itself back in the library
 says "if this would be put into a graveyard from anywhere, shuffle it
 into its owner's library instead" (Nexus of Fate, Blightsteel Colossus)
 declares `ShuffleIntoOwnersLibraryInstead(label)` in `Replacements`.
+A replacement that says "put it on the bottom of … library instead" (Wheel of Sun and
+Moon) sets `ev.NewZone = ZoneLibrary` and `ev.PutOnLibraryBottom = true` in its `Replace`; the card is placed
+at the bottom once it has landed, by either landing path, with no shuffle.
 A spell file that moves its own card (Beacon, Rise of the Eldrazi's
 "Exile Rise of the Eldrazi") goes in the `spells` list of
 `TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
@@ -14465,9 +14501,14 @@ field, not a closure.
 
 Three things to know:
 
-- **Not a reveal.** "You may reveal this card from your opening hand. If you
-  do, at the beginning of the first upkeep, …" (the Chancellors) is a
-  different shape — it arms a delayed trigger — and has no slot yet.
+- **A reveal is its own constructor.** "You may reveal this card from your
+  opening hand. If you do, at the beginning of your first upkeep, …"
+  (Devourer of Destiny) is `OpeningHand:
+  RevealFromOpeningHandForYourFirstUpkeep(label, body)`, `body` a registered
+  delayed-trigger body (ADR 0133 amendment 2026-11-24). The card stays in
+  hand, revealed; the trigger fires in its owner's first upkeep, the
+  starting player's included. "The first upkeep" of any player (the
+  Chancellors) has no constructor yet.
 - **The question is private.** It names a card in a hidden zone, so the
   view strips its words from every viewer but the chooser
   (`PendingChoice.private`, wire `private_text`). The table sees who the
@@ -15551,3 +15592,21 @@ Static:            []game.StaticAbility{DomainPT("Domain — … power and tough
 alone). A count read as an ability resolves calls `DomainCount(g, controller)` directly (Sunbathing Rootwalla). Never write a
 private copy. Cards: Leyline Binding, Fblthp, Knows the Way, Jodah's Codex, Llanowar Greenwidow, Radha's Firebrand,
 Yavimaya Sojourner, Sunbathing Rootwalla, Territorial Maro, Nishoba Brawler.
+
+### "If this is your commander, choose a color before the game begins" (#5948, CR 903.4b)
+
+The Prismatic Piper, Faceless One and Clara Oswald print "If <this> is your
+commander, choose a color before the game begins. <This> is the chosen
+color." Declare it with `ChoosesCommanderColor: true` on the `Spec`; nothing
+else is needed for that sentence.
+
+- **Deck construction** (`internal/deck/commander_color.go`) reads the printed
+  sentence and accepts a deck whose cards need one colour outside the other
+  commanders' identity for each such commander: that colour is the choice.
+- **As the game begins** (`game/commander_color.go`), when the mulligan window
+  closes and before the opening-hand actions, the engine records that colour,
+  or, for a deck that shows none, asks the owner with an ordinary
+  `choose_color` prompt. The answer is `Card.CommanderColor`, kept in every
+  zone, and the card is that colour (a CDA in the printed colour baseline) and
+  that colour joins its commander's colour identity.
+- A card that is not the commander, or a copy of one, is colourless.

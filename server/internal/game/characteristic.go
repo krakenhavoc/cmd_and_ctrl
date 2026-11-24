@@ -761,7 +761,13 @@ func countKeywords(xs []string) map[string]int {
 // colour of its cost. Scryfall's own empty list for a devoid card was
 // indistinguishable from "not stamped", which is how every devoid card
 // came to be the colour of its pips.
-func printedColors(c Card) []string { return printedColorsOf(c.Colors, c.ManaCost, c.printsDevoid()) }
+func printedColors(c Card) []string {
+	// CR 903.4b (commander_color.go).
+	if cda := c.commanderColorCDA(); cda != "" {
+		return []string{cda}
+	}
+	return printedColorsOf(c.Colors, c.ManaCost, c.printsDevoid())
+}
 
 // printedColorsOf is printedColors on the fields it reads, which is
 // the shape the printed-characteristic builder (printedInputs) has
@@ -867,6 +873,11 @@ func effectiveOf(c *Card) Characteristic {
 	// into the cache.
 	for _, kw := range keywordCounterTokens(c) {
 		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
+	}
+	// #6088, CR 613.1e: and the colour the stack step set on a spell,
+	// the same answer EffectiveColors gives.
+	if c.stackColored {
+		ch.Colors = append([]string(nil), c.stackColors...)
 	}
 	// ADR 0107 §3: and a keyword the stack step gave a spell, the same
 	// list forEachAbilityToken reads, so the stack view shows the

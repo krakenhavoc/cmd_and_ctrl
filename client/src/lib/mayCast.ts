@@ -91,6 +91,10 @@ function whereItStays(declineLabel: string | undefined): string {
     // #5457: a card in another player's hand (Silent-Blade Oni).
     case "Leave it in their hand":
       return "it stays in their hand";
+    // #6091: an offer over cards in more than one zone (Anrakyr the
+    // Traveller's hand or graveyard).
+    case "Leave it where it is":
+      return "it stays where it is";
     default:
       return "it stays in exile";
   }

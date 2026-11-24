@@ -210,6 +210,14 @@ type AttackTargetRestriction struct {
 	// itself, yet a later "loses all abilities" (CR 613.1f) does not take
 	// it, so dropSelfAttackTargetRestrictions keeps it.
 	NotAnAbility bool `json:",omitempty"`
+	// PowerAtMostHandOf, when set, forbids attacking anything while the
+	// attacking creature's power is greater than the number of cards in
+	// this player's hand: Ensnaring Bridge's "Creatures with power
+	// greater than the number of cards in your hand can't attack" (#6087,
+	// CR 508.1c). The player is the Bridge's controller, written by the
+	// layer pass; the power (CR 208.1, layers and counters) and the hand
+	// are both read live at declaration (attack_power_hand.go).
+	PowerAtMostHandOf uuid.UUID `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -229,7 +237,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
 		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
-		r.NotAnAbility == o.NotAnAbility
+		r.NotAnAbility == o.NotAnAbility && r.PowerAtMostHandOf == o.PowerAtMostHandOf
 }
 
 // inactiveLastTurnRefuses is the PlayerMustHaveActedLastTurn clause:
@@ -341,6 +349,15 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 		}
 		return s + "."
 	}
+	if e.Why != "" {
+		// #6087: "Grizzly Bears can't attack: its power (2) is greater
+		// than the number of cards in Alice's hand (1) (Ensnaring Bridge)."
+		s := e.AttackerName + " can't attack: " + e.Why
+		if e.Restriction.SourceName != "" && e.Restriction.Source != e.Attacker {
+			s += " (" + e.Restriction.SourceName + ")"
+		}
+		return s + "."
+	}
 	if e.Protected != "" {
 		s := e.AttackerName + " can't attack " + e.Protected + " or planeswalkers " + e.Protected + " controls"
 		if e.Restriction.NotPlayerOnly {
@@ -376,6 +393,9 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UUID) (bool, uuid.UUID, string) {
 	if !r.bindsAttackerLocked(g, attacker) {
 		return false, uuid.Nil, ""
+	}
+	if why := r.powerOverHandReasonLocked(g, attacker); why != "" {
+		return true, uuid.Nil, why
 	}
 	if r.ownerRefuses(g, attacker, target) {
 		return true, uuid.Nil, ""
@@ -514,6 +534,10 @@ func (g *Game) attackTargetRestrictionRefusalLocked(attacker *Card, target uuid.
 			if c := findBattlefieldCard(g, target); c != nil {
 				err.TargetName = c.Effective().Name
 			}
+		} else if why != "" {
+			// #6087: a clause about the attacker alone, whatever it
+			// is pointed at.
+			err.Why = why
 		}
 		return err
 	}
@@ -569,6 +593,15 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 				Why:        "it's a " + PermanentQueriesNoun(r.OnlyAttackersMatching),
 				PlayerOnly: r.NotPlayerOnly,
 			})
+		}
+		if why := r.powerOverHandReasonLocked(g, c); why != "" {
+			// #6087: every opponent, while the power exceeds the hand.
+			for _, p := range g.Seats {
+				if p == nil || p.Eliminated || p.ID == c.Controller {
+					continue
+				}
+				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r, Why: why})
+			}
 		}
 		if r.PlayerMustHaveActedLastTurn {
 			// #1997: a player clause, not a defending-player one.

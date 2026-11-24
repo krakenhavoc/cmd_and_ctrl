@@ -82,6 +82,7 @@ const (
 	resolutionExitAdventure     = "adventure"
 	resolutionExitOmen          = "omen"
 	resolutionExitExilePlot     = "exile-plot"
+	resolutionExitExileReturn   = "exile-return"
 	resolutionExitExileLinked   = "exile-linked"
 	// resolutionExitExileSuspend is Gandalf of the Secret Fire's exit. The
 	// number of time counters rides the kind itself, "exile-suspend:3", so
@@ -133,6 +134,11 @@ func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 	case resolutionExitExilePlot:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		return KeyedTail{Ref: exiledAndPlottedTail, Player: controller, Carry: []uuid.UUID{cardID}}
+	case resolutionExitExileReturn:
+		// Feather, the Redeemed: exile it, and return it to its controller's
+		// hand at the beginning of the next end step, once it is there.
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		return KeyedTail{Ref: exiledAndReturnTail, Player: controller, Carry: []uuid.UUID{cardID}}
 	case resolutionExitExileLinked:
 		// Forger's Foundry: exile it, "exiled with" the object that offered
 		// the exile (the route stamps the link as the card lands).
@@ -265,6 +271,10 @@ func (g *Game) resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 	if item != nil && !item.IsCopy && item.ExileAndPlot {
 		// Lilah: exile it, and it becomes plotted once it is there.
 		out = append(out, exit("Exile it, and it becomes plotted", resolutionExitExilePlot))
+	}
+	if item != nil && !item.IsCopy && item.ExileAndReturn {
+		// Feather: exile it; it returns to hand at the next end step.
+		out = append(out, exit("Exile it, and return it to your hand at the beginning of the next end step", resolutionExitExileReturn))
 	}
 	if item != nil && !item.IsCopy && item.ExileAndSuspend > 0 {
 		// Gandalf of the Secret Fire: exile it with time counters, and it

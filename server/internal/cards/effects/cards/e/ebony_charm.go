@@ -30,13 +30,7 @@ func init() {
 		Modes: effects.ChooseOne(
 			// The gain waits for a prompt the life loss asks (a CR 616 order; CR 608.2c, #4155).
 			effects.ModeSteps("Target opponent loses 1 life and you gain 1 life.", effects.TargetPlayer("target opponent", effects.Opponent()),
-				effects.Instruction(func(ctx *effects.Context) error {
-					t, ok := effects.ModeTarget(ctx, ctx.Occurrence())
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -1)
-				}),
+				effects.ModeTargetPlayerLosesLife(1),
 				effects.Instruction(func(ctx *effects.Context) error {
 					t, ok := effects.ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetPlayer {

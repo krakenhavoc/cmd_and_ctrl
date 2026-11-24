@@ -369,6 +369,16 @@ type Game struct {
 	// turn boundary and forgotten when the object leaves the battlefield.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool
 
+	// LoyaltyPermanentExtraThisTurn and LoyaltyPermanentExtraUsedThisTurn
+	// are "you may activate [this permanent]'s loyalty ability two more
+	// times this turn" (Comet, Stellar Pup, #6100): per permanent, the
+	// extra activations granted this turn beyond CR 606.3's limit, and how
+	// many of them it has spent. Keyed by instance ID, flushed at the turn
+	// boundary and forgotten when the object leaves the battlefield.
+	// loyalty_limit_more.go.
+	LoyaltyPermanentExtraThisTurn     map[uuid.UUID]int
+	LoyaltyPermanentExtraUsedThisTurn map[uuid.UUID]int
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped
@@ -853,6 +863,14 @@ type Game struct {
 	// inside it, and a record that was dropped there would let a
 	// first-striker hit twice.
 	firstStrikeStepParticipants map[uuid.UUID]bool
+
+	// hadToAttack is THIS combat's CR 508.1d record (#6098,
+	// had_to_attack.go): the active player's creatures that carried an
+	// attack requirement as the attack declaration passed its
+	// checkpoint. Firkraag, Cunning Instigator's "if that creature had
+	// to attack this combat" reads it. Cleared with the rest of combat
+	// and carried by Clone / RestoreFrom and the persisted snapshot.
+	hadToAttack map[uuid.UUID]bool
 
 	// heldCombatDamage is a combat damage step's damage waiting on its
 	// damage-assignment prompts (#3665, CR 510.2): nothing of the step

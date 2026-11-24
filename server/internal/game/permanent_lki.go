@@ -216,6 +216,11 @@ type PermanentInfo struct {
 	// Processor is sacrificed in response to its own ability (CR 608.2h).
 	ChosenNumber int `json:"chosenNumber,omitempty"`
 
+	// Notes are the words its abilities had noted for it (Card.Notes,
+	// #6097), as it last existed: Day of the Moon's names still goad when
+	// the Saga has left in response to its own chapter (CR 608.2h).
+	Notes []string `json:"notes,omitempty"`
+
 	// LinkedPermanent is the permanent a linked ability of it affected
 	// (Card.LinkedPermanent, CR 607.2e), as it last existed: The Best of
 	// Both Worlds' chapter III still names the Borg its chapter I
@@ -314,6 +319,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		SecretChoice:    c.SecretChoice,
 		NamedTribe:      c.NamedTribe,
 		ChosenNumber:    c.ChosenNumber,
+		Notes:           append([]string(nil), c.Notes...),
 		LinkedPermanent: objectRefPtr(c.LinkedPermanent),
 		ManaValue:       c.ManaValue(),
 		RingBearer:      IsRingBearerOf(*c, c.Controller),

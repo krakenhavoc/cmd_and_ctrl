@@ -342,3 +342,14 @@ The first batch of plane cards (the fourteen Doctor Who planes, A–M) settles t
    - `game.PutCountersOnFaceUpPlanarCardForEffect`: counters on the face-up card (Aplan Mortarium's exposure counters). The planar zones are outside the card index, so the ordinary counter door never reaches them; a planeswalk away clears them (CR 901.7a).
    - `effects.TimeTravel` (CR 701.56a, `option-pick/time-travel`): one keyed option pick per permanent with a time counter and suspended card, add, remove or leave.
 5. **Coverage.** The census gains the planar line, "planes and phenomena in the card database with a catalog row: N of M", whose M is `coverage/planar_cards.txt` (151 rows: 139 planes, 12 phenomena), checked against the dump by `TestPlanarCardListMatchesTheDump` when the dump is present.
+
+## Amendment 2026-11-24 (#6096): a replacement of planeswalking
+
+Susan Foreman: "If you would planeswalk, instead look at the top two cards of your planar deck, put one on the bottom of
+your planar deck and the other on top, then planeswalk." It is a permanent's static, declared as plain data
+(`Spec.GameActionReplacements` with `game.ReplacePlaneswalkOrderTopTwo`) and read in `PlaneswalkForEffect`, which every
+planeswalk reaches (CR 701.31c), for permanents the planeswalking player controls. The player becomes a knower of the
+top two cards of the planar deck (the communal one, CR 901.15c) and answers a keyed option pick
+(`planechase/order-top-two`, so a table waiting on it is a restore point): the chosen card goes to the bottom, the
+other stays on top, and the planeswalk goes on to it. Each source applies once (CR 614.5), in turn. With fewer than two
+cards in the planar deck there is nothing to order and the planeswalk is not paused.

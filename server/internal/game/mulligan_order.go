@@ -254,6 +254,9 @@ func (g *Game) settleMulliganLocked() {
 		return
 	}
 	g.MulligansOpen = false
+	// CR 903.4b, 103.2c: each CR 903.4b commander's colour is revealed,
+	// or asked for, before the opening-hand actions (commander_color.go).
+	g.offerCommanderColorChoicesLocked()
 	// CR 103.6: the starting hands are final, so the seats holding a
 	// card that lets them begin the game with it on the battlefield are
 	// asked, in turn order from the starting player (ADR 0133). The

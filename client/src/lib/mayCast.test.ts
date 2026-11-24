@@ -74,6 +74,9 @@ describe("keywordCastWords (#4243, #4250)", () => {
     expect(keywordCastWords("paid_cast", "Leave it in the graveyard")?.ifNot).toBe(
       "it stays in the graveyard",
     );
+    expect(keywordCastWords("paid_cast", "Leave it where it is")?.ifNot).toBe(
+      "it stays where it is",
+    );
   });
 
   it("tells the exile-until shape's two declines apart by the server's label", () => {

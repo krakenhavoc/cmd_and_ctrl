@@ -205,6 +205,51 @@ func (g *Game) BeginDeclarationControlForEffect(dc DeclarationControl) bool {
 	return true
 }
 
+// CatalogAttackingPlayerChoosesBlocks reports whether a battlefield
+// permanent has the printed "The attacking player chooses how each creature
+// blocks each combat" (Invasion Plans, S82 older sets #5462), keyed by
+// CatalogAbilityKey. Populated from effects.Spec.AttackingPlayerChoosesBlocks.
+// A nil hook finds none.
+var CatalogAttackingPlayerChoosesBlocks func(key string) bool
+
+// staticBlockDeclarationLocked is the declaration control a permanent's
+// static ability makes while it is on the battlefield: the attacking (active)
+// player chooses how each creature blocks, in every combat of every turn. It
+// is not stored; it exists while the permanent does and judges the active
+// player as each declaration comes up, so a permanent that leaves ends it at
+// once. Judged through catalogAbilityKeyOf, so one that lost its abilities
+// does nothing (CR 613.1f).
+//
+// Caller must hold g.mu.
+func (g *Game) staticBlockDeclarationLocked() (DeclarationControl, bool) {
+	if g.Battlefield == nil || CatalogAttackingPlayerChoosesBlocks == nil || g.State != StateActive {
+		return DeclarationControl{}, false
+	}
+	active := g.activeSeatIDLocked()
+	if active == uuid.Nil || !g.playerInGameLocked(active) {
+		return DeclarationControl{}, false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if key := catalogAbilityKeyOf(c); key != "" && CatalogAttackingPlayerChoosesBlocks(key) {
+			return DeclarationControl{Declarer: active, Source: c.InstanceID, SourceName: c.Name, Blockers: true, TurnSeq: g.Turn.Seq}, true
+		}
+	}
+	return DeclarationControl{}, false
+}
+
+// noDeclarationControlsLocked reports that neither a stored record nor a
+// static one is live.
+//
+// Caller must hold g.mu.
+func (g *Game) noDeclarationControlsLocked() bool {
+	if len(g.DeclarationControls) > 0 {
+		return false
+	}
+	_, ok := g.staticBlockDeclarationLocked()
+	return !ok
+}
+
 // declarationRecordLocked is the newest live record that chooses
 // attackers (attack) or blockers (!attack) this turn.
 //
@@ -218,6 +263,9 @@ func (g *Game) declarationRecordLocked(attack bool) (DeclarationControl, bool) {
 		if (attack && r.Attackers) || (!attack && r.Blockers) {
 			return r, true
 		}
+	}
+	if !attack {
+		return g.staticBlockDeclarationLocked()
 	}
 	return DeclarationControl{}, false
 }
@@ -301,7 +349,7 @@ func (g *Game) attackDeclinedLocked(id uuid.UUID) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) declarationControlOverLocked(p uuid.UUID) (DeclarationControl, bool) {
-	if len(g.DeclarationControls) == 0 || g.State != StateActive {
+	if g.noDeclarationControlsLocked() || g.State != StateActive {
 		return DeclarationControl{}, false
 	}
 	switch g.Turn.Step {
@@ -329,7 +377,7 @@ func (g *Game) declarationControlOverLocked(p uuid.UUID) (DeclarationControl, bo
 //
 // Caller must hold g.mu.
 func (g *Game) declarationControlsLiveLocked() []PlayerControl {
-	if len(g.DeclarationControls) == 0 {
+	if g.noDeclarationControlsLocked() {
 		return nil
 	}
 	var out []PlayerControl

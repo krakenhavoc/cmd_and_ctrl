@@ -25,14 +25,7 @@ import (
 //
 // No simplification.
 func init() {
-	addEnchantment := func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-		for _, t := range c.Types {
-			if t == "Enchantment" {
-				return
-			}
-		}
-		c.Types = append(c.Types, "Enchantment")
-	}
+	addEnchantment := effects.AddTheEnchantmentTypeOnce
 	effects.Register(effects.Room(effects.RoomSpec{
 		OracleID:     "c8abde48-a07a-42a0-a43b-c357e6d9cad4",
 		Name:         "Secret Arcade // Dusty Parlor",

@@ -45,6 +45,9 @@ type permissionCastGains struct {
 	anyPermanent bool
 	// untilEndOfTurn limits the keyword and ability gains to this turn.
 	untilEndOfTurn bool
+	// exileInsteadOfLeaving is the permission's GainsExileInsteadOfLeaving
+	// (#6091, The Eighth Doctor).
+	exileInsteadOfLeaving bool
 }
 
 // permissionCastGainsOf copies the riders out of the permission the
@@ -66,6 +69,8 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 
 		anyPermanent:   p.EntersWithCountersPermanent,
 		untilEndOfTurn: p.GainsUntilEndOfTurn,
+
+		exileInsteadOfLeaving: p.GainsExileInsteadOfLeaving,
 	}
 }
 
@@ -116,11 +121,15 @@ func (g *Game) markPermissionEntryCountersLocked(cardID uuid.UUID, gains permiss
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantGainsForCastLocked(cardID uuid.UUID, gains permissionCastGains) {
-	if len(gains.keywords) == 0 && len(gains.abilities) == 0 && len(gains.subtypes) == 0 {
+	if len(gains.keywords) == 0 && len(gains.abilities) == 0 && len(gains.subtypes) == 0 && !gains.exileInsteadOfLeaving {
 		return
 	}
 	c, ok := g.LookupCardForEffect(cardID)
 	if !ok || !c.IsPermanent() {
+		return
+	}
+	g.grantExileInsteadOfLeavingForCastLocked(cardID, gains)
+	if len(gains.keywords) == 0 && len(gains.abilities) == 0 && len(gains.subtypes) == 0 {
 		return
 	}
 	var mods []Mod

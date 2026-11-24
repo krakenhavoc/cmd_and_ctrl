@@ -98,6 +98,9 @@ var untilEndOfTurnExempt = map[string]string{
 	// The target is a card in a graveyard, which a permanent direction
 	// cannot describe: it gains embalm until end of turn.
 	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
+	// The same: the target is a legendary creature card in a graveyard, and
+	// it gains escape until end of turn (S82 GAP2 batch 2).
+	"Confession Dial": "the target is a graveyard card, not a permanent",
 	// The target is the opponent given an emblem; the "until end of turn" is
 	// the emblem's, about the creatures that attack them.
 	"Garruk, Apex Predator": "the target is an opponent given an emblem",
@@ -108,6 +111,11 @@ var untilEndOfTurnExempt = map[string]string{
 	// removing swampwalk, first strike or a landwalk is a harm to the target.
 	"Urborg":     "removes an ability from its target; the check reads 'loses' as a benefit",
 	"Hammerheim": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Secret Lair Drop partner commanders (S82 OLD batch 14): the target is a
+	// player dealt damage; the "until end of turn" is the source's own
+	// indestructible, not a change to the target.
+	"Ellie, Vengeful Hunter": "the target is a player dealt damage; the until end of turn is the source's",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog

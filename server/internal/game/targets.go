@@ -898,6 +898,19 @@ type TargetSpec struct {
 	// object admits NOTHING. Build it with effects.WithTheSameManaValueAsIt.
 	ManaValueEqualsEventObject bool
 
+	// MoreCreaturesThanChooser is "target player who controls more
+	// creatures than they do and is their opponent" on a
+	// ChosenByTriggerActor clause, where they are the player who chooses
+	// (Oath of Druids' upkeep player, #6100): a player candidate must be
+	// someone other than the chooser who controls more creatures than the
+	// chooser does. DATA, judged beside PlayerOK in the player walk
+	// (playerChooserAdmits, more_creatures_than_chooser.go), so the legal
+	// set, the announce check (CR 601.2c) and the resolution re-check (CR
+	// 608.2b) are one answer; a walk with no chooser admits nobody.
+	// Meaningless without ChosenByTriggerActor; effects.Register refuses it
+	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
+	MoreCreaturesThanChooser bool
+
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
 	// only on the value copies AnnouncedClauses hands out, like xBound.
@@ -1556,6 +1569,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
+			if !spec.playerChooserAdmits(g, src, p) {
+				continue
+			}
 			out.Players = append(out.Players, p.ID)
 		}
 	}
@@ -1827,6 +1843,9 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		// makes it fizzle without anything else being taught the
 		// rule, exactly as a creature that gains it does.
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
+			return false
+		}
+		if !spec.playerChooserAdmits(g, src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)

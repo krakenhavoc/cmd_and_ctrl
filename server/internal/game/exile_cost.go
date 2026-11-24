@@ -297,6 +297,17 @@ type ExileCost struct {
 	// it becomes (relinkCostExilesLocked); false (no link) for every other
 	// clause, additive.
 	LinkToSource bool
+	// ExiledWithSource narrows a processing clause (From: ZoneExile) to
+	// the cards exiled WITH the object paying the cost (CR 607.2a), and
+	// reads them whoever owns them: Shelob, Dread Weaver's "Put a creature
+	// card exiled with Shelob into its owner's graveyard" (#6092). The
+	// link is Card.ExiledWith against the source object as it is now
+	// (sourceObjectRefLocked), so a Shelob that left and came back is a
+	// new object with no claim on what its earlier self exiled (CR 400.7).
+	// The card still goes to its owner's graveyard, so an owner who has
+	// left the game leaves it unpayable. False is every processing clause
+	// before it ("a card an opponent owns"), additive.
+	ExiledWithSource bool
 
 	// ManaValueAtLeast is the other floor an AnyNumber clause may read:
 	// the chosen cards' total mana value must be this or more. It is
@@ -479,7 +490,7 @@ func (g *Game) exileCostPileLocked(p *Player, cost *ExileCost) *Zone {
 // processedCardLocked). The stack is shared too, and "a spell you
 // control" (ExilesSpell) reads the spell's controller.
 // Caller must hold g.mu.
-func (g *Game) exileCostOwnerOKLocked(playerID uuid.UUID, cost *ExileCost, c *Card) bool {
+func (g *Game) exileCostOwnerOKLocked(playerID, sourceID uuid.UUID, cost *ExileCost, c *Card) bool {
 	if cost.ExilesSpell() {
 		// "A spell you control": a spell's controller is its stack
 		// item's (CR 112.2), whoever owns the card. A face-down spell
@@ -493,6 +504,11 @@ func (g *Game) exileCostOwnerOKLocked(playerID uuid.UUID, cost *ExileCost, c *Ca
 	if c.FaceDown && cost.Match != nil {
 		// No characteristics to read a predicate against (CR 406.3).
 		return false
+	}
+	if cost.ExiledWithSource {
+		// #6092: "exiled with <this>", any owner's card (CR 607.2a).
+		src := PermissionCardRef(g.sourceObjectRefLocked(sourceID))
+		return src.ID != uuid.Nil && c.ExiledWith == src && c.Owner != uuid.Nil && g.playerByIDLocked(c.Owner) != nil
 	}
 	return c.Owner != uuid.Nil && c.Owner != playerID && g.playerByIDLocked(c.Owner) != nil
 }
@@ -521,7 +537,7 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 	var out []uuid.UUID
 	for i := range pile.Cards {
 		c := pile.Cards[i]
-		if c.InstanceID == sourceID || !g.exileCostOwnerOKLocked(playerID, cost, &c) || !cost.Matches(lendCostText(text, c)) {
+		if c.InstanceID == sourceID || !g.exileCostOwnerOKLocked(playerID, sourceID, cost, &c) || !cost.Matches(lendCostText(text, c)) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -629,7 +645,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		if c == nil {
 			return nil, ErrCardNotFound
 		}
-		if !g.exileCostOwnerOKLocked(playerID, cost, c) || !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
+		if !g.exileCostOwnerOKLocked(playerID, sourceID, cost, c) || !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
 		named = append(named, *c)

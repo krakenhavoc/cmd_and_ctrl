@@ -1196,6 +1196,8 @@
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
       chosenNumber={card.chosen_number}
+      commanderColor={card.commander_color}
+      notes={card.notes}
       protection={card.protection}
       riotHaste={card.riot_haste}
       abilityRows={artTile ? card.ability_rows : null}
@@ -1385,6 +1387,8 @@
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
       chosenNumber={card.chosen_number}
+      commanderColor={card.commander_color}
+      notes={card.notes}
       protection={card.protection}
       riotHaste={card.riot_haste}
     />

@@ -740,6 +740,10 @@ export function voteRequest(input: VoteRequestInput): DockRequest {
   };
 }
 
+// SECRET_NUMBER_OPTION is a ballot's option for an answer that is a
+// number (#5948, game.VoteNumberIndex): the number is in `number`.
+export const SECRET_NUMBER_OPTION = -3;
+
 // councilVoteRequest is a rules vote as the seats that are not voting
 // right now see it (ADR 0146): whose ballot it is, and each option's
 // votes so far. Null when `c` is not a ballot or the viewer is its
@@ -762,12 +766,28 @@ export function councilVoteRequest(
   if (v.secret) {
     // ADR 0180: who has voted is public, what they voted for is not.
     // The viewer's wire carries only their own ballots.
-    const mine = (v.ballots ?? []).map((b) => b.option);
+    const own = v.ballots ?? [];
+    const mine = own.map((b) => b.option);
     const voted = v.voted?.length ?? 0;
-    detail = `${voter} is voting in secret · ${voted} voted so far`;
-    if (mine.length > 0) {
-      const what = mine.map((o) => (o >= 0 ? (v.options[o] ?? "?") : (v.abstain ?? "nothing")));
-      detail += ` · you voted for ${what.join(" and ")}, waiting for the others`;
+    // #5948: an answer that is a number (option -3) shows the number.
+    const what = own.map((b) =>
+      b.option === SECRET_NUMBER_OPTION
+        ? String(b.number ?? 0)
+        : b.option >= 0
+          ? (v.options[b.option] ?? "?")
+          : (v.abstain ?? "nothing"),
+    );
+    if (v.choice) {
+      // A secret CHOICE (Prisoner's Dilemma, the #5948 rounds), not a vote.
+      detail = `${voter} is choosing in secret · ${voted} chose so far`;
+      if (what.length > 0) {
+        detail += ` · you chose ${what.join(" and ")}, waiting for the others`;
+      }
+    } else {
+      detail = `${voter} is voting in secret · ${voted} voted so far`;
+      if (what.length > 0) {
+        detail += ` · you voted for ${what.join(" and ")}, waiting for the others`;
+      }
     }
     return voteRequest({
       vote: {
@@ -780,7 +800,7 @@ export function councilVoteRequest(
       viewerID,
       seats,
       tally: v.tally,
-      label: "secret vote",
+      label: v.choice ? "secret choice" : "secret vote",
       detail,
       secret: true,
       secretMine: mine,

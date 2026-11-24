@@ -330,6 +330,13 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 	if reason, source, ok := g.playerActivationBanLocked(activator); ok {
 		return &CantActivateError{Reason: reason, Source: source}
 	}
+	// Revel in Silence: a loyalty ability of a planeswalker, refused to a
+	// player under a granted loyalty ban (CR 606.1).
+	if ability.Loyalty && card.IsPlaneswalker() {
+		if reason, source, ok := g.playerLoyaltyBanLocked(activator); ok {
+			return &CantActivateError{Reason: reason, Source: source}
+		}
+	}
 	// The THIRD source, the one the header promised: a ban with a
 	// duration, a ScopedEffect swept when it ends (#4571, Kang the
 	// Conqueror's "power-up abilities can't be activated" for an extra

@@ -32,13 +32,7 @@ func init() {
 		PrintedKeywords: []string{"first strike", "vigilance"},
 		Triggered: []game.TriggeredAbility{
 			effects.Heroic("Anax and Cymede & Kynaios and Tiro — draw a card; each player may put a land from hand, then each opponent who didn't draws (heroic)",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					if err := (effects.DrawCards{N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return effects.S82GapB21AnaxAsk(ctx, item.Controller)
-				}),
+				effects.DrawThenEachMayPutALand),
 		},
 	})
 }

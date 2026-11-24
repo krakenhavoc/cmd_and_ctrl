@@ -225,6 +225,9 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchMoveOrDiscard
 	case ModShuffleInsteadOfEnteringFromExile:
 		return watchZoneMove
+	case ModCreaturesEnterTappedForOpponents:
+		// #6093: Cone of Cold's timed enters-tapped replacement.
+		return watchZoneMove
 	case ModLandManaIsColor:
 		return watchManaAdded
 	}
@@ -785,6 +788,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return dest == m.Player
 	case ModShuffleInsteadOfEnteringFromExile:
 		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
+	case ModCreaturesEnterTappedForOpponents:
+		return creaturesEnterTappedForOpponentsAppliesLocked(g, e, ev)
 	case ModGainNoLife:
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
@@ -881,6 +886,10 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.NewZone = ZoneLibrary
 		ev.NewZoneOwner = uuid.Nil
 		ev.ShuffleDestinationLibrary = true
+	case ModCreaturesEnterTappedForOpponents:
+		// "Enter tapped" (CR 614.1c): the permanent is tapped as it
+		// enters, so nothing sees it untapped.
+		ev.EntersTapped = true
 	case ModGainNoLife:
 		// "That player gains no life instead": CR 614.10's null
 		// replacement. No EventChangeLife, so "whenever you gain life"

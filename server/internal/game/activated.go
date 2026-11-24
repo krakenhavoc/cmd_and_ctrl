@@ -643,6 +643,17 @@ type AbilityCost struct {
 	// later" made at announce).
 	UnattachEquipment int
 
+	// UnattachThis is "Unattach this Equipment" as a cost (S82 OLD
+	// batch 26, Sunforger's "{R}{W}, Unattach this Equipment:"; CR
+	// 701.3d). The ability's own source is the Equipment that is
+	// unattached, paid at announce with the rest of the cost through
+	// UnattachForEffect, so a "becomes unattached" watcher sees it and
+	// the Equipment stays on the battlefield. A cost is not partially
+	// payable (CR 118.3): an Equipment attached to nothing can't pay it,
+	// so activation is refused then. Battlefield only
+	// (AbilityNeedsPermanentSource). Data, no pick to announce.
+	UnattachThis bool
+
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
 	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
@@ -2045,6 +2056,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateUnattachCostLocked(cardID, srcZone, ab.Cost.UnattachEquipment, params.UnattachIDs); err != nil {
 		return err
 	}
+	if err := g.validateUnattachThisCostLocked(cardID, srcZone, ab.Cost.UnattachThis); err != nil {
+		return err
+	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
 	// else to check: an exert cost can be paid tapped or untapped, and
 	// again after an earlier exert this turn (CR 701.43b).
@@ -2070,12 +2084,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateAbilityWaterbendLocked(playerID, cardID, ab.Cost, params, waterbendBudget); err != nil {
 		return err
 	}
-	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
+	// #6085: "Remove X counters" beside an {X} removes the announced X.
+	counterPay, err := counterPaymentAtX(ab.Cost.RemoveCounters, cardID, CounterCostPayment{
 		SourceIDs: params.CounterSourceIDs,
 		Counts:    params.CounterCounts,
 		Kind:      params.CounterKind,
 		Kinds:     params.CounterKinds,
-	})
+	}, params.XValue)
+	if err != nil {
+		return err
+	}
+	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, counterPay)
 	if err != nil {
 		return err
 	}
@@ -2578,6 +2597,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #4799: the unattach component, at the same point: the Equipment
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)
+	g.payUnattachThisCostLocked(cardID, ab.Cost.UnattachThis)
 	if err := g.payAbilityCostSacrificesLocked(cardID, sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
@@ -3274,7 +3294,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 			short := p.ManaPool.shortfallFor(cost, x, spendCtx, SpendPreserveColors)
 			var read, kinds bool
 			if src := g.findCardByIDLocked(sourceID); src != nil {
-				read, kinds = abilityPaymentRead(*src)
+				read, kinds = g.activationPaymentReadLocked(p.ID, *src)
 			}
 			declared, n, err := settlePaperPayment(short, params.PaperPayment, read, kinds)
 			if err != nil {

@@ -40,9 +40,10 @@ import (
 // reason rebound.go needed no change: spellRebounds asks HasKeyword of
 // the resolving spell, and a granted rebound is in the list it reads.
 //
-// Only ADDING keywords is admitted on a stack pin (stackPinProblem).
-// Nothing in the catalog removes an ability from a spell, sets one's
-// types or colours, or changes its power, so the stack step does not
+// Only ADDING keywords is admitted here (stackPinProblem). A colour set
+// on a spell is the stack step's layer 5 (spell_colors.go, ADR 0104's
+// 2026-11-24 amendment); nothing in the catalog removes an ability from a
+// spell, sets its types or changes its power, so the stack step does not
 // pretend to.
 
 // spellStaticGrant is one battlefield static over spells, bound to the
@@ -156,6 +157,7 @@ func (g *Game) stackKeywordPassLocked() {
 			continue
 		}
 		c.stackGranted = g.spellGrantedKeywordsLocked(c, statics)
+		c.stackColors, c.stackColored = g.spellSetColorsLocked(c)
 	}
 }
 

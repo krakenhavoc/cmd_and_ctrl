@@ -529,6 +529,8 @@
                 chosen color: {chip.label}
               {:else if chip.kind === "tribe"}
                 chosen type: {chip.label}
+              {:else if chip.kind === "commander-color"}
+                commander's color: {chip.label}
               {:else}
                 <!-- option/name labels already carry their own prefix
                      ("Mode: Temur", "Named: Sol Ring") — see
