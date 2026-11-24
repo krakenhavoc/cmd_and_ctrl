@@ -277,6 +277,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP2 batch 07 (#5948).
 	"Fires of Mount Doom": "2 damage to one target creature, the Equipment on it destroyed, and 2 damage to each PLAYER when a card is played: no creature but the target is touched",
+
+	// S82 older sets batch 35 (#5501).
+	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
