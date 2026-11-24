@@ -1248,7 +1248,7 @@ func checkActivationTimings(card string, timings []game.ActivationTiming) {
 // declarer in the panic.
 func checkCastRestrictions(card string, rs []game.CastRestriction) {
 	for _, r := range rs {
-		checkRestriction(card, "cast", r.Label, r.Forbids == nil)
+		checkRestriction(card, "cast", r.Label, r.Forbids == nil && r.ManaValueCeiling == nil)
 	}
 }
 
