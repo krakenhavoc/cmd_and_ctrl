@@ -2143,6 +2143,7 @@ option option-pick/attach-source-to-player
 option option-pick/aven-courier-counter
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/ballroom-brawlers-keyword
+option option-pick/beckoning-will-o-wisp-opponent
 option option-pick/bellowing-mauler-lose-or-sacrifice
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
@@ -2247,6 +2248,7 @@ option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/master-of-ceremonies-answer
+option option-pick/me-the-immortal-counter
 option option-pick/memories-returning-opponent
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
@@ -2378,6 +2380,7 @@ option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
 option option-pick/vislor-turlough-deal-with-the-black-guardian
+option option-pick/volos-journal-note
 option option-pick/wake-to-slaughter-opponent
 option option-pick/winding-way-type
 option option-pick/wingnut-bat-on-the-belfry-keyword
@@ -2845,6 +2848,7 @@ run prompt-run/exploit-colonel-autumn
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
 run prompt-run/exploit-graf-reaver
+run prompt-run/exploit-henry-wu-ingen-geneticist
 run prompt-run/exploit-infernal-captor
 run prompt-run/exploit-mindleech-ghoul
 run prompt-run/exploit-overcharged-amalgam
@@ -3302,6 +3306,7 @@ tail campfire/shuffle-graveyard
 tail cant-stay-away/entered
 tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
+tail card-name/day-of-the-moon-goad
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
@@ -3367,6 +3372,8 @@ tail counter/guinan-ancient-advisor-next
 tail counter/put-on-each-next
 tail courier-of-comestibles/food-unless-found
 tail crabomination/cast-from-exiled
+tail creature-type/long-list-of-the-ents-note
+tail creature-type/volos-journal-note
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
 tail cultivator-colossus/draw-and-repeat
@@ -4113,6 +4120,7 @@ tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
 tail sacrificed-one/prompt-run/exploit-graf-reaver
+tail sacrificed-one/prompt-run/exploit-henry-wu-ingen-geneticist
 tail sacrificed-one/prompt-run/exploit-infernal-captor
 tail sacrificed-one/prompt-run/exploit-mindleech-ghoul
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam

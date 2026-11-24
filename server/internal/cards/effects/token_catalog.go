@@ -574,6 +574,11 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
 	printedBoarFoodToken,
+
+	// The Rani's Mark of the Rani (S82 GAP2 batch 10, #5948).
+	printedMarkOfTheRaniToken,
+	// Volo, Itinerant Scholar's Volo's Journal (S82 GAP2 batch 10, #5948).
+	printedVolosJournalToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
