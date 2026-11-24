@@ -34,7 +34,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.VowB09TrainingThen("Savior of Ollenbock — training: put a +1/+1 counter on it", saviorOfOllenbockExileBody),
-			effects.On(game.EventLTB, effects.Self, "Savior of Ollenbock — put the exiled cards onto the battlefield under their owners' control", saviorOfOllenbockReturn),
+			effects.On(game.EventLTB, effects.Self, "Savior of Ollenbock — put the exiled cards onto the battlefield under their owners' control", effects.ReturnAllExiledWithThisTogether),
 		},
 	})
 }
@@ -59,19 +59,4 @@ func saviorOfOllenbockExile(g *game.Game, item *game.StackItem) error {
 		return effects.ExileTarget{Target: t.ID, Linked: true}.Apply(ctx)
 	}
 	return nil
-}
-
-// saviorOfOllenbockReturn puts every card still in exile linked to the Savior
-// that left (its last-known record) onto the battlefield together.
-func saviorOfOllenbockReturn(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	ref, ok := ctx.SourceRef()
-	if !ok {
-		return nil
-	}
-	var ids []uuid.UUID
-	for _, c := range g.ExiledWithForEffect(game.PermissionCardRef(ref)) {
-		ids = append(ids, c.InstanceID)
-	}
-	return effects.ReturnFromExileTogether{Targets: ids}.Apply(ctx)
 }
