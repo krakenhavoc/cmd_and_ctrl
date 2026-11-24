@@ -64,6 +64,7 @@ var xMattersAllowlist = map[string]string{
 	"chandra_chill_of_compliance.go Chandra, Chill of Compliance": "a planeswalker with no X cost of its own: her −X at X=0 still taps the target, and her other abilities never read X",
 	"tezzeret_the_seeker.go Tezzeret the Seeker":                  "a planeswalker with no X cost of its own: his −X at X=0 still finds an artifact card with mana value 0",
 	"ugin_the_spirit_dragon.go Ugin, the Spirit Dragon":           "a planeswalker with no X cost of its own: his −X at X=0 still exiles every coloured permanent with mana value 0, tokens included",
+	"kasmina_enigma_sage.go Kasmina, Enigma Sage":                 "a planeswalker with no X cost of its own: her −X at X=0 still pays no loyalty and makes a 0/0 Fractal that dies, and her +2 and −8 never read X",
 	"domesticated_hydra.go Domesticated Hydra":                    "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":                              "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
 	"fractalize.go Fractalize":                                    "the creature becomes a 1/1 Fractal at X=0: base power and toughness are X plus 1, so the effect still lands and is a real move",

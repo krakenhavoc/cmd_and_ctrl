@@ -1311,6 +1311,7 @@ choose choose-cards/old-b041-imbraham-to-hand
 choose choose-cards/old-b043-augusta-tap
 choose choose-cards/old-b043-discard-two-unless-instant-or-sorcery
 choose choose-cards/old-b044-ardent-dustspeaker-picked
+choose choose-cards/old-b051-lukka-discard-draw
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1677,6 +1678,7 @@ choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose resolution-cast/yennett-draw-if-not-cast
 choose sticker/choose-object
+choose take/old-b051-the-biblioplex
 coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
@@ -1944,6 +1946,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
+confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -2725,6 +2728,7 @@ payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
+payunless pay-unless/old-b051-copy-that-spell
 payunless pay-unless/order-of-the-golden-cricket-flying
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/overencumbered-no-attack
@@ -4153,6 +4157,7 @@ tail old-b043/fervent-mastery-random-discard
 tail old-b044/aether-helix-return
 tail old-b044/lorehold-excavation-milled
 tail old-b044/radiant-scrollwielder-exiled
+tail old-b051/kasmina-cast
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -4512,6 +4517,7 @@ tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
 tail tail/praetors-grasp-play-it
+tail tail/old-b051-will-elementals
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
 tail tail/s82-mom-b12-guerrilla-after-mill
