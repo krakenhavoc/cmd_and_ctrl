@@ -1221,3 +1221,23 @@ the resolution settles the departure exactly as it settles a mid-resolution loss
 
 When the player who left controls the spell or ability that is resolving, the life change reports `ErrStopResolution`
 after the caller's continuation has run, so the rest of that resolution stops, as it does for `effects.LoseTheGame`.
+
+## Amendment 2026-11-24 — "if you would lose the game, instead …" (#6096)
+
+The Golden Throne: "If you would lose the game, instead exile The Golden Throne and your life total becomes 1." Unlike
+Decision 4's gates, this is a replacement (CR 614.1a): the loss is an event, and the event never happens (CR 614.6).
+It is a permanent's static, declared as plain data (`Spec.GameActionReplacements`, `game.GameActionReplacement`) and
+read off the battlefield through `CatalogAbilityKey`, like a gate, so nothing is stored and no func is reachable from
+`Game` (`game/game_action_replacements.go`).
+
+**Where it is read.** At both doors a loss goes through: the state-based loss pass, once per loser before the batch
+leaves, and `loseGameLocked`, which every effect loss reaches. The gate is read first: a player who can't lose is not a
+player who would lose, so a Platinum Angel beside a Throne keeps the Throne on the battlefield. A concession is never
+replaced (CR 104.3a), as it is never gated.
+
+**What it does.** The permanent is exiled through the ordinary route (a replacement on that move still applies), the
+life total becomes N by gaining or losing the difference (CR 119.5) through the life window, and
+`EventGameLossReplaced` records it. One application replaces every loss that one state-based check would deal the
+player (CR 704.7); a player still at ten poison counters loses at the next check, with no Throne left. With two such
+permanents, CR 616.1 lets the player choose; every kind declared so far does the same thing, so the first on the
+battlefield applies and nothing is asked. A card whose replacement differs (Lich's Mirror, Transcendence) adds a kind.
