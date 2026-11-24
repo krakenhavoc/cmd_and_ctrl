@@ -3999,6 +3999,7 @@ tail mass/overwrite-the-multiverse-empower
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
+tail mass/s82-old-b023-gain-two-life-for-each
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shai-hulud-search
 tail mass/shredders-technique-enchantment-loss
@@ -4758,6 +4759,7 @@ tail then/s82-bro-b13-exiled-to-hand
 tail then/s82-gap-b156-ib-halfheart-sacrificed
 tail then/s82-gap-b157-choose-one-play
 tail then/s82-mid-scry-n
+tail then/s82-old-b023-kogla-indestructible
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
