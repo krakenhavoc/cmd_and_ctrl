@@ -173,6 +173,7 @@ func cloneCopyGrant(c *copyGrant) *copyGrant {
 	}
 	out := *c
 	out.Keywords = append([]string(nil), c.Keywords...)
+	out.Grants = append([]string(nil), c.Grants...)
 	return &out
 }
 

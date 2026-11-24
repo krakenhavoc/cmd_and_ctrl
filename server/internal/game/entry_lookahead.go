@@ -175,6 +175,7 @@ func (g *Game) entryCharacteristicsLocked(ev *ReplacementEvent) (Card, bool) {
 	perm.SummonedThisTurn = true
 	perm.effective = nil
 	perm.stackGranted = nil
+	perm.stackColors, perm.stackColored = nil, false
 	perm.Tapped = ev.EntersTapped
 
 	// CR 400.7a: an effect that changed the SPELL's characteristics

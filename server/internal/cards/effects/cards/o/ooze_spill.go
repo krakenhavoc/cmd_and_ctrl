@@ -27,14 +27,7 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerRemove}, // #4734: a counterspell (the enumerator reads the counter itself; remove, as sweep ruling 8's stack removal)
 		Targets:      effects.TargetSpell("target spell"),
 		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return effects.CounterTarget{StackID: t.ID}.Apply(ctx)
-					}
-				}
-				return nil
-			}),
+			effects.Instruction(effects.CounterTheFirstLegalStackTarget),
 			effects.CreateToken{Template: effects.MutagenToken(), N: 1},
 		),
 	})

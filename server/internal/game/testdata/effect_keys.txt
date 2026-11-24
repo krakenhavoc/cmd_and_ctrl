@@ -594,6 +594,7 @@ body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
 body yunas-whistle/counters
 body zara/return-to-hand
+body zevlor/copy-for-each-other-opponent
 body ziatora/fling
 body zoraline-cosmos-caller/return
 castfollowup cemetery-illuminator-once-each-turn
@@ -1236,6 +1237,7 @@ choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
 choose choose-cards/necromantic-selection-pick
+choose choose-cards/neera-wild-mage-cast
 choose choose-cards/neo-discover-the-impossible-exile
 choose choose-cards/neo-distribute-counters-among-players-permanents
 choose choose-cards/neo-invoke-calamity-exile
@@ -1686,6 +1688,7 @@ condition dies/that-creature-with-an-egg-counter
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
 condition discard/opponent-caused-yours
+condition dynaheir/next-activation-four-mana
 condition earthbend/this-object-left
 condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
@@ -1706,6 +1709,7 @@ condition s82-bns-b27/you-cast-a-dinosaur
 condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 condition until/returned-under-your-control
+condition zevlor/next-single-opponent-spell
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
 confirm bloomburrow-commander/fishers-talent-reveal
@@ -2392,6 +2396,7 @@ option option-pick/winota-joiner-of-forces-attack
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
+option option-pick/zevlor-chosen
 option option-pick/zimones-hypothesis-parity
 option option-pick/zndrsplts-judgment-friend-or-foe
 option planechase/bottom-order
@@ -2410,6 +2415,7 @@ payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
+payunless pay-unless/agrus-kos-copy-ability
 payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/alistair-the-brigadier-pump
 payunless pay-unless/ancestral-katana-attach
@@ -2587,6 +2593,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/mizzix-replica-rider-copy
 payunless pay-unless/monstrosity-of-the-lake-stun
 payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
@@ -3093,6 +3100,7 @@ searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
 steps steps/ad-nauseam-pass
+steps steps/wylls-reversal-retarget-then-copy
 steps steps/zimones-hypothesis-rest
 steps then-steps/agent-of-the-shadow-thieves-grant
 steps then-steps/altar-of-the-wretched-draw-mill
@@ -3500,6 +3508,7 @@ tail dice/velukan-dragon-plus-result-minus-one
 tail dice/wild-endeavor-rolled
 tail dice/wizards-spellbook-exiled
 tail dice/wizards-spellbook-rolled
+tail dice/wylls-reversal-rolled
 tail dimir-doppelganger/after-exile
 tail dinas-guidance/after-hand
 tail dinas-guidance/found
@@ -3787,6 +3796,7 @@ tail if-it-was/scavenging-ooze-grow
 tail if-it-went/aspiring-champion-ruinous-ascension
 tail ilharg-the-raze-boar/return-at-end-step
 tail illuna-apex-of-wishes/after-exile
+tail illusion/color-chosen
 tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
@@ -4575,6 +4585,7 @@ tail then/mystery-key-draw-three
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
@@ -4685,6 +4696,7 @@ tail then/the-stone-brain-draw
 tail then/the-stone-brain-named
 tail then/the-tale-of-tamiyo-copy-and-cast
 tail then/the-tale-of-tamiyo-milled
+tail then/thief-of-existence-exiled
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/thornplate-intimidator-punisher-sacrificed
 tail then/tibalts-trickery-exile-until

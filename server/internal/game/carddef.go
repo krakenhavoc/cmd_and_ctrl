@@ -451,6 +451,13 @@ type CardDef struct {
 	// Read from the battlefield through CatalogAbilityKey; see
 	// activate_as_though_haste.go.
 	ActivateAsThoughHaste bool
+	// ActivateAsThoughHasteOthers is the same static over OTHER creatures
+	// only: "You may activate abilities of other creatures you control as
+	// though those creatures had haste" (Dynaheir, Invoker Adept, #6094).
+	// The permanent's own abilities are not reached. Read from the
+	// battlefield through CatalogAbilityKey; see
+	// activate_as_though_haste.go.
+	ActivateAsThoughHasteOthers bool
 	// ExtraVote is this permanent's printed "While voting, you get an
 	// additional vote" or "you may vote an additional time" (CR
 	// 701.38d, ADR 0146). Read from the battlefield through
@@ -1238,7 +1245,11 @@ func init() {
 	}
 	CatalogActivateAsThoughHaste = func(key string) bool {
 		d := catalogDef(key)
-		return d != nil && d.ActivateAsThoughHaste
+		return d != nil && (d.ActivateAsThoughHaste || d.ActivateAsThoughHasteOthers)
+	}
+	CatalogActivateAsThoughHasteOthersOnly = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ActivateAsThoughHasteOthers && !d.ActivateAsThoughHaste
 	}
 	CatalogExtraVote = func(key string) ExtraVote {
 		if d := catalogDef(key); d != nil {

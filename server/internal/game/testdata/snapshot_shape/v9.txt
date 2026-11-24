@@ -415,6 +415,7 @@ battlefield.cards[].provenance.mana[].riders[].kind	string
 battlefield.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 battlefield.cards[].provenance.mana[].riders[].trigger	string
 battlefield.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+battlefield.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 battlefield.cards[].provenance.mana[].riders[].when	array
 battlefield.cards[].provenance.mana[].riders[].when[]	string
 battlefield.cards[].provenance.optionalCosts	array
@@ -999,6 +1000,7 @@ enteringTokens[].provenance.mana[].riders[].kind	string
 enteringTokens[].provenance.mana[].riders[].production	custom(uuid.UUID)
 enteringTokens[].provenance.mana[].riders[].trigger	string
 enteringTokens[].provenance.mana[].riders[].untilEndOfTurn	bool
+enteringTokens[].provenance.mana[].riders[].untilYourNextTurn	bool
 enteringTokens[].provenance.mana[].riders[].when	array
 enteringTokens[].provenance.mana[].riders[].when[]	string
 enteringTokens[].provenance.optionalCosts	array
@@ -1551,6 +1553,7 @@ exile.cards[].provenance.mana[].riders[].kind	string
 exile.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 exile.cards[].provenance.mana[].riders[].trigger	string
 exile.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+exile.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 exile.cards[].provenance.mana[].riders[].when	array
 exile.cards[].provenance.mana[].riders[].when[]	string
 exile.cards[].provenance.optionalCosts	array
@@ -9508,6 +9511,7 @@ frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].kin
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].trigger	string
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].when	array
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[].riders[].when[]	string
 frozenEntries[].event.keywordActionTail.armyToken.provenance.optionalCosts	array
@@ -12000,6 +12004,7 @@ frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].kind	str
 frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].trigger	string
 frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].when	array
 frozenEntries[].event.millTail.run.planned[].provenance.mana[].riders[].when[]	string
 frozenEntries[].event.millTail.run.planned[].provenance.optionalCosts	array
@@ -12434,6 +12439,7 @@ frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].kind	string
 frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].trigger	string
 frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].when	array
 frozenEntries[].event.millTail.run.seen[].provenance.mana[].riders[].when[]	string
 frozenEntries[].event.millTail.run.seen[].provenance.optionalCosts	array
@@ -14152,6 +14158,7 @@ frozenEntries[].event.stackItem.paid.Mana[].riders[].kind	string
 frozenEntries[].event.stackItem.paid.Mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.Mana[].riders[].trigger	string
 frozenEntries[].event.stackItem.paid.Mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.stackItem.paid.Mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.stackItem.paid.Mana[].riders[].when	array
 frozenEntries[].event.stackItem.paid.Mana[].riders[].when[]	string
 frozenEntries[].event.stackItem.paid.OnPaper	bool
@@ -14841,6 +14848,7 @@ frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].kind	str
 frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].trigger	string
 frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].when	array
 frozenEntries[].event.tokenGroups[].template.provenance.mana[].riders[].when[]	string
 frozenEntries[].event.tokenGroups[].template.provenance.optionalCosts	array
@@ -15968,6 +15976,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].ride
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].trigger	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].when	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].when[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.optionalCosts	array
@@ -16415,6 +16424,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].rider
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].trigger	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].when	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].when[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.optionalCosts	array
@@ -16849,6 +16859,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[]
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].trigger	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].when	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].when[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.optionalCosts	array
@@ -20783,6 +20794,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].ki
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].production	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].trigger	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].untilEndOfTurn	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].untilYourNextTurn	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].when	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].when[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.optionalCosts	array
@@ -21977,6 +21989,7 @@ lastKnownStack[].card.provenance.mana[].riders[].kind	string
 lastKnownStack[].card.provenance.mana[].riders[].production	custom(uuid.UUID)
 lastKnownStack[].card.provenance.mana[].riders[].trigger	string
 lastKnownStack[].card.provenance.mana[].riders[].untilEndOfTurn	bool
+lastKnownStack[].card.provenance.mana[].riders[].untilYourNextTurn	bool
 lastKnownStack[].card.provenance.mana[].riders[].when	array
 lastKnownStack[].card.provenance.mana[].riders[].when[]	string
 lastKnownStack[].card.provenance.optionalCosts	array
@@ -22115,6 +22128,7 @@ lastKnownStack[].item.paid.Mana[].riders[].kind	string
 lastKnownStack[].item.paid.Mana[].riders[].production	custom(uuid.UUID)
 lastKnownStack[].item.paid.Mana[].riders[].trigger	string
 lastKnownStack[].item.paid.Mana[].riders[].untilEndOfTurn	bool
+lastKnownStack[].item.paid.Mana[].riders[].untilYourNextTurn	bool
 lastKnownStack[].item.paid.Mana[].riders[].when	array
 lastKnownStack[].item.paid.Mana[].riders[].when[]	string
 lastKnownStack[].item.paid.OnPaper	bool
@@ -22909,6 +22923,7 @@ match.decks[].fixed[].provenance.mana[].riders[].kind	string
 match.decks[].fixed[].provenance.mana[].riders[].production	custom(uuid.UUID)
 match.decks[].fixed[].provenance.mana[].riders[].trigger	string
 match.decks[].fixed[].provenance.mana[].riders[].untilEndOfTurn	bool
+match.decks[].fixed[].provenance.mana[].riders[].untilYourNextTurn	bool
 match.decks[].fixed[].provenance.mana[].riders[].when	array
 match.decks[].fixed[].provenance.mana[].riders[].when[]	string
 match.decks[].fixed[].provenance.optionalCosts	array
@@ -23341,6 +23356,7 @@ match.decks[].main[].provenance.mana[].riders[].kind	string
 match.decks[].main[].provenance.mana[].riders[].production	custom(uuid.UUID)
 match.decks[].main[].provenance.mana[].riders[].trigger	string
 match.decks[].main[].provenance.mana[].riders[].untilEndOfTurn	bool
+match.decks[].main[].provenance.mana[].riders[].untilYourNextTurn	bool
 match.decks[].main[].provenance.mana[].riders[].when	array
 match.decks[].main[].provenance.mana[].riders[].when[]	string
 match.decks[].main[].provenance.optionalCosts	array
@@ -23776,6 +23792,7 @@ match.decks[].side[].provenance.mana[].riders[].kind	string
 match.decks[].side[].provenance.mana[].riders[].production	custom(uuid.UUID)
 match.decks[].side[].provenance.mana[].riders[].trigger	string
 match.decks[].side[].provenance.mana[].riders[].untilEndOfTurn	bool
+match.decks[].side[].provenance.mana[].riders[].untilYourNextTurn	bool
 match.decks[].side[].provenance.mana[].riders[].when	array
 match.decks[].side[].provenance.mana[].riders[].when[]	string
 match.decks[].side[].provenance.optionalCosts	array
@@ -30803,6 +30820,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].kin
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].when	array
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.optionalCosts	array
@@ -33295,6 +33313,7 @@ movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].kind	str
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].when	array
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].millTail.run.planned[].provenance.optionalCosts	array
@@ -33729,6 +33748,7 @@ movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].kind	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].when	array
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.optionalCosts	array
@@ -35447,6 +35467,7 @@ movesAwaitingTokens[].stackItem.paid.Mana[].riders[].kind	string
 movesAwaitingTokens[].stackItem.paid.Mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.Mana[].riders[].trigger	string
 movesAwaitingTokens[].stackItem.paid.Mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].stackItem.paid.Mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].stackItem.paid.Mana[].riders[].when	array
 movesAwaitingTokens[].stackItem.paid.Mana[].riders[].when[]	string
 movesAwaitingTokens[].stackItem.paid.OnPaper	bool
@@ -36136,6 +36157,7 @@ movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].kind	str
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].when	array
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].tokenGroups[].template.provenance.optionalCosts	array
@@ -37263,6 +37285,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].ride
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].riders[].when	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.optionalCosts	array
@@ -37710,6 +37733,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].rider
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].when	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.optionalCosts	array
@@ -38144,6 +38168,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[]
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].when	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.optionalCosts	array
@@ -42078,6 +42103,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].ki
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].production	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].trigger	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].untilEndOfTurn	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].untilYourNextTurn	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].when	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[].riders[].when[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.optionalCosts	array
@@ -42263,6 +42289,7 @@ pausedModeWalk.item.paid.Mana[].riders[].kind	string
 pausedModeWalk.item.paid.Mana[].riders[].production	custom(uuid.UUID)
 pausedModeWalk.item.paid.Mana[].riders[].trigger	string
 pausedModeWalk.item.paid.Mana[].riders[].untilEndOfTurn	bool
+pausedModeWalk.item.paid.Mana[].riders[].untilYourNextTurn	bool
 pausedModeWalk.item.paid.Mana[].riders[].when	array
 pausedModeWalk.item.paid.Mana[].riders[].when[]	string
 pausedModeWalk.item.paid.OnPaper	bool
@@ -42638,6 +42665,7 @@ pausedResolutionTail.item.paid.Mana[].riders[].kind	string
 pausedResolutionTail.item.paid.Mana[].riders[].production	custom(uuid.UUID)
 pausedResolutionTail.item.paid.Mana[].riders[].trigger	string
 pausedResolutionTail.item.paid.Mana[].riders[].untilEndOfTurn	bool
+pausedResolutionTail.item.paid.Mana[].riders[].untilYourNextTurn	bool
 pausedResolutionTail.item.paid.Mana[].riders[].when	array
 pausedResolutionTail.item.paid.Mana[].riders[].when[]	string
 pausedResolutionTail.item.paid.OnPaper	bool
@@ -43007,6 +43035,7 @@ pausedStepWalk.item.paid.Mana[].riders[].kind	string
 pausedStepWalk.item.paid.Mana[].riders[].production	custom(uuid.UUID)
 pausedStepWalk.item.paid.Mana[].riders[].trigger	string
 pausedStepWalk.item.paid.Mana[].riders[].untilEndOfTurn	bool
+pausedStepWalk.item.paid.Mana[].riders[].untilYourNextTurn	bool
 pausedStepWalk.item.paid.Mana[].riders[].when	array
 pausedStepWalk.item.paid.Mana[].riders[].when[]	string
 pausedStepWalk.item.paid.OnPaper	bool
@@ -44081,6 +44110,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[].trigger	string
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[].when	array
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[].riders[].when[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.optionalCosts	array
@@ -44535,6 +44565,7 @@ pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[].trigger	string
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[].when	array
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[].riders[].when[]	string
 pendingChoices[].attackSplit.settled.groups[].template.provenance.optionalCosts	array
@@ -45642,6 +45673,7 @@ pendingChoices[].attackSplit.template.provenance.mana[].riders[].kind	string
 pendingChoices[].attackSplit.template.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.provenance.mana[].riders[].trigger	string
 pendingChoices[].attackSplit.template.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].attackSplit.template.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].attackSplit.template.provenance.mana[].riders[].when	array
 pendingChoices[].attackSplit.template.provenance.mana[].riders[].when[]	string
 pendingChoices[].attackSplit.template.provenance.optionalCosts	array
@@ -45729,6 +45761,8 @@ pendingChoices[].copyUse	string
 pendingChoices[].copyWalk	object
 pendingChoices[].copyWalk.controller	custom(uuid.UUID)
 pendingChoices[].copyWalk.gains	object
+pendingChoices[].copyWalk.gains.grants	array
+pendingChoices[].copyWalk.gains.grants[]	string
 pendingChoices[].copyWalk.gains.keywords	array
 pendingChoices[].copyWalk.gains.keywords[]	string
 pendingChoices[].copyWalk.gains.label	string
@@ -45816,6 +45850,7 @@ pendingChoices[].copyWalk.item.paid.Mana[].riders[].kind	string
 pendingChoices[].copyWalk.item.paid.Mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.Mana[].riders[].trigger	string
 pendingChoices[].copyWalk.item.paid.Mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].copyWalk.item.paid.Mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].copyWalk.item.paid.Mana[].riders[].when	array
 pendingChoices[].copyWalk.item.paid.Mana[].riders[].when[]	string
 pendingChoices[].copyWalk.item.paid.OnPaper	bool
@@ -46493,6 +46528,7 @@ pendingChoices[].copyWalk.src.provenance.mana[].riders[].kind	string
 pendingChoices[].copyWalk.src.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.provenance.mana[].riders[].trigger	string
 pendingChoices[].copyWalk.src.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].copyWalk.src.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].copyWalk.src.provenance.mana[].riders[].when	array
 pendingChoices[].copyWalk.src.provenance.mana[].riders[].when[]	string
 pendingChoices[].copyWalk.src.provenance.optionalCosts	array
@@ -50039,6 +50075,7 @@ pendingChoices[].manaRiders[].kind	string
 pendingChoices[].manaRiders[].production	custom(uuid.UUID)
 pendingChoices[].manaRiders[].trigger	string
 pendingChoices[].manaRiders[].untilEndOfTurn	bool
+pendingChoices[].manaRiders[].untilYourNextTurn	bool
 pendingChoices[].manaRiders[].when	array
 pendingChoices[].manaRiders[].when[]	string
 pendingChoices[].manaSettled	array
@@ -58897,6 +58934,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.optionalCosts	array
@@ -61389,6 +61427,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.optionalCosts	array
@@ -61823,6 +61862,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].r
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.optionalCosts	array
@@ -63541,6 +63581,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].kind	str
 pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].when	array
 pendingChoices[].replacementResume.event.stackItem.paid.Mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.stackItem.paid.OnPaper	bool
@@ -64230,6 +64271,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.optionalCosts	array
@@ -65357,6 +65399,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pro
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.optionalCosts	array
@@ -65804,6 +65847,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prov
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.optionalCosts	array
@@ -66238,6 +66282,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provena
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.optionalCosts	array
@@ -70172,6 +70217,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].trigger	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].when	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[].riders[].when[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.optionalCosts	array
@@ -72559,6 +72605,7 @@ pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].kind	string
 pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].trigger	string
 pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].when	array
 pendingChoices[].targetWalk.frame.source.provenance.mana[].riders[].when[]	string
 pendingChoices[].targetWalk.frame.source.provenance.optionalCosts	array
@@ -73399,6 +73446,7 @@ pendingChoices[].triggerFrame.source.provenance.mana[].riders[].kind	string
 pendingChoices[].triggerFrame.source.provenance.mana[].riders[].production	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.provenance.mana[].riders[].trigger	string
 pendingChoices[].triggerFrame.source.provenance.mana[].riders[].untilEndOfTurn	bool
+pendingChoices[].triggerFrame.source.provenance.mana[].riders[].untilYourNextTurn	bool
 pendingChoices[].triggerFrame.source.provenance.mana[].riders[].when	array
 pendingChoices[].triggerFrame.source.provenance.mana[].riders[].when[]	string
 pendingChoices[].triggerFrame.source.provenance.optionalCosts	array
@@ -73694,6 +73742,7 @@ pendingTriggers[].paid.Mana[].riders[].kind	string
 pendingTriggers[].paid.Mana[].riders[].production	custom(uuid.UUID)
 pendingTriggers[].paid.Mana[].riders[].trigger	string
 pendingTriggers[].paid.Mana[].riders[].untilEndOfTurn	bool
+pendingTriggers[].paid.Mana[].riders[].untilYourNextTurn	bool
 pendingTriggers[].paid.Mana[].riders[].when	array
 pendingTriggers[].paid.Mana[].riders[].when[]	string
 pendingTriggers[].paid.OnPaper	bool
@@ -74610,6 +74659,7 @@ phasedOut.cards[].provenance.mana[].riders[].kind	string
 phasedOut.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 phasedOut.cards[].provenance.mana[].riders[].trigger	string
 phasedOut.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+phasedOut.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 phasedOut.cards[].provenance.mana[].riders[].when	array
 phasedOut.cards[].provenance.mana[].riders[].when[]	string
 phasedOut.cards[].provenance.optionalCosts	array
@@ -75047,6 +75097,7 @@ planechase.deck.cards[].provenance.mana[].riders[].kind	string
 planechase.deck.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 planechase.deck.cards[].provenance.mana[].riders[].trigger	string
 planechase.deck.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+planechase.deck.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 planechase.deck.cards[].provenance.mana[].riders[].when	array
 planechase.deck.cards[].provenance.mana[].riders[].when[]	string
 planechase.deck.cards[].provenance.optionalCosts	array
@@ -75484,6 +75535,7 @@ planechase.faceUp.cards[].provenance.mana[].riders[].kind	string
 planechase.faceUp.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 planechase.faceUp.cards[].provenance.mana[].riders[].trigger	string
 planechase.faceUp.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+planechase.faceUp.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 planechase.faceUp.cards[].provenance.mana[].riders[].when	array
 planechase.faceUp.cards[].provenance.mana[].riders[].when[]	string
 planechase.faceUp.cards[].provenance.optionalCosts	array
@@ -76173,6 +76225,7 @@ resolving.card.provenance.mana[].riders[].kind	string
 resolving.card.provenance.mana[].riders[].production	custom(uuid.UUID)
 resolving.card.provenance.mana[].riders[].trigger	string
 resolving.card.provenance.mana[].riders[].untilEndOfTurn	bool
+resolving.card.provenance.mana[].riders[].untilYourNextTurn	bool
 resolving.card.provenance.mana[].riders[].when	array
 resolving.card.provenance.mana[].riders[].when[]	string
 resolving.card.provenance.optionalCosts	array
@@ -76311,6 +76364,7 @@ resolving.item.paid.Mana[].riders[].kind	string
 resolving.item.paid.Mana[].riders[].production	custom(uuid.UUID)
 resolving.item.paid.Mana[].riders[].trigger	string
 resolving.item.paid.Mana[].riders[].untilEndOfTurn	bool
+resolving.item.paid.Mana[].riders[].untilYourNextTurn	bool
 resolving.item.paid.Mana[].riders[].when	array
 resolving.item.paid.Mana[].riders[].when[]	string
 resolving.item.paid.OnPaper	bool
@@ -77248,6 +77302,7 @@ seats[].attractionDeck.cards[].provenance.mana[].riders[].kind	string
 seats[].attractionDeck.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].attractionDeck.cards[].provenance.mana[].riders[].trigger	string
 seats[].attractionDeck.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].attractionDeck.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].attractionDeck.cards[].provenance.mana[].riders[].when	array
 seats[].attractionDeck.cards[].provenance.mana[].riders[].when[]	string
 seats[].attractionDeck.cards[].provenance.optionalCosts	array
@@ -77868,6 +77923,7 @@ seats[].command.cards[].provenance.mana[].riders[].kind	string
 seats[].command.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].command.cards[].provenance.mana[].riders[].trigger	string
 seats[].command.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].command.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].command.cards[].provenance.mana[].riders[].when	array
 seats[].command.cards[].provenance.mana[].riders[].when[]	string
 seats[].command.cards[].provenance.optionalCosts	array
@@ -78307,6 +78363,7 @@ seats[].companion.cards[].provenance.mana[].riders[].kind	string
 seats[].companion.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].companion.cards[].provenance.mana[].riders[].trigger	string
 seats[].companion.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].companion.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].companion.cards[].provenance.mana[].riders[].when	array
 seats[].companion.cards[].provenance.mana[].riders[].when[]	string
 seats[].companion.cards[].provenance.optionalCosts	array
@@ -78755,6 +78812,7 @@ seats[].emblems.cards[].provenance.mana[].riders[].kind	string
 seats[].emblems.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.mana[].riders[].trigger	string
 seats[].emblems.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].emblems.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].emblems.cards[].provenance.mana[].riders[].when	array
 seats[].emblems.cards[].provenance.mana[].riders[].when[]	string
 seats[].emblems.cards[].provenance.optionalCosts	array
@@ -79290,6 +79348,7 @@ seats[].graveyard.cards[].provenance.mana[].riders[].kind	string
 seats[].graveyard.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.mana[].riders[].trigger	string
 seats[].graveyard.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].graveyard.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].graveyard.cards[].provenance.mana[].riders[].when	array
 seats[].graveyard.cards[].provenance.mana[].riders[].when[]	string
 seats[].graveyard.cards[].provenance.optionalCosts	array
@@ -79725,6 +79784,7 @@ seats[].hand.cards[].provenance.mana[].riders[].kind	string
 seats[].hand.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].hand.cards[].provenance.mana[].riders[].trigger	string
 seats[].hand.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].hand.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].hand.cards[].provenance.mana[].riders[].when	array
 seats[].hand.cards[].provenance.mana[].riders[].when[]	string
 seats[].hand.cards[].provenance.optionalCosts	array
@@ -80165,6 +80225,7 @@ seats[].junkyard.cards[].provenance.mana[].riders[].kind	string
 seats[].junkyard.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].junkyard.cards[].provenance.mana[].riders[].trigger	string
 seats[].junkyard.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].junkyard.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].junkyard.cards[].provenance.mana[].riders[].when	array
 seats[].junkyard.cards[].provenance.mana[].riders[].when[]	string
 seats[].junkyard.cards[].provenance.optionalCosts	array
@@ -80626,6 +80687,7 @@ seats[].library.cards[].provenance.mana[].riders[].kind	string
 seats[].library.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].library.cards[].provenance.mana[].riders[].trigger	string
 seats[].library.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].library.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].library.cards[].provenance.mana[].riders[].when	array
 seats[].library.cards[].provenance.mana[].riders[].when[]	string
 seats[].library.cards[].provenance.optionalCosts	array
@@ -80713,6 +80775,7 @@ seats[].manaPool[].riders[].kind	string
 seats[].manaPool[].riders[].production	custom(uuid.UUID)
 seats[].manaPool[].riders[].trigger	string
 seats[].manaPool[].riders[].untilEndOfTurn	bool
+seats[].manaPool[].riders[].untilYourNextTurn	bool
 seats[].manaPool[].riders[].when	array
 seats[].manaPool[].riders[].when[]	string
 seats[].maxHandSize	number:int
@@ -81102,6 +81165,7 @@ seats[].sideboard.cards[].provenance.mana[].riders[].kind	string
 seats[].sideboard.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 seats[].sideboard.cards[].provenance.mana[].riders[].trigger	string
 seats[].sideboard.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+seats[].sideboard.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 seats[].sideboard.cards[].provenance.mana[].riders[].when	array
 seats[].sideboard.cards[].provenance.mana[].riders[].when[]	string
 seats[].sideboard.cards[].provenance.optionalCosts	array
@@ -81940,6 +82004,7 @@ stack.cards[].provenance.mana[].riders[].kind	string
 stack.cards[].provenance.mana[].riders[].production	custom(uuid.UUID)
 stack.cards[].provenance.mana[].riders[].trigger	string
 stack.cards[].provenance.mana[].riders[].untilEndOfTurn	bool
+stack.cards[].provenance.mana[].riders[].untilYourNextTurn	bool
 stack.cards[].provenance.mana[].riders[].when	array
 stack.cards[].provenance.mana[].riders[].when[]	string
 stack.cards[].provenance.optionalCosts	array
@@ -82081,6 +82146,7 @@ stackMeta[].paid.Mana[].riders[].kind	string
 stackMeta[].paid.Mana[].riders[].production	custom(uuid.UUID)
 stackMeta[].paid.Mana[].riders[].trigger	string
 stackMeta[].paid.Mana[].riders[].untilEndOfTurn	bool
+stackMeta[].paid.Mana[].riders[].untilYourNextTurn	bool
 stackMeta[].paid.Mana[].riders[].when	array
 stackMeta[].paid.Mana[].riders[].when[]	string
 stackMeta[].paid.OnPaper	bool
