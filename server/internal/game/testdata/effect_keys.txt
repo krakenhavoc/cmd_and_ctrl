@@ -1997,6 +1997,7 @@ confirm s82-rpr-b04/aid-from-the-cowl-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-put
 confirm spark-of-creativity/damage-or-play
 confirm std-b9/traveling-botanist-take-land
+drawinstead abundance
 drawinstead asmodeus-the-archfiend
 drawinstead dredge-1
 drawinstead dredge-2
@@ -2046,6 +2047,7 @@ drawthen glacial-dragonhunt/may-discard
 drawthen hidetsugu-and-kairi-put-back
 drawthen hoarders-greed/clash
 drawthen hypothesizzle/may-discard-nonland
+drawthen jace-mirror-mage-reveal
 drawthen leonardo-da-vinci/discard
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
@@ -2125,6 +2127,7 @@ option meld/order
 option mutate/over-under
 option option-pick/abstract-performance-opponent
 option option-pick/abstract-performance-pile
+option option-pick/abundance-kind
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/agents-toolkit-move
@@ -2433,6 +2436,7 @@ payunless pay-unless/brass-man-untap
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
+payunless pay-unless/canoptek-wraith-sacrifice
 payunless pay-unless/carefree-swinemaster-boar
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
@@ -2796,6 +2800,7 @@ run prompt-run/caesar-legions-emperor-sacrifice
 run prompt-run/cait-cage-brawler-discarded
 run prompt-run/calix-guided-by-fate-copy
 run prompt-run/campsite-cuisine-sacrifice-foods
+run prompt-run/canoptek-wraith-land
 run prompt-run/capital-punishment-discards
 run prompt-run/cataclysmic-gearhulk-keep
 run prompt-run/chaos-defiler-destroy
@@ -3157,6 +3162,8 @@ tail aberrant-researcher/after-mill
 tail abstract-performance/after-face-down
 tail abstract-performance/after-face-up
 tail abstract-performance/offer-cast
+tail abundance/ordered
+tail abundance/taken
 tail abyssal-harvester/exile-other-nightmares
 tail abyssal-harvester/nightmare-copy
 tail advanced-reconstruction/exile-random
@@ -3299,6 +3306,7 @@ tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
 tail campfire/shuffle-graveyard
+tail canoptek-wraith/sacrificed
 tail cant-stay-away/entered
 tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy

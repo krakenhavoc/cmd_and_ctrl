@@ -1398,6 +1398,20 @@ type Spec struct {
 	// neither.
 	ControlsOpponentsSearches bool
 
+	// OpponentsSearchTopN declares Aven Mindcensor's "If an opponent
+	// would search a library, that player searches the top N cards of
+	// that library instead" (#6090, CR 701.23a, 614.1). The engine
+	// narrows every search in its one search primitive
+	// (game/search_top_n.go). Judged through CatalogAbilityKey, so a
+	// permanent that lost its abilities narrows nothing.
+	OpponentsSearchTopN int
+
+	// DrawsFromBottom declares River Song's "You draw cards from the
+	// bottom of your library rather than the top" (#6089): each draw its
+	// controller performs takes the bottom card (game/draw_from_bottom.go).
+	// Judged through CatalogAbilityKey as each draw is made.
+	DrawsFromBottom bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//
