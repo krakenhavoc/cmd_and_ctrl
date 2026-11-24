@@ -2070,12 +2070,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateAbilityWaterbendLocked(playerID, cardID, ab.Cost, params, waterbendBudget); err != nil {
 		return err
 	}
-	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, CounterCostPayment{
+	// #6085: "Remove X counters" beside an {X} removes the announced X.
+	counterPay, err := counterPaymentAtX(ab.Cost.RemoveCounters, cardID, CounterCostPayment{
 		SourceIDs: params.CounterSourceIDs,
 		Counts:    params.CounterCounts,
 		Kind:      params.CounterKind,
 		Kinds:     params.CounterKinds,
-	})
+	}, params.XValue)
+	if err != nil {
+		return err
+	}
+	counters, err := g.validateCounterRemovalCostLocked(playerID, cardID, ab.Cost, counterPay)
 	if err != nil {
 		return err
 	}

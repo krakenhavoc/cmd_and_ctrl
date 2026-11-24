@@ -14420,7 +14420,9 @@ func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) 
 // about what the client may offer. Caller must hold g.mu.
 func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost, ac *game.CounterAddCost) CounterCostView {
 	var v CounterCostView
-	if rc != nil && (rc.N > 0 || rc.Variable) {
+	// #6085: a removal whose count is the announced X has no picker of
+	// its own; the X picker is the payment (game.CounterCountIsX).
+	if rc != nil && !game.CounterCountIsX(rc) && (rc.N > 0 || rc.Variable) {
 		v.CounterCostN = rc.N
 		v.CounterCostKind = rc.Counter
 		v.CounterCostSelf = rc.From == nil

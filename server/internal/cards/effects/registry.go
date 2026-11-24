@@ -144,6 +144,7 @@ func Register(spec Spec) {
 	}
 	for _, t := range spec.Triggered {
 		checkStateTrigger(spec.Name, t)
+		checkTriggerXFromEvent(spec.Name, t)
 		checkNotPutByThisAbility(spec.Name, t)
 		CheckTriggersOnlyOnce(spec.Name, t)
 		CheckFlatClauses(spec.Name, t.Targets)
@@ -818,10 +819,11 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND sacrifices X permanents — one announced X cannot pay both",
 				spec.Name, i, ab.Cost.Mana))
 		}
-		if ab.Cost.XSlots() > 0 && game.TapOthersCountFromX(ab.Cost.TapOthers) {
-			panic(fmt.Sprintf("effects.Register: %q ability %d has {X} in its mana cost %q AND taps X permanents — one announced X cannot pay both",
-				spec.Name, i, ab.Cost.Mana))
-		}
+		// #6085: {X} in the mana cost beside "Tap X untapped <permanents>"
+		// is one announced X paying both (CR 107.3a, Necron Overlord):
+		// the engine prices the mana and counts the taps from the same
+		// ActivateAbilityParams.XValue, so it is no longer refused.
+		checkOneXCost(spec.Name, i, ab.Cost)
 		if game.SacrificeCountFromX(ab.Cost.SacrificeOther) && game.TapOthersCountFromX(ab.Cost.TapOthers) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d both sacrifices X permanents and taps X permanents — one announced X cannot pay both",
 				spec.Name, i))
@@ -890,6 +892,7 @@ func Register(spec Spec) {
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
+		refuseCounterCountIsX(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters)
 		// #1213 / #1283: a card-picking clause that picks nothing would
 		// make the ability free — the refusal the CR 602 discard gets,
 		// and the same "Discard your hand" exception (#1600).
