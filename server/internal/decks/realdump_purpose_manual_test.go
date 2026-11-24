@@ -271,6 +271,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 231 (#5948).
 	"Cloudkill": "-X/-X to every creature where X is the greatest mana value of a commander its caster owns on the battlefield or in the command zone: no fixed amount a sweep can declare, and zero with no commander",
+
+	// S82 GAP2 batch 07 (#5948).
+	"Fires of Mount Doom": "2 damage to one target creature, the Equipment on it destroyed, and 2 damage to each PLAYER when a card is played: no creature but the target is touched",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

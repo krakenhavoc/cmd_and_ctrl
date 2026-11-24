@@ -207,6 +207,7 @@ body fin/return-the-objects-to-hand
 body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
 body fireblade-artist/damage
+body fires-of-mount-doom/damage-each-player
 body flanking/shrink
 body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
@@ -363,6 +364,7 @@ body nuka-nuke-launcher/defender-gets-two-rad-counters
 body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
+body ogre-battlecaster/pump
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -601,11 +603,13 @@ castfollowup chandra-torch-of-defiance-2-to-each-opponent
 castfollowup conduit-of-worlds-no-more-spells
 castfollowup emet-selch-of-the-third-seat-once-each-turn
 castfollowup finale-of-promise/copy-twice
+castfollowup fires-of-mount-doom-played
 castfollowup kaervek-the-punisher-lose-2
 castfollowup kefka-dancing-mad-life-loss
 castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
 castfollowup maralen-fae-ascendant-once-each-turn
 castfollowup msc6/helmut-zemo-mastermind-counter
+castfollowup ogre-battlecaster-cast
 castfollowup share-the-spoils-played
 castfollowup soundwave/convert-if-cast
 castfollowup spellweaver-volute-exile-and-reattach
