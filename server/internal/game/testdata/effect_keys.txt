@@ -926,6 +926,7 @@ choose choose-cards/glittering-wish-take
 choose choose-cards/glorious-protector-exile
 choose choose-cards/glowspore-shaman-land-on-top
 choose choose-cards/gluntch-the-bestower-creature
+choose choose-cards/go-blank-exile
 choose choose-cards/godsend-exile
 choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
@@ -2349,6 +2350,7 @@ option option-pick/master-of-ceremonies-answer
 option option-pick/me-the-immortal-counter
 option option-pick/meandering-towershell-attacks
 option option-pick/memories-returning-opponent
+option option-pick/mercurial-transformation-shape
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
@@ -4566,6 +4568,7 @@ tail the-war-games/exiled
 tail the-wrath-of-khan/draw-if-exiled
 tail then/aangs-iceberg-scry
 tail then/abdel-adrian-exiled-one
+tail then/academic-probation-named
 tail then/acolyte-hybrid-controller-draws
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
