@@ -2023,6 +2023,7 @@ confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
+confirm confirm/wernog-riders-chaplain
 confirm confirm/wheel-of-potential-exile-hand
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
@@ -3100,6 +3101,7 @@ run prompt-run/temporal-firestorm-phase-out
 run prompt-run/temur-sabertooth-return
 run prompt-run/tenured-tethermage-tokens
 run prompt-run/terror-ballista-sacrifice
+run prompt-run/tevesh-szat-draw
 run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-fugitive-doctor-sacrifice
@@ -4283,6 +4285,7 @@ tail sacrificed-one/prompt-run/spirit-sisters-call-return
 tail sacrificed-one/prompt-run/strefan-maurer-progenitor-put
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/terror-ballista-sacrifice
+tail sacrificed-one/prompt-run/tevesh-szat-draw
 tail sacrificed-one/prompt-run/the-fugitive-doctor-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed

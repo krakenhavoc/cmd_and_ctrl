@@ -683,4 +683,7 @@ var TokenTable = map[string]game.Card{
 	"2/2 green Alien Salamander with islandwalk": {Name: "Alien Salamander", TypeLine: "Token Creature — Alien Salamander", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"islandwalk"}},
 	// S82 GAP2 batch 8 (#5948): Tasha, the Witch Queen's Demon.
 	"3/3 black Demon": {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 3, Toughness: 3, Colors: []string{"B"}},
+
+	// Secret Lair Drop partner commanders (#5462, S82 OLD batch 014): Tevesh Szat, Doom of Fools.
+	"0/1 black Thrull": {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 0, Toughness: 1, Colors: []string{"B"}},
 }
