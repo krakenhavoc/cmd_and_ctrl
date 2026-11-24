@@ -688,4 +688,6 @@ var TokenTable = map[string]game.Card{
 	"0/1 black Thrull": {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	// S82 OLD batch 26 (#5462): Gisa's Favorite Shovel's Walker.
 	"2/2 black Zombie named Walker": {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// S82 OLD batch 071 (#5505): Old-Growth Troll's Troll Warrior.
+	"4/4 green Troll Warrior with trample": {Name: "Troll Warrior", TypeLine: "Token Creature — Troll Warrior", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 }

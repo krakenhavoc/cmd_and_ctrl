@@ -127,6 +127,7 @@ body cyclops-superconductor/damage
 body dahar-master/damage
 body dain-ironfoot/attach-axe
 body dalkovan-encampment/warriors
+body damage/old-b071-return-the-listed-object
 body damage/that-much-to-each-other-opponent
 body dash/return
 body death-to-our-enemies/divided-damage
@@ -1299,6 +1300,9 @@ choose choose-cards/old-b032-dihadas-ploy-life
 choose choose-cards/old-b034-discerning-taste-take
 choose choose-cards/old-b036-mount-velus-manticore-strike
 choose choose-cards/old-b041-imbraham-to-hand
+choose choose-cards/old-b071-frost-augur-take
+choose choose-cards/old-b071-kaya-emblem-cast
+choose choose-cards/old-b071-valki-exile
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1496,6 +1500,7 @@ choose choose-cards/sunbirds-invocation-cast
 choose choose-cards/sunforger-shuffle
 choose choose-cards/surtland-elementalist-cast
 choose choose-cards/surveillance-monitor-collect-evidence
+choose choose-cards/svella-ice-shaper-cast
 choose choose-cards/sylvan-library-chosen
 choose choose-cards/sylvia-tilly-joy-of-discovery-exile
 choose choose-cards/take-one-from-graveyard-into-hand
@@ -1726,6 +1731,7 @@ condition damage/each-creature-dealt-damage
 condition damage/each-opponent-creature-dealt-damage
 condition damage/either-of-those-creatures-deals-combat-damage
 condition damage/gorgons-or-snakes-combat-to-player
+condition damage/old-b071-the-listed-object-dealt
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
@@ -2350,6 +2356,7 @@ option option-pick/nick-fury-spymaster-attacks
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
+option option-pick/old-b071-cosima-voyage
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -3748,6 +3755,8 @@ tail exile-then-token-copy/lazotep-quarry
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
 tail exile-then/mysterious-limousine-return-others
+tail exile-then/old-b071-tibalt-add-rrr
+tail exile-then/old-b071-tibalt-grant
 tail exile-then/skywarp-skaab-draw
 tail exile-then/trystan-penitent-culler
 tail exile-then/venom-deadly-devourer-counters
@@ -4734,6 +4743,7 @@ tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
+tail then/old-b071-cosima-draw
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
