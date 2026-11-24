@@ -367,6 +367,7 @@ body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
 body ogre-battlecaster/pump
+body old-b049/devouring-tendrils-gain-2
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking

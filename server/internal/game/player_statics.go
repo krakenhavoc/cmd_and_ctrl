@@ -343,6 +343,15 @@ type PlayerStatic struct {
 	// asks.
 	CantActivateAbilities bool `json:"cantActivateAbilities,omitempty"`
 
+	// CantActivateLoyaltyAbilities is a granted "<player> can't activate
+	// planeswalkers' loyalty abilities" for a duration (Revel in Silence,
+	// #5502), player_activation_ban.go. The SIXTEENTH payload, told apart
+	// by the bit; it carries no Keyword. Stored on the RESTRICTED player.
+	// It reaches only a loyalty ability whose source is a planeswalker
+	// (CR 606.1); its READER is playerLoyaltyBanLocked, the second source
+	// ActivationGateLocked asks.
+	CantActivateLoyaltyAbilities bool `json:"cantActivateLoyaltyAbilities,omitempty"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored
