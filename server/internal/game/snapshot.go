@@ -1847,6 +1847,7 @@ type stackItemSnapshot struct {
 	TargetChoosers []TargetChooser `json:"targetChoosers,omitempty"`
 	HoldPriority   bool            `json:"holdPriority"`
 	CastFromZone   ZoneKind        `json:"castFromZone,omitempty"`
+	CastOrdinal    int             `json:"castOrdinal,omitempty"`
 	AltCost        string          `json:"altCost,omitempty"`
 	Foretold       bool            `json:"foretold,omitempty"`
 
@@ -3498,6 +3499,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		ModeChooser:      uuidPtrOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
+		CastOrdinal:      s.CastOrdinal,
 		AltCost:          s.AltCost,
 		MutateUnder:      s.MutateUnder,
 		Foretold:         s.Foretold,
@@ -4730,6 +4732,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		ModeChooser:      uuidOrNil(s.ModeChooser),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
+		CastOrdinal:      s.CastOrdinal,
 		AltCost:          s.AltCost,
 		MutateUnder:      s.MutateUnder,
 		Foretold:         s.Foretold,

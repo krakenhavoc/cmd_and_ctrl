@@ -38,7 +38,9 @@ var foretoldByEffect = RegisterTail("engine/foretold-by-effect", func(g *Game, o
 		return nil
 	}
 	exiled := exiledCardByIDLocked(g, o.IDs[0])
-	if exiled == nil {
+	if exiled == nil || o.Tail.Word == "" {
+		// A card with no mana cost is foretold (face down) but has no
+		// foretell cost to cast it for.
 		return nil
 	}
 	g.GrantCastPermissionToCardsForEffect(CastPermission{

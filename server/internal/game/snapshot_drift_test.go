@@ -1015,6 +1015,8 @@ var stackItemFields = plan(
 	"ModeChooser", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
+	// CR 601.2i: which spell this was this turn (Codespell Cleric).
+	"CastOrdinal", carried, "",
 	"AltCost", carried, "",
 	"MutateUnder", carried, "",
 	// CR 702.143c (#658). Carried: a restore that lost it would make

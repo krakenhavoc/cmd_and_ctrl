@@ -331,6 +331,12 @@ type PermissionFilter struct {
 	// Additive within a snapshot version.
 	ArtifactOrSubtype string `json:"artifactOrSubtype,omitempty"`
 
+	// SpellSubtype is "<subtype> spells" for a subtype that is not a creature
+	// type (Runeforge Champion's "Rune spells"): a qualifying card has this
+	// subtype read through Card.HasSubtype. Empty constrains nothing.
+	// Additive within a snapshot version (S82 old batch 061).
+	SpellSubtype string `json:"spellSubtype,omitempty"`
+
 	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
 	// in your graveyard have retrace" (#2550): a card qualifies when it
 	// has AT LEAST ONE of the named creature types — "X and Y cards" is
@@ -584,6 +590,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
+		return false
+	}
+	if f.SpellSubtype != "" && !c.HasSubtype(f.SpellSubtype) {
 		return false
 	}
 	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {

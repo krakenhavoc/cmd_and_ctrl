@@ -688,4 +688,8 @@ var TokenTable = map[string]game.Card{
 	"0/1 black Thrull": {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	// S82 OLD batch 26 (#5462): Gisa's Favorite Shovel's Walker.
 	"2/2 black Zombie named Walker": {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	// S82 OLD batch 68 (#5505): Troll Warrior (Gnottvold Slumbermound; also batch 071's Old-Growth Troll and batch 060's Waking the Trolls).
+	"4/4 green Troll Warrior with trample": {Name: "Troll Warrior", TypeLine: "Token Creature — Troll Warrior", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	// S82 OLD batch 060 (#5505): The Bloodsky Massacre's Demon Berserker.
+	"2/3 red Demon Berserker with menace": {Name: "Demon Berserker", TypeLine: "Token Creature — Demon Berserker", Power: 2, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"menace"}},
 }
