@@ -468,6 +468,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"NewZone":                   repFieldCarried,
 	"NewZoneOwner":              repFieldCarried,
 	"ShuffleDestinationLibrary": repFieldCarried,
+	"PutOnLibraryBottom":        repFieldCarried,
 	"ExiledWith":                repFieldCarried,
 	"ExileCounter":              repFieldCarried,
 	"Destruction":               repFieldCarried,
@@ -804,6 +805,7 @@ type replacementEventSnapshot struct {
 	NewZone                   ZoneKind            `json:"newZone,omitempty"`
 	NewZoneOwner              *uuid.UUID          `json:"newZoneOwner,omitempty"`
 	ShuffleDestinationLibrary bool                `json:"shuffleDestinationLibrary,omitempty"`
+	PutOnLibraryBottom        bool                `json:"putOnLibraryBottom,omitempty"`
 	ExiledWith                *PermissionCardRef  `json:"exiledWith,omitempty"`
 	ExileCounter              string              `json:"exileCounter,omitempty"`
 	Destruction               bool                `json:"destruction,omitempty"`
@@ -1275,6 +1277,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		NewZone:                   ev.NewZone,
 		NewZoneOwner:              uuidPtrOrNil(ev.NewZoneOwner),
 		ShuffleDestinationLibrary: ev.ShuffleDestinationLibrary,
+		PutOnLibraryBottom:        ev.PutOnLibraryBottom,
 		ExiledWith:                permissionRefPtr(ev.ExiledWith),
 		ExileCounter:              ev.ExileCounter,
 		Destruction:               ev.Destruction,
@@ -1456,6 +1459,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		NewZone:                   s.NewZone,
 		NewZoneOwner:              uuidOrNil(s.NewZoneOwner),
 		ShuffleDestinationLibrary: s.ShuffleDestinationLibrary,
+		PutOnLibraryBottom:        s.PutOnLibraryBottom,
 		ExiledWith:                permissionRefValue(s.ExiledWith),
 		ExileCounter:              s.ExileCounter,
 		Destruction:               s.Destruction,
