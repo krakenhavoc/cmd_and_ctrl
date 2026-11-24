@@ -598,6 +598,8 @@ var cardFields = plan(
 	// copied devoid. Carried: nothing else on the card says so.
 	"ColorCDADropped", carried, "",
 	"LostKeywords", carried, "",
+	"PerpetualKeywords", carried, "",
+	"Conjured", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
@@ -1016,6 +1018,8 @@ var stackItemFields = plan(
 	"ModeChooser", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
+	// CR 601.2i: which spell this was this turn (Codespell Cleric).
+	"CastOrdinal", carried, "",
 	"AltCost", carried, "",
 	"MutateUnder", carried, "",
 	// CR 702.143c (#658). Carried: a restore that lost it would make

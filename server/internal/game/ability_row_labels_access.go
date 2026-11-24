@@ -1,6 +1,9 @@
 package game
 
-import "reflect"
+import (
+	"reflect"
+	"strconv"
+)
 
 // ability_row_labels_access.go — #3133: the wording of the hexproof
 // waiver and special-action-grant slots.
@@ -30,6 +33,18 @@ func specialActionGrantRows(v reflect.Value) []string {
 	grants, _ := v.Interface().([]SpecialActionGrant)
 	out := make([]string, 0, len(grants))
 	for _, gr := range grants {
+		if gr.Kind == SpecialActionForetell && gr.Zone == ZoneHand {
+			s := "Each nonland card in your hand without foretell has foretell."
+			if gr.CostIsManaCost {
+				s += " Its foretell cost is equal to its mana cost"
+				if gr.CostReducedBy > 0 {
+					s += " reduced by {" + strconv.Itoa(gr.CostReducedBy) + "}"
+				}
+				s += "."
+			}
+			out = append(out, s)
+			continue
+		}
 		if gr.Kind != SpecialActionPlot || gr.Zone != ZoneLibrary {
 			out = append(out, "Grants a special action.")
 			continue

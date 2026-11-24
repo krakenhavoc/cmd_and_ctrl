@@ -71,6 +71,22 @@ type EffectParams struct {
 // scheduled and where it is restored (ErrUnknownEffectKey).
 type CastFilter struct {
 	Types []string `json:"types,omitempty"`
+
+	// MaxManaValue, when set, is "with mana value N or less" (Dual Strike's
+	// "an instant or sorcery spell with mana value 4 or less"): a spell
+	// whose mana value is greater does not match. A pointer so that zero is
+	// a real ceiling and nil is none. Additive within a snapshot version.
+	MaxManaValue *int `json:"maxManaValue,omitempty"`
+}
+
+// MatchesSpell is Matches for a spell on the stack: the mana value it is
+// judged against counts {X} at the value chosen for it (CR 202.3e), which
+// the card alone cannot say. x is that value, 0 for a spell with none.
+func (f CastFilter) MatchesSpell(c Card, x int) bool {
+	if !f.Matches(c) {
+		return false
+	}
+	return f.MaxManaValue == nil || c.ManaValueWithX(x) <= *f.MaxManaValue
 }
 
 // cardTypes205 is CR 205.2a's list of card types.
@@ -95,6 +111,9 @@ func (f CastFilter) Valid() bool {
 // Matches reports whether the card has one of the filter's types,
 // compared as whole type names. An invalid filter matches nothing.
 func (f CastFilter) Matches(c Card) bool {
+	if f.MaxManaValue != nil && c.ManaValue() > *f.MaxManaValue {
+		return false
+	}
 	if len(f.Types) == 0 {
 		return true
 	}

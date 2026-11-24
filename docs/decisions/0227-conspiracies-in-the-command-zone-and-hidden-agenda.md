@@ -2,7 +2,7 @@
 
 **Status:** Accepted · 2026-11-24 · S82 — Card coverage: sets outside Standard, newest first. Everything here follows the Comprehensive Rules (CR 315, 702.106, 905.4) on a C2 table; nothing in it needs an owner decision. Draft-time abilities do need one, and it is asked on [#6102](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6102), not answered here ([What this does not decide](#what-this-does-not-decide)).
 **Issue:** [#6102](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6102) (Conspiracy Draft cards). This ADR builds the half of it that needs no decision.
-**Numbering:** checked on 2026-11-24 after `git fetch --all --prune`, with the loop in [README.md](README.md#picking-a-number) over `docs/decisions/` on all 538 remote branches. `develop` ends at 0225 and `feat/6103-subgames` holds 0226 (subgames and dexterity cards), so this is **0227**.
+**Numbering:** checked on 2026-11-24 after `git fetch --all --prune`, with the loop in [README.md](README.md#picking-a-number) over `docs/decisions/` on all 538 remote branches. `develop` ends at 0225 and `feat/6103-subgames` holds 0226 (subgames and dexterity cards, since merged to `develop`), so this is **0227**.
 **Builds on:** [ADR 0064](0064-emblems.md) (the second command-zone container), [ADR 0069](0069-face-down-objects.md) (face-down kinds), [ADR 0172](0172-companion-a-card-outside-the-game.md) (a card that starts the game outside the library, and a special action derived from the card), [ADR 0191](0191-a-sideboard-is-the-outside-the-game-pool.md) (a deck's sideboard rides into the game), ADR 0041 P3 (the closure ratchet) and #522 (snapshots additive within a version).
 
 ---

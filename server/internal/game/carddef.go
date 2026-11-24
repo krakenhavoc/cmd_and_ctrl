@@ -292,6 +292,12 @@ type CardDef struct {
 
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
+
+	// ForetellOnAnyTurn is "foretelling cards from your hand ... can be done on
+	// any player's turn" (Cosmos Charger): while the permanent is on the
+	// battlefield its controller may take the foretell special action during
+	// any player's turn. Plain data; the timing table reads it.
+	ForetellOnAnyTurn bool
 	// UntapCounterRemovals are "if this would untap during your untap
 	// step, remove a <counter> counter from it instead. If you do, untap
 	// it." (#6095, untap_counter_removal.go), read off the permanent's
@@ -1166,6 +1172,12 @@ func init() {
 			return d.DrawStep
 		}
 		return nil
+	}
+	CatalogForetellOnAnyTurn = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.ForetellOnAnyTurn
+		}
+		return false
 	}
 	CatalogUntapStepRestrictions = func(key string) []UntapStepRestriction {
 		if d := catalogDef(key); d != nil {

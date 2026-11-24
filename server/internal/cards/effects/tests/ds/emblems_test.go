@@ -266,7 +266,8 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 		if spec.Emblem.Label == "" || spec.Emblem.Text == "" {
 			t.Errorf("%s declares an emblem with no label or no text", spec.Name)
 		}
-		if !strings.Contains(spec.Emblem.Label, "emblem") {
+		// #5948: a one-time boon says it is a boon.
+		if !strings.Contains(spec.Emblem.Label, "emblem") && !(spec.Emblem.Boon && strings.HasSuffix(spec.Emblem.Label, " boon")) {
 			t.Errorf("%s's emblem label %q does not say it is an emblem", spec.Name, spec.Emblem.Label)
 		}
 		// The emblem's def has to be reachable under the synthetic

@@ -60,7 +60,7 @@ import (
 type MayPayX struct {
 	// Chooser answers both prompts and pays. Source attributes them.
 	Chooser, Source uuid.UUID
-	// Cost is the printed cost with exactly one {X}: "{X}{R}". Leave it
+	// Cost is the printed cost with at least one {X}: "{X}{R}", "{X}{X}". Leave it
 	// empty when Symbol is set.
 	Cost string
 	// Symbol is "pay ANY AMOUNT of {R}" (Leyline Tyrant): the cost is X of
@@ -149,7 +149,7 @@ func (c *MayPayXClause) settler() (func(x int) ParsedCost, error) {
 		}, err
 	}
 	cost, err := ParseCost(c.Cost)
-	if err == nil && cost.XSlots != 1 {
+	if err == nil && cost.XSlots < 1 {
 		err = errMayPayXNoX
 	}
 	return func(x int) ParsedCost { return cost.SettleX(x) }, err
@@ -305,9 +305,9 @@ func chooseValueFrameOf(c *PendingChoice) *chooseValueFrame {
 	return numberFrameOf(c)
 }
 
-// errMayPayXNoX is a MayPayX cost without exactly one {X}: a catalog
+// errMayPayXNoX is a MayPayX cost without an {X}: a catalog
 // mistake, reported as EventEffectError.
-var errMayPayXNoX = errors.New("the cost must have exactly one {X}")
+var errMayPayXNoX = errors.New("the cost must have at least one {X}")
 
 // largestPayableXLocked is the largest X for which `p` can pay `cost`
 // right now, or -1 when not even X = 0 can be paid. Each probe is

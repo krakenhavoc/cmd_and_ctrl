@@ -227,6 +227,22 @@ type Card struct {
 	// becomes a new object.
 	LostKeywords []string
 
+	// PerpetualKeywords are keyword abilities an effect gave this CARD
+	// "perpetually" (ADR 0099 amendment 2026-11-24, #5948: Pearl
+	// Collector's "another target creature perpetually gains
+	// lifelink"). A perpetual change belongs to the card, not to the
+	// object: it follows the card into every zone and through every zone
+	// change, so CR 400.7's resets (MoveCard) leave it alone. It is read
+	// into the card's printed baseline (printedInputsOf), so the layer
+	// pass starts from it on the battlefield, the view shows it in a hand
+	// or a graveyard, and a later effect can still remove it the way it
+	// removes a printed keyword. Not a copiable value: a copy effect
+	// copies what the copied card prints and what other copy effects
+	// changed (CR 707.2), and a copy effect applied to THIS card leaves
+	// its own perpetual change in place, because the change is the
+	// card's. Carried by the snapshot.
+	PerpetualKeywords []string
+
 	// TextBox is the text box this permanent has when it is not its own
 	// (CR 612.5, ADR 0160): the result of the textBox records, written
 	// by materialiseTextBoxesLocked and read by catalogKeyOf and the
@@ -2199,6 +2215,15 @@ type Card struct {
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
 	// for every card host. Cleared wherever AttachedTo is.
 	AttachedPinned bool
+
+	// Conjured marks a card that a conjure made (conjure.go, ADR 0099
+	// amendment 2026-11-24): a real card with a printed card's
+	// characteristics that was in nobody's deck. Nothing in the rules
+	// reads it ("treat conjured cards like cards"); it is for the
+	// readers that would otherwise assume every card came from a
+	// decklist, and for the view. Kept through zone changes, because the
+	// card is still the card that was conjured. Carried by the snapshot.
+	Conjured bool
 
 	// PhaseInBarredWhileTapped changes the PhaseInBarredBy bar's condition
 	// from "you control ~" to "~ remains tapped" (The Pandorica, #6095):

@@ -475,13 +475,22 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 		// triggering event (#1223) rather than captured when the
 		// ability triggered, so a restored item charges the same
 		// player for the same spell. The cost is the row's own.
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Trigger == nil {
-				return nil
-			}
-			ev := item.Trigger.Event
-			return WardPayOrCounter(g, item, ev.StackItemID, ev.Actor, cost)
-		},
+		Effect: WardEffect(cost),
+	}
+}
+
+// WardEffect is a ward-shaped trigger's resolution: the targeting spell or
+// ability and the player who controls it are read off the item's triggering
+// event, and the cost is paid or that spell or ability is countered
+// (WardPayOrCounter). Shared by every trigger of the shape (Valkmira,
+// Protector's Shield's "unless its controller pays {1}").
+func WardEffect(cost WardCost) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if item.Trigger == nil {
+			return nil
+		}
+		ev := item.Trigger.Event
+		return WardPayOrCounter(g, item, ev.StackItemID, ev.Actor, cost)
 	}
 }
 

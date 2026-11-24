@@ -489,6 +489,12 @@ const (
 	// earned, which is the condition the feature ships under; a
 	// spawn into a hidden zone names the zone and not the card.
 	LogSpawn LogKind = "spawn"
+	// LogConjure — a card's effect conjured a card (ADR 0099 amendment
+	// 2026-11-24, #5948): a new card that was in nobody's deck. `Label`
+	// is the card's name, `NewZone` where it went and `Seat` who
+	// conjured (and owns) it. A conjure into a hand or a library names
+	// the zone and not the card, as a spawn does.
+	LogConjure LogKind = "conjure"
 	// LogTransform — a permanent was turned over to its other face
 	// (CR 701.27a). `Label` is the name of the face it turned FROM,
 	// which is the only place that name survives: the card's own name
@@ -2237,6 +2243,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.setTarget(ev.Target, seatOf)
 		return base, true
 
+	case game.EventConjured:
+		base.Kind = LogConjure
+		base.Amount = ev.Amount
+		base.NewZone = string(ev.NewZone)
+		// The name of a card conjured into a hidden zone is hidden
+		// information, dropped here for everyone, as for a spawn.
+		if !hiddenZone(ev.NewZone) {
+			base.Label = ev.Label
+		}
+		return base, true
+
 	case game.EventSpawned:
 		// ADR 0075 §2.4. The whole justification for allowing a
 		// production spawn is that the table can see it happen: a
@@ -3590,6 +3607,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return renderIdleCloseText(*e)
 	case LogSpawn:
 		return renderSpawnText(*e, target)
+	case LogConjure:
+		return renderConjureText(*e, actor)
 	case LogStorm:
 		// "Grapeshot — storm count 3". The em dash is the separator
 		// every storm-shaped stack label in the catalog already uses,
@@ -3938,6 +3957,20 @@ func renderSpawnText(e LogEvent, target string) string {
 	default:
 		return fmt.Sprintf("%s spawned %s into %s's %s", who, what, target, spawnZoneWord(e.NewZone))
 	}
+}
+
+// renderConjureText is a LogConjure line: "Ana conjured Mox Jet into
+// their hand", "Ana conjured a card into their library", "Ana conjured
+// Blood Artist onto the battlefield".
+func renderConjureText(e LogEvent, actor string) string {
+	what := "a card"
+	if e.Label != "" {
+		what = e.Label
+	}
+	if game.ZoneKind(e.NewZone) == game.ZoneBattlefield {
+		return fmt.Sprintf("%s conjured %s onto the battlefield", actor, what)
+	}
+	return fmt.Sprintf("%s conjured %s into their %s", actor, what, spawnZoneWord(e.NewZone))
 }
 
 // spawnZoneWord is prettyZone without the article, because a spawn

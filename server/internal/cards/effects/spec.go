@@ -1964,6 +1964,12 @@ type Spec struct {
 	// UntapStepRestrictions declares permanents that stay tapped during
 	// their controller's untap step (Mana Vault, Meekstone, and Auras).
 	UntapStepRestrictions []game.UntapStepRestriction
+
+	// ForetellOnAnyTurn is "Foretelling cards from your hand ... can be done on
+	// any player's turn" (Cosmos Charger): its controller may take the foretell
+	// special action during any player's turn (CR 702.143a otherwise says "during
+	// your turn"). Pair it with SpecialActionCostsLess for the {1} discount.
+	ForetellOnAnyTurn bool
 	// CounterRemovalLocks declares "<kind> counters can't be removed
 	// from <permanents>" (Fear of Sleep Paralysis, #1824). A
 	// prohibition honoured at the one counter-removal choke point; see

@@ -51,6 +51,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - ["Skip that draw" (#5246, CR 614.1b)](#skip-that-draw-5246-cr-6141b)
   - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
+  - [Conjure, perpetual changes and boons (ADR 0099 amendment 2026-11-24, #5948)](#conjure-perpetual-changes-and-boons-adr-0099-amendment-2026-11-24-5948)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - ["Can be attached only to a legendary creature" (#5846)](#can-be-attached-only-to-a-legendary-creature-5846)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
@@ -4973,6 +4974,36 @@ Triggered: []game.TriggeredAbility{
   a suppressor and a zero occurrence count all return before the claim.
 - `Register` refuses `OnlyOnce` on a row with no `Key` or on a state trigger.
   "Triggers only once each turn" is still `TriggersOnlyOnceEachTurn(t)`.
+
+### Conjure, perpetual changes and boons (ADR 0099 amendment 2026-11-24, #5948)
+
+- **Conjure.** "Conjure a card named X into your hand / into your library / onto
+  the battlefield" is `Conjure{Names, Zone}` in a `Do`, wrapped in
+  `CheckConjure(card, …)` so a name with no record fails at boot:
+
+  ```go
+  Do(CheckConjure("Jet Collector", Conjure{Names: []string{"Mox Jet"}, Zone: game.ZoneHand}))
+  ```
+
+  `Names` is one entry per card ("four cards named Lightning Bolt" lists it four
+  times; `PowerNine` is the nine). `AtRandom` conjures one name drawn at random,
+  `Reveal` reveals a card conjured into a hand, `Shuffle` is "…, then shuffle", and
+  `ThenTail` (a `CardTail`) is told the IDs that landed ("discard that card",
+  Sigardian Evangel). Every conjured name needs a record in
+  [conjurable_cards.go](../server/internal/cards/effects/conjurable_cards.go),
+  the dump's own JSON for one printing (`TestConjurableRecordsMatchTheDump` holds
+  it to the dump), and must be a catalog card itself
+  (`TestEveryConjurableIsACatalogCard`). The card is real: the conjuring player
+  owns it, it enters through the ordinary entry, and `Card.Conjured` marks it.
+- **Perpetual.** "<target> perpetually gains <keyword>" is
+  `PerpetuallyGainKeyword{Keyword}` (Pearl Collector). The keyword goes on the
+  card itself (`Card.PerpetualKeywords`) and follows it through every zone. A
+  perpetual change to anything but a keyword has no field yet.
+- **Boon.** "You get a one-time boon with '<trigger>'" is `CreateEmblem{}` on the
+  ability and `Emblem: &EmblemSpec{Label: "<card> boon", Text: …, Boon: true,
+  Triggered: […]}` on the Spec, with exactly one triggered ability (Tenacious
+  Pup). The registry makes it trigger only once, and the boon is removed as soon
+  as it has triggered.
 
 ### Attaching, and an ability whose source has gone (#812)
 

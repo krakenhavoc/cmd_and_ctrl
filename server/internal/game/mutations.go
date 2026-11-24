@@ -2776,6 +2776,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.ManaSpent += spent
 	tally.ManaSpentLast = spent
 	g.SpellsCastThisTurn[playerID] = tally
+	// CR 601.2i: which spell this was this turn, kept on the item so the
+	// permanent it becomes remembers it (CastProvenance.CastOrdinal).
+	if item := g.StackMeta[cardID]; item != nil {
+		item.CastOrdinal = tally.Total
+	}
 	// #3174: a once-each-turn granted offer (Warped Space, Access Maze)
 	// is spent by the cast it paid for, here where the cast is made.
 	g.noteGrantedOfferClaimedLocked(alt)
