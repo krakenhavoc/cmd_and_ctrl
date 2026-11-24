@@ -90,6 +90,7 @@ battlefield.cards[].colorIdentity	array
 battlefield.cards[].colorIdentity[]	string
 battlefield.cards[].colors	array
 battlefield.cards[].colors[]	string
+battlefield.cards[].commanderColor	string
 battlefield.cards[].commanderReturnDue	bool
 battlefield.cards[].controlledSinceUpkeep	number:int
 battlefield.cards[].controller	custom(uuid.UUID)
@@ -675,6 +676,7 @@ enteringTokens[].colorIdentity	array
 enteringTokens[].colorIdentity[]	string
 enteringTokens[].colors	array
 enteringTokens[].colors[]	string
+enteringTokens[].commanderColor	string
 enteringTokens[].commanderReturnDue	bool
 enteringTokens[].controlledSinceUpkeep	number:int
 enteringTokens[].controller	custom(uuid.UUID)
@@ -1230,6 +1232,7 @@ exile.cards[].colorIdentity	array
 exile.cards[].colorIdentity[]	string
 exile.cards[].colors	array
 exile.cards[].colors[]	string
+exile.cards[].commanderColor	string
 exile.cards[].commanderReturnDue	bool
 exile.cards[].controlledSinceUpkeep	number:int
 exile.cards[].controller	custom(uuid.UUID)
@@ -9231,6 +9234,7 @@ frozenEntries[].event.keywordActionTail.armyToken.colorIdentity	array
 frozenEntries[].event.keywordActionTail.armyToken.colorIdentity[]	string
 frozenEntries[].event.keywordActionTail.armyToken.colors	array
 frozenEntries[].event.keywordActionTail.armyToken.colors[]	string
+frozenEntries[].event.keywordActionTail.armyToken.commanderColor	string
 frozenEntries[].event.keywordActionTail.armyToken.commanderReturnDue	bool
 frozenEntries[].event.keywordActionTail.armyToken.controlledSinceUpkeep	number:int
 frozenEntries[].event.keywordActionTail.armyToken.controller	custom(uuid.UUID)
@@ -11737,6 +11741,7 @@ frozenEntries[].event.millTail.run.planned[].colorIdentity	array
 frozenEntries[].event.millTail.run.planned[].colorIdentity[]	string
 frozenEntries[].event.millTail.run.planned[].colors	array
 frozenEntries[].event.millTail.run.planned[].colors[]	string
+frozenEntries[].event.millTail.run.planned[].commanderColor	string
 frozenEntries[].event.millTail.run.planned[].commanderReturnDue	bool
 frozenEntries[].event.millTail.run.planned[].controlledSinceUpkeep	number:int
 frozenEntries[].event.millTail.run.planned[].controller	custom(uuid.UUID)
@@ -12172,6 +12177,7 @@ frozenEntries[].event.millTail.run.seen[].colorIdentity	array
 frozenEntries[].event.millTail.run.seen[].colorIdentity[]	string
 frozenEntries[].event.millTail.run.seen[].colors	array
 frozenEntries[].event.millTail.run.seen[].colors[]	string
+frozenEntries[].event.millTail.run.seen[].commanderColor	string
 frozenEntries[].event.millTail.run.seen[].commanderReturnDue	bool
 frozenEntries[].event.millTail.run.seen[].controlledSinceUpkeep	number:int
 frozenEntries[].event.millTail.run.seen[].controller	custom(uuid.UUID)
@@ -14594,6 +14600,7 @@ frozenEntries[].event.tokenGroups[].template.colorIdentity	array
 frozenEntries[].event.tokenGroups[].template.colorIdentity[]	string
 frozenEntries[].event.tokenGroups[].template.colors	array
 frozenEntries[].event.tokenGroups[].template.colors[]	string
+frozenEntries[].event.tokenGroups[].template.commanderColor	string
 frozenEntries[].event.tokenGroups[].template.commanderReturnDue	bool
 frozenEntries[].event.tokenGroups[].template.controlledSinceUpkeep	number:int
 frozenEntries[].event.tokenGroups[].template.controller	custom(uuid.UUID)
@@ -15726,6 +15733,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.colorIdentity	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.colorIdentity[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.colors	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.colors[]	string
+frozenEntries[].event.tokensAfterMove[].groups[].template.commanderColor	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.commanderReturnDue	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.controlledSinceUpkeep	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.controller	custom(uuid.UUID)
@@ -16174,6 +16182,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colorIdentity	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colorIdentity[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].colors[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].commanderColor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].commanderReturnDue	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].controlledSinceUpkeep	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].controller	custom(uuid.UUID)
@@ -16609,6 +16618,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colorIdentity	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colorIdentity[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].colors[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].commanderColor	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].commanderReturnDue	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].controlledSinceUpkeep	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].controller	custom(uuid.UUID)
@@ -20564,6 +20574,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].colorIdentity	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].colorIdentity[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].colors	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].colors[]	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].commanderColor	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].commanderReturnDue	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].controlledSinceUpkeep	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].controller	custom(uuid.UUID)
@@ -21770,6 +21781,7 @@ lastKnownStack[].card.colorIdentity	array
 lastKnownStack[].card.colorIdentity[]	string
 lastKnownStack[].card.colors	array
 lastKnownStack[].card.colors[]	string
+lastKnownStack[].card.commanderColor	string
 lastKnownStack[].card.commanderReturnDue	bool
 lastKnownStack[].card.controlledSinceUpkeep	number:int
 lastKnownStack[].card.controller	custom(uuid.UUID)
@@ -22710,6 +22722,7 @@ match.decks[].fixed[].colorIdentity	array
 match.decks[].fixed[].colorIdentity[]	string
 match.decks[].fixed[].colors	array
 match.decks[].fixed[].colors[]	string
+match.decks[].fixed[].commanderColor	string
 match.decks[].fixed[].commanderReturnDue	bool
 match.decks[].fixed[].controlledSinceUpkeep	number:int
 match.decks[].fixed[].controller	custom(uuid.UUID)
@@ -23143,6 +23156,7 @@ match.decks[].main[].colorIdentity	array
 match.decks[].main[].colorIdentity[]	string
 match.decks[].main[].colors	array
 match.decks[].main[].colors[]	string
+match.decks[].main[].commanderColor	string
 match.decks[].main[].commanderReturnDue	bool
 match.decks[].main[].controlledSinceUpkeep	number:int
 match.decks[].main[].controller	custom(uuid.UUID)
@@ -23579,6 +23593,7 @@ match.decks[].side[].colorIdentity	array
 match.decks[].side[].colorIdentity[]	string
 match.decks[].side[].colors	array
 match.decks[].side[].colors[]	string
+match.decks[].side[].commanderColor	string
 match.decks[].side[].commanderReturnDue	bool
 match.decks[].side[].controlledSinceUpkeep	number:int
 match.decks[].side[].controller	custom(uuid.UUID)
@@ -30646,6 +30661,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.colorIdentity	array
 movesAwaitingTokens[].keywordActionTail.armyToken.colorIdentity[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.colors	array
 movesAwaitingTokens[].keywordActionTail.armyToken.colors[]	string
+movesAwaitingTokens[].keywordActionTail.armyToken.commanderColor	string
 movesAwaitingTokens[].keywordActionTail.armyToken.commanderReturnDue	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.controlledSinceUpkeep	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.controller	custom(uuid.UUID)
@@ -33152,6 +33168,7 @@ movesAwaitingTokens[].millTail.run.planned[].colorIdentity	array
 movesAwaitingTokens[].millTail.run.planned[].colorIdentity[]	string
 movesAwaitingTokens[].millTail.run.planned[].colors	array
 movesAwaitingTokens[].millTail.run.planned[].colors[]	string
+movesAwaitingTokens[].millTail.run.planned[].commanderColor	string
 movesAwaitingTokens[].millTail.run.planned[].commanderReturnDue	bool
 movesAwaitingTokens[].millTail.run.planned[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].millTail.run.planned[].controller	custom(uuid.UUID)
@@ -33587,6 +33604,7 @@ movesAwaitingTokens[].millTail.run.seen[].colorIdentity	array
 movesAwaitingTokens[].millTail.run.seen[].colorIdentity[]	string
 movesAwaitingTokens[].millTail.run.seen[].colors	array
 movesAwaitingTokens[].millTail.run.seen[].colors[]	string
+movesAwaitingTokens[].millTail.run.seen[].commanderColor	string
 movesAwaitingTokens[].millTail.run.seen[].commanderReturnDue	bool
 movesAwaitingTokens[].millTail.run.seen[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].millTail.run.seen[].controller	custom(uuid.UUID)
@@ -36009,6 +36027,7 @@ movesAwaitingTokens[].tokenGroups[].template.colorIdentity	array
 movesAwaitingTokens[].tokenGroups[].template.colorIdentity[]	string
 movesAwaitingTokens[].tokenGroups[].template.colors	array
 movesAwaitingTokens[].tokenGroups[].template.colors[]	string
+movesAwaitingTokens[].tokenGroups[].template.commanderColor	string
 movesAwaitingTokens[].tokenGroups[].template.commanderReturnDue	bool
 movesAwaitingTokens[].tokenGroups[].template.controlledSinceUpkeep	number:int
 movesAwaitingTokens[].tokenGroups[].template.controller	custom(uuid.UUID)
@@ -37141,6 +37160,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.colorIdentity	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.colorIdentity[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.colors	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.colors[]	string
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.commanderColor	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.commanderReturnDue	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.controlledSinceUpkeep	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.controller	custom(uuid.UUID)
@@ -37589,6 +37609,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colorIdentity	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colorIdentity[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].colors[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].commanderColor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].commanderReturnDue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].controller	custom(uuid.UUID)
@@ -38024,6 +38045,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colorIdentity	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colorIdentity[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].colors[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].commanderColor	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].commanderReturnDue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].controller	custom(uuid.UUID)
@@ -41979,6 +42001,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].colorIdentity	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].colorIdentity[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].colors	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].colors[]	string
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].commanderColor	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].commanderReturnDue	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].controlledSinceUpkeep	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].controller	custom(uuid.UUID)
@@ -43994,6 +44017,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.colorIdentity	array
 pendingChoices[].attackSplit.settled.chosen[].template.colorIdentity[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.colors	array
 pendingChoices[].attackSplit.settled.chosen[].template.colors[]	string
+pendingChoices[].attackSplit.settled.chosen[].template.commanderColor	string
 pendingChoices[].attackSplit.settled.chosen[].template.commanderReturnDue	bool
 pendingChoices[].attackSplit.settled.chosen[].template.controlledSinceUpkeep	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.controller	custom(uuid.UUID)
@@ -44449,6 +44473,7 @@ pendingChoices[].attackSplit.settled.groups[].template.colorIdentity	array
 pendingChoices[].attackSplit.settled.groups[].template.colorIdentity[]	string
 pendingChoices[].attackSplit.settled.groups[].template.colors	array
 pendingChoices[].attackSplit.settled.groups[].template.colors[]	string
+pendingChoices[].attackSplit.settled.groups[].template.commanderColor	string
 pendingChoices[].attackSplit.settled.groups[].template.commanderReturnDue	bool
 pendingChoices[].attackSplit.settled.groups[].template.controlledSinceUpkeep	number:int
 pendingChoices[].attackSplit.settled.groups[].template.controller	custom(uuid.UUID)
@@ -45561,6 +45586,7 @@ pendingChoices[].attackSplit.template.colorIdentity	array
 pendingChoices[].attackSplit.template.colorIdentity[]	string
 pendingChoices[].attackSplit.template.colors	array
 pendingChoices[].attackSplit.template.colors[]	string
+pendingChoices[].attackSplit.template.commanderColor	string
 pendingChoices[].attackSplit.template.commanderReturnDue	bool
 pendingChoices[].attackSplit.template.controlledSinceUpkeep	number:int
 pendingChoices[].attackSplit.template.controller	custom(uuid.UUID)
@@ -46418,6 +46444,7 @@ pendingChoices[].copyWalk.src.colorIdentity	array
 pendingChoices[].copyWalk.src.colorIdentity[]	string
 pendingChoices[].copyWalk.src.colors	array
 pendingChoices[].copyWalk.src.colors[]	string
+pendingChoices[].copyWalk.src.commanderColor	string
 pendingChoices[].copyWalk.src.commanderReturnDue	bool
 pendingChoices[].copyWalk.src.controlledSinceUpkeep	number:int
 pendingChoices[].copyWalk.src.controller	custom(uuid.UUID)
@@ -58898,6 +58925,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colorIdenti
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colorIdentity[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colors	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.colors[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.commanderColor	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.commanderReturnDue	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.controller	custom(uuid.UUID)
@@ -61404,6 +61432,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].colorIdentity	ar
 pendingChoices[].replacementResume.event.millTail.run.planned[].colorIdentity[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].colors	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].colors[]	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].commanderColor	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].commanderReturnDue	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].controller	custom(uuid.UUID)
@@ -61839,6 +61868,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].colorIdentity	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].colorIdentity[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].colors	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].colors[]	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].commanderColor	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].commanderReturnDue	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].controller	custom(uuid.UUID)
@@ -64261,6 +64291,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.colorIdentity	ar
 pendingChoices[].replacementResume.event.tokenGroups[].template.colorIdentity[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.colors	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.colors[]	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.commanderColor	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.commanderReturnDue	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.controller	custom(uuid.UUID)
@@ -65393,6 +65424,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.col
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.colorIdentity[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.colors	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.colors[]	string
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.commanderColor	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.commanderReturnDue	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.controller	custom(uuid.UUID)
@@ -65841,6 +65873,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colo
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colorIdentity[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].colors[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].commanderColor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].commanderReturnDue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].controller	custom(uuid.UUID)
@@ -66276,6 +66309,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colorId
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colorIdentity[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].colors[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].commanderColor	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].commanderReturnDue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].controller	custom(uuid.UUID)
@@ -70231,6 +70265,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colorIdent
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colorIdentity[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colors	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].colors[]	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].commanderColor	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].commanderReturnDue	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].controlledSinceUpkeep	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].controller	custom(uuid.UUID)
@@ -72630,6 +72665,7 @@ pendingChoices[].targetWalk.frame.source.colorIdentity	array
 pendingChoices[].targetWalk.frame.source.colorIdentity[]	string
 pendingChoices[].targetWalk.frame.source.colors	array
 pendingChoices[].targetWalk.frame.source.colors[]	string
+pendingChoices[].targetWalk.frame.source.commanderColor	string
 pendingChoices[].targetWalk.frame.source.commanderReturnDue	bool
 pendingChoices[].targetWalk.frame.source.controlledSinceUpkeep	number:int
 pendingChoices[].targetWalk.frame.source.controller	custom(uuid.UUID)
@@ -73476,6 +73512,7 @@ pendingChoices[].triggerFrame.source.colorIdentity	array
 pendingChoices[].triggerFrame.source.colorIdentity[]	string
 pendingChoices[].triggerFrame.source.colors	array
 pendingChoices[].triggerFrame.source.colors[]	string
+pendingChoices[].triggerFrame.source.commanderColor	string
 pendingChoices[].triggerFrame.source.commanderReturnDue	bool
 pendingChoices[].triggerFrame.source.controlledSinceUpkeep	number:int
 pendingChoices[].triggerFrame.source.controller	custom(uuid.UUID)
@@ -74693,6 +74730,7 @@ phasedOut.cards[].colorIdentity	array
 phasedOut.cards[].colorIdentity[]	string
 phasedOut.cards[].colors	array
 phasedOut.cards[].colors[]	string
+phasedOut.cards[].commanderColor	string
 phasedOut.cards[].commanderReturnDue	bool
 phasedOut.cards[].controlledSinceUpkeep	number:int
 phasedOut.cards[].controller	custom(uuid.UUID)
@@ -75131,6 +75169,7 @@ planechase.deck.cards[].colorIdentity	array
 planechase.deck.cards[].colorIdentity[]	string
 planechase.deck.cards[].colors	array
 planechase.deck.cards[].colors[]	string
+planechase.deck.cards[].commanderColor	string
 planechase.deck.cards[].commanderReturnDue	bool
 planechase.deck.cards[].controlledSinceUpkeep	number:int
 planechase.deck.cards[].controller	custom(uuid.UUID)
@@ -75569,6 +75608,7 @@ planechase.faceUp.cards[].colorIdentity	array
 planechase.faceUp.cards[].colorIdentity[]	string
 planechase.faceUp.cards[].colors	array
 planechase.faceUp.cards[].colors[]	string
+planechase.faceUp.cards[].commanderColor	string
 planechase.faceUp.cards[].commanderReturnDue	bool
 planechase.faceUp.cards[].controlledSinceUpkeep	number:int
 planechase.faceUp.cards[].controller	custom(uuid.UUID)
@@ -76261,6 +76301,7 @@ resolving.card.colorIdentity	array
 resolving.card.colorIdentity[]	string
 resolving.card.colors	array
 resolving.card.colors[]	string
+resolving.card.commanderColor	string
 resolving.card.commanderReturnDue	bool
 resolving.card.controlledSinceUpkeep	number:int
 resolving.card.controller	custom(uuid.UUID)
@@ -77340,6 +77381,7 @@ seats[].attractionDeck.cards[].colorIdentity	array
 seats[].attractionDeck.cards[].colorIdentity[]	string
 seats[].attractionDeck.cards[].colors	array
 seats[].attractionDeck.cards[].colors[]	string
+seats[].attractionDeck.cards[].commanderColor	string
 seats[].attractionDeck.cards[].commanderReturnDue	bool
 seats[].attractionDeck.cards[].controlledSinceUpkeep	number:int
 seats[].attractionDeck.cards[].controller	custom(uuid.UUID)
@@ -77963,6 +78005,7 @@ seats[].command.cards[].colorIdentity	array
 seats[].command.cards[].colorIdentity[]	string
 seats[].command.cards[].colors	array
 seats[].command.cards[].colors[]	string
+seats[].command.cards[].commanderColor	string
 seats[].command.cards[].commanderReturnDue	bool
 seats[].command.cards[].controlledSinceUpkeep	number:int
 seats[].command.cards[].controller	custom(uuid.UUID)
@@ -78403,6 +78446,7 @@ seats[].companion.cards[].colorIdentity	array
 seats[].companion.cards[].colorIdentity[]	string
 seats[].companion.cards[].colors	array
 seats[].companion.cards[].colors[]	string
+seats[].companion.cards[].commanderColor	string
 seats[].companion.cards[].commanderReturnDue	bool
 seats[].companion.cards[].controlledSinceUpkeep	number:int
 seats[].companion.cards[].controller	custom(uuid.UUID)
@@ -78852,6 +78896,7 @@ seats[].emblems.cards[].colorIdentity	array
 seats[].emblems.cards[].colorIdentity[]	string
 seats[].emblems.cards[].colors	array
 seats[].emblems.cards[].colors[]	string
+seats[].emblems.cards[].commanderColor	string
 seats[].emblems.cards[].commanderReturnDue	bool
 seats[].emblems.cards[].controlledSinceUpkeep	number:int
 seats[].emblems.cards[].controller	custom(uuid.UUID)
@@ -79388,6 +79433,7 @@ seats[].graveyard.cards[].colorIdentity	array
 seats[].graveyard.cards[].colorIdentity[]	string
 seats[].graveyard.cards[].colors	array
 seats[].graveyard.cards[].colors[]	string
+seats[].graveyard.cards[].commanderColor	string
 seats[].graveyard.cards[].commanderReturnDue	bool
 seats[].graveyard.cards[].controlledSinceUpkeep	number:int
 seats[].graveyard.cards[].controller	custom(uuid.UUID)
@@ -79824,6 +79870,7 @@ seats[].hand.cards[].colorIdentity	array
 seats[].hand.cards[].colorIdentity[]	string
 seats[].hand.cards[].colors	array
 seats[].hand.cards[].colors[]	string
+seats[].hand.cards[].commanderColor	string
 seats[].hand.cards[].commanderReturnDue	bool
 seats[].hand.cards[].controlledSinceUpkeep	number:int
 seats[].hand.cards[].controller	custom(uuid.UUID)
@@ -80265,6 +80312,7 @@ seats[].junkyard.cards[].colorIdentity	array
 seats[].junkyard.cards[].colorIdentity[]	string
 seats[].junkyard.cards[].colors	array
 seats[].junkyard.cards[].colors[]	string
+seats[].junkyard.cards[].commanderColor	string
 seats[].junkyard.cards[].commanderReturnDue	bool
 seats[].junkyard.cards[].controlledSinceUpkeep	number:int
 seats[].junkyard.cards[].controller	custom(uuid.UUID)
@@ -80727,6 +80775,7 @@ seats[].library.cards[].colorIdentity	array
 seats[].library.cards[].colorIdentity[]	string
 seats[].library.cards[].colors	array
 seats[].library.cards[].colors[]	string
+seats[].library.cards[].commanderColor	string
 seats[].library.cards[].commanderReturnDue	bool
 seats[].library.cards[].controlledSinceUpkeep	number:int
 seats[].library.cards[].controller	custom(uuid.UUID)
@@ -81205,6 +81254,7 @@ seats[].sideboard.cards[].colorIdentity	array
 seats[].sideboard.cards[].colorIdentity[]	string
 seats[].sideboard.cards[].colors	array
 seats[].sideboard.cards[].colors[]	string
+seats[].sideboard.cards[].commanderColor	string
 seats[].sideboard.cards[].commanderReturnDue	bool
 seats[].sideboard.cards[].controlledSinceUpkeep	number:int
 seats[].sideboard.cards[].controller	custom(uuid.UUID)
@@ -82044,6 +82094,7 @@ stack.cards[].colorIdentity	array
 stack.cards[].colorIdentity[]	string
 stack.cards[].colors	array
 stack.cards[].colors[]	string
+stack.cards[].commanderColor	string
 stack.cards[].commanderReturnDue	bool
 stack.cards[].controlledSinceUpkeep	number:int
 stack.cards[].controller	custom(uuid.UUID)

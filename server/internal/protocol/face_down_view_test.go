@@ -348,13 +348,14 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// from one they cannot, because "Elf" names Cavern of Souls
 		// and "G" names Coldsteel Heart. They are here so this table
 		// is the thing that proves it.
-		ChosenColor:   "G",
-		NamedTribe:    "Elf",
-		ChosenName:    "Sol Ring",
-		ChosenOption:  "Khans",
-		ChosenNumber:  7,
-		ManaCost:      "{2}{U}",
-		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
+		ChosenColor:    "G",
+		NamedTribe:     "Elf",
+		ChosenName:     "Sol Ring",
+		ChosenOption:   "Khans",
+		ChosenNumber:   7,
+		CommanderColor: "R",
+		ManaCost:       "{2}{U}",
+		ManaAbilities:  []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		// ADR 0093: the granted-ability text list. Redacted with the
 		// ability rows it describes.
 		GrantedAbilities:   []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},

@@ -105,6 +105,28 @@ describe("chosenValueChips", () => {
   });
 });
 
+describe("a commander's colour chosen before the game (#5948, CR 903.4b)", () => {
+  it("names the colour and cites the rule", () => {
+    const chip = chosenValueChips({ commander_color: "R" })[0];
+    expect(chip.kind).toBe("commander-color");
+    expect(chip.label).toBe("Red");
+    expect(chip.title).toContain("CR 903.4b");
+  });
+
+  it("shows on the commander's tile in the command zone", () => {
+    const { container } = mountCard(
+      permanent({
+        name: "The Prismatic Piper",
+        type_line: "Legendary Creature — Shapeshifter",
+        zone: "command",
+        colors: ["R"],
+        commander_color: "R",
+      }),
+    );
+    expect(chips(container).map((c) => c.text)).toEqual(["Red"]);
+  });
+});
+
 describe("the chosen-value chip on a card", () => {
   it("is absent on a permanent that chose nothing", () => {
     const { container } = mountCard(permanent({ name: "Sol Ring" }));

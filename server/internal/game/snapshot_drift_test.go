@@ -445,6 +445,7 @@ var cardFields = plan(
 	"Counters", carried, "",
 	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
+	"CommanderColor", carried, "",
 	// ADR 0172 §4: the companion stamp; the badge reads it.
 	"IsCompanion", carried, "",
 	// ADR 0191 §3: the sideboard stamp; it routes seating only.

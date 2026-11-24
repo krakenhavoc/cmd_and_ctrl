@@ -4138,6 +4138,15 @@ type CardView struct {
 	// Absent at zero, and cleared by the non-knower redaction for the
 	// reasons above.
 	ChosenNumber int `json:"chosen_number,omitempty"`
+	// CommanderColor is the colour this commander's owner chose for it
+	// before the game began (CR 903.4b, #5948): one uppercase letter, on
+	// The Prismatic Piper, Faceless One and Clara Oswald when they are
+	// the commander. PUBLIC: the rule has the choice revealed as the
+	// commander goes to the command zone, and it is the card's colour
+	// and part of its colour identity in every zone. Absent otherwise,
+	// and cleared by the non-knower redaction with the other chosen
+	// values (a face-down commander has no such ability, CR 708.2).
+	CommanderColor string `json:"commander_color,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -13066,6 +13075,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.ChosenName = ""
 	out.ChosenOption = ""
 	out.ChosenNumber = 0
+	out.CommanderColor = ""
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
 	// (mintTokenLocked adds every seat as a knower), so in practice
@@ -13395,13 +13405,15 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ChosenName:   c.ChosenName,
 		ChosenOption: c.ChosenOption,
 		ChosenNumber: c.ChosenNumber,
-		knowers:      knowers,
-		Layout:       c.Layout,
-		Faces:        viewOfFaces(c),
-		MeldedFrom:   viewOfMeldedFrom(c),
-		MergedFrom:   viewOfMergedFrom(c),
-		MeldsInto:    viewOfMeldsInto(c),
-		ActiveFace:   c.ActiveFace,
+		// CR 903.4b: an attribute of the card, kept in every zone.
+		CommanderColor: c.CommanderColor,
+		knowers:        knowers,
+		Layout:         c.Layout,
+		Faces:          viewOfFaces(c),
+		MeldedFrom:     viewOfMeldedFrom(c),
+		MergedFrom:     viewOfMergedFrom(c),
+		MeldsInto:      viewOfMeldsInto(c),
+		ActiveFace:     c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
 		// oracle text for the client to fetch by scryfall_id and a
 		// token that prints an ability would otherwise reach the board

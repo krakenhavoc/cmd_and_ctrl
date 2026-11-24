@@ -5670,6 +5670,12 @@ export interface CardView extends CastSurfaceView {
   // Absent at zero. Same lifecycle, PUBLIC/redaction and rendering
   // module as chosen_color above.
   chosen_number?: number;
+  // #5948 (CR 903.4b): the colour this commander's owner chose for it
+  // before the game began — The Prismatic Piper, Faceless One, Clara
+  // Oswald. One uppercase letter. PUBLIC in every zone (the rule has it
+  // revealed as the commander goes to the command zone); it is already
+  // folded into `colors`. Rendered through `chosenValueChips`.
+  commander_color?: string;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

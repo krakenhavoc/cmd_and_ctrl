@@ -15563,3 +15563,21 @@ Static:            []game.StaticAbility{DomainPT("Domain — … power and tough
 alone). A count read as an ability resolves calls `DomainCount(g, controller)` directly (Sunbathing Rootwalla). Never write a
 private copy. Cards: Leyline Binding, Fblthp, Knows the Way, Jodah's Codex, Llanowar Greenwidow, Radha's Firebrand,
 Yavimaya Sojourner, Sunbathing Rootwalla, Territorial Maro, Nishoba Brawler.
+
+### "If this is your commander, choose a color before the game begins" (#5948, CR 903.4b)
+
+The Prismatic Piper, Faceless One and Clara Oswald print "If <this> is your
+commander, choose a color before the game begins. <This> is the chosen
+color." Declare it with `ChoosesCommanderColor: true` on the `Spec`; nothing
+else is needed for that sentence.
+
+- **Deck construction** (`internal/deck/commander_color.go`) reads the printed
+  sentence and accepts a deck whose cards need one colour outside the other
+  commanders' identity for each such commander: that colour is the choice.
+- **As the game begins** (`game/commander_color.go`), when the mulligan window
+  closes and before the opening-hand actions, the engine records that colour,
+  or, for a deck that shows none, asks the owner with an ordinary
+  `choose_color` prompt. The answer is `Card.CommanderColor`, kept in every
+  zone, and the card is that colour (a CDA in the printed colour baseline) and
+  that colour joins its commander's colour identity.
+- A card that is not the commander, or a copy of one, is colourless.
