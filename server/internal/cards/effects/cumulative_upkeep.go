@@ -78,7 +78,12 @@ func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 // The trigger carries game.KeywordCumulativeUpkeep (#3869), which is
 // how game.HasCumulativeUpkeep finds an instance, printed or granted.
 func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural string) game.TriggeredAbility {
-	ref := cumulativeUpkeepTail(label, each, noun, plural)
+	return cumulativeUpkeepTrigger(label, cumulativeUpkeepTail(label, each, noun, plural))
+}
+
+// cumulativeUpkeepTrigger is the trigger every cumulative upkeep shares: age
+// counter on, then the tail `ref` charges for the counters that landed.
+func cumulativeUpkeepTrigger(label string, ref game.TailRef) game.TriggeredAbility {
 	t := AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
 		source := item.SourceCardID
 		// CR 702.24a's "if this permanent is on the battlefield": a
