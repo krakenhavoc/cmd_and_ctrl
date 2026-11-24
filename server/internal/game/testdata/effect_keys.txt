@@ -2490,6 +2490,7 @@ payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/estwald-shieldbasher-indestructible
 payunless pay-unless/eternal-taskmaster-return
+payunless pay-unless/excise-exile
 payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezio-auditore-lose
@@ -2499,6 +2500,7 @@ payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/flameshadow-conjuring-copy
 payunless pay-unless/flamewake-phoenix-return
+payunless pay-unless/flay-discard
 payunless pay-unless/forage-only
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
@@ -2612,7 +2614,10 @@ payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
 payunless pay-unless/remnant-of-the-rising-star-x-counters
 payunless pay-unless/replication-specialist-copy
+payunless pay-unless/rhystic-deluge-tap
+payunless pay-unless/rhystic-lightning-damage
 payunless pay-unless/rhystic-study-may-draw
+payunless pay-unless/rhystic-syphon-drain
 payunless pay-unless/riddle-gate-gargoyle-lifelink
 payunless pay-unless/rings-of-brighthearth-copy-ability
 payunless pay-unless/riparian-tiger-pump
@@ -2694,6 +2699,7 @@ payunless pay-unless/well-of-lost-dreams-draw
 payunless pay-unless/wharf-infiltrator-eldrazi-horror
 payunless pay-unless/widespread-thieving-play
 payunless pay-unless/wildborn-preserver-counters
+payunless pay-unless/withdraw-return-to-hand
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zhentarim-bandit-treasure
 payunless pay-unless/zoraline-cosmos-caller-return
