@@ -77,10 +77,11 @@ const (
 	// Creeping Peeper).
 	SpendPurposeTurnFaceUp ManaSpendPurpose = "turn_face_up"
 
-	// SpendPurposeForetell is paying the {2} to foretell a card (CR 702.143a,
-	// CR 116.2h). Neither a cast nor an activation, so mana restricted to
-	// either does not pay it; ManaRestrictForetell is the restriction that
-	// does (Karfell Harbinger, S82 OLD batch 071).
+	// SpendPurposeForetell is paying the foretell special action's {2}
+	// (CR 702.143a, CR 116.2h). Neither a cast nor an activation, so mana
+	// restricted to either does not pay it; ManaRestrictForetell is the
+	// restriction that does (Karfell Harbinger, S82 OLD batch 071; Niko
+	// Defies Destiny, batch 060).
 	SpendPurposeForetell ManaSpendPurpose = "foretell"
 )
 
@@ -132,6 +133,9 @@ const (
 	// of Karfell Harbinger's "Spend this mana only to foretell a card from your
 	// hand or cast an instant or sorcery spell". Combine it with the cast
 	// clause through ManaRestrictAnyOf.
+	// It is also the "foretell cards" half of Niko Defies Destiny's "Spend
+	// this mana only to foretell cards or cast spells that have foretell"
+	// (S82 OLD batch 060), combined with ManaRestrictSpellForetell.
 	ManaRestrictForetell = "purpose:foretell"
 	// ManaRestrictColorless permits the token only when the object
 	// being paid for is colorless (CR 105.2c) — Shrine of the
@@ -257,6 +261,13 @@ const (
 	// a freerunning cost qualifies when it is cast for its mana cost too.
 	// An activation never satisfies it.
 	ManaRestrictSpellFreerunning = "spell:freerunning"
+	// ManaRestrictSpellForetell permits the token only on a spell that has
+	// foretell (CR 702.143): the "cast spells that have foretell" half of
+	// Niko Defies Destiny. It asks about the card being cast, whatever cost
+	// is paid for it: a card cast for its mana cost qualifies as well as one
+	// cast from exile for its foretell cost. An activation never satisfies
+	// it, and a face-down spell has no abilities.
+	ManaRestrictSpellForetell = "spell:foretell"
 )
 
 // ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
@@ -551,6 +562,11 @@ type ManaSpendContext struct {
 	// is not a cast.
 	FreerunningSpell bool
 
+	// ForetellSpell is set when the spell being cast has foretell (CR
+	// 702.143): what ManaRestrictSpellForetell reads. False for every
+	// payment that is not a cast.
+	ForetellSpell bool
+
 	// SpellOwner is the owner of the spell being cast (CR 108.3): what
 	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
 	// ManaSpendForCast; zero for every payment that is not a cast.
@@ -772,6 +788,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		FaceDownSpell:    c.FaceDown,
 		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
 		FreerunningSpell: !c.FaceDown && AlternativeCostByKey(CatalogKey(c), "freerunning") != nil,
+		ForetellSpell:    (!c.FaceDown || CardIsForetold(c)) && CardHasForetell(c),
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		wish:             newSpendWish(c),
@@ -874,6 +891,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeTurnFaceUp
 	case ManaRestrictForetell:
 		return ctx.Purpose == SpendPurposeForetell
+	case ManaRestrictSpellForetell:
+		return ctx.Purpose == SpendPurposeCast && ctx.ForetellSpell
 	case ManaRestrictNoGeneric:
 		// Decided per symbol by the solvers (noGeneric), not by the
 		// object being paid for: nothing here to refuse.

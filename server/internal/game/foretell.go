@@ -232,3 +232,17 @@ func (g *Game) foretellOnAnyTurnLocked(playerID uuid.UUID) bool {
 	}
 	return false
 }
+
+// CardHasForetell reports whether the card prints foretell (CR 702.143): the
+// catalog declares the foretell special action for its oracle id. It asks the
+// card, not the zone, so a card in hand, in a graveyard or in exile answers
+// alike (Niko Defies Destiny's "target card with foretell", and the spell
+// mana restricted to "spells that have foretell").
+func CardHasForetell(c Card) bool {
+	for _, sa := range SpecialActionsFor(CatalogKey(c)) {
+		if sa.Kind == SpecialActionForetell {
+			return true
+		}
+	}
+	return false
+}
