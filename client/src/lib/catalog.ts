@@ -407,3 +407,114 @@ export const COMPLETENESS_BLURBS: Record<Completeness, string> = {
   unreviewed:
     "Automated, but nobody has checked it against the printed card yet. It may be complete or may have gaps.",
 };
+
+// --- Paging (#6120) ------------------------------------------------
+//
+// The catalogue holds tens of thousands of cards, and drawing every
+// match as a tile (with its art) is what made the page slow to open.
+// The page shows one page of the filtered list at a time; the filters,
+// the search and the facet counts still run over the whole list, so a
+// count never depends on the page you are on.
+//
+// The page and the page size live in the URL (#/catalog?page=3&size=100)
+// so back, forward and a shared link land where they were. A value the
+// page does not offer reads as the default rather than as an error.
+
+/** The page sizes the selector offers. */
+export const PAGE_SIZES = [25, 50, 75, 100, 250] as const;
+export type PageSize = (typeof PAGE_SIZES)[number];
+export const DEFAULT_PAGE_SIZE: PageSize = 50;
+
+/** parsePageSize reads `?size=`; anything not offered is the default. */
+export function parsePageSize(raw: string | null | undefined): PageSize {
+  const n = Number(raw);
+  return (PAGE_SIZES as readonly number[]).includes(n) ? (n as PageSize) : DEFAULT_PAGE_SIZE;
+}
+
+/** parsePage reads `?page=`: a whole number from 1, else page 1. */
+export function parsePage(raw: string | null | undefined): number {
+  if (!raw || !/^\d+$/.test(raw)) return 1;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) && n >= 1 ? n : 1;
+}
+
+/** pageCount is how many pages `total` cards make; never less than 1. */
+export function pageCount(total: number, size: number): number {
+  return Math.max(1, Math.ceil(total / size));
+}
+
+/**
+ * clampPage keeps a page inside the list: a link to page 40 of a list
+ * that now has 12 pages shows page 12, not an empty grid.
+ */
+export function clampPage(page: number, total: number, size: number): number {
+  return Math.min(Math.max(1, Math.floor(page)), pageCount(total, size));
+}
+
+/** pageSlice is the cards on one page (after clamping the page). */
+export function pageSlice<T>(items: readonly T[], page: number, size: number): T[] {
+  const p = clampPage(page, items.length, size);
+  return items.slice((p - 1) * size, p * size);
+}
+
+/**
+ * pageRange is the 1-based span a page shows, for "Showing 51–100 of
+ * N". An empty list is { from: 0, to: 0 }.
+ */
+export function pageRange(page: number, total: number, size: number): { from: number; to: number } {
+  if (total <= 0) return { from: 0, to: 0 };
+  const p = clampPage(page, total, size);
+  return { from: (p - 1) * size + 1, to: Math.min(p * size, total) };
+}
+
+/** One entry in the pager: a page number, or a gap drawn as "…". */
+export type PagerItem = number | "gap";
+
+/**
+ * pagerItems lists the page numbers the pager shows: the first and the
+ * last page, and `around` pages either side of the current one, with a
+ * gap where pages are left out; with seven pages or fewer, all of them. A gap never stands for a single page;
+ * that page is shown instead, so the pager does not shrink to "1 … 3".
+ *
+ *   pagerItems(1, 3)   → [1, 2, 3]
+ *   pagerItems(10, 20) → [1, "gap", 9, 10, 11, "gap", 20]
+ */
+export function pagerItems(page: number, count: number, around = 1): PagerItem[] {
+  if (count <= 1) return [1];
+  // Few enough pages to show them all in no more room than the gapped form takes.
+  if (count <= 2 * around + 5) return Array.from({ length: count }, (_, i) => i + 1);
+  const p = Math.min(Math.max(1, page), count);
+  const shown = new Set<number>([1, count]);
+  for (let n = p - around; n <= p + around; n++) if (n >= 1 && n <= count) shown.add(n);
+  const nums = [...shown].sort((a, b) => a - b);
+  const out: PagerItem[] = [];
+  for (const n of nums) {
+    const prev = out.length > 0 ? out[out.length - 1] : undefined;
+    if (typeof prev === "number" && n - prev === 2) out.push(prev + 1);
+    else if (typeof prev === "number" && n - prev > 2) out.push("gap");
+    out.push(n);
+  }
+  return out;
+}
+
+/** What the catalogue keeps in its URL. */
+export interface CatalogLocation {
+  query: string;
+  page: number;
+  size: number;
+}
+
+/**
+ * catalogHash is the catalogue's URL for a search, page and page size.
+ * Defaults are left out, so the plain page is still `#/catalog` and the
+ * roadmap's `#/catalog?q=<name>` links are unchanged.
+ */
+export function catalogHash(loc: CatalogLocation): string {
+  const params = new URLSearchParams();
+  const q = loc.query.trim();
+  if (q) params.set("q", q);
+  if (loc.page > 1) params.set("page", String(loc.page));
+  if (loc.size !== DEFAULT_PAGE_SIZE) params.set("size", String(loc.size));
+  const s = params.toString();
+  return s ? `#/catalog?${s}` : "#/catalog";
+}
