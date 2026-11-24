@@ -192,6 +192,7 @@ body exile-and-return/hand
 body exile-top/play-until-end-of-your-next-turn
 body exile/glimpse-the-impossible-bin
 body exile/listed-cards
+body exile/s82-old-b061-fire-giants-fury
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
@@ -1424,6 +1425,8 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/s82-old-b005-karn-scion-pick
 choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-old-b021-hokori-untap-a-land
+choose choose-cards/s82-old-b061-blessing-of-frost-creatures
+choose choose-cards/s82-old-b061-burning-rune-demon-picked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2183,6 +2186,7 @@ number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
 number number/s82-gap-b153-scrounging-bandar-move
+number number/s82-old-b061-blessing-of-frost-share
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
@@ -2392,6 +2396,7 @@ option option-pick/s82-gap-b36-assassin-initiate-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
+option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -4782,6 +4787,7 @@ tail then/s82-gap-b156-ib-halfheart-sacrificed
 tail then/s82-gap-b157-choose-one-play
 tail then/s82-mid-scry-n
 tail then/s82-old-b023-kogla-indestructible
+tail then/s82-old-b061-burning-rune-demon-found
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
