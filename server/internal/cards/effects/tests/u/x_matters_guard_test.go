@@ -97,6 +97,7 @@ var xMattersAllowlist = map[string]string{
 	"crime_punishment.go Punishment":                              "at X=0 it still destroys every artifact, creature and enchantment with mana value 0 (tokens included): the X picks which permanents die, it is not a quantity that can be zero",
 	"monastery_raid.go Monastery Raid":                            "X is read only when the freerunning cost was paid: cast for its mana cost it exiles the top two cards whatever X is, a real play at X=0, and the freerunning cast at X=0 exiles nothing",
 	"molder.go Molder":                                            "at X=0 it still destroys an artifact or enchantment with mana value 0 (a Treasure or Food token): the X picks the target, it is not a quantity that can be zero (#5596)",
+	"kianne_dean_of_substance.go Imbraham, Dean of Theory":        "at X=0 nothing is exiled but the ability still offers the pick of a card you own in exile with a study counter on it, a real play (Soothsaying-style X reads only the exile count)",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

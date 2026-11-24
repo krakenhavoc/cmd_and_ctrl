@@ -1278,6 +1278,7 @@ choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
 choose choose-cards/old-b029-fast-draw-two
 choose choose-cards/old-b034-discerning-taste-take
+choose choose-cards/old-b041-imbraham-to-hand
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -4043,6 +4044,9 @@ tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
+tail old-b041/emergent-sequence-animate
+tail old-b041/imbraham-exiled
+tail old-b041/kianne-exiled
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
