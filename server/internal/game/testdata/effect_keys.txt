@@ -696,6 +696,8 @@ choose choose-cards/bro-b06-blanchwood-prowler-take-or-counter
 choose choose-cards/bro-b06-fallaji-archaeologist-take-or-counter
 choose choose-cards/bro-b06-ravenous-gigamole-take-or-counter
 choose choose-cards/bro-b06-tomakul-scrapsmith-take-or-counter
+choose choose-cards/bruna-light-of-alabaster-graveyard
+choose choose-cards/bruna-light-of-alabaster-hand
 choose choose-cards/bull-elephant-return-two-forests
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
@@ -3393,6 +3395,7 @@ tail cmdr2-s40/time-counters
 tail cmdr2-s43/epic-experiment-offer
 tail cmdr2-s43/stolen-goods-grant
 tail coalstoke-gearhulk/entered
+tail coffin-queen/link
 tail cogwork-assembler/haste-and-exile-copy
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
