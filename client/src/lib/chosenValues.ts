@@ -27,7 +27,7 @@ import type { CardView } from "./protocol";
 /** One chip: what it says, and what its tooltip says. */
 export interface ChosenValueChip {
   /** Stable key for `{#each}`, and the CSS modifier for the chip. */
-  kind: "color" | "tribe" | "option" | "name" | "number" | "commander-color";
+  kind: "color" | "tribe" | "option" | "name" | "number" | "commander-color" | "notes";
   /**
    * The rendered text — "Green", "Elf" for colour/tribe, which read
    * fine bare in context. "Temur" and "Sol Ring" alone do not (a
@@ -67,6 +67,7 @@ export function chosenValueChips(
     | "chosen_name"
     | "chosen_number"
     | "commander_color"
+    | "notes"
   >,
 ): ChosenValueChip[] {
   const chips: ChosenValueChip[] = [];
@@ -129,5 +130,23 @@ export function chosenValueChips(
       title: `chosen before the game: this commander is ${label} (CR 903.4b)`,
     });
   }
+  // #6097, #5948: what the permanent's abilities have noted for it — the
+  // numbers The Toymaker's Trap has already chosen, the number Duelists'
+  // Convocation International wrote down and the digits it crossed out.
+  // Public, and read by a later ability of the same permanent, so it is
+  // on the card for the same reason as the rest (CR 607.2d).
+  const notes = (card.notes ?? []).filter((n) => n.trim() !== "");
+  if (notes.length > 0) {
+    const all = notes.join(" · ");
+    chips.push({
+      kind: "notes",
+      label: `Noted: ${all.length > NOTES_LABEL_MAX ? all.slice(0, NOTES_LABEL_MAX - 1) + "…" : all}`,
+      title: `noted for this permanent: ${all}`,
+    });
+  }
   return chips;
 }
+
+// NOTES_LABEL_MAX keeps the notes chip to one tile-width line; the
+// tooltip has the whole list.
+const NOTES_LABEL_MAX = 48;

@@ -68,6 +68,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
   - ["Activates a mana ability of each land" (ADR 0200, #3952)](#activates-a-mana-ability-of-each-land-adr-0200-3952)
   - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
+  - [Secret choices, numbers and guesses (ADR 0180 amendment 2026-11-24, #5948)](#secret-choices-numbers-and-guesses-adr-0180-amendment-2026-11-24-5948)
   - ["Reveals their hand. You choose a … card from it" (ADR 0116, #2078)](#reveals-their-hand-you-choose-a--card-from-it-adr-0116-2078)
   - [Adding a `PendingChoiceKind` (#730, #794)](#adding-a-pendingchoicekind-730-794)
   - [Cumulative upkeep (#567, CR 702.24)](#cumulative-upkeep-567-cr-70224)
@@ -10302,6 +10303,24 @@ every spell-copy door (See Double, ADR 0043 amendment).
 **An intervening "if"** (Thopter Spy Network, Emeria) is read where the
 trigger is declared and again at the top of the `Effect`; the second read
 is the one a response can change (CR 603.4).
+
+### Secret choices, numbers and guesses (ADR 0180 amendment 2026-11-24, #5948)
+
+"Each opponent secretly chooses a number", "each player secretly chooses a
+creature they control and a creature they don't control", "an opponent
+guesses which number you chose": write `effects.SecretChoices{Options or
+Words, Asks, Then, Carry}.Apply(ctx)`. Each `game.VoteAsk` is one question to
+one player: `Allowed` (option indices), `Relation` (`game.VoteAskControls` /
+`game.VoteAskDoesNotControl`) or `Number: &game.VoteNumber{…}`. Every answer
+is hidden from every other seat until the last is in; then they are revealed
+together and `Then` (an `effects.VoteResultThen("secret/<card>", …)`) runs,
+reading each ask's answer with `r.AnswerTo(i)` (a number is `Option ==
+game.VoteNumberIndex`, value in `Number`). Bot hints (`ForController`,
+`ForOpponents`) are public: never build them from a hidden card. Precedents:
+Call to the Void, The Toymaker's Trap, Gollum, Scheming Guide, Itazura,
+Lingering Wick. A per-object list a later ability reads ("a number that
+hasn't been chosen") is `Game.AddNoteForEffect` / `NotesForEffect`, shown on
+the card as `CardView.notes`.
 
 ### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
 
