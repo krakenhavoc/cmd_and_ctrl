@@ -766,6 +766,8 @@ var cardFields = plan(
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
 	"baseToughness", rebuilt, "the layer pass's toughness after layer 7b (CR 208.4b, Card.BaseToughness); derived, rebuilt by the recompute restore forces",
+	"stackColors", rebuilt, "the colour the stack step set on a spell (#6088, spell_colors.go); rebuilt from the ScopedEffect records by the recompute restore forces",
+	"stackColored", rebuilt, "whether stackColors is set (#6088); rebuilt with it",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
 	"zoneLayered", rebuilt, "the types and colours a battlefield static gave this object off the battlefield (#3862, zone_layers.go); rebuilt from the battlefield statics by the recompute restore forces",

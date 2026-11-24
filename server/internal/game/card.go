@@ -1456,6 +1456,20 @@ type Card struct {
 	// object (CR 400.7).
 	stackGranted []string
 
+	// stackColors is the layer-5 answer the stack step gave this SPELL
+	// (CR 613.1e, #6088): "target spell becomes the color of your choice
+	// until end of turn" (Illusion, Eight-and-a-Half-Tails). Written by
+	// stackKeywordPassLocked from the setColors records pinned to the
+	// spell (spell_colors.go), read by EffectiveColors and Effective()
+	// in place of the printed colours while stackColored is set. A derived
+	// cache like stackGranted: never snapshotted, replaced and never
+	// written in place, and cleared by MoveCard on every zone change (CR
+	// 400.7); a permanent spell's pinned record is handed to the
+	// permanent it becomes (CR 400.7a) and applies there in layer 5.
+	stackColors []string
+	// stackColored lives in the bool block at the end of Card, for
+	// alignment.
+
 	// zoneGranted is the ability bundles the zone grant step of the
 	// layer pass gave this CARD while it sits in a hand, a graveyard or
 	// exile (CR 113.10, 613.1f, ADR 0093's amendment 2026-10-13, #3233):
@@ -2142,6 +2156,11 @@ type Card struct {
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
 	// for every card host. Cleared wherever AttachedTo is.
 	AttachedPinned bool
+
+	// stackColored says stackColors is the spell's colour (#6088,
+	// spell_colors.go; documented beside stackColors, kept here for
+	// alignment). A derived cache: never snapshotted.
+	stackColored bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -2805,6 +2824,10 @@ func NewCommander(name string, owner uuid.UUID) Card {
 func (c Card) EffectiveColors() []string {
 	if c.effective != nil {
 		return c.effective.Colors
+	}
+	// #6088, CR 613.1e: a colour an effect set on a SPELL (spell_colors.go).
+	if c.stackColored {
+		return c.stackColors
 	}
 	// #3862: off the battlefield, a static's layer-5 answer for the
 	// object (zone_layers.go) — Mycosynth Lattice's colourless card.
