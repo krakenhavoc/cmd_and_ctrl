@@ -1424,6 +1424,7 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/s82-old-b005-karn-scion-pick
 choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-old-b021-hokori-untap-a-land
+choose choose-cards/s82-old-b062-egon-exile-two
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2392,6 +2393,7 @@ option option-pick/s82-gap-b36-assassin-initiate-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
+option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3087,6 +3089,7 @@ run prompt-run/ruthless-technomancer-treasures
 run prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-neo-sokenzan-smelter-construct
+run prompt-run/s82-old-b062-master-skald-exile
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -4782,6 +4785,7 @@ tail then/s82-gap-b156-ib-halfheart-sacrificed
 tail then/s82-gap-b157-choose-one-play
 tail then/s82-mid-scry-n
 tail then/s82-old-b023-kogla-indestructible
+tail then/s82-old-b062-master-skald-return
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
