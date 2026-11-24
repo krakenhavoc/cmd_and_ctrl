@@ -470,6 +470,17 @@ type CardDef struct {
 	// CatalogControlsOpponentsSearches, keyed by CatalogAbilityKey; see
 	// search_control.go.
 	ControlsOpponentsSearches bool
+	// OpponentsSearchTopN is this permanent's printed "If an opponent
+	// would search a library, that player searches the top N cards of
+	// that library instead" (Aven Mindcensor, #6090). Zero is none. Read
+	// from the battlefield through CatalogOpponentsSearchTopN, keyed by
+	// CatalogAbilityKey; see search_top_n.go.
+	OpponentsSearchTopN int
+	// DrawsFromBottom is this permanent's printed "You draw cards from
+	// the bottom of your library rather than the top" (River Song,
+	// #6089). Read from the battlefield through CatalogDrawsFromBottom,
+	// keyed by CatalogAbilityKey; see draw_from_bottom.go.
+	DrawsFromBottom bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -1237,6 +1248,16 @@ func init() {
 	CatalogControlsOpponentsSearches = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.ControlsOpponentsSearches
+	}
+	CatalogOpponentsSearchTopN = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.OpponentsSearchTopN
+		}
+		return 0
+	}
+	CatalogDrawsFromBottom = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.DrawsFromBottom
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
