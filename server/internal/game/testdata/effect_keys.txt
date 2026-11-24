@@ -363,6 +363,7 @@ body neo-go-shintai/ancient-wars-damage
 body neo-go-shintai/boundless-vigor-counters
 body neo-go-shintai/hidden-cruelty-destroy
 body neo-go-shintai/lost-wisdom-mill
+body nevinyrral-urborg-tyrant/sweep
 body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
@@ -2728,6 +2729,7 @@ payunless pay-unless/neo-go-shintai-boundless-vigor
 payunless pay-unless/neo-go-shintai-hidden-cruelty
 payunless pay-unless/neo-go-shintai-lost-wisdom
 payunless pay-unless/neo-go-shintai-shared-purpose
+payunless pay-unless/nevinyrral-sweep
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nim-deathmantle-return-and-attach
@@ -3171,6 +3173,7 @@ run prompt-run/swarm-culler-draw
 run prompt-run/sword-of-truth-and-justice-counter
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
+run prompt-run/szats-will-sacrificed
 run prompt-run/taste-of-death-sacrificed
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/temur-sabertooth-return
@@ -4215,6 +4218,7 @@ tail power-pack/after-exile
 tail primal-amulet/ask
 tail primal-amulet/transform
 tail prishes-wanderings/searched
+tail profane-transfusion/token
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
@@ -4502,6 +4506,7 @@ tail sword-of-the-meek/attach
 tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
 tail szarekh-the-silent-king/after-mill
+tail szats-will/exiled
 tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered

@@ -289,6 +289,10 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 older sets batch 35 (#5501).
 	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
+
+	// S82 OLD batch 083 (#5507).
+	"Nevinyrral, Urborg Tyrant": "a 3/6 creature cast to be a creature: the destroy-all is the optional {1} reflexive trigger of its dies trigger, which nobody can plan a turn around",
+	"Szat's Will":               "one mode is an edict (each opponent sacrifices one creature, the one with the greatest power) and the other exiles graveyards: no board is swept",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

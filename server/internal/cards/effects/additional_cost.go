@@ -828,6 +828,9 @@ func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
 		}
 		return
 	}
+	if ec.CountOpponents {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles cards equal to the number of opponents — a CR 602 ability's cost only", name, where))
+	}
 	if ec.AnyNumber {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
 	}

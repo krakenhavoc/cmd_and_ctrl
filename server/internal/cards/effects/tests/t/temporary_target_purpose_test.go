@@ -101,6 +101,9 @@ var untilEndOfTurnExempt = map[string]string{
 	// The same: the target is a legendary creature card in a graveyard, and
 	// it gains escape until end of turn (S82 GAP2 batch 2).
 	"Confession Dial": "the target is a graveyard card, not a permanent",
+	// The same: the target is a creature card in a graveyard, and it gains encore
+	// until end of turn (S82 OLD batch 083).
+	"Araumi of the Dead Tide": "the target is a graveyard card, not a permanent",
 	// The target is the opponent given an emblem; the "until end of turn" is
 	// the emblem's, about the creatures that attack them.
 	"Garruk, Apex Predator": "the target is an opponent given an emblem",

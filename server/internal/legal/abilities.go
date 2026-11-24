@@ -2974,7 +2974,8 @@ func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, t
 		}
 		return e.g.ExileCostCheapestSufficientForEffect(e.seat, ec, pool)
 	}
-	if ec == nil || ec.N <= 0 {
+	need := e.g.ExileCostCountForEffect(e.seat, ec)
+	if ec == nil || need <= 0 {
 		return nil, true
 	}
 	skip := make(map[uuid.UUID]bool, len(taken))
@@ -2983,14 +2984,14 @@ func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, t
 	}
 	var out []uuid.UUID
 	for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, sourceID, ec)) {
-		if len(out) == ec.N {
+		if len(out) == need {
 			break
 		}
 		if !skip[id] {
 			out = append(out, id)
 		}
 	}
-	if len(out) < ec.N {
+	if len(out) < need {
 		return nil, false
 	}
 	return out, true

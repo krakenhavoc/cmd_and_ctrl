@@ -688,4 +688,8 @@ var TokenTable = map[string]game.Card{
 	"0/1 black Thrull": {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	// S82 OLD batch 26 (#5462): Gisa's Favorite Shovel's Walker.
 	"2/2 black Zombie named Walker": {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+	// S82 OLD batch 083: Profane Transfusion's X/X Horror (printed */*; a 0/0 placeholder, set to the
+	// difference between the life totals as it is created).
+	"0/0 colorless Horror artifact": {Name: "Horror", TypeLine: "Token Artifact Creature — Horror", PrintedPTKnown: true},
 }
