@@ -214,6 +214,7 @@ body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
 body fireblade-artist/damage
 body fires-of-mount-doom/damage-each-player
+body flamethrower-sonata/damage
 body flanking/shrink
 body flash/cleanup-sacrifice
 body flicker/return-exiled-creatures-tapped
@@ -377,7 +378,9 @@ body ochre-jelly/split-token
 body offspring/granted-token
 body ogre-battlecaster/pump
 body old-b036/mount-velus-manticore-strike
+body old-b042/rushed-rebirth-search
 body old-b049/devouring-tendrils-gain-2
+body old-b050/blocker-controller-loses-1
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -480,6 +483,8 @@ body s82-neo-b06/dokuchi-silencer-destroy
 body s82-neo-b06/kappa-tech-wrecker-exile
 body s82-neo-b18/kirin-touched-orochi-counter
 body s82-neo-b18/kirin-touched-orochi-spirit
+body s82-old-b046/make-your-mark-spirit
+body s82-old-b046/valentin-pest-offer
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -811,6 +816,7 @@ choose choose-cards/dauthi-voidwalker-play
 choose choose-cards/dawnbreak-reclaimer-first
 choose choose-cards/dawnbreak-reclaimer-second
 choose choose-cards/deadly-cover-up-exile
+choose choose-cards/deadly-vanity-keep
 choose choose-cards/death-wish-take
 choose choose-cards/deathbonnet-hulk-exile
 choose choose-cards/deepfathom-echo-copy
@@ -818,6 +824,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/devastating-mastery-bounce
 choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
@@ -887,6 +894,7 @@ choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/fell-beasts-shriek-pick
 choose choose-cards/feral-encounter
+choose choose-cards/fervent-mastery-discarded
 choose choose-cards/fiend-of-the-shadows-exile
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
@@ -921,6 +929,7 @@ choose choose-cards/glittering-wish-take
 choose choose-cards/glorious-protector-exile
 choose choose-cards/glowspore-shaman-land-on-top
 choose choose-cards/gluntch-the-bestower-creature
+choose choose-cards/go-blank-exile
 choose choose-cards/godsend-exile
 choose choose-cards/golden-wish-take
 choose choose-cards/goldwardens-gambit-attach
@@ -1076,6 +1085,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
 choose choose-cards/lively-dirge-return
+choose choose-cards/living-lore-exile
 choose choose-cards/living-wish-take
 choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/loamcrafter-faun-discard
@@ -1299,6 +1309,10 @@ choose choose-cards/old-b032-dihadas-ploy-life
 choose choose-cards/old-b034-discerning-taste-take
 choose choose-cards/old-b036-mount-velus-manticore-strike
 choose choose-cards/old-b041-imbraham-to-hand
+choose choose-cards/old-b043-augusta-tap
+choose choose-cards/old-b043-discard-two-unless-instant-or-sorcery
+choose choose-cards/old-b044-ardent-dustspeaker-picked
+choose choose-cards/old-b051-lukka-discard-draw
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1385,6 +1399,7 @@ choose choose-cards/research-shuffle
 choose choose-cards/resonance-technician-investigate-twice
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
+choose choose-cards/revival-experiment-chosen
 choose choose-cards/ring-bearer
 choose choose-cards/rinoa-angel-wing-return
 choose choose-cards/rip-spawn-hunter-different-powers
@@ -1424,6 +1439,12 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/s82-old-b005-karn-scion-pick
 choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-old-b021-hokori-untap-a-land
+choose choose-cards/s82-old-b046-illuminate-history
+choose choose-cards/s82-old-b054-first-picked
+choose choose-cards/s82-old-b054-second-picked
+choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
+choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
+choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1437,6 +1458,7 @@ choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
+choose choose-cards/search-for-blex-take
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/seasoned-pyromancer-discarded
@@ -1660,6 +1682,7 @@ choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
 choose resolution-cast/yennett-draw-if-not-cast
 choose sticker/choose-object
+choose take/old-b051-the-biblioplex
 coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
@@ -1756,6 +1779,7 @@ condition ltb/the-listed-object
 condition ltb/ugin-the-ineffable-spirit
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
+condition old-b050/any-creature-blocks
 condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
@@ -1901,6 +1925,7 @@ confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
 confirm confirm/lim-duls-vault-again
+confirm confirm/living-lore-sacrifice
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -1926,6 +1951,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
+confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -1990,6 +2016,7 @@ confirm confirm/start-the-tardis-planeswalk
 confirm confirm/stensia-uprising-sacrifice
 confirm confirm/stromgald-spy-reveal-hand
 confirm confirm/summon-undead-mill
+confirm confirm/sun-droplet-remove
 confirm confirm/sunfire-torch-sacrifice
 confirm confirm/superior-foes-exile-top
 confirm confirm/sword-of-light-and-shadow-return
@@ -2000,8 +2027,10 @@ confirm confirm/tainted-pact-take
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
+confirm confirm/tempt-with-immortality
 confirm confirm/tempt-with-mayhem
 confirm confirm/tempt-with-vengeance
+confirm confirm/tempting-contract
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/territory-culler-take
 confirm confirm/territory-culler-to-graveyard
@@ -2125,6 +2154,7 @@ drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
+drawthen old-b043-discard-two-unless-instant-or-sorcery
 drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen seasoned-cryomancer/discard-two
@@ -2257,6 +2287,7 @@ option option-pick/dawnbreak-reclaimer-opponent
 option option-pick/demanding-dragon-answer
 option option-pick/demonlord-of-ashmouth-choice
 option option-pick/demonstrate-opponent-copies
+option option-pick/devastating-mastery-opponent
 option option-pick/development-opponent-round-1
 option option-pick/development-opponent-round-2
 option option-pick/development-opponent-round-3
@@ -2291,6 +2322,7 @@ option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
 option option-pick/faramir-prince-of-ithilien-opponent
 option option-pick/fateful-handoff-opponent
+option option-pick/fervent-mastery-opponent
 option option-pick/flicker-return-under-an-opponent
 option option-pick/gap-b82-indoraptor-answer
 option option-pick/gap-b82-owen-grady-counter
@@ -2313,6 +2345,8 @@ option option-pick/hunters-axe-keyword
 option option-pick/ilharg-the-raze-boar-attacks
 option option-pick/immard-the-stormcleaver-charge
 option option-pick/indulgent-tormentor-answer
+option option-pick/infernal-offering-first-chosen
+option option-pick/infernal-offering-second-chosen
 option option-pick/inspirit-flagship-vessel-counters
 option option-pick/intellectual-offering-draw
 option option-pick/intellectual-offering-untap
@@ -2334,6 +2368,7 @@ option option-pick/master-of-ceremonies-answer
 option option-pick/me-the-immortal-counter
 option option-pick/meandering-towershell-attacks
 option option-pick/memories-returning-opponent
+option option-pick/mercurial-transformation-shape
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
@@ -2392,6 +2427,7 @@ option option-pick/s82-gap-b36-assassin-initiate-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
+option option-pick/s82-old-b046-ingenious-mastery-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -2509,6 +2545,7 @@ payunless pay-unless/anthropede-destroy-room
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/armix-filigree-thrasher-discard
+payunless pay-unless/arrogant-poet-flying
 payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
@@ -2698,6 +2735,7 @@ payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
 payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
+payunless pay-unless/old-b051-copy-that-spell
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -2716,6 +2754,8 @@ payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
 payunless pay-unless/reckless-detective-draw-pump
+payunless pay-unless/relentless-dead-to-hand
+payunless pay-unless/relentless-dead-zombie
 payunless pay-unless/remnant-of-the-rising-star-x-counters
 payunless pay-unless/replication-specialist-copy
 payunless pay-unless/rhystic-study-may-draw
@@ -2734,6 +2774,9 @@ payunless pay-unless/s82-mom-b21-elenda-and-azor-draw-x
 payunless pay-unless/s82-mom-b21-elenda-and-azor-vampire-knights
 payunless pay-unless/s82-neo-sokenzan-smelter
 payunless pay-unless/s82-old-b022-leshracs-sigil
+payunless pay-unless/s82-old-b024-depala-reveal
+payunless pay-unless/s82-old-b046-lisette-counters
+payunless pay-unless/s82-old-b046-valentin-pest
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -2813,6 +2856,7 @@ pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/cruelclaws-heist-may-cast
 pick revealed-pick/deep-cavern-bat-return
 pick revealed-pick/dreams-of-steel-and-oil-graveyard
+pick revealed-pick/elite-spellbinder-exile
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/reckoner-shakedown-two-counters
@@ -3018,6 +3062,7 @@ run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/indoctrination-attendant-return
+run prompt-run/infernal-offering-sacrificed
 run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
 run prompt-run/kefka-court-mage-draw
@@ -3126,6 +3171,7 @@ run prompt-run/swarm-culler-draw
 run prompt-run/sword-of-truth-and-justice-counter
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
+run prompt-run/taste-of-death-sacrificed
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/temur-sabertooth-return
 run prompt-run/tenured-tethermage-tokens
@@ -3306,6 +3352,7 @@ tail arcane-bombardment/copy-exiled
 tail arcane-proxy/copy-exiled
 tail archdruids-charm/bite
 tail archfiends-vessel/demon
+tail arden-angel/rolled
 tail arid-archway/surveil-if-desert-returned
 tail arjun-the-shifting-flame/draw-that-many
 tail ark-of-hunger/play-the-milled-card
@@ -3913,6 +3960,7 @@ tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
 tail incandescent-soulstoke/entered
+tail incarnation-technique/milled
 tail incubate/next-round
 tail incubate/transform-all-incubators
 tail indoctrination-attendant/mite
@@ -4115,11 +4163,19 @@ tail old-b036/glimpse-of-tomorrow-shuffled
 tail old-b041/emergent-sequence-animate
 tail old-b041/imbraham-exiled
 tail old-b041/kianne-exiled
+tail old-b042/introduction-to-annihilation-draw
+tail old-b043/extraction-victim-draws
+tail old-b043/fervent-mastery-random-discard
+tail old-b044/aether-helix-return
+tail old-b044/lorehold-excavation-milled
+tail old-b044/radiant-scrollwielder-exiled
+tail old-b051/kasmina-cast
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
 tail oona-queen-of-the-fae/after-mill
 tail orcus-prince-of-undeath/gain-haste-until-eot
+tail oriq-loremage/instant-or-sorcery-counter
 tail ormos-archive-keeper/then-draw
 tail ostrich-horse/after-mill
 tail outlaw-stitcher/token-counters
@@ -4240,6 +4296,7 @@ tail s82-gap-b142/orims-thunder-damage
 tail s82-gap-b144/monkey-cage-tokens
 tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
+tail s82-old-b046/culmination-of-studies-exiled
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -4455,6 +4512,7 @@ tail tail/break-out-entered
 tail tail/deadly-cover-up-after-sweep
 tail tail/deadly-cover-up-draw
 tail tail/deadly-cover-up-exiled
+tail tail/devastating-mastery-wipe
 tail tail/dig-deep-counters
 tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
@@ -4470,6 +4528,7 @@ tail tail/lord-of-the-void-exiled
 tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
+tail tail/old-b051-will-elementals
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
@@ -4535,6 +4594,7 @@ tail the-war-games/exiled
 tail the-wrath-of-khan/draw-if-exiled
 tail then/aangs-iceberg-scry
 tail then/abdel-adrian-exiled-one
+tail then/academic-probation-named
 tail then/acolyte-hybrid-controller-draws
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
@@ -4707,6 +4767,7 @@ tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/lim-duls-vault-bottomed
 tail then/lim-duls-vault-looked
+tail then/living-lore-cast
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
@@ -4874,6 +4935,7 @@ tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
+tail then/zaffai-after-scry
 tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
@@ -4885,6 +4947,8 @@ tail through-the-forest-gate/shuffle-and-gain-8
 tail thunderbolts-conspiracy/hero
 tail thunderous-debut/shuffle-after-put
 tail tinybones-bauble-burglar/after-exile
+tail together/revival-experiment-life
+tail together/s82-old-b054-chosen-returns
 tail token-and-attach-source/attach
 tail tomb-fortress/after-mill
 tail tombstone-stairwell/next-players-tombspawn
