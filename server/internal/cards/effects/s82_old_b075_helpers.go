@@ -8,19 +8,6 @@ import (
 
 // s82_old_b075_helpers.go — shared bodies for OLD batch 75 (#5506).
 
-// S82OldB075ElvesYouControl counts the Elves the controller controls, read
-// through the layered view ("Elf" a word of the source's text).
-func S82OldB075ElvesYouControl(g *game.Game, controller uuid.UUID, source *game.Card) int {
-	elf := source.TextSubtype("Elf")
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.HasSubtype(elf) {
-			n++
-		}
-	}
-	return n
-}
-
 // S82OldB075TotalCounters is the number of counters of every kind on a
 // permanent ("five or more counters on it", Hero of Bretagard).
 func S82OldB075TotalCounters(c *game.Card) int {

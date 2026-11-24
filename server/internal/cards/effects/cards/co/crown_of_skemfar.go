@@ -28,7 +28,7 @@ func init() {
 		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			effects.PumpAttachedPer(1, 1, func(g *game.Game, source *game.Card) int {
-				return effects.S82OldB075ElvesYouControl(g, source.Controller, source)
+				return effects.S82OldB074ElvesYouControl(g, source.Controller, source)
 			}),
 			effects.GrantToAttached("reach"),
 		},

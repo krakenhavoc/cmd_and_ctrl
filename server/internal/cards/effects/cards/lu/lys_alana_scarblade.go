@@ -35,7 +35,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				x := effects.S82OldB075ElvesYouControl(g, item.Controller, &src)
+				x := effects.S82OldB074ElvesYouControl(g, item.Controller, &src)
 				for _, t := range ctx.LegalTargets() {
 					return effects.BoostUntilEOT{Target: t.ID, Power: -x, Toughness: -x, Label: "Lys Alana Scarblade — -X/-X"}.Apply(ctx)
 				}
