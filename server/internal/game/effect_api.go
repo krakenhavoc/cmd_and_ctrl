@@ -2768,6 +2768,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if _, err := g.searchDestZoneLocked(p, spec.Dest); err != nil {
 		return err
 	}
+	// Stranglehold (search_cant.go): a searcher who can't search libraries
+	// searches nothing; an and/or search still looks at the other zones.
+	if !spec.searchesGraveyard() && !spec.searchesHand() && g.searchCantLocked(spec.Player) {
+		return g.skipBlockedSearchLocked(spec, p)
+	}
 	// Collect every match, not just the first `limit` — the whole
 	// point of the chooser is that the searcher sees the full set.
 	matches := make([]uuid.UUID, 0, len(p.Library.Cards))
