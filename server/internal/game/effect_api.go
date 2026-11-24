@@ -2757,6 +2757,19 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if !spec.Rule.IsZero() && !KnownSearchRule(spec.Rule.key) {
 		return fmt.Errorf("%w: search rule %q", ErrUnknownEffectKey, spec.Rule.key)
 	}
+	// "Players can't search libraries this turn" (Shadow of Doubt): the
+	// library cannot be searched, so a search of nothing else does not
+	// happen: no search event, nothing found. Whatever follows the search
+	// (the shuffle, the instruction after it) is its own instruction and
+	// still happens.
+	barred := g.TurnTally.LibrarySearchesBarred
+	if barred && !spec.searchesGraveyard() && !spec.searchesHand() {
+		if spec.Shuffle {
+			p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
+			clearKnownInZoneLocked(p.Library)
+		}
+		return g.runSearchThenLocked(spec, nil)
+	}
 	// #4033: "all cards" has no count.
 	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
 	if takeAllInGraveyard {
@@ -2774,7 +2787,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	matched := make([]Card, 0, len(p.Library.Cards))
 	// #6090: an opponent's Aven Mindcensor narrows the look to the top
 	// cards of the library (search_top_n.go).
-	for _, c := range g.searchableLibraryCards(spec.Player, p.Library.Cards) {
+	libraryCards := g.searchableLibraryCards(spec.Player, p.Library.Cards)
+	if barred {
+		libraryCards = nil // only the graveyard or hand half of an and/or search remains
+	}
+	for _, c := range libraryCards {
 		if spec.Pred == nil || spec.Pred(c) {
 			matches = append(matches, c.InstanceID)
 			matched = append(matched, c)
@@ -2857,6 +2874,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	}
 	g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
 	return nil
+}
+
+// BarLibrarySearchesThisTurnForEffect is "players can't search libraries this
+// turn": from now until the turn ends no library can be searched.
+//
+// Caller must hold g.mu.
+func (g *Game) BarLibrarySearchesThisTurnForEffect() {
+	g.TurnTally.LibrarySearchesBarred = true
 }
 
 // searchDestZoneLocked resolves a search's destination ZoneKind to
