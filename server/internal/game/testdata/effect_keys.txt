@@ -139,6 +139,7 @@ body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
 body destroy/the-payload-permanent
+body devourer-of-destiny/first-upkeep-look
 body dies/controller-loses-life-equal-to-toughness
 body dies/exile-from-graveyard
 body dies/manifest-dread
@@ -789,6 +790,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
@@ -1843,6 +1845,7 @@ confirm confirm/laccolith-blocked-damage
 confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
+confirm confirm/lim-duls-vault-again
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -1868,6 +1871,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
+confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
 confirm confirm/orcish-squatters-gain-control
 confirm confirm/painful-quandary-discard-or-lose-life
@@ -4563,6 +4567,8 @@ tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
+tail then/lim-duls-vault-bottomed
+tail then/lim-duls-vault-looked
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
 tail then/make-an-example-chosen-pile
