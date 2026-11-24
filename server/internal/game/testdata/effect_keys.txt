@@ -3067,6 +3067,7 @@ run prompt-run/the-goose-mother-sacrifice-draw
 run prompt-run/the-huntsmans-redemption-sacrificed
 run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-master-formed-anew-body-thief
+run prompt-run/the-meep-base-power-and-toughness
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
 run prompt-run/the-war-games-exile
@@ -4232,6 +4233,7 @@ tail sacrificed-one/prompt-run/terror-ballista-sacrifice
 tail sacrificed-one/prompt-run/the-fugitive-doctor-sacrifice
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
+tail sacrificed-one/prompt-run/the-meep-base-power-and-toughness
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
 tail sacrificed-one/prompt-run/thomil-the-destroyer-add-bbb
