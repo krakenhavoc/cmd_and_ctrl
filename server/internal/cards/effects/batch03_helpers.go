@@ -97,7 +97,7 @@ func B03OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
 // magecraftEvents are the events magecraft watches: "whenever you cast
 // OR COPY an instant or sorcery spell" (CR 207.2c). A copy is created,
 // not cast, so it has its own event (EventSpellCopied).
-var magecraftEvents = []game.EventKind{game.EventCast, game.EventSpellCopied}
+var MagecraftEvents = []game.EventKind{game.EventCast, game.EventSpellCopied}
 
 // Magecraft is the ability word's trigger (CR 207.2c): "Whenever you
 // cast or copy an instant or sorcery spell, <effect>" (#2090).
@@ -119,7 +119,7 @@ var magecraftEvents = []game.EventKind{game.EventCast, game.EventSpellCopied}
 // their magecraft, not yours. Wrap it in Targeting for a magecraft with
 // a target (Extus, Oriq Overlord).
 func Magecraft(label string, effect Effect) game.TriggeredAbility {
-	return OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return OnAny(MagecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		return InstantOrSorceryCastOrCopiedByYou(ev, source, g)
 	}, label, effect)
 }

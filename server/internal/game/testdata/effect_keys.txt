@@ -1450,6 +1450,7 @@ choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
+choose choose-cards/search-for-blex-take
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/seasoned-pyromancer-discarded
@@ -2527,6 +2528,7 @@ payunless pay-unless/anthropede-destroy-room
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/armix-filigree-thrasher-discard
+payunless pay-unless/arrogant-poet-flying
 payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
