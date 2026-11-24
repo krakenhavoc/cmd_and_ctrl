@@ -27,13 +27,7 @@ func init() {
 			Label:   "{4}{G/U}: This creature has base power and toughness 5/5 until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    effects.ManaCost("{4}{G/U}"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !effects.SourceIsStillThisPermanent(g, item) {
-					return nil
-				}
-				return effects.UntilEndOfTurn(effects.NewContext(g, item), item.SourceCardID, nil, label,
-					game.SetBasePowerMod(5), game.SetBaseToughnessMod(5))
-			},
+			Effect:  effects.S82OldB097ThisHasBasePTUntilEOT(label, 5, 5),
 		}},
 	})
 }

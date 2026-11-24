@@ -158,6 +158,9 @@ var knownUnmatchedTokens = map[string]string{
 	"2/2 green Monkey": "no Monkey token card was printed for Monkey Cage",
 	// Questing Phelddagrif (Secret Lair Drop) makes "a 1/1 green Hippo creature token"; the only Hippo token card in the dump is a 3/3.
 	"1/1 green Hippo": "no 1/1 green Hippo token card in the dump; Questing Phelddagrif prints the token in its text",
+	// Grakmaw, Skyclave Ravager creates "an X/X black and green Hydra creature token"; the printed
+	// token card is */* (and lists no colours), so a fixed size never matches.
+	"0/0 black and green Hydra": "the printed token card is */*; Grakmaw, Skyclave Ravager sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

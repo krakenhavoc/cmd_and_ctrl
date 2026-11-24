@@ -1274,6 +1274,7 @@ choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
 choose choose-cards/nael-avizoa-aeronaut-arranged
+choose choose-cards/nahiri-heir-of-the-ancients-attach-equipment
 choose choose-cards/nahiri-the-lithomancer-attach-equipment
 choose choose-cards/nahiri-the-lithomancer-put-equipment
 choose choose-cards/nahiris-resolve-exile
@@ -4805,6 +4806,7 @@ tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/mystery-key-draw-three
+tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy

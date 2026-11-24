@@ -590,6 +590,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedMarkOfTheRaniToken,
 	// Volo, Itinerant Scholar's Volo's Journal (S82 GAP2 batch 10, #5948).
 	printedVolosJournalToken,
+	// Relic Robber's Goblin Construct (Zendikar Rising, S82 OLD batch 097, #5508).
+	printedS82OldB097GoblinConstructToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
