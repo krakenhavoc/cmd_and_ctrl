@@ -3274,7 +3274,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 			short := p.ManaPool.shortfallFor(cost, x, spendCtx, SpendPreserveColors)
 			var read, kinds bool
 			if src := g.findCardByIDLocked(sourceID); src != nil {
-				read, kinds = abilityPaymentRead(*src)
+				read, kinds = g.activationPaymentReadLocked(p.ID, *src)
 			}
 			declared, n, err := settlePaperPayment(short, params.PaperPayment, read, kinds)
 			if err != nil {

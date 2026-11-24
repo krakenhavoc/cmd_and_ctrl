@@ -1049,6 +1049,9 @@ func (g *Game) MustAttackForEffect() map[uuid.UUID][]uuid.UUID {
 // Caller must hold g.mu in write mode.
 func (g *Game) markAttackDeclarationJudgedLocked() {
 	if g.Turn.Step == StepDeclareAttackers {
+		if !g.attacksDeclared {
+			g.recordHadToAttackLocked()
+		}
 		g.attacksDeclared = true
 	}
 }

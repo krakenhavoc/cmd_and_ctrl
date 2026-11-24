@@ -40,7 +40,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventCast, anInstantOrSorceryWasCast,
 				"Rod of Absorption — exile that spell instead of putting it into a graveyard as it resolves",
-				rodOfAbsorptionMark),
+				effects.MarkTriggeringSpellExilesLinked),
 		},
 		Activated: []effects.ActivatedAbility{{
 			Label: "{X}, {T}, Sacrifice this artifact: You may cast any number of spells from among cards exiled with this artifact with total mana value X or less without paying their mana costs.",
@@ -62,19 +62,6 @@ func anInstantOrSorceryWasCast(ev game.Event, _ *game.Card, _ game.Characteristi
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && (spell.IsInstant() || spell.IsSorcery())
-}
-
-// rodOfAbsorptionMark marks the spell the trigger fired on to be exiled
-// with the Rod as it resolves.
-func rodOfAbsorptionMark(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	spell := ctx.Trigger().Event.CardID
-	ref, ok := ctx.SourceRef()
-	if !ok || spell == uuid.Nil {
-		return nil
-	}
-	g.MarkSpellExilesLinkedForEffect(spell, game.PermissionCardRef(ref))
-	return nil
 }
 
 func rodOfAbsorptionCast(g *game.Game, item *game.StackItem) error {

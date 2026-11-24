@@ -1536,13 +1536,12 @@ var items = []Item{
 		EngineNotes: "primitive: **narrowed twice.** #1184 put activations through the CR 601.2f pass for BOARD modifiers (`CostModifier.Activations`, Boom Scholar), and #1296 gave an ability its OWN cost clause (`ActivatedAbilityShape.CostModifiers` — \"This ability costs {1} less to activate …\", including clauses that read the ability's target; see Closed seams). **The FLOOR half closed in S79** (ADR 0020 amendment 2026-11-06): `CostModifier.KeepsOneMana`, built with `effects.KeepsOneMana`, is Training Grounds' and Power Artifact's \"can't reduce the mana in that cost to less than one mana\" — a per-reduction cap measured against the total so far with {X} at its announced value (`Game.AbilityManaCostAtXForEffect`), applied before the other reductions (CR 601.2f, any order). Training Grounds ships `full` on it. **Closed in S82 (#5948):** granted alternative costs for spells with a spell condition: Hunting Velociraptor's prowl is a `GrantedAlternativeCost` (key `granted-prowl`) whose offer carries prowl's `SpellCondition`.",
 	},
 	{
-		Slug: "search-replacement", Name: "Changing how a library is searched", Kind: KindSeam, Status: StatusMissing,
+		Slug: "search-replacement", Name: "Changing how a library is searched", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects like Aven Mindcensor that change what an opponent's library search can find.",
-		Missing:     "A library search always sees the whole library; nothing can limit it to the top few cards yet.",
 		Issue:       304,
-		Tracked:     "#304 (batch issue)",
-		Waiting:     []string{"Aven Mindcensor"},
-		EngineNotes: "primitive: no search-replacement or depth limit on a library search — no `ReplacementEventKind` watches a search (re-checked 2026-09-24 against `game/replacements.go`). The non-owner-searcher half closed with #1230 (see Closed seams), which took Bribery off it. The library-top cast path used to be listed here, then had its own row, and closed with #765 (see Closed seams); the mill-as-a-replacement-event kind was the other half of this row and closed with #569 (see Closed seams), which took Bruvac the Grandiloquent off it.",
+		Tracked:     "#304 (batch issue); #6090 the top-N search",
+		Examples:    []string{"Aven Mindcensor"},
+		EngineNotes: "primitive: **Closed in S82 (#6090):** `CardDef.OpponentsSearchTopN` (`effects.Spec.OpponentsSearchTopN`, `game/search_top_n.go`) narrows every search an opponent of the permanent's controller makes, in the one search primitive, to the top N cards of the library searched; the smallest N of several wins, and the graveyard or hand half of an and/or search is not narrowed. Aven Mindcensor ships `full` on it. The non-owner-searcher half closed with #1230 (see Closed seams), which took Bribery off it. The library-top cast path used to be listed here, then had its own row, and closed with #765 (see Closed seams); the mill-as-a-replacement-event kind was the other half of this row and closed with #569 (see Closed seams), which took Bruvac the Grandiloquent off it.",
 	},
 	{
 		// #1866: paradigm is a keyword read off the resolving spell by

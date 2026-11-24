@@ -143,6 +143,10 @@ type exitLKI struct {
 	// permanent state), #4452, Yarus's "whenever a face-down creature you
 	// control dies".
 	faceDown bool
+	// attackingAlone / blockingAlone are CR 506.5 as it left, judged
+	// against the whole simultaneous event (#6098, exit_alone.go).
+	attackingAlone bool
+	blockingAlone  bool
 }
 
 // exitLKILocked reads cardID's combat state, card types, subtypes,
@@ -178,7 +182,9 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 		// Only an attacker is ever blocked (CR 509.1h), and
 		// removeFromCombatLocked drops the row with the attack, so
 		// the record cannot outlive the attack it describes.
-		blocked: c.AttackingTarget != uuid.Nil && g.blockedAttackers[cardID],
+		blocked:        c.AttackingTarget != uuid.Nil && g.blockedAttackers[cardID],
+		attackingAlone: c.AttackingTarget != uuid.Nil && !g.otherCombatantLocked(cardID, true),
+		blockingAlone:  c.BlockingTarget != uuid.Nil && !g.otherCombatantLocked(cardID, false),
 	}
 }
 
@@ -200,6 +206,8 @@ func (l exitLKI) stamp(ev *Event) {
 	ev.LastKnownColors = l.colors
 	ev.LastKnownKeywords = l.keywords
 	ev.LastKnownFaceDown = l.faceDown
+	ev.AttackingAlone = l.attackingAlone
+	ev.BlockingAlone = l.blockingAlone
 }
 
 // WasType reports whether the permanent an EventLTB names had card
@@ -359,6 +367,8 @@ func (ev Event) WasKeyword(keyword string) (was, known bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) forgetPerObjectTurnStateLocked(cardID uuid.UUID) {
+	// #6098: a new object never had to attack in this combat (CR 400.7).
+	g.forgetHadToAttackLocked(cardID)
 	delete(g.LoyaltyActivatedThisTurn, cardID)
 	if len(g.LoyaltyActivatedThisTurn) == 0 {
 		g.LoyaltyActivatedThisTurn = nil

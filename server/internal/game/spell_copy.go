@@ -135,6 +135,11 @@ type copyGrant struct {
 	// Keywords are given to the copy for as long as it is that object,
 	// and to the permanent it becomes (CR 400.7a).
 	Keywords []string `json:"keywords"`
+	// Grants are catalog ability BUNDLES (GrantAbilitiesMod) given to the
+	// copy the same way: Mizzix, Replica Rider's "it gains haste and 'At
+	// the beginning of your end step, sacrifice this permanent.'" (#6088).
+	// Additive within the snapshot version (#522).
+	Grants []string `json:"grants,omitempty"`
 	// Label is the clause, for the log.
 	Label string `json:"label,omitempty"`
 }
@@ -162,6 +167,34 @@ func (g *Game) CopyLastKnownSpellGainingKeywordsForEffect(sourceID, spellID, con
 		gains = &copyGrant{Source: sourceID, Keywords: append([]string(nil), keywords...), Label: label}
 	}
 	// #5918: one copy instruction (spell_copy_event.go).
+	g.copySpellTimesLocked(src, item, controller, 1, mayChooseNewTargets, nil, gains)
+	return nil
+}
+
+// CopyLastKnownSpellGainingForEffect is CopyLastKnownSpellGainingKeywordsForEffect
+// whose copy also gains catalog ability bundles (GrantAbilitiesMod, ADR
+// 0093): Mizzix, Replica Rider's "If the copy is a permanent spell, it
+// gains haste and 'At the beginning of your end step, sacrifice this
+// permanent.'" (#6088). The bundles are an ability-adding effect on the
+// copy (CR 611.2, 613.1f), given as it is put on the stack, for as long as
+// it is that object and then the permanent it becomes (CR 400.7a); they are
+// not copiable values (CR 707.2). As for the keywords, the caller passes
+// none when the spell is not a permanent spell.
+//
+// Errors as CopyLastKnownSpellForEffect. Caller must hold g.mu.
+func (g *Game) CopyLastKnownSpellGainingForEffect(sourceID, spellID, controller uuid.UUID, mayChooseNewTargets bool, keywords, grants []string, label string) error {
+	src, item, ok := g.stackSpellLocked(spellID)
+	if !ok {
+		src, item, ok = g.lastKnownSpellLocked(spellID)
+	}
+	if !ok {
+		return ErrCardNotFound
+	}
+	var gains *copyGrant
+	if len(keywords) > 0 || len(grants) > 0 {
+		gains = &copyGrant{Source: sourceID, Keywords: append([]string(nil), keywords...),
+			Grants: append([]string(nil), grants...), Label: label}
+	}
 	g.copySpellTimesLocked(src, item, controller, 1, mayChooseNewTargets, nil, gains)
 	return nil
 }
@@ -529,14 +562,21 @@ func (g *Game) createCopyLocked(src Card, item *StackItem, controller uuid.UUID,
 // A no-op for nil, and for a copy the verb refused to make (the top of
 // the stack is then not a copy). Caller must hold g.mu.
 func (g *Game) grantCopyKeywordsLocked(gains *copyGrant) {
-	if gains == nil || len(gains.Keywords) == 0 || g.Stack == nil || len(g.Stack.Cards) == 0 {
+	if gains == nil || (len(gains.Keywords) == 0 && len(gains.Grants) == 0) || g.Stack == nil || len(g.Stack.Cards) == 0 {
 		return
 	}
 	top := g.Stack.Cards[len(g.Stack.Cards)-1].InstanceID
 	if meta, ok := g.StackMeta[top]; !ok || meta == nil || !meta.IsCopy {
 		return
 	}
-	g.GrantKeywordsToSpellForEffect(gains.Source, top, gains.Keywords, IndefiniteDuration(), gains.Label)
+	if len(gains.Keywords) > 0 {
+		g.GrantKeywordsToSpellForEffect(gains.Source, top, gains.Keywords, IndefiniteDuration(), gains.Label)
+	}
+	if len(gains.Grants) > 0 {
+		// #6088: pinned to the copy and handed to the token it becomes
+		// (CR 400.7a), which is a new object with a new ID.
+		g.GrantAbilitiesToPermanentSpellForEffect(gains.Source, top, gains.Grants, IndefiniteDuration(), gains.Label)
+	}
 }
 
 // stackSpellLocked returns the card and stack item for a spell on the
@@ -629,6 +669,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// §3) is not a copiable value. The next stack step gives the copy
 	// whatever applies to it on its own.
 	copyCard.stackGranted = nil
+	copyCard.stackColors, copyCard.stackColored = nil, false
 	// CR 903.3: the commander designation is an attribute of the
 	// physical card, not a copiable characteristic (CR 707.2), so a
 	// copy is never a commander — issue #1363. Left uncleared, a copy

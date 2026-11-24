@@ -68,6 +68,9 @@ func CheckOpeningHand(name string, a *game.OpeningHandAction) {
 			panic(fmt.Sprintf("effects.Register: %q opening-hand action puts %d %q counters on the card — it needs a named kind and at least one", name, n, kind))
 		}
 	}
+	if a.Reveal != nil && (a.Reveal.Label == "" || a.Reveal.Body.Key() == "") {
+		panic(fmt.Sprintf("effects.Register: %q opening-hand reveal needs a label and a registered body", name))
+	}
 	if a.ExileFromHand < 0 {
 		panic(fmt.Sprintf("effects.Register: %q opening-hand action exiles %d cards from the hand", name, a.ExileFromHand))
 	}
