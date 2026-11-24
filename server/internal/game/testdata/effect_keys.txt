@@ -1271,6 +1271,7 @@ choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/old-b029-fast-draw-two
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1643,6 +1644,7 @@ coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
 coinflip coin-flip/the-gold-saucer-treasure
+coinflip coin-flip/yusri-fortunes-flame
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
 condition attach/this-aura-left
@@ -2145,6 +2147,7 @@ number number/territorial-aetherkite-damage-each-other-creature
 number number/volcano-hellion-damage-to-you-and-target
 number number/wheel-of-potential-paid
 number number/wrath-of-the-skies-destroy-up-to-that-value
+number number/yusri-fortunes-flame-coins
 number token/attack-split
 number token/settled-split
 option cipher/encode
