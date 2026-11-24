@@ -374,6 +374,7 @@ body nine-lives/incarnation-counter
 body noctis/warp-strike-return
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
+body numa-joraga-chieftain/distribute
 body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
@@ -877,6 +878,7 @@ choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/epistolary-librarian-cast
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
+choose choose-cards/ethereal-valkyrie-foretell
 choose choose-cards/eumidian-wastewaker-discard
 choose choose-cards/evercoat-ursine-play-one
 choose choose-cards/everglades-return-an-untapped-swamp
@@ -2720,6 +2722,7 @@ payunless pay-unless/meathook-massacre-ii-opponent-declined
 payunless pay-unless/meathook-massacre-ii-you-paid
 payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
+payunless pay-unless/miara-draw
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
 payunless pay-unless/mizzix-replica-rider-copy
@@ -2740,6 +2743,7 @@ payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nim-deathmantle-return-and-attach
 payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
+payunless pay-unless/numa-joraga-chieftain-paid
 payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
 payunless pay-unless/old-b051-copy-that-spell
