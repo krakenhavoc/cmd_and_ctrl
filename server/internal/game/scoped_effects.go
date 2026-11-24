@@ -734,7 +734,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
-		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
+		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
+		ScopeCreaturesExceptObjects:
 		return true
 	}
 	return false
@@ -1605,9 +1606,12 @@ func blockRequirementModProblem(m Mod) string {
 		// (dealtDamageByScopeProblem checks it).
 		// #2567: "attacks <that permanent> if able" names the permanent
 		// here (attackPermanentModProblem checks it).
+		// #6087: a creaturesExceptObjects restriction names the spared
+		// creatures here (exceptObjectsScopeProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
-			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject {
+			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
+			m.Kind != ModAddRestrictions {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1951,6 +1955,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	if problem := dealtDamageByScopeProblem(scope, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
+	if problem := exceptObjectsScopeProblem(scope, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
@@ -2343,6 +2350,10 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 			continue
 		}
 		applies := scopePredicate(e.Scope, e.Controller)
+		if e.Scope == ScopeCreaturesExceptObjects {
+			// #6087: the spared objects ride the record's mods.
+			applies = exceptObjectsPredicate(e.Mods)
+		}
 		for j := range g.Battlefield.Cards {
 			target := &g.Battlefield.Cards[j]
 			if target.effective == nil || !applies(target, g, nil) {
