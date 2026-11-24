@@ -3003,6 +3003,7 @@ run prompt-run/reactor-raid-draw
 run prompt-run/redcap-gutter-dweller-sacrificed
 run prompt-run/reign-of-the-pit-demon
 run prompt-run/reno-and-rude-sacrifice
+run prompt-run/reprocess-sacrifice
 run prompt-run/rescuer-chwinga-return
 run prompt-run/return-chosen-permanent-to-hand
 run prompt-run/rhovanion-rampager-sacrifice
@@ -3930,6 +3931,7 @@ tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
 tail mass/settle-the-wreckage-fetch-basics
+tail mass/shai-hulud-search
 tail mass/shredders-technique-enchantment-loss
 tail mass/starfall-invocation-return
 tail mass/sunfall-incubate
