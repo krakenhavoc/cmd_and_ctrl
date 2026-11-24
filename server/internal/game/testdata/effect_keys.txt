@@ -2258,6 +2258,7 @@ number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/necrodominance-draw-that-many
 number number/old-b069-remove-counters
+number number/old-b081-stumpsquall-hydra-give
 number number/overseer-of-vault-76-split-quest-counters
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plague-of-vermin-paid
@@ -2440,6 +2441,7 @@ option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/old-b071-cosima-voyage
+option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -4892,6 +4894,7 @@ tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/old-b071-cosima-draw
+tail then/old-b081-fact-or-fiction-take
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill

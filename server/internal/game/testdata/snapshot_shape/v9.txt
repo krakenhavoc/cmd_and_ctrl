@@ -7819,6 +7819,7 @@ frozenEntries[].event.entryTail.search.spec.entersWithCounters	map:string
 frozenEntries[].event.entryTail.search.spec.entersWithCounters{}	number:int
 frozenEntries[].event.entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.faceDown	string
+frozenEntries[].event.entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.libraryUntouched	bool
 frozenEntries[].event.entryTail.search.spec.limit	number:int
@@ -17811,6 +17812,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.entersWithCounters	map:string
 frozenEntries[].event.zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.faceDown	string
+frozenEntries[].event.zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.libraryUntouched	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.limit	number:int
@@ -29382,6 +29384,7 @@ movesAwaitingTokens[].entryTail.search.spec.entersWithCounters	map:string
 movesAwaitingTokens[].entryTail.search.spec.entersWithCounters{}	number:int
 movesAwaitingTokens[].entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.faceDown	string
+movesAwaitingTokens[].entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.libraryUntouched	bool
 movesAwaitingTokens[].entryTail.search.spec.limit	number:int
@@ -39374,6 +39377,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.entersWithCounters	map:string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.faceDown	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.libraryUntouched	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.limit	number:int
@@ -57852,6 +57856,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.entersWithCounter
 pendingChoices[].replacementResume.event.entryTail.search.spec.entersWithCounters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.faceDown	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.libraryUntouched	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.limit	number:int
@@ -67844,6 +67849,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersWithCo
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.faceDown	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.libraryUntouched	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.limit	number:int
@@ -71863,6 +71869,7 @@ pendingChoices[].searchPrompt.spec.entersWithCounters	map:string
 pendingChoices[].searchPrompt.spec.entersWithCounters{}	number:int
 pendingChoices[].searchPrompt.spec.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.faceDown	string
+pendingChoices[].searchPrompt.spec.firstEntersUnderControlOf	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.libraryOwner	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.libraryUntouched	bool
 pendingChoices[].searchPrompt.spec.limit	number:int
