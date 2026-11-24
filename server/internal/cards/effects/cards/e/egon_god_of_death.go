@@ -46,7 +46,7 @@ func init() {
 		},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{B}, {T}, Exile a creature card from your graveyard: Draw a card.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Cost: effects.Plus(effects.ManaCost("{2}{B}"), effects.TapCost(),
 				effects.ExileFromGraveyard(1, "a creature card", func(c game.Card) bool { return c.IsCreature() })),
 			Effect: effects.Do(effects.DrawCards{N: 1}),
