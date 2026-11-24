@@ -346,6 +346,7 @@ body minsc-and-boo/damage
 body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
+body mohiam-imperial-truthsayer/exile-top
 body monarch/become
 body monarch/crown
 body monarch/draw
@@ -2198,6 +2199,7 @@ option option-pick/aragorn-company-leader-counter
 option option-pick/archfiend-of-spite-life-or-sacrifice
 option option-pick/arni-metalbrow-attacks
 option option-pick/astarions-thirst-commander
+option option-pick/athreos-god-of-passage-pay-or-return
 option option-pick/atraxas-skitterfang-keyword
 option option-pick/attach-source-to-player
 option option-pick/aven-courier-counter
@@ -2346,6 +2348,7 @@ option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
 option option-pick/practiced-offense-keyword
+option option-pick/prince-of-thralls-pay-or-take
 option option-pick/protection-racket-answer
 option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
@@ -2657,6 +2660,7 @@ payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
 payunless pay-unless/mizzix-replica-rider-copy
+payunless pay-unless/mohiam-imperial-truthsayer-exile
 payunless pay-unless/monstrosity-of-the-lake-stun
 payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
@@ -4425,6 +4429,7 @@ tail tail/intrude-on-the-mind-rest
 tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/lord-of-the-void-exiled
+tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
 tail tail/pumpkin-bombs-after-fuse
