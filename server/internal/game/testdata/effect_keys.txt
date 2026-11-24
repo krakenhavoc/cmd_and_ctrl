@@ -2488,6 +2488,7 @@ payunless pay-unless/cmdr2-b09-timothar-exile
 payunless pay-unless/cmdr2-s18-insatiable-frugivore-repeat
 payunless pay-unless/cmdr2-s18-killer-service
 payunless pay-unless/cmdr2-s41-feather-radiant-arbiter
+payunless pay-unless/collective-voyage-paid
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
@@ -4368,6 +4369,7 @@ tail tail/lazav-investigate
 tail tail/lord-of-the-void-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
+tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
 tail tail/s82-mom-b12-guerrilla-after-mill
@@ -4388,6 +4390,9 @@ tail tail/uchuulon-copy
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
 tail tail/vault-13-dwellers-journey-tuck-rest
+tail tail/warp-world-bottom
+tail tail/warp-world-enchantments
+tail tail/warp-world-shuffled
 tail tail/winter-cynical-opportunist-exiled
 tail tail/yarus-turn-face-up
 tail tainted-pact/after-mill
