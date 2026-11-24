@@ -485,6 +485,7 @@ body s82-neo-b18/kirin-touched-orochi-counter
 body s82-neo-b18/kirin-touched-orochi-spirit
 body s82-old-b046/make-your-mark-spirit
 body s82-old-b046/valentin-pest-offer
+body s82-old-b088/plague-reaver-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
