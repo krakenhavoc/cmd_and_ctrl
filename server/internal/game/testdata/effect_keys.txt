@@ -2750,6 +2750,7 @@ pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/cruelclaws-heist-may-cast
 pick revealed-pick/deep-cavern-bat-return
 pick revealed-pick/dreams-of-steel-and-oil-graveyard
+pick revealed-pick/elite-spellbinder-exile
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/reckoner-shakedown-two-counters
