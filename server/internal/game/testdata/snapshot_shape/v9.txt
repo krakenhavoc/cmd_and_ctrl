@@ -4719,6 +4719,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttack
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].SourceName	string
 frozenEntries[].event.damageTail.sourceLki.BlockRequirements	array
@@ -13941,6 +13942,7 @@ frozenEntries[].event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].SourceName	string
 frozenEntries[].event.sourceLki.BlockRequirements	array
@@ -20905,6 +20907,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].OnlyAttack
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].SourceName	string
 heldCombatDamage.answers[].frame.SourceLKI.BlockRequirements	array
@@ -21129,6 +21132,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].OnlyAttackersMatching[].Supert
 lastKnownBattlefield{}.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].SourceName	string
 lastKnownBattlefield{}.BlockRequirements	array
@@ -21357,6 +21361,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].OnlyAttackersM
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].SourceName	string
 lastKnownPermanents{}[].characteristic.BlockRequirements	array
@@ -25932,6 +25937,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttack
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].SourceName	string
 movesAwaitingTokens[].damageTail.sourceLki.BlockRequirements	array
@@ -35154,6 +35160,7 @@ movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].SourceName	string
 movesAwaitingTokens[].sourceLki.BlockRequirements	array
@@ -46551,6 +46558,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].OnlyAttac
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements	array
@@ -47500,6 +47508,7 @@ pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].OnlyAttack
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].divideShield.staged[].lki.BlockRequirements	array
@@ -47713,6 +47722,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Only
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].divideShield.staged[].sourceLki.BlockRequirements	array
@@ -53939,6 +53949,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestri
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.BlockRequirements	array
@@ -63161,6 +63172,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].On
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].replacementResume.event.sourceLki.BlockRequirements	array
@@ -71813,6 +71825,7 @@ pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].OnlyAttackersMa
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].targetWalk.frame.lki.BlockRequirements	array
@@ -72648,6 +72661,7 @@ pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].OnlyAttackersMatchi
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].OnlyAttackersMatching[].Types[]	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].PowerAtMostHandOf	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].triggerFrame.lki.BlockRequirements	array
