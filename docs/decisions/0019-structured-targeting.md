@@ -1477,3 +1477,7 @@ view and the enumerator and takes the better creature).
 
 Back-out: drop the `EventETB` case from `triggerChooserOf` and every Confusion test finds no prompt; drop
 `otherThanChooserAdmits` or `eventObjectTypeAdmits` from `sourceAdmits` and the legal-set tests fail.
+
+## Amendment (2026-11-24, #6100): a player target judged against the player who chooses it
+
+Oath of Druids: "At the beginning of each player's upkeep, that player chooses target player who controls more creatures than they do and is their opponent." The upkeep player chooses (`ChosenByTriggerActor`, the 2026-10-23 amendment), and both halves of the clause are relative to them, not to the controller. `PlayerOK` is handed the controller, so the clause carries it as data: `TargetSpec.MoreCreaturesThanChooser`, judged beside `PlayerOK` in the player walk (`playerChooserAdmits`), with the chooser read by `triggerChooserOf`. The offer, the announce check (CR 601.2c) and the CR 608.2b re-check are one answer; a walk with no chooser admits nobody. `effects.Register` refuses it without a triggering player choosing a player. Build it with `effects.WithMoreCreaturesThanTheChooser`. Snapshot: one additive optional field on the clause.

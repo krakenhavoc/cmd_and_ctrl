@@ -149,6 +149,8 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"LoyaltyTwiceThisTurn", carried, "",
 	"LoyaltyPermanentTwiceThisTurn", carried, "",
+	"LoyaltyPermanentExtraThisTurn", carried, "",
+	"LoyaltyPermanentExtraUsedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973

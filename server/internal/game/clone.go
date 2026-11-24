@@ -144,6 +144,8 @@ func (g *Game) cloneLocked() *Game {
 	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	out.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	out.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
+	out.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
+	out.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -1355,6 +1357,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.LoyaltyTwiceThisTurn = src.LoyaltyTwiceThisTurn
 	g.LoyaltyPermanentTwiceThisTurn = src.LoyaltyPermanentTwiceThisTurn
+	g.LoyaltyPermanentExtraThisTurn = src.LoyaltyPermanentExtraThisTurn
+	g.LoyaltyPermanentExtraUsedThisTurn = src.LoyaltyPermanentExtraUsedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn

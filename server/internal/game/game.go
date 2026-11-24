@@ -369,6 +369,16 @@ type Game struct {
 	// turn boundary and forgotten when the object leaves the battlefield.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool
 
+	// LoyaltyPermanentExtraThisTurn and LoyaltyPermanentExtraUsedThisTurn
+	// are "you may activate [this permanent]'s loyalty ability two more
+	// times this turn" (Comet, Stellar Pup, #6100): per permanent, the
+	// extra activations granted this turn beyond CR 606.3's limit, and how
+	// many of them it has spent. Keyed by instance ID, flushed at the turn
+	// boundary and forgotten when the object leaves the battlefield.
+	// loyalty_limit_more.go.
+	LoyaltyPermanentExtraThisTurn     map[uuid.UUID]int
+	LoyaltyPermanentExtraUsedThisTurn map[uuid.UUID]int
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped

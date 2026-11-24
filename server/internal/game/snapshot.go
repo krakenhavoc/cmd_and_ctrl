@@ -450,6 +450,12 @@ type GameSnapshot struct {
 	// whose loyalty abilities may be activated twice this turn. Additive.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyPermanentTwiceThisTurn,omitempty"`
 
+	// LoyaltyPermanentExtraThisTurn and LoyaltyPermanentExtraUsedThisTurn
+	// are Game's (#6100): a permanent's extra loyalty activations granted
+	// and spent this turn. Additive.
+	LoyaltyPermanentExtraThisTurn     map[uuid.UUID]int `json:"loyaltyPermanentExtraThisTurn,omitempty"`
+	LoyaltyPermanentExtraUsedThisTurn map[uuid.UUID]int `json:"loyaltyPermanentExtraUsedThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -2766,6 +2772,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
+	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
+	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
@@ -4140,6 +4148,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
+	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
+	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
