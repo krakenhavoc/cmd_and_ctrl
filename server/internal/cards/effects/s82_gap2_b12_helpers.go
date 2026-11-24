@@ -12,3 +12,13 @@ func WithMoreCreaturesThanTheChooser(spec *game.TargetSpec) *game.TargetSpec {
 	spec.MoreCreaturesThanChooser = true
 	return spec
 }
+
+// WithEqualToughness is the set rule "with equal toughness": every pick of
+// the clause has the same toughness after the layers (V.A.T.S.,
+// game.TargetShareToughness).
+func WithEqualToughness() *game.TargetSameness {
+	return &game.TargetSameness{
+		Label: "have equal toughness",
+		Key:   game.TargetShareToughness,
+	}
+}
