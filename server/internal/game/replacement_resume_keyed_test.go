@@ -122,7 +122,7 @@ func keyedFrameSample() *ReplacementEvent {
 			FaceDown: FaceDownKind("morph"), HiddenBy: PermissionCardRef{ID: id("hb"), Epoch: 1},
 			ExiledWith: PermissionCardRef{ID: id("rew"), Epoch: 3}, ExiledWithAbility: AbilityRef{Key: "k", Slot: "s", Ref: "own:0", Name: "n"},
 			Mill: true, Discard: true, DiscardCause: DiscardCause("effect"), Source: id("rsrc"), MustSettleNow: true,
-			Countered: true, Cause: MoveCause{Kind: MoveCauseKind("effect"), Controller: id("cc"), Item: id("ci")},
+			Countered: true, Resolved: true, Cause: MoveCause{Kind: MoveCauseKind("effect"), Controller: id("cc"), Item: id("ci")},
 			Sacrifice: true, ViaBattlefieldLeave: true, Destruction: true, CantBeRegenerated: true, StateBased: true,
 			AsCommander: true, commanderAnswer: commanderZoneAccept,
 			faceDownLegs: &faceDownExileRun{

@@ -7,7 +7,10 @@ import "github.com/google/uuid"
 //
 //	702.55a Haunt is a triggered ability. “Haunt” on a permanent means
 //	        “When this permanent is put into a graveyard from the
-//	        battlefield, exile it haunting target creature.”
+//	        battlefield, exile it haunting target creature.” “Haunt” on
+//	        an instant or sorcery spell means “When this spell is put
+//	        into a graveyard during its resolution, exile it haunting
+//	        target creature.”
 //	702.55b Cards that are in the exile zone as the result of a haunt
 //	        ability “haunt” the creature targeted by that ability. The
 //	        phrase “creature it haunts” refers to the object targeted by
@@ -30,9 +33,17 @@ import "github.com/google/uuid"
 // condition. The card's owner controls the trigger, as with every ability
 // of a card outside the battlefield (CR 108.4, harvestFromDeclaredZone).
 
+// A spell's haunt watches from the graveyard, where the card is when it
+// triggers, for the one move that is "put into a graveyard during its
+// resolution": the EventZoneMove from the stack that carries
+// Event.Resolved (zone_route.go). A spell countered, or removed for want
+// of legal targets (CR 608.2b), lands in the same graveyard without it,
+// and does not haunt.
+
 // HauntForEffect is haunt's resolution: "exile it haunting target
 // creature". `cardID` is the card with haunt, which the caller has already
-// checked is still the object that died (in its owner's graveyard);
+// checked is still the object that died or resolved (in its owner's
+// graveyard);
 // `haunted` is the target, which must be on the battlefield. The card is
 // exiled through the ordinary route, and the link is written only if it
 // arrived in exile. Reports whether the card now haunts the creature.

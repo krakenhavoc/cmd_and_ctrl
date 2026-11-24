@@ -113,3 +113,67 @@ func TestHauntNeedsTheTargetOnTheBattlefield(t *testing.T) {
 		t.Error("the card left the graveyard with nothing to haunt")
 	}
 }
+
+// resolvedMoveOf is the EventZoneMove that took `id` from the stack to a
+// graveyard after `from`, and whether there was one.
+func resolvedMoveOf(g *Game, from int, id uuid.UUID) (Event, bool) {
+	for _, ev := range g.Events[from:] {
+		if ev.Kind == EventZoneMove && ev.CardID == id && ev.OldZone == ZoneStack && ev.NewZone == ZoneGraveyard {
+			return ev, true
+		}
+	}
+	return Event{}, false
+}
+
+// CR 702.55a's second sentence (#6083): haunt on a spell triggers when the
+// spell "is put into a graveyard during its resolution". The move a
+// resolving instant or sorcery makes says so (Event.Resolved); the same
+// move made by CR 608.2b, a spell whose every target is gone, does not.
+func TestASpellPutIntoAGraveyardAsItResolvesIsMarkedResolved(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, StepPrecombatMain)
+	c := NewCard("Test Sorcery", me.ID)
+	c.TypeLine = "Sorcery"
+	c.ManaCost = "{B}"
+	me.Hand.PushTop(c)
+	if err := g.CastSpell(me.ID, c.InstanceID, CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	from := len(g.Events)
+	resolveTop(t, g)
+	ev, ok := resolvedMoveOf(g, from, c.InstanceID)
+	if !ok {
+		t.Fatal("the resolved sorcery made no move from the stack to the graveyard")
+	}
+	if !ev.Resolved {
+		t.Error("the resolving sorcery's move to the graveyard is not marked Resolved")
+	}
+}
+
+func TestASpellWhoseTargetsAreAllGoneIsNotMarkedResolved(t *testing.T) {
+	g := newActiveGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	advanceTo(t, g, StepPrecombatMain)
+	c := NewCard("Test Instant", me.ID)
+	c.TypeLine = "Instant"
+	c.ManaCost = "{B}"
+	me.Hand.PushTop(c)
+	if err := g.CastSpell(me.ID, c.InstanceID, CastSpellParams{Targets: []TargetRef{{Kind: TargetPlayer, ID: them.ID}}}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	// Its one target leaves the game (CR 800.4a), so the spell is removed
+	// as it would resolve (CR 608.2b).
+	if err := g.Concede(them.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	from := len(g.Events)
+	resolveTop(t, g)
+	ev, ok := resolvedMoveOf(g, from, c.InstanceID)
+	if !ok {
+		t.Fatal("the fizzled instant made no move from the stack to the graveyard")
+	}
+	if ev.Resolved {
+		t.Error("a spell removed for want of legal targets (CR 608.2b) is marked Resolved")
+	}
+}
