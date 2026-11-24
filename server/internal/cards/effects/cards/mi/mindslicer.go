@@ -21,18 +21,7 @@ func init() {
 		Name:         "Mindslicer",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.WhenThisDies("Mindslicer — each player discards their hand", mindslicerDiscards),
+			effects.WhenThisDies("Mindslicer — each player discards their hand", effects.EachPlayerDiscardsTheirHand),
 		},
 	})
-}
-
-// mindslicerDiscards empties every player's hand, the controller first.
-func mindslicerDiscards(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	for _, id := range effects.TablePlayers(ctx) {
-		if _, err := effects.DiscardWholeHand(g, id); err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -5622,6 +5622,7 @@ frozenEntries[].event.entersUnlocked	number:uint8
 frozenEntries[].event.entersWithCounters	map:string
 frozenEntries[].event.entersWithCounters{}	number:int
 frozenEntries[].event.entersWithHaste	bool
+frozenEntries[].event.entersWithHasteTillEOT	bool
 frozenEntries[].event.entryControllerPrior	custom(uuid.UUID)
 frozenEntries[].event.entryControllerSet	bool
 frozenEntries[].event.entryRefused	bool
@@ -27061,6 +27062,7 @@ movesAwaitingTokens[].entersUnlocked	number:uint8
 movesAwaitingTokens[].entersWithCounters	map:string
 movesAwaitingTokens[].entersWithCounters{}	number:int
 movesAwaitingTokens[].entersWithHaste	bool
+movesAwaitingTokens[].entersWithHasteTillEOT	bool
 movesAwaitingTokens[].entryControllerPrior	custom(uuid.UUID)
 movesAwaitingTokens[].entryControllerSet	bool
 movesAwaitingTokens[].entryRefused	bool
@@ -55337,6 +55339,7 @@ pendingChoices[].replacementResume.event.entersUnlocked	number:uint8
 pendingChoices[].replacementResume.event.entersWithCounters	map:string
 pendingChoices[].replacementResume.event.entersWithCounters{}	number:int
 pendingChoices[].replacementResume.event.entersWithHaste	bool
+pendingChoices[].replacementResume.event.entersWithHasteTillEOT	bool
 pendingChoices[].replacementResume.event.entryControllerPrior	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryControllerSet	bool
 pendingChoices[].replacementResume.event.entryRefused	bool
