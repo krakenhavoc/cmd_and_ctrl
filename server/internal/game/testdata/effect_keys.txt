@@ -1746,6 +1746,7 @@ confirm confirm/agency-outfitter-library
 confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
+confirm confirm/amareth-the-lustrous-take
 confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
 confirm confirm/arc-of-fortune-embark
@@ -4430,6 +4431,7 @@ tail the-deck-of-many-things/curse
 tail the-dragon-kami-reborn/after-exile
 tail the-end/after-exile
 tail the-end/draw-for-hand
+tail the-fifteenth-doctor/after-mill
 tail the-gitrog-ravenous-ride/sacrificed
 tail the-grand-evolution/after-mill
 tail the-invincible-iron-man/attach-equipment
