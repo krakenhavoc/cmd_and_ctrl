@@ -206,6 +206,7 @@ body fell-stinger/draw-and-lose
 body felonious-rage/detective
 body felothar-dawn-of-the-abzan/counters
 body feral-encounter/bite
+body fiery-encore/damage
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
 body filigree-racer/jump-start
@@ -675,6 +676,7 @@ choose choose-cards/ashling-flame-dancer-then
 choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/astor-bearer-of-blades-take
 choose choose-cards/atraxa-grand-unifier-card-type
+choose choose-cards/author-of-shadows-picked
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
@@ -888,6 +890,7 @@ choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/fell-beasts-shriek-pick
 choose choose-cards/feral-encounter
 choose choose-cards/fiend-of-the-shadows-exile
+choose choose-cards/fiery-encore-discarded
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
 choose choose-cards/firja-judge-of-valor-take
@@ -1377,6 +1380,7 @@ choose choose-cards/realms-uncharted-settle
 choose choose-cards/reanimate-one-milled
 choose choose-cards/reckoner-shakedown-counters
 choose choose-cards/recruit-discarded
+choose choose-cards/reinterpret-cast
 choose choose-cards/rejoin-the-fight-pick
 choose choose-cards/relentless-pursuit-take
 choose choose-cards/relic-of-progenitus-exile
@@ -1648,6 +1652,7 @@ choose resolution-cast/itazura-lingering-wick-to-hand
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
+choose resolution-cast/muse-vortex-rest
 choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/ryan-sinclair-rest
 choose resolution-cast/s82-gap-b200-ripple-bottom
@@ -2517,6 +2522,7 @@ payunless pay-unless/aurora-shifter-copy
 payunless pay-unless/avatar-b30-moku-pump-and-haste
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
+payunless pay-unless/battlemages-bracers-copy-ability
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
@@ -3342,6 +3348,7 @@ tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail attacking-tokens/war-effort-sacrifice-the-warrior
 tail augusta-order-returned/after-exile
+tail author-of-shadows/choose-nonland
 tail avatar-b24/put-n-counters-on-each-next
 tail avatar-b30/bison-whistle-after-bison
 tail avatar-b30/cracked-earth-gain-life
@@ -4074,6 +4081,7 @@ tail msh-a7/rick-jones-after-mill
 tail msh-a8/tricksters-stratagem-connive
 tail msh-a9/ultron-robot-villain
 tail multiple-choice/scry-then-draw
+tail muse-vortex/exiled
 tail mutinous-massacre/steal-everything
 tail myr-custodian/ask-opponents
 tail myriad/exile-tokens-at-end-of-combat
