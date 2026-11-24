@@ -83241,6 +83241,7 @@ turnTally.exerts[].player	custom(uuid.UUID)
 turnTally.firstEvent	number:int
 turnTally.grantedAltCostsClaimed	map:string
 turnTally.grantedAltCostsClaimed{}	number:int
+turnTally.librarySearchesBarred	bool
 turnTally.loopActivated	string
 turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int

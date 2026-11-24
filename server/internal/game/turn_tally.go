@@ -394,6 +394,13 @@ type TurnTally struct {
 	// "another" needs: the source's own entry is skipped by instance id.
 	// Read through Game.EnteredFlierUnderThisTurn. Additive.
 	EnteredFliers []EnteredFlierRecord `json:"enteredFliers,omitempty"`
+	// LibrarySearchesBarred is "players can't search libraries this turn"
+	// (Shadow of Doubt): set by an effect as it resolves, it ends with the
+	// turn because the tally is replaced as the next turn begins. Read by
+	// the search primitive (SearchLibraryThenForEffect). Additive within the
+	// snapshot schema: a file without it restores false, meaning searches
+	// are allowed (weaker, never stronger).
+	LibrarySearchesBarred bool `json:"librarySearchesBarred,omitempty"`
 	// AttackedSubtypes is the subtype tally of the creatures each player
 	// declared as attackers this turn, per subtype they had as they
 	// attacked (#3192): Robber of the Rich's "during any turn you attacked
@@ -2135,7 +2142,7 @@ func (g *Game) resetTurnTallyLocked() {
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
 func cloneTurnTally(t TurnTally) TurnTally {
-	out := TurnTally{CreaturesDied: t.CreaturesDied, NontokenCreaturesDied: t.NontokenCreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
+	out := TurnTally{LibrarySearchesBarred: t.LibrarySearchesBarred, CreaturesDied: t.CreaturesDied, NontokenCreaturesDied: t.NontokenCreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
 	if len(t.Players) > 0 {
 		out.Players = make(map[uuid.UUID]PlayerTurnTally, len(t.Players))
 		for k, v := range t.Players {

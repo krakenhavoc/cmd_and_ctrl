@@ -212,6 +212,7 @@ body fireblade-artist/damage
 body fires-of-mount-doom/damage-each-player
 body flanking/shrink
 body flash/cleanup-sacrifice
+body flicker/return-exiled-creatures-tapped
 body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners
 body flicker/return-exiled-to-owners-tapped
@@ -1345,6 +1346,7 @@ choose choose-cards/rampant-frogantua-lands
 choose choose-cards/read-the-runes-discarded
 choose choose-cards/reality-fracture-hand-card-on-bottom
 choose choose-cards/realmbreaker-steal-land
+choose choose-cards/realms-uncharted-settle
 choose choose-cards/reanimate-one-milled
 choose choose-cards/reckoner-shakedown-counters
 choose choose-cards/recruit-discarded
@@ -2327,6 +2329,7 @@ option option-pick/put-attacking-from-library
 option option-pick/rattleback-apothecary-keyword
 option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
+option option-pick/realms-uncharted-opponent
 option option-pick/rejoinder-tap-or-untap
 option option-pick/remove-a-counter-of-your-choice
 option option-pick/reselect-attack
@@ -2477,6 +2480,7 @@ payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/canoptek-wraith-sacrifice
 payunless pay-unless/carefree-swinemaster-boar
+payunless pay-unless/casal-lurkwood-pathfinder-transform
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/chant-3-damage-to-that-player
@@ -4100,6 +4104,7 @@ tail ratonhnhaketon/token-created
 tail read-the-runes/sacrificed
 tail reality-fracture-helpers/after-exile
 tail reality-fracture/surveil-keep-noncreature-nonland
+tail realms-uncharted/choose
 tail recipient/cant-be-regenerated-if-dealt-damage
 tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
@@ -4711,6 +4716,7 @@ tail then/stronghold-arena-lose-life
 tail then/sungold-sentinel-color-chosen
 tail then/surrounded-by-orcs-mill
 tail then/suspect-each
+tail then/sway-of-the-stars-shuffle-draw-life
 tail then/sylvan-library-next-card
 tail then/sylvia-tilly-joy-of-discovery-when-you-do
 tail then/synth-eradicator-ask
