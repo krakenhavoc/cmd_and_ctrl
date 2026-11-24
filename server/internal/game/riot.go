@@ -356,11 +356,21 @@ func (g *Game) ResolveEntryRiot(choiceID, chooserID uuid.UUID, counter bool) err
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantRiotHasteLocked(ev *ReplacementEvent, entered uuid.UUID) {
-	if ev == nil || !ev.EntersWithHaste {
+	if ev == nil || (!ev.EntersWithHaste && !ev.EntersWithHasteTillEOT) {
 		return
 	}
 	c, ok := g.battlefieldCardLocked(entered)
 	if !ok {
+		return
+	}
+	if !ev.EntersWithHaste {
+		// "It gains haste until end of turn" (The Fourteenth Doctor): the
+		// same pinned record, ended by the cleanup step, and not riot's
+		// own, so the haste chip does not call it "Riot".
+		g.registerScopedEffectLocked(entered,
+			[]AffectedObject{PinObject(entered, c.EnteredBattlefieldAt)},
+			[]Mod{AddKeywordsMod("haste")},
+			g.PinnedTo(g.UntilEndOfTurnDuration(), entered), "gains haste until end of turn", timeNowUnixNano())
 		return
 	}
 	g.registerScopedEffectLocked(entered,

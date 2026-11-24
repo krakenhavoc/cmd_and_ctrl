@@ -278,6 +278,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 GAP2 batch 07 (#5948).
 	"Fires of Mount Doom": "2 damage to one target creature, the Equipment on it destroyed, and 2 damage to each PLAYER when a card is played: no creature but the target is touched",
 
+	// S82 old sets, batch 005 (own group).
+	"Nicol Bolas, the Ravager // Nicol Bolas, the Arisen": "its -12 exiles cards from one library, not permanents; the 10 damage hits one target",
+
 	// #5948 Q3, the secret choice cards.
 	"Call to the Void": "destroys only the creatures the players secretly chose, at most one of their own and one of someone else's each: a handful of chosen creatures, not a board",
 }

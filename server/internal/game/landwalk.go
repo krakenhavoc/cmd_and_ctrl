@@ -35,6 +35,7 @@ type landwalkSpec struct {
 	subtype   string // "Island"; "" when the token names no land type
 	supertype string // "basic"; "" when the token names no supertype
 	negated   bool   // the supertype is "without" (nonbasic)
+	artifact  bool   // the land must also be an artifact (artifact landwalk)
 }
 
 // landwalkTokens is every landwalk token the engine enforces, in the
@@ -51,6 +52,7 @@ var landwalkTokens = []struct {
 	{"forestwalk", landwalkSpec{subtype: "Forest"}},
 	{"desertwalk", landwalkSpec{subtype: "Desert"}},
 	{"nonbasic landwalk", landwalkSpec{supertype: "basic", negated: true}},
+	{"artifact landwalk", landwalkSpec{artifact: true}},
 }
 
 // landwalkRequirement parses a landwalk token into what it asks of a
@@ -71,6 +73,9 @@ func (s landwalkSpec) matches(land *Card) bool {
 	if land == nil || !land.IsLand() {
 		return false
 	}
+	if s.artifact && !land.IsArtifact() {
+		return false
+	}
 	if s.subtype != "" && !land.HasSubtype(s.subtype) {
 		return false
 	}
@@ -84,6 +89,8 @@ func (s landwalkSpec) matches(land *Card) bool {
 // `illegal_block` sentence: "an Island", "a nonbasic land".
 func (s landwalkSpec) describe() string {
 	switch {
+	case s.artifact:
+		return "an artifact land"
 	case s.subtype != "":
 		if s.subtype[0] == 'I' {
 			return "an " + s.subtype
