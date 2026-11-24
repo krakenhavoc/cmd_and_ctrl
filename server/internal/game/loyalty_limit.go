@@ -68,7 +68,7 @@ func (g *Game) LoyaltySpentLocked(cardID uuid.UUID) bool {
 		return false
 	}
 	c := findBattlefieldCard(g, cardID)
-	return c == nil || !g.loyaltyExtraOpenLocked(c)
+	return c == nil || (!g.loyaltyExtraOpenLocked(c) && !g.loyaltyPermanentExtraOpenLocked(cardID))
 }
 
 // loyaltyLimitSpentLocked is CR 606.3's ordinary limit alone, as
@@ -216,7 +216,14 @@ func (g *Game) GrantExtraLoyaltyActivationForEffect(player uuid.UUID) {
 // Caller must hold g.mu.
 func (g *Game) recordLoyaltyActivationLocked(cardID uuid.UUID) {
 	if g.loyaltyLimitSpentLocked(cardID) {
-		if c := findBattlefieldCard(g, cardID); c != nil && g.loyaltyExtraOpenLocked(c) {
+		if g.loyaltyPermanentExtraOpenLocked(cardID) {
+			// #6100: this permanent's own "N more times" grant is spent
+			// first; it can be spent by nothing else.
+			if g.LoyaltyPermanentExtraUsedThisTurn == nil {
+				g.LoyaltyPermanentExtraUsedThisTurn = make(map[uuid.UUID]int)
+			}
+			g.LoyaltyPermanentExtraUsedThisTurn[cardID]++
+		} else if c := findBattlefieldCard(g, cardID); c != nil && g.loyaltyExtraOpenLocked(c) {
 			if g.LoyaltyExtraActivationsUsedThisTurn == nil {
 				g.LoyaltyExtraActivationsUsedThisTurn = make(map[uuid.UUID]map[uuid.UUID]int)
 			}
