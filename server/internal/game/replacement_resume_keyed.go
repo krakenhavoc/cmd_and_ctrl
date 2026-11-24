@@ -380,6 +380,9 @@ func registeredReplacementResumeKeys() []string {
 	for k := range keywordInsteadBodies {
 		out = append(out, "keywordinstead "+k)
 	}
+	for k := range keywordInsteadCountBodies {
+		out = append(out, "keywordinstead "+k)
+	}
 	keywordInsteadMu.RUnlock()
 	out = append(out, registeredTailKeys()...)
 	out = append(out, registeredMillUntilKeys()...)
@@ -407,7 +410,8 @@ func KnownKeywordInstead(key string) bool {
 	keywordInsteadMu.RLock()
 	defer keywordInsteadMu.RUnlock()
 	_, ok := keywordInsteadBodies[key]
-	return ok
+	_, okCount := keywordInsteadCountBodies[key]
+	return ok || okCount
 }
 
 // --- the event's fields -----------------------------------------------
@@ -1089,6 +1093,8 @@ type pendingDrawSnapshot struct {
 type insteadRunSnapshot struct {
 	Key    string     `json:"key"`
 	Source *uuid.UUID `json:"source,omitempty"`
+	// N is a keyword-instead body's count (RegisterKeywordInsteadCount).
+	N int `json:"n,omitempty"`
 }
 
 // drawThenSnapshot is a DrawThen.
@@ -1230,11 +1236,11 @@ func permissionRefValue(r *PermissionCardRef) PermissionCardRef {
 	return *r
 }
 
-func insteadRunOrNil(key string, source uuid.UUID) *insteadRunSnapshot {
+func insteadRunOrNil(key string, source uuid.UUID, n int) *insteadRunSnapshot {
 	if key == "" {
 		return nil
 	}
-	return &insteadRunSnapshot{Key: key, Source: uuidPtrOrNil(source)}
+	return &insteadRunSnapshot{Key: key, Source: uuidPtrOrNil(source), N: n}
 }
 
 // snapshotReplacementResume writes a keyable frame. Caller has checked
@@ -1266,9 +1272,9 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		MustSettleNow:             ev.mustSettleNow,
 		DrawPlayer:                uuidPtrOrNil(ev.DrawPlayer),
 		DrawCount:                 ev.DrawCount,
-		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source),
+		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source, 0),
 		DrawTail:                  ev.drawTail,
-		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source),
+		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source, ev.keywordInstead.n),
 		KeywordAction:             ev.KeywordAction,
 		KeywordActionCount:        ev.KeywordActionCount,
 		ConniveExtraDraws:         ev.ConniveExtraDraws,
@@ -1550,7 +1556,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.drawInstead = drawInsteadRun{ref: DrawInsteadRef{key: r.Key}, source: uuidOrNil(r.Source)}
 	}
 	if r := s.KeywordInstead; r != nil {
-		ev.keywordInstead = keywordInsteadRun{ref: KeywordInsteadRef{key: r.Key}, source: uuidOrNil(r.Source)}
+		ev.keywordInstead = keywordInsteadRun{ref: KeywordInsteadRef{key: r.Key}, source: uuidOrNil(r.Source), n: r.N}
 	}
 	if d := s.DrawThen; d != nil {
 		ev.drawThen = DrawThen{Ref: DrawThenRef{key: d.Key}, Player: uuidOrNil(d.Player), Source: uuidOrNil(d.Source), N: d.N}

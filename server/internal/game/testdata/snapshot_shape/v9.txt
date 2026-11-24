@@ -5544,6 +5544,7 @@ frozenEntries[].event.discardPlayer	custom(uuid.UUID)
 frozenEntries[].event.drawCount	number:int
 frozenEntries[].event.drawInstead	object
 frozenEntries[].event.drawInstead.key	string
+frozenEntries[].event.drawInstead.n	number:int
 frozenEntries[].event.drawInstead.source	custom(uuid.UUID)
 frozenEntries[].event.drawPending	array
 frozenEntries[].event.drawPending[]	object
@@ -10326,6 +10327,7 @@ frozenEntries[].event.keywordActionTail.then.words	array
 frozenEntries[].event.keywordActionTail.then.words[]	string
 frozenEntries[].event.keywordInstead	object
 frozenEntries[].event.keywordInstead.key	string
+frozenEntries[].event.keywordInstead.n	number:int
 frozenEntries[].event.keywordInstead.source	custom(uuid.UUID)
 frozenEntries[].event.kind	string
 frozenEntries[].event.landGainsAbilities	array
@@ -27031,6 +27033,7 @@ movesAwaitingTokens[].discardPlayer	custom(uuid.UUID)
 movesAwaitingTokens[].drawCount	number:int
 movesAwaitingTokens[].drawInstead	object
 movesAwaitingTokens[].drawInstead.key	string
+movesAwaitingTokens[].drawInstead.n	number:int
 movesAwaitingTokens[].drawInstead.source	custom(uuid.UUID)
 movesAwaitingTokens[].drawPending	array
 movesAwaitingTokens[].drawPending[]	object
@@ -31813,6 +31816,7 @@ movesAwaitingTokens[].keywordActionTail.then.words	array
 movesAwaitingTokens[].keywordActionTail.then.words[]	string
 movesAwaitingTokens[].keywordInstead	object
 movesAwaitingTokens[].keywordInstead.key	string
+movesAwaitingTokens[].keywordInstead.n	number:int
 movesAwaitingTokens[].keywordInstead.source	custom(uuid.UUID)
 movesAwaitingTokens[].kind	string
 movesAwaitingTokens[].landGainsAbilities	array
@@ -55411,6 +55415,7 @@ pendingChoices[].replacementResume.event.discardPlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.drawCount	number:int
 pendingChoices[].replacementResume.event.drawInstead	object
 pendingChoices[].replacementResume.event.drawInstead.key	string
+pendingChoices[].replacementResume.event.drawInstead.n	number:int
 pendingChoices[].replacementResume.event.drawInstead.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.drawPending	array
 pendingChoices[].replacementResume.event.drawPending[]	object
@@ -60193,6 +60198,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.words	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.words[]	string
 pendingChoices[].replacementResume.event.keywordInstead	object
 pendingChoices[].replacementResume.event.keywordInstead.key	string
+pendingChoices[].replacementResume.event.keywordInstead.n	number:int
 pendingChoices[].replacementResume.event.keywordInstead.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.kind	string
 pendingChoices[].replacementResume.event.landGainsAbilities	array

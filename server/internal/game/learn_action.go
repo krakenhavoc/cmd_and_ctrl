@@ -125,15 +125,40 @@ func RegisterKeywordInstead(key string, body KeywordInsteadFunc) KeywordInsteadR
 	return KeywordInsteadRef{key: key}
 }
 
+// KeywordInsteadCountFunc is KeywordInsteadFunc for a replacement that needs
+// the action's COUNT: "if you would scry a number of cards, draw that many
+// cards instead" (Eligeth, Crossroads Augur). n is the count the window had
+// settled on when this replacement was applied (an earlier "plus one" is
+// already in it).
+type KeywordInsteadCountFunc func(g *Game, actor, source uuid.UUID, n int, done func(g *Game) error) error
+
+var keywordInsteadCountBodies = map[string]KeywordInsteadCountFunc{}
+
+// RegisterKeywordInsteadCount registers a count-reading body under key, in
+// the same key space as RegisterKeywordInstead, and returns the ref a
+// ReplacementEffect declares. Idempotent for one key. The key is an on-disk
+// identity once a card ships with it: never renamed, never reused.
+func RegisterKeywordInsteadCount(key string, body KeywordInsteadCountFunc) KeywordInsteadRef {
+	if key == "" || body == nil {
+		panic("game.RegisterKeywordInsteadCount: a key and a body are required")
+	}
+	keywordInsteadMu.Lock()
+	keywordInsteadCountBodies[key] = body
+	keywordInsteadMu.Unlock()
+	return KeywordInsteadRef{key: key}
+}
+
 // keywordInsteadRun is a recorded, not yet run, substituted keyword
-// action: which body, and which card it belongs to. Plain data, so a
-// resume frame holding it is copied by value.
+// action: which body, which card it belongs to, and the count the action
+// had. Plain data, so a resume frame holding it is copied by value.
 type keywordInsteadRun struct {
 	ref    KeywordInsteadRef
 	source uuid.UUID
+	n      int
 }
 
-// body looks the registered body up. Nil when nothing was recorded.
+// body looks the registered body up. Nil when nothing was recorded, or when
+// the body is a count-reading one (bodyCount).
 func (r keywordInsteadRun) body() KeywordInsteadFunc {
 	if r.ref.key == "" {
 		return nil
@@ -141,6 +166,16 @@ func (r keywordInsteadRun) body() KeywordInsteadFunc {
 	keywordInsteadMu.RLock()
 	defer keywordInsteadMu.RUnlock()
 	return keywordInsteadBodies[r.ref.key]
+}
+
+// bodyCount looks a count-reading body up. Nil when there is none.
+func (r keywordInsteadRun) bodyCount() KeywordInsteadCountFunc {
+	if r.ref.key == "" {
+		return nil
+	}
+	keywordInsteadMu.RLock()
+	defer keywordInsteadMu.RUnlock()
+	return keywordInsteadCountBodies[r.ref.key]
 }
 
 // recordKeywordInsteadLocked is what applying a KeywordInstead
@@ -151,5 +186,6 @@ func (g *Game) recordKeywordInsteadLocked(ev *ReplacementEvent, a activeReplacem
 	if a.source != nil {
 		run.source = a.source.InstanceID
 	}
+	run.n = ev.KeywordActionCount
 	ev.keywordInstead = run
 }

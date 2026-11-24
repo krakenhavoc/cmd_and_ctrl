@@ -1901,6 +1901,7 @@ confirm confirm/laccolith-rig-damage
 confirm confirm/lazav-familiar-stranger-copy
 confirm confirm/lim-duls-paladin-discard-or-sacrifice
 confirm confirm/lim-duls-vault-again
+confirm confirm/livio-oathsworn-sentinel-exile
 confirm confirm/lorcan-warlock-collector-pay-life
 confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
@@ -2142,6 +2143,7 @@ drawthen the-theorist/counters-equal-to-hand
 drawthen trade-route-envoy-counter-unless-drew
 drawthen wiretapping/after-draw
 drawthen yunas-decision/put
+keywordinstead eligeth-draw-instead-of-scry
 keywordinstead return-this-instead-of-learning
 maycast may-cast/free-play-back-land-or-hand
 maycast may-cast/free-play-land-or-hand
@@ -3975,6 +3977,7 @@ tail liliana-heretical-healer/zombie
 tail liliana-untouched-by-death/after-mill
 tail living-death/return-exiled
 tail living-death/sacrifice-creatures
+tail livio-oathsworn-sentinel/aegis-counter
 tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
