@@ -1313,6 +1313,8 @@ choose choose-cards/old-b043-augusta-tap
 choose choose-cards/old-b043-discard-two-unless-instant-or-sorcery
 choose choose-cards/old-b044-ardent-dustspeaker-picked
 choose choose-cards/old-b051-lukka-discard-draw
+choose choose-cards/old-b072-in-search-of-greatness-answer
+choose choose-cards/old-b072-reckless-crew-attach
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1794,6 +1796,7 @@ confirm bloomburrow-commander/fishers-talent-reveal
 confirm brazen-bluff/exile-or-free-cast
 confirm cmdr2-s41/forgers-foundry-exile
 confirm confirm/aberrant-mind-sorcerer-top
+confirm confirm/absorb-identity-copy
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
 confirm confirm/agency-outfitter-library
@@ -4097,6 +4100,7 @@ tail mill-then-take/temporal-anomaly
 tail mill-then-take/vivien-on-the-hunt
 tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
+tail mill-then/renegade-reaper-angel
 tail mill-then/sludge-titan
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
@@ -4950,6 +4954,7 @@ tail tinybones-bauble-burglar/after-exile
 tail together/revival-experiment-life
 tail together/s82-old-b054-chosen-returns
 tail token-and-attach-source/attach
+tail tokens-then/old-b072-reckless-crew-attach
 tail tomb-fortress/after-mill
 tail tombstone-stairwell/next-players-tombspawn
 tail too-greedily-too-deep/damage
