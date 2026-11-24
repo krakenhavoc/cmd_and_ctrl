@@ -1460,6 +1460,7 @@ choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
 choose choose-cards/summoners-grimoire-put
 choose choose-cards/sunbirds-invocation-cast
+choose choose-cards/sunforger-shuffle
 choose choose-cards/surtland-elementalist-cast
 choose choose-cards/surveillance-monitor-collect-evidence
 choose choose-cards/sylvan-library-chosen
@@ -2929,6 +2930,7 @@ run prompt-run/genesis-device-sacrifice
 run prompt-run/geothermal-kami-return
 run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
+run prompt-run/gisas-favorite-shovel-walker
 run prompt-run/glorifier-of-suffering-sacrifice
 run prompt-run/gluttonous-hellkite-sacrificed
 run prompt-run/god-eternal-bontu-sacrifice
@@ -3049,6 +3051,7 @@ run prompt-run/sunder-the-gateway-transform
 run prompt-run/sundering-titan-destroy
 run prompt-run/suppression-ray-stun
 run prompt-run/swarm-culler-draw
+run prompt-run/sword-of-truth-and-justice-counter
 run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
@@ -3459,6 +3462,7 @@ tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
 tail daxos-of-meletis/gain-life
 tail deathgorge-scavenger/exiled-card-riders
+tail deathrender/attach-to-it
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demilich/copy-exiled
@@ -4326,6 +4330,7 @@ tail summoners-sending/counter-if-big
 tail sunder-the-gateway/choose-an-incubator-and-transform
 tail sundering-eruption/creatures-cant-block
 tail sunfire-torch/sacrificed
+tail sunforger/cast-found
 tail surge-to-victory/exiled
 tail surprise-deployment/return-at-end-step
 tail survival-cache/compare

@@ -675,4 +675,6 @@ var TokenTable = map[string]game.Card{
 	"2/2 green Alien Salamander with islandwalk": {Name: "Alien Salamander", TypeLine: "Token Creature — Alien Salamander", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"islandwalk"}},
 	// S82 GAP2 batch 8 (#5948): Tasha, the Witch Queen's Demon.
 	"3/3 black Demon": {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 3, Toughness: 3, Colors: []string{"B"}},
+	// S82 OLD batch 26 (#5462): Gisa's Favorite Shovel's Walker.
+	"2/2 black Zombie named Walker": {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }
