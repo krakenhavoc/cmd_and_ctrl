@@ -574,6 +574,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
 	printedBoarFoodToken,
+
+	// Dwarven Confluencer's Mana Confluence (GAP2 batch 1, #5948).
+	printedManaConfluenceToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
