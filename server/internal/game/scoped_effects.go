@@ -1269,6 +1269,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModOneMorePlusOneCounter: {reader: readerReplacement},
 	// #5368: Kaya, Geist Hunter's tokens doubled this turn.
 	ModMultiplyTokens: {reader: readerReplacement},
+	// Crafty Cutpurse: opponents' tokens are created under your control.
+	ModRedirectTokens: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
