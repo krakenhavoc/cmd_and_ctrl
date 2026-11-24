@@ -1,8 +1,6 @@
 package cardso
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -36,7 +34,7 @@ func init() {
 		}
 	}
 	attack := effects.WheneverThisAttacks("Frenzied Trapbreaker — destroy target artifact or enchantment defending player controls", effects.DestroyChosenPermanent)
-	attack.TargetsFrom = targetArtifactOrEnchantmentDefendingPlayerControls
+	attack.TargetsFrom = effects.TargetArtifactOrEnchantmentDefendingPlayerControls
 	effects.Register(effects.Spec{
 		OracleID:        oracle,
 		Name:            "Outland Liberator",
@@ -52,23 +50,4 @@ func init() {
 		Activated:       []effects.ActivatedAbility{sacrifice()},
 		Triggered:       []game.TriggeredAbility{attack},
 	})
-}
-
-// targetArtifactOrEnchantmentDefendingPlayerControls is the TargetsFrom
-// clause for "target artifact or enchantment defending player controls".
-// It reads only the source's own attack, so a restore rebuilds the same
-// clause.
-func targetArtifactOrEnchantmentDefendingPlayerControls(_ game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
-	defender := g.DefendingPlayerForAttackForEffect(source.AttackingTarget)
-	if defender == uuid.Nil {
-		return nil
-	}
-	return &game.TargetSpec{
-		Mode: "permanent", Label: "target artifact or enchantment defending player controls",
-		Zones: []game.ZoneKind{game.ZoneBattlefield},
-		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-			return (c.IsArtifact() || c.IsEnchantment()) && c.Controller == defender
-		},
-		Min: 1, Max: 1,
-	}
 }

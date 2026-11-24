@@ -211,11 +211,22 @@ const (
 	// A spell's colours are those of the card or copy on the stack
 	// (CR 105.2); colourless spells and abilities are not stopped.
 	ProtectionQualityColoredSpells
+	// ProtectionQualityLegendaryCreatures is "protection from legendary
+	// creatures" (CR 702.16a, Tsabo Tavoc): the source is a creature with
+	// the legendary supertype. A fact about two characteristics at once, so
+	// it is its own kind; a legendary noncreature source (a legendary
+	// artifact, or a legendary creature spell's non-creature copy) is not
+	// stopped. Appended last so every earlier kind keeps its value.
+	ProtectionQualityLegendaryCreatures
 )
 
 // protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
 // lowercase: "protection from creatures of type Vampire".
 const protectionCreaturesOfType = "creatures of type "
+
+// ProtectionFromLegendaryCreatures is the token for "protection from
+// legendary creatures" (Tsabo Tavoc).
+const ProtectionFromLegendaryCreatures = protectionPrefix + "legendary creatures"
 
 // ProtectionFromCreaturesOfType is the token for protection from creatures
 // of one creature type.
@@ -266,6 +277,8 @@ func (k ProtectionQualityKind) String() string {
 		return "colorless"
 	case ProtectionQualityColoredSpells:
 		return "colored_spells"
+	case ProtectionQualityLegendaryCreatures:
+		return "legendary_creatures"
 	case ProtectionQualityCreatureSubtype:
 		// Same wire kind as a creature-type quality: the badge reads Value.
 		return "subtype"
@@ -496,6 +509,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
 	case "spells that are one or more colors":
 		return ProtectionQuality{Kind: ProtectionQualityColoredSpells, Printed: printed}, true
+	case "legendary creatures":
+		return ProtectionQuality{Kind: ProtectionQualityLegendaryCreatures, Printed: printed}, true
 	case protectionColorless:
 		return ProtectionQuality{Kind: ProtectionQualityColorless, Printed: printed}, true
 	}
@@ -914,6 +929,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) >= 2
 	case ProtectionQualityColoredSpells:
 		return src.SourceIsSpell && len(src.Colors) >= 1
+	case ProtectionQualityLegendaryCreatures:
+		return typeListHas(src.Types, "creature") && typeListHas(src.Supertypes, "legendary")
 	case ProtectionQualityColorless:
 		// CR 105.2c. The snapshot's colours are the post-layer ones, so
 		// an artifact an effect made red is not colourless and a
