@@ -1092,6 +1092,7 @@ choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
+choose choose-cards/masked-vandal-exile
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/mat-distribute-counters-among
 choose choose-cards/meanders-guide-tap
@@ -3547,6 +3548,7 @@ tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
+tail destroy-then/smashing-success-treasure
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
@@ -3747,6 +3749,7 @@ tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/lazotep-quarry
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/masked-vandal-target
 tail exile-then/mysterious-limousine-return-others
 tail exile-then/skywarp-skaab-draw
 tail exile-then/trystan-penitent-culler
@@ -4470,6 +4473,8 @@ tail tail/lord-of-the-void-exiled
 tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
+tail tail/old-b070-open-the-omenpaths-first-color
+tail tail/old-b070-open-the-omenpaths-second-color
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
