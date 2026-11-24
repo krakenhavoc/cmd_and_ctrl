@@ -733,6 +733,8 @@ func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 		return ManaSpendContext{Purpose: SpendPurposeUnlock}
 	case SpecialActionTurnFaceUp:
 		return ManaSpendContext{Purpose: SpendPurposeTurnFaceUp}
+	case SpecialActionForetell:
+		return ManaSpendContext{Purpose: SpendPurposeForetell}
 	}
 	return ManaSpendContext{}
 }

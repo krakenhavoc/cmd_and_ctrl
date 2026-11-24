@@ -268,6 +268,7 @@ body grishnakh-brash-instigator/steal-body
 body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
 body halo-forager/cast
+body harald-unites-the-elves/shrink
 body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
 body head-of-the-hunt/wolf
@@ -294,6 +295,7 @@ body inkshield/inklings
 body inti-seneschal-of-the-sun/counter-and-trample
 body intrepid-adversary/valor
 body invasion-of-new-capenna/exile
+body invasion-of-the-giants/damage
 body investigate/controller
 body invisible-woman/pump
 body iroh-tea-master/ally
@@ -560,6 +562,7 @@ body tester-of-the-tangential/move
 body tether-technician/strike
 body the-ancient-one/mill
 body the-balrog-of-moria/exile
+body the-bloodsky-massacre/draw-and-lose-life
 body the-deck-of-many-things/owner-loses
 body the-falcon-airship-restored/return
 body the-fire-nation-drill/destroy
@@ -946,6 +949,7 @@ choose choose-cards/grime-gorger-exile
 choose choose-cards/guided-passage-picked
 choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/gyruda-reanimate
+choose choose-cards/harald-unites-the-elves-reanimate
 choose choose-cards/harper-recruiter-take
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
@@ -970,6 +974,7 @@ choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
 choose choose-cards/invasion-of-arcavios-outside
 choose choose-cards/invasion-of-tarkir-reveal
+choose choose-cards/invasion-of-the-giants-reveal
 choose choose-cards/inventory-management-attach
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
 choose choose-cards/irreverent-gremlin-discard-draw
@@ -1558,6 +1563,7 @@ choose choose-cards/the-key-to-the-vault
 choose choose-cards/the-restoration-of-eiganjo-return
 choose choose-cards/the-ruinous-wrecking-crew-draw
 choose choose-cards/the-seventh-doctor-chosen
+choose choose-cards/the-three-seasons-graveyard
 choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-weaver-king-reanimate
 choose choose-cards/the-wedding-of-river-song-opponent
@@ -3914,6 +3920,7 @@ tail gul-dukat/drain-each-opponent
 tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
+tail harald-unites-the-elves/after-mill
 tail harried-dronesmith/haste-then-sacrifice
 tail hate-mirage/haste-and-exile-copies
 tail heartless-conscription/play-exiled-then-exile-this
