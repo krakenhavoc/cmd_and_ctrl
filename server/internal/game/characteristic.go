@@ -382,6 +382,25 @@ type Characteristic struct {
 	// once every layer has run (CR 613.11). power_floor.go.
 	AttackBlockNeedsOtherPower int `json:",omitempty"`
 
+	// CantAttackWithoutAnyOf is "creatures without flying or islandwalk
+	// can't attack" (Stormtide Leviathan; Moat's shape): the keyword tokens
+	// of which this creature needs at least one to attack. Written by a
+	// layer-6 static on the restricting permanent, so the creature losing
+	// its own abilities does not lift it, and read by
+	// foldAttackNeedsKeywordLocked once every layer has run, because
+	// "without flying" is a layer-6 result a timestamp-sorted bucket would
+	// read too early (the #1650 reason). attack_needs_keyword.go.
+	CantAttackWithoutAnyOf []string `json:",omitempty"`
+
+	// AttackHasteFor are the players "you" of an "all creatures can attack
+	// your opponents and planeswalkers your opponents control as though those
+	// creatures had haste" static (Frenzied Saddlebrute), one per source. A
+	// summoning-sick creature carrying one may be declared attacking any
+	// player but that holder, or a planeswalker anyone but that holder
+	// controls (CR 302.6, CR 609.4); against the holder it stays sick.
+	// attack_haste_waiver.go. Additive pure data, like DefenderWaivers.
+	AttackHasteFor []uuid.UUID `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all

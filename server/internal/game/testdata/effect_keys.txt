@@ -502,6 +502,7 @@ body s82-neo-b18/kirin-touched-orochi-spirit
 body s82-old-b046/make-your-mark-spirit
 body s82-old-b046/valentin-pest-offer
 body s82-old-b064/surtland-flinger-damage
+body s82-old-b087/hans-eriksson-fight
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -718,6 +719,7 @@ choose choose-cards/battlefield-improvisation-equipment
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
+choose choose-cards/bitter-revelation-take
 choose choose-cards/black-suns-twilight-return
 choose choose-cards/blossom-prancer-take
 choose choose-cards/body-snatcher-discard
@@ -2394,6 +2396,7 @@ option option-pick/golem-artisan-keyword
 option option-pick/gollum-scheming-guide-guesser
 option option-pick/guided-passage-opponent
 option option-pick/hand-of-vecna-creature
+option option-pick/hans-eriksson-attacks
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
 option option-pick/hostile-negotiations-face-up
@@ -4008,6 +4011,7 @@ tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail harald-unites-the-elves/after-mill
+tail hans-eriksson/entered
 tail harried-dronesmith/haste-then-sacrifice
 tail hate-mirage/haste-and-exile-copies
 tail heartless-conscription/play-exiled-then-exile-this
@@ -4536,6 +4540,7 @@ tail sheoldred-the-true-scriptures/flicker-this
 tail shifting-shadow/attach-then-bottom
 tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
+tail sifter-wurm/reveal-gain-life
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
 tail simic-guildmage/take-one

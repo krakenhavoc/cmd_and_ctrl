@@ -380,7 +380,7 @@ func AttackerEligible(a *Card, seat uuid.UUID) bool {
 	// lets it attack some target as though it didn't have defender
 	// (CR 609.4). Which targets is the per-target predicate's question
 	// (canAttackTargetWithLocked, defender_waivers.go).
-	if (HasKeyword(a, "defender") && !hasDefenderWaiver(a)) || HasSummoningSickness(a) {
+	if (HasKeyword(a, "defender") && !hasDefenderWaiver(a)) || (HasSummoningSickness(a) && !hasAttackHasteWaiver(a)) {
 		return false
 	}
 	return CanAttack(a)

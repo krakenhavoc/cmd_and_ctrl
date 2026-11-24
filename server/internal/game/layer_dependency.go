@@ -603,6 +603,8 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.CantTransform == b.CantTransform &&
 		a.AttackBlockPowerFloor == b.AttackBlockPowerFloor &&
 		a.AttackBlockNeedsOtherPower == b.AttackBlockNeedsOtherPower &&
+		sameStringSlice(a.CantAttackWithoutAnyOf, b.CantAttackWithoutAnyOf) &&
+		slices.Equal(a.AttackHasteFor, b.AttackHasteFor) &&
 		sameStringSlice(a.Types, b.Types) &&
 		sameStringSlice(a.Subtypes, b.Subtypes) &&
 		sameStringSlice(a.Supertypes, b.Supertypes) &&
