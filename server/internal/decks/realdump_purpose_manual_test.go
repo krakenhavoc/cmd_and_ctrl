@@ -280,6 +280,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 old sets, batch 005 (own group).
 	"Nicol Bolas, the Ravager // Nicol Bolas, the Arisen": "its -12 exiles cards from one library, not permanents; the 10 damage hits one target",
+
+	// #5948 Q3, the secret choice cards.
+	"Call to the Void": "destroys only the creatures the players secretly chose, at most one of their own and one of someone else's each: a handful of chosen creatures, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -353,6 +353,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ChosenName:     "Sol Ring",
 		ChosenOption:   "Khans",
 		ChosenNumber:   7,
+		Notes:          []string{"Number 3141592653"},
 		CommanderColor: "R",
 		ManaCost:       "{2}{U}",
 		ManaAbilities:  []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
