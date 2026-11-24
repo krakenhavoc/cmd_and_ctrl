@@ -289,6 +289,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 older sets batch 35 (#5501).
 	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
+
+	// S82 OLD batch 073 (#5506), roll-up old-4.
+	"Arcane Artisan": "when it leaves, it exiles only the tokens it created itself, not anyone else's permanents: not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
