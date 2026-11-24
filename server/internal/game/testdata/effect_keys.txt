@@ -1304,6 +1304,7 @@ choose choose-cards/old-b036-mount-velus-manticore-strike
 choose choose-cards/old-b041-imbraham-to-hand
 choose choose-cards/old-b043-augusta-tap
 choose choose-cards/old-b043-discard-two-unless-instant-or-sorcery
+choose choose-cards/old-b044-ardent-dustspeaker-picked
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -4134,6 +4135,9 @@ tail old-b041/kianne-exiled
 tail old-b042/introduction-to-annihilation-draw
 tail old-b043/extraction-victim-draws
 tail old-b043/fervent-mastery-random-discard
+tail old-b044/aether-helix-return
+tail old-b044/lorehold-excavation-milled
+tail old-b044/radiant-scrollwielder-exiled
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage

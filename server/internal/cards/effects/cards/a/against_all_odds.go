@@ -42,13 +42,7 @@ func init() {
 			effects.ModeDoing("Return target artifact or creature card with mana value 3 or less from your graveyard to the battlefield.",
 				effects.TargetCardInGraveyard("target artifact or creature card with mana value 3 or less from your graveyard",
 					effects.YouOwn(), effects.Or(effects.Artifact(), effects.Creature()), effects.ManaValueLE(3)),
-				func(_ *game.StackItem, ctx *effects.Context, occ int) error {
-					t, ok := effects.ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetCard {
-						return nil
-					}
-					return effects.ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-				}),
+				effects.ModeReturnTargetToTheBattlefield),
 		),
 	})
 }
