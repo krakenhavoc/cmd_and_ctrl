@@ -162,6 +162,10 @@ var knownUnmatchedTokens = map[string]string{
 	// token". The printed token card is */*, which a fixed size can never match; the template is
 	// 0/0 and the card sets X/X as it creates the token.
 	"0/0 green Elemental": "the printed token card is */*; Marath, Will of the Wild sets X/X as it creates it",
+	// Profane Transfusion (Commander Legends) creates "an X/X colorless Horror artifact creature
+	// token". The printed token card is */*, which a fixed size can never match; the template is
+	// 0/0 and the card sets X/X as it creates the token.
+	"0/0 colorless Horror artifact": "the printed token card is */*; Profane Transfusion sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
