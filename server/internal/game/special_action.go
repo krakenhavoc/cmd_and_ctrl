@@ -365,7 +365,10 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// Deliberately NOT gated on SplitSecondActive: CR 702.61b
 		// stops casts and activations, and a special action is
 		// neither.
-		return g.activeSeatIDLocked() == playerID
+		//
+		// Cosmos Charger: "can be done on any player's turn" opens the other
+		// players' turns to its controller.
+		return g.activeSeatIDLocked() == playerID || g.foretellOnAnyTurnLocked(playerID)
 
 	case SpecialActionSuspend:
 		// CR 702.62c: "any time you could begin to cast this card".

@@ -146,7 +146,14 @@ func YouNextCast(ev game.Event, dt *game.DelayedTrigger, g *game.Game, p game.Ef
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && p.Filter.Matches(c)
+	if !ok {
+		return false
+	}
+	x := 0
+	if item := g.StackItemForEffect(ev.CardID); item != nil && item.XValue > 0 {
+		x = item.XValue
+	}
+	return p.Filter.MatchesSpell(c, x)
 }
 
 // WhenYouNextCastFromHand is WhenYouNextCast for "when you next cast a

@@ -530,6 +530,7 @@ delayedTriggers[].condParams.ability.slot	string
 delayedTriggers[].condParams.amount	number:int
 delayedTriggers[].condParams.cost	string
 delayedTriggers[].condParams.filter	object
+delayedTriggers[].condParams.filter.maxManaValue	number:int
 delayedTriggers[].condParams.filter.types	array
 delayedTriggers[].condParams.filter.types[]	string
 delayedTriggers[].condParams.name	string
@@ -591,6 +592,7 @@ delayedTriggers[].params.ability.slot	string
 delayedTriggers[].params.amount	number:int
 delayedTriggers[].params.cost	string
 delayedTriggers[].params.filter	object
+delayedTriggers[].params.filter.maxManaValue	number:int
 delayedTriggers[].params.filter.types	array
 delayedTriggers[].params.filter.types[]	string
 delayedTriggers[].params.name	string
@@ -13965,6 +13967,7 @@ frozenEntries[].event.reflexiveAfterMove[].params.ability.slot	string
 frozenEntries[].event.reflexiveAfterMove[].params.amount	number:int
 frozenEntries[].event.reflexiveAfterMove[].params.cost	string
 frozenEntries[].event.reflexiveAfterMove[].params.filter	object
+frozenEntries[].event.reflexiveAfterMove[].params.filter.maxManaValue	number:int
 frozenEntries[].event.reflexiveAfterMove[].params.filter.types	array
 frozenEntries[].event.reflexiveAfterMove[].params.filter.types[]	string
 frozenEntries[].event.reflexiveAfterMove[].params.name	string
@@ -14349,6 +14352,7 @@ frozenEntries[].event.stackItem.params.ability.slot	string
 frozenEntries[].event.stackItem.params.amount	number:int
 frozenEntries[].event.stackItem.params.cost	string
 frozenEntries[].event.stackItem.params.filter	object
+frozenEntries[].event.stackItem.params.filter.maxManaValue	number:int
 frozenEntries[].event.stackItem.params.filter.types	array
 frozenEntries[].event.stackItem.params.filter.types[]	string
 frozenEntries[].event.stackItem.params.name	string
@@ -22383,6 +22387,7 @@ lastKnownStack[].item.params.ability.slot	string
 lastKnownStack[].item.params.amount	number:int
 lastKnownStack[].item.params.cost	string
 lastKnownStack[].item.params.filter	object
+lastKnownStack[].item.params.filter.maxManaValue	number:int
 lastKnownStack[].item.params.filter.types	array
 lastKnownStack[].item.params.filter.types[]	string
 lastKnownStack[].item.params.name	string
@@ -35452,6 +35457,7 @@ movesAwaitingTokens[].reflexiveAfterMove[].params.ability.slot	string
 movesAwaitingTokens[].reflexiveAfterMove[].params.amount	number:int
 movesAwaitingTokens[].reflexiveAfterMove[].params.cost	string
 movesAwaitingTokens[].reflexiveAfterMove[].params.filter	object
+movesAwaitingTokens[].reflexiveAfterMove[].params.filter.maxManaValue	number:int
 movesAwaitingTokens[].reflexiveAfterMove[].params.filter.types	array
 movesAwaitingTokens[].reflexiveAfterMove[].params.filter.types[]	string
 movesAwaitingTokens[].reflexiveAfterMove[].params.name	string
@@ -35836,6 +35842,7 @@ movesAwaitingTokens[].stackItem.params.ability.slot	string
 movesAwaitingTokens[].stackItem.params.amount	number:int
 movesAwaitingTokens[].stackItem.params.cost	string
 movesAwaitingTokens[].stackItem.params.filter	object
+movesAwaitingTokens[].stackItem.params.filter.maxManaValue	number:int
 movesAwaitingTokens[].stackItem.params.filter.types	array
 movesAwaitingTokens[].stackItem.params.filter.types[]	string
 movesAwaitingTokens[].stackItem.params.name	string
@@ -42709,6 +42716,7 @@ pausedModeWalk.item.params.ability.slot	string
 pausedModeWalk.item.params.amount	number:int
 pausedModeWalk.item.params.cost	string
 pausedModeWalk.item.params.filter	object
+pausedModeWalk.item.params.filter.maxManaValue	number:int
 pausedModeWalk.item.params.filter.types	array
 pausedModeWalk.item.params.filter.types[]	string
 pausedModeWalk.item.params.name	string
@@ -43090,6 +43098,7 @@ pausedResolutionTail.item.params.ability.slot	string
 pausedResolutionTail.item.params.amount	number:int
 pausedResolutionTail.item.params.cost	string
 pausedResolutionTail.item.params.filter	object
+pausedResolutionTail.item.params.filter.maxManaValue	number:int
 pausedResolutionTail.item.params.filter.types	array
 pausedResolutionTail.item.params.filter.types[]	string
 pausedResolutionTail.item.params.name	string
@@ -43465,6 +43474,7 @@ pausedStepWalk.item.params.ability.slot	string
 pausedStepWalk.item.params.amount	number:int
 pausedStepWalk.item.params.cost	string
 pausedStepWalk.item.params.filter	object
+pausedStepWalk.item.params.filter.maxManaValue	number:int
 pausedStepWalk.item.params.filter.types	array
 pausedStepWalk.item.params.filter.types[]	string
 pausedStepWalk.item.params.name	string
@@ -46302,6 +46312,7 @@ pendingChoices[].copyWalk.item.params.ability.slot	string
 pendingChoices[].copyWalk.item.params.amount	number:int
 pendingChoices[].copyWalk.item.params.cost	string
 pendingChoices[].copyWalk.item.params.filter	object
+pendingChoices[].copyWalk.item.params.filter.maxManaValue	number:int
 pendingChoices[].copyWalk.item.params.filter.types	array
 pendingChoices[].copyWalk.item.params.filter.types[]	string
 pendingChoices[].copyWalk.item.params.name	string
@@ -63832,6 +63843,7 @@ pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.ability.slo
 pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.amount	number:int
 pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.cost	string
 pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter	object
+pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter.maxManaValue	number:int
 pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter.types	array
 pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.filter.types[]	string
 pendingChoices[].replacementResume.event.reflexiveAfterMove[].params.name	string
@@ -64216,6 +64228,7 @@ pendingChoices[].replacementResume.event.stackItem.params.ability.slot	string
 pendingChoices[].replacementResume.event.stackItem.params.amount	number:int
 pendingChoices[].replacementResume.event.stackItem.params.cost	string
 pendingChoices[].replacementResume.event.stackItem.params.filter	object
+pendingChoices[].replacementResume.event.stackItem.params.filter.maxManaValue	number:int
 pendingChoices[].replacementResume.event.stackItem.params.filter.types	array
 pendingChoices[].replacementResume.event.stackItem.params.filter.types[]	string
 pendingChoices[].replacementResume.event.stackItem.params.name	string
@@ -72831,6 +72844,7 @@ pendingChoices[].targetWalk.frame.reflexive.params.ability.slot	string
 pendingChoices[].targetWalk.frame.reflexive.params.amount	number:int
 pendingChoices[].targetWalk.frame.reflexive.params.cost	string
 pendingChoices[].targetWalk.frame.reflexive.params.filter	object
+pendingChoices[].targetWalk.frame.reflexive.params.filter.maxManaValue	number:int
 pendingChoices[].targetWalk.frame.reflexive.params.filter.types	array
 pendingChoices[].targetWalk.frame.reflexive.params.filter.types[]	string
 pendingChoices[].targetWalk.frame.reflexive.params.name	string
@@ -73681,6 +73695,7 @@ pendingChoices[].triggerFrame.reflexive.params.ability.slot	string
 pendingChoices[].triggerFrame.reflexive.params.amount	number:int
 pendingChoices[].triggerFrame.reflexive.params.cost	string
 pendingChoices[].triggerFrame.reflexive.params.filter	object
+pendingChoices[].triggerFrame.reflexive.params.filter.maxManaValue	number:int
 pendingChoices[].triggerFrame.reflexive.params.filter.types	array
 pendingChoices[].triggerFrame.reflexive.params.filter.types[]	string
 pendingChoices[].triggerFrame.reflexive.params.name	string
@@ -74458,6 +74473,7 @@ pendingTriggers[].params.ability.slot	string
 pendingTriggers[].params.amount	number:int
 pendingTriggers[].params.cost	string
 pendingTriggers[].params.filter	object
+pendingTriggers[].params.filter.maxManaValue	number:int
 pendingTriggers[].params.filter.types	array
 pendingTriggers[].params.filter.types[]	string
 pendingTriggers[].params.name	string
@@ -77097,6 +77113,7 @@ resolving.item.params.ability.slot	string
 resolving.item.params.amount	number:int
 resolving.item.params.cost	string
 resolving.item.params.filter	object
+resolving.item.params.filter.maxManaValue	number:int
 resolving.item.params.filter.types	array
 resolving.item.params.filter.types[]	string
 resolving.item.params.name	string
@@ -82907,6 +82924,7 @@ stackMeta[].params.ability.slot	string
 stackMeta[].params.amount	number:int
 stackMeta[].params.cost	string
 stackMeta[].params.filter	object
+stackMeta[].params.filter.maxManaValue	number:int
 stackMeta[].params.filter.types	array
 stackMeta[].params.filter.types[]	string
 stackMeta[].params.name	string

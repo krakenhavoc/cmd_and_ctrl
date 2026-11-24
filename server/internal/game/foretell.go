@@ -206,3 +206,29 @@ func (g *Game) revealForetoldAtGameEndLocked() {
 		})
 	}
 }
+
+// CatalogForetellOnAnyTurn is the catalog hook for Spec.ForetellOnAnyTurn
+// (Cosmos Charger). Nil, or false, is the ordinary case: foretell only during
+// your own turn (CR 702.143a).
+var CatalogForetellOnAnyTurn func(oracleID string) bool
+
+// foretellOnAnyTurnLocked reports whether a permanent playerID controls lets
+// them foretell during any player's turn. Derived from the battlefield on every
+// query, so it lasts exactly as long as the permanent does.
+//
+// Caller must hold g.mu.
+func (g *Game) foretellOnAnyTurnLocked(playerID uuid.UUID) bool {
+	if g.Battlefield == nil || CatalogForetellOnAnyTurn == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != playerID {
+			continue
+		}
+		if key := catalogAbilityKeyOf(c); key != "" && CatalogForetellOnAnyTurn(key) {
+			return true
+		}
+	}
+	return false
+}
