@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -47,20 +45,4 @@ func OldB12CastTargetInstantFromYourGraveyardExilingIt(sourceName string) Effect
 		}
 		return nil
 	}
-}
-
-// OldB12OpponentCreatureDied is "a creature an opponent controls dies": the
-// permanent left the battlefield for a graveyard as a creature, under the
-// control of a player other than the source's controller (last-known
-// information, CR 603.10a), a token included.
-func OldB12OpponentCreatureDied(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard || ev.CardID == uuid.Nil {
-		return false
-	}
-	c, _ := g.LookupCardForEffect(ev.CardID)
-	if !LeftAsType(ev, c, "creature") {
-		return false
-	}
-	controller := LeftUnderControlOf(ev, c)
-	return controller != uuid.Nil && controller != source.Controller
 }

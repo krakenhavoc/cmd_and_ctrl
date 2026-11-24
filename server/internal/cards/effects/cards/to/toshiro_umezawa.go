@@ -26,7 +26,7 @@ func init() {
 			effects.Bushido(1, "Toshiro Umezawa"),
 			effects.Targeting(
 				effects.Optional(effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return effects.OldB12OpponentCreatureDied(ev, source, g)
+					return effects.OldB11OpponentCreatureDied(ev, source, g)
 				}, "Toshiro Umezawa — you may cast target instant card from your graveyard; if it would be put into a graveyard, exile it instead",
 					effects.OldB12CastTargetInstantFromYourGraveyardExilingIt("Toshiro Umezawa")),
 					"Toshiro Umezawa — cast target instant card from your graveyard?"),
