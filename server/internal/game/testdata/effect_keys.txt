@@ -378,8 +378,8 @@ body ochre-jelly/split-token
 body offspring/granted-token
 body ogre-battlecaster/pump
 body old-b036/mount-velus-manticore-strike
-body old-b049/devouring-tendrils-gain-2
 body old-b042/rushed-rebirth-search
+body old-b049/devouring-tendrils-gain-2
 body old-b050/blocker-controller-loses-1
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
@@ -1439,12 +1439,12 @@ choose choose-cards/s82-mom-b21-omnath-reveal
 choose choose-cards/s82-old-b005-karn-scion-pick
 choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-old-b021-hokori-untap-a-land
-choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
-choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
-choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-old-b046-illuminate-history
 choose choose-cards/s82-old-b054-first-picked
 choose choose-cards/s82-old-b054-second-picked
+choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
+choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
+choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2735,9 +2735,9 @@ payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
 payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
+payunless pay-unless/old-b051-copy-that-spell
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
-payunless pay-unless/old-b051-copy-that-spell
 payunless pay-unless/order-of-the-golden-cricket-flying
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/overencumbered-no-attack
@@ -4528,8 +4528,8 @@ tail tail/lord-of-the-void-exiled
 tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
-tail tail/praetors-grasp-play-it
 tail tail/old-b051-will-elementals
+tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
 tail tail/s82-mom-b12-guerrilla-after-mill
