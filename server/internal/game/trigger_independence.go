@@ -1834,6 +1834,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
 	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
+	"GameActionReplacements": defFieldRules,
 }
 
 // defBearsRules reports whether a definition has a rules slot set

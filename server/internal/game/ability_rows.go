@@ -312,6 +312,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "DamageLastLoyalty", fallback: "Damage can't remove a planeswalker's last loyalty counter", ownLabel: true},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
+	{field: "GameActionReplacements", label: gameActionReplacementRows},
 	{field: "CoinFlipRules", fallback: "Coin flips come up heads", ownLabel: true},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},
 	{field: "ConditionalLandPlays", label: conditionalLandPlayRows},

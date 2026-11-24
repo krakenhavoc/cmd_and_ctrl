@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"reflect"
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // game_action_replacements.go — replacement effects over two game actions
 // that had none: losing the game, and planeswalking (#6096, S82 GAP2).
@@ -245,4 +250,22 @@ func planeswalkOrderTopTwoAnswered(g *Game, r OptionPicked) error {
 	}
 	g.continuePlaneswalkLocked(player)
 	return nil
+}
+
+// gameActionReplacementRows words a GameActionReplacements slot for the
+// tile's ability rows (#2219): one sentence per entry.
+func gameActionReplacementRows(v reflect.Value) []string {
+	rows, _ := v.Interface().([]GameActionReplacement)
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		switch r.Kind {
+		case ReplaceLoseGameExileThisLifeBecomes:
+			out = append(out, "If you would lose the game, instead exile this and your life total becomes "+strconv.Itoa(r.Life)+".")
+		case ReplacePlaneswalkOrderTopTwo:
+			out = append(out, "If you would planeswalk, instead look at the top two cards of your planar deck, put one on the bottom and the other on top, then planeswalk.")
+		default:
+			out = append(out, "Replaces a game action.")
+		}
+	}
+	return out
 }
