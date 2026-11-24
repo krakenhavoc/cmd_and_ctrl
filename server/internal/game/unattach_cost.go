@@ -151,3 +151,32 @@ func (g *Game) payUnattachThisCostLocked(sourceID uuid.UUID, unattach bool) {
 		_ = g.UnattachForEffect(sourceID)
 	}
 }
+
+// unattachGrantorOfLocked is the permanent an UnattachGrantor cost
+// unattaches: the row's grantor, which must still be on the battlefield and
+// attached to something (CR 701.3d, CR 118.3). Nil and no error when the
+// cost has no such component. Caller must hold g.mu.
+func (g *Game) unattachGrantorOfLocked(cost AbilityCost, origin AbilityOrigin) (uuid.UUID, error) {
+	if !cost.UnattachGrantor {
+		return uuid.Nil, nil
+	}
+	if !origin.Granted() || origin.GrantedBy == uuid.Nil || g.Battlefield == nil {
+		return uuid.Nil, ErrInvalidParam
+	}
+	c := findBattlefieldCard(g, origin.GrantedBy)
+	if c == nil || !c.IsAttached() {
+		return uuid.Nil, ErrInvalidParam
+	}
+	return origin.GrantedBy, nil
+}
+
+// payUnattachGrantorCostLocked unattaches the grantor (UnattachForEffect,
+// the one primitive every unattach goes through); it stays on the
+// battlefield. A no-op without the component.
+//
+// Caller must hold g.mu.
+func (g *Game) payUnattachGrantorCostLocked(grantor uuid.UUID) {
+	if grantor != uuid.Nil {
+		_ = g.UnattachForEffect(grantor)
+	}
+}

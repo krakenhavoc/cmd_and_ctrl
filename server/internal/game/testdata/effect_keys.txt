@@ -2567,6 +2567,7 @@ payunless pay-unless/digsite-engineer-construct
 payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
+payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
 payunless pay-unless/dutiful-replicator-copy
