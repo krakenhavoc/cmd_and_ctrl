@@ -3063,6 +3063,18 @@ type PlayerView struct {
 	// owner's `special_action {kind: "companion"}` names.
 	Companion *CardView `json:"companion,omitempty"`
 
+	// Conspiracies are this seat's conspiracy cards in the command zone
+	// (CR 315, #6102, ADR 0227), in the order they were put there. Absent
+	// for a seat with none.
+	//
+	// A face-up one is public. A face-down one (hidden agenda, CR
+	// 702.106a) is its owner's alone to look at (CR 315.7): every other
+	// viewer gets the redacted card, `face_down` with no name and no
+	// `chosen_name`. Once revealed, or at the end of the game (CR
+	// 702.106e), everyone sees the card and its `chosen_name`. Its
+	// `special_actions` (reveal_agenda) are the owner's.
+	Conspiracies []CardView `json:"conspiracies,omitempty"`
+
 	// Sideboard is the cards this seat owns outside the game (ADR 0191
 	// §7): the deck's sideboard, which only an effect that brings a card
 	// in from outside the game can reach. OWNER-ONLY: FilterViewFor
@@ -9708,6 +9720,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 		}
 		stampLibraryTopSpecialActions(g, &seat.Library, owner)
 		stampCompanionSpecialActions(g, seat, owner)
+		stampConspiracySpecialActions(g, seat, owner)
 		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
 		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner, restricted)
 	}
@@ -9873,6 +9886,24 @@ func stampCompanionSpecialActions(g *game.Game, seat *PlayerView, owner uuid.UUI
 			seat.Companion.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneOutside)
 		}
 		return
+	}
+}
+
+// stampConspiracySpecialActions puts the reveal_agenda row on each of
+// the seat's face-down conspiracies (ADR 0227, CR 702.106c). They are in
+// the command zone's emblem container, which no other stamper walks.
+// FilterViewFor keeps the rows for the owner alone.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampConspiracySpecialActions(g *game.Game, seat *PlayerView, owner uuid.UUID) {
+	if len(seat.Conspiracies) == 0 {
+		return
+	}
+	cards := g.ConspiraciesOf(owner)
+	for i := range seat.Conspiracies {
+		if i < len(cards) {
+			seat.Conspiracies[i].SpecialActions = viewOfSpecialActions(g, cards[i], owner, game.ZoneCommand)
+		}
 	}
 }
 
@@ -11556,6 +11587,12 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		cv := viewOfCard(c)
 		companion = &cv
 	}
+	// ADR 0227: the conspiracies in the command zone. FilterViewFor
+	// redacts a face-down one for every viewer but its owner.
+	var conspiracies []CardView
+	for _, c := range g.ConspiraciesOf(p.ID) {
+		conspiracies = append(conspiracies, viewOfCard(c))
+	}
 	// ADR 0191 §7: the sideboard. FilterViewFor keeps the cards for the
 	// owner alone; the count is public.
 	var sideboard []CardView
@@ -11618,6 +11655,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		ManaAbilities:       viewOfPlayerManaAbilities(g, p.ID),
 		Emblems:             emblems,
 		Companion:           companion,
+		Conspiracies:        conspiracies,
 		Sideboard:           sideboard,
 		SideboardCount:      len(sideboard),
 		AttractionDeckCount: len(p.AttractionDeckCards()),
@@ -12107,6 +12145,19 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			c.knowers = nil
 			out.Companion = &c
 		}
+		// ADR 0227: a face-down conspiracy is its owner's to look at
+		// (CR 315.7); its reveal row is the owner's (or the controller's
+		// of the owner's whole turn) to take.
+		if len(p.Conspiracies) > 0 {
+			cs := make([]CardView, len(p.Conspiracies))
+			for i, c := range p.Conspiracies {
+				cs[i] = redactCardForViewer(c, isKnower(c))
+				if p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+					cs[i].SpecialActions = nil
+				}
+			}
+			out.Conspiracies = cs
+		}
 		// ADR 0191 §7: the sideboard is its owner's to read and nobody
 		// else's: not an opponent, not a spectator, not the admin view,
 		// and not the controller of the owner's turn (CR 723.4).
@@ -12412,6 +12463,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.PrivateText && c.Chooser != viewerID {
 			out[i].Source = ""
 			out[i].Reason = "Deciding on an opening-hand action"
+			// ADR 0227: a hidden agenda's name is the other private
+			// prompt before the game begins.
+			if c.Kind == string(game.PendingChoiceCardName) {
+				out[i].Reason = "Secretly choosing a hidden agenda name"
+				out[i].NameOptions = nil
+			}
 			// #3801: a may_cast over a card only the chooser has looked
 			// at (the top of a library). The card's id is a handle on a
 			// hidden-zone card, so it goes too.

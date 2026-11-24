@@ -42,6 +42,7 @@ func (g *Game) cloneLocked() *Game {
 		Turn:              g.Turn,
 		MulligansOpen:     g.MulligansOpen,
 		OpeningRoll:       cloneOpeningRoll(g.OpeningRoll),
+		PendingDealSeat:   cloneIntPtr(g.PendingDealSeat),
 		Planechase:        clonePlanechase(g.Planechase),
 		PlanarDeck:        cloneZone(g.PlanarDeck),
 		PlanarFaceUp:      cloneZone(g.PlanarFaceUp),
@@ -1327,6 +1328,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Turn = src.Turn
 	g.MulligansOpen = src.MulligansOpen
 	g.OpeningRoll = src.OpeningRoll
+	g.PendingDealSeat = src.PendingDealSeat
 	g.Planechase = src.Planechase
 	g.PlanarDeck = src.PlanarDeck
 	g.PlanarFaceUp = src.PlanarFaceUp

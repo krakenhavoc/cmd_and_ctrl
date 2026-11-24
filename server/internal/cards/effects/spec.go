@@ -2076,6 +2076,14 @@ type Spec struct {
 	// Added in S27.
 	Battle *BattleSpec
 
+	// HiddenAgenda is a conspiracy's hidden agenda (CR 702.106a): the card
+	// starts the game face down in the command zone and its owner secretly
+	// chooses that many card names, HiddenAgendaOneName (hidden agenda) or
+	// HiddenAgendaTwoNames (double agenda, CR 702.106f). Its abilities that
+	// read "the chosen name" read Card.ChosenName (and ChosenSecondName).
+	// Zero for every other card. #6102, ADR 0227.
+	HiddenAgenda int
+
 	// XMatters declares that everything this card does scales with
 	// the announced X (CR 601.2b / 602.2b), so an announcement of
 	// X=0 does nothing at all: Fireball deals no damage, Soothsaying

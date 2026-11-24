@@ -316,8 +316,12 @@ type GameSnapshot struct {
 	// table only the host can end (ADR 0121 §1, "Rollback"); a bump
 	// would abandon every live game on rollback instead.
 	OpeningRoll *OpeningRoll `json:"openingRoll,omitempty"`
-	Monarch     uuid.UUID    `json:"monarch"`
-	Initiative  uuid.UUID    `json:"initiative"`
+	// PendingDealSeat is a deal waiting for a hidden agenda's name (ADR
+	// 0227). Additive within the schema: absent on every file that is not
+	// mid-agenda.
+	PendingDealSeat *int      `json:"pendingDealSeat,omitempty"`
+	Monarch         uuid.UUID `json:"monarch"`
+	Initiative      uuid.UUID `json:"initiative"`
 	// DayNight is the day/night designation and the previous turn's
 	// spell count (CR 731, ADR 0132). Additive within the current
 	// schema, like OpeningRoll: absent on every file written before it
@@ -2702,6 +2706,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		Turn:                  g.Turn,
 		MulligansOpen:         g.MulligansOpen,
 		OpeningRoll:           cloneOpeningRoll(g.OpeningRoll),
+		PendingDealSeat:       cloneIntPtr(g.PendingDealSeat),
 		Monarch:               g.Monarch,
 		Initiative:            g.Initiative,
 		DayNight:              snapshotDayNight(g.DayNight),
@@ -4005,6 +4010,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.MulligansOpen = s.MulligansOpen
 	g.OpeningRoll = cloneOpeningRoll(s.OpeningRoll)
+	g.PendingDealSeat = cloneIntPtr(s.PendingDealSeat)
 	g.Monarch = s.Monarch
 	g.Initiative = s.Initiative
 	g.DayNight = s.DayNight.valueOrZero()

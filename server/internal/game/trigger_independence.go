@@ -1774,7 +1774,8 @@ const (
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
-	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
+	// HiddenAgenda (ADR 0227) is read once, as a conspiracy goes into the command zone.
+	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert, "HiddenAgenda": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,

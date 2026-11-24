@@ -89,6 +89,7 @@
   import ExileStrip from "./ExileStrip.svelte";
   import CommandStrip from "./CommandStrip.svelte";
   import CompanionSlot from "./CompanionSlot.svelte";
+  import ConspiracySlot from "./ConspiracySlot.svelte";
   import IgnoreEffects from "./IgnoreEffects.svelte";
   import PlayerManaAbilities from "./PlayerManaAbilities.svelte";
   import type { CastSourceZone } from "../../targeting";
@@ -1217,6 +1218,7 @@
            size, with its revealed companion; not tucked by the hand. -->
       <CommandStrip {seat} row />
       <CompanionSlot {seat} />
+      <ConspiracySlot {seat} />
     {/if}
   </div>
   {#snippet backZone(z: BackZone)}
@@ -1335,6 +1337,9 @@
         legalGate={rowGate}
         {sorcerySpeedBlocked}
       />
+      <!-- ADR 0227: your conspiracies in the command zone, with the reveal
+           button on a face-down hidden agenda. Renders nothing without one. -->
+      <ConspiracySlot {seat} onSpecialAction={sendSpecialAction} {legal} legalGate={rowGate} />
       <!-- #1986 (CR 116.2d): "ignore this effect until end of turn" for
            the price of a permanent of your choice (Damping Engine).
            Renders nothing unless an effect bears on you. -->
@@ -1364,6 +1369,7 @@
         <CommandStrip {seat} />
         <!-- ADR 0172 §8: and its revealed companion, view only. -->
         <CompanionSlot {seat} />
+        <ConspiracySlot {seat} />
       {/if}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}

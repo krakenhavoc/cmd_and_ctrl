@@ -3082,6 +3082,13 @@ export interface PlayerView {
   // (companion)", kind "companion") for the owner only, and the row
   // sends `special_action { card_id, kind: "companion" }`.
   companion?: CardView;
+  // ADR 0227: this seat's conspiracy cards in the command zone (CR 315).
+  // Absent for a seat with none. A face-up one is public; a face-down
+  // one (hidden agenda) is redacted for everyone but its owner, who sees
+  // the card and its `chosen_name`. Its `special_actions` carry the
+  // reveal row (kind "reveal_agenda") for the owner only, which sends
+  // `special_action { card_id, kind: "reveal_agenda" }`.
+  conspiracies?: CardView[];
   // ADR 0191 §7: the cards this seat owns outside the game, its deck's
   // sideboard. OWNER ONLY: present on your own seat and absent on every
   // other, for a spectator and for the controller of your turn. Only an

@@ -65,6 +65,11 @@ type CardDef struct {
 
 	StartingLoyalty int
 	BattleDefense   int
+	// HiddenAgenda is how many card names a conspiracy's hidden agenda
+	// secretly chooses as it goes into the command zone: 1 for hidden
+	// agenda, 2 for double agenda (CR 702.106a, 702.106f), 0 for every
+	// other card. #6102, ADR 0227.
+	HiddenAgenda int
 
 	// TargetMode is the client hint: the structured clause's Mode
 	// when there is one, else the legacy free-form string.

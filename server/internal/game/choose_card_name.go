@@ -219,13 +219,17 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 	g.dequeueChoiceLocked(idx)
 
 	if !choice.nameThen.IsZero() {
-		// #4253 slice 10c: the keyed at-resolution form.
-		g.EmitEvent(Event{
-			Kind:   EventCardNameChosen,
-			Actor:  chooserID,
-			CardID: choice.Source,
-			Label:  chosen,
-		})
+		// #4253 slice 10c: the keyed at-resolution form. A hidden
+		// agenda's name is secret (CR 702.106a, ADR 0227), so it is
+		// not an event: the log is public.
+		if !g.isHiddenAgendaLocked(choice.Source) {
+			g.EmitEvent(Event{
+				Kind:   EventCardNameChosen,
+				Actor:  chooserID,
+				CardID: choice.Source,
+				Label:  chosen,
+			})
+		}
 		if err := g.runValueTail(choice.nameThen, carriedCauseOfChoice(choice), chosen); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
