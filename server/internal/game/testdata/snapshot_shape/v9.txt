@@ -2106,6 +2106,7 @@ followUpParks[].then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 followUpParks[].then.paid.offer.picks[].seat	custom(uuid.UUID)
 followUpParks[].then.permission	object
 followUpParks[].then.permission.affinityFor	string
+followUpParks[].then.permission.allGraveyards	bool
 followUpParks[].then.permission.altCostKey	string
 followUpParks[].then.permission.anyColor	bool
 followUpParks[].then.permission.anyColorFrom	string
@@ -2809,6 +2810,7 @@ frozenEntries[].event.counterTail.then.paid.offer.picks[].cards[]	custom(uuid.UU
 frozenEntries[].event.counterTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission	object
 frozenEntries[].event.counterTail.then.permission.affinityFor	string
+frozenEntries[].event.counterTail.then.permission.allGraveyards	bool
 frozenEntries[].event.counterTail.then.permission.altCostKey	string
 frozenEntries[].event.counterTail.then.permission.anyColor	bool
 frozenEntries[].event.counterTail.then.permission.anyColorFrom	string
@@ -3490,6 +3492,7 @@ frozenEntries[].event.damageTail.each.each.paid.offer.picks[].cards[]	custom(uui
 frozenEntries[].event.damageTail.each.each.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission	object
 frozenEntries[].event.damageTail.each.each.permission.affinityFor	string
+frozenEntries[].event.damageTail.each.each.permission.allGraveyards	bool
 frozenEntries[].event.damageTail.each.each.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.each.permission.anyColor	bool
 frozenEntries[].event.damageTail.each.each.permission.anyColorFrom	string
@@ -4162,6 +4165,7 @@ frozenEntries[].event.damageTail.each.then.paid.offer.picks[].cards[]	custom(uui
 frozenEntries[].event.damageTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission	object
 frozenEntries[].event.damageTail.each.then.permission.affinityFor	string
+frozenEntries[].event.damageTail.each.then.permission.allGraveyards	bool
 frozenEntries[].event.damageTail.each.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.each.then.permission.anyColor	bool
 frozenEntries[].event.damageTail.each.then.permission.anyColorFrom	string
@@ -5052,6 +5056,7 @@ frozenEntries[].event.damageTail.then.paid.offer.picks[].cards[]	custom(uuid.UUI
 frozenEntries[].event.damageTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission	object
 frozenEntries[].event.damageTail.then.permission.affinityFor	string
+frozenEntries[].event.damageTail.then.permission.allGraveyards	bool
 frozenEntries[].event.damageTail.then.permission.altCostKey	string
 frozenEntries[].event.damageTail.then.permission.anyColor	bool
 frozenEntries[].event.damageTail.then.permission.anyColorFrom	string
@@ -5847,6 +5852,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[].cards
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.affinityFor	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.anyColorFrom	string
@@ -6595,6 +6601,7 @@ frozenEntries[].event.entryTail.batch.then.paid.offer.picks[].cards[]	custom(uui
 frozenEntries[].event.entryTail.batch.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission	object
 frozenEntries[].event.entryTail.batch.then.permission.affinityFor	string
+frozenEntries[].event.entryTail.batch.then.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.batch.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.batch.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.batch.then.permission.anyColorFrom	string
@@ -7267,6 +7274,7 @@ frozenEntries[].event.entryTail.keyed.paid.offer.picks[].cards[]	custom(uuid.UUI
 frozenEntries[].event.entryTail.keyed.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission	object
 frozenEntries[].event.entryTail.keyed.permission.affinityFor	string
+frozenEntries[].event.entryTail.keyed.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.keyed.permission.altCostKey	string
 frozenEntries[].event.entryTail.keyed.permission.anyColor	bool
 frozenEntries[].event.entryTail.keyed.permission.anyColorFrom	string
@@ -7972,6 +7980,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[].cards[]	
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.permission	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.affinityFor	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.altCostKey	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColor	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.anyColorFrom	string
@@ -8665,6 +8674,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[].cards[]	custom(uu
 frozenEntries[].event.entryTail.tokens.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission	object
 frozenEntries[].event.entryTail.tokens.then.permission.affinityFor	string
+frozenEntries[].event.entryTail.tokens.then.permission.allGraveyards	bool
 frozenEntries[].event.entryTail.tokens.then.permission.altCostKey	string
 frozenEntries[].event.entryTail.tokens.then.permission.anyColor	bool
 frozenEntries[].event.entryTail.tokens.then.permission.anyColorFrom	string
@@ -9789,6 +9799,7 @@ frozenEntries[].event.keywordActionTail.then.paid.offer.picks[].cards[]	custom(u
 frozenEntries[].event.keywordActionTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission	object
 frozenEntries[].event.keywordActionTail.then.permission.affinityFor	string
+frozenEntries[].event.keywordActionTail.then.permission.allGraveyards	bool
 frozenEntries[].event.keywordActionTail.then.permission.altCostKey	string
 frozenEntries[].event.keywordActionTail.then.permission.anyColor	bool
 frozenEntries[].event.keywordActionTail.then.permission.anyColorFrom	string
@@ -10485,6 +10496,7 @@ frozenEntries[].event.lifeTail.each.then.paid.offer.picks[].cards[]	custom(uuid.
 frozenEntries[].event.lifeTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission	object
 frozenEntries[].event.lifeTail.each.then.permission.affinityFor	string
+frozenEntries[].event.lifeTail.each.then.permission.allGraveyards	bool
 frozenEntries[].event.lifeTail.each.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.each.then.permission.anyColor	bool
 frozenEntries[].event.lifeTail.each.then.permission.anyColorFrom	string
@@ -11160,6 +11172,7 @@ frozenEntries[].event.lifeTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission	object
 frozenEntries[].event.lifeTail.then.permission.affinityFor	string
+frozenEntries[].event.lifeTail.then.permission.allGraveyards	bool
 frozenEntries[].event.lifeTail.then.permission.altCostKey	string
 frozenEntries[].event.lifeTail.then.permission.anyColor	bool
 frozenEntries[].event.lifeTail.then.permission.anyColorFrom	string
@@ -12695,6 +12708,7 @@ frozenEntries[].event.millTail.run.then.paid.offer.picks[].cards[]	custom(uuid.U
 frozenEntries[].event.millTail.run.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission	object
 frozenEntries[].event.millTail.run.then.permission.affinityFor	string
+frozenEntries[].event.millTail.run.then.permission.allGraveyards	bool
 frozenEntries[].event.millTail.run.then.permission.altCostKey	string
 frozenEntries[].event.millTail.run.then.permission.anyColor	bool
 frozenEntries[].event.millTail.run.then.permission.anyColorFrom	string
@@ -13365,6 +13379,7 @@ frozenEntries[].event.millTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission	object
 frozenEntries[].event.millTail.then.permission.affinityFor	string
+frozenEntries[].event.millTail.then.permission.allGraveyards	bool
 frozenEntries[].event.millTail.then.permission.altCostKey	string
 frozenEntries[].event.millTail.then.permission.anyColor	bool
 frozenEntries[].event.millTail.then.permission.anyColorFrom	string
@@ -15096,6 +15111,7 @@ frozenEntries[].event.tokenTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID
 frozenEntries[].event.tokenTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission	object
 frozenEntries[].event.tokenTail.then.permission.affinityFor	string
+frozenEntries[].event.tokenTail.then.permission.allGraveyards	bool
 frozenEntries[].event.tokenTail.then.permission.altCostKey	string
 frozenEntries[].event.tokenTail.then.permission.anyColor	bool
 frozenEntries[].event.tokenTail.then.permission.anyColorFrom	string
@@ -17087,6 +17103,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards[]	c
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
@@ -17792,6 +17809,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].car
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
@@ -18462,6 +18480,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[].cards[]	custom
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.permission	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.anyColorFrom	string
@@ -19152,6 +19171,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[].cards[]	cust
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.permission	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.anyColorFrom	string
@@ -19911,6 +19931,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[].cards[]	cus
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.affinityFor	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.allGraveyards	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
@@ -24022,6 +24043,7 @@ movesAwaitingTokens[].counterTail.then.paid.offer.picks[].cards[]	custom(uuid.UU
 movesAwaitingTokens[].counterTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.permission	object
 movesAwaitingTokens[].counterTail.then.permission.affinityFor	string
+movesAwaitingTokens[].counterTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].counterTail.then.permission.altCostKey	string
 movesAwaitingTokens[].counterTail.then.permission.anyColor	bool
 movesAwaitingTokens[].counterTail.then.permission.anyColorFrom	string
@@ -24703,6 +24725,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[].cards[]	custom(uui
 movesAwaitingTokens[].damageTail.each.each.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.permission	object
 movesAwaitingTokens[].damageTail.each.each.permission.affinityFor	string
+movesAwaitingTokens[].damageTail.each.each.permission.allGraveyards	bool
 movesAwaitingTokens[].damageTail.each.each.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.each.each.permission.anyColor	bool
 movesAwaitingTokens[].damageTail.each.each.permission.anyColorFrom	string
@@ -25375,6 +25398,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[].cards[]	custom(uui
 movesAwaitingTokens[].damageTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.permission	object
 movesAwaitingTokens[].damageTail.each.then.permission.affinityFor	string
+movesAwaitingTokens[].damageTail.each.then.permission.allGraveyards	bool
 movesAwaitingTokens[].damageTail.each.then.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.each.then.permission.anyColor	bool
 movesAwaitingTokens[].damageTail.each.then.permission.anyColorFrom	string
@@ -26265,6 +26289,7 @@ movesAwaitingTokens[].damageTail.then.paid.offer.picks[].cards[]	custom(uuid.UUI
 movesAwaitingTokens[].damageTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.permission	object
 movesAwaitingTokens[].damageTail.then.permission.affinityFor	string
+movesAwaitingTokens[].damageTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].damageTail.then.permission.altCostKey	string
 movesAwaitingTokens[].damageTail.then.permission.anyColor	bool
 movesAwaitingTokens[].damageTail.then.permission.anyColorFrom	string
@@ -27060,6 +27085,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[].cards
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.anyColorFrom	string
@@ -27808,6 +27834,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[].cards[]	custom(uui
 movesAwaitingTokens[].entryTail.batch.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.permission	object
 movesAwaitingTokens[].entryTail.batch.then.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.batch.then.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.batch.then.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.anyColorFrom	string
@@ -28480,6 +28507,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[].cards[]	custom(uuid.UUI
 movesAwaitingTokens[].entryTail.keyed.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.permission	object
 movesAwaitingTokens[].entryTail.keyed.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.keyed.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.keyed.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.keyed.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.keyed.permission.anyColorFrom	string
@@ -29185,6 +29213,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[].cards[]	
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.anyColorFrom	string
@@ -29878,6 +29907,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[].cards[]	custom(uu
 movesAwaitingTokens[].entryTail.tokens.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.permission	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.affinityFor	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.allGraveyards	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.altCostKey	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyColor	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.anyColorFrom	string
@@ -31002,6 +31032,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[].cards[]	custom(u
 movesAwaitingTokens[].keywordActionTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.permission	object
 movesAwaitingTokens[].keywordActionTail.then.permission.affinityFor	string
+movesAwaitingTokens[].keywordActionTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.altCostKey	string
 movesAwaitingTokens[].keywordActionTail.then.permission.anyColor	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.anyColorFrom	string
@@ -31698,6 +31729,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[].cards[]	custom(uuid.
 movesAwaitingTokens[].lifeTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.permission	object
 movesAwaitingTokens[].lifeTail.each.then.permission.affinityFor	string
+movesAwaitingTokens[].lifeTail.each.then.permission.allGraveyards	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.altCostKey	string
 movesAwaitingTokens[].lifeTail.each.then.permission.anyColor	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.anyColorFrom	string
@@ -32373,6 +32405,7 @@ movesAwaitingTokens[].lifeTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission	object
 movesAwaitingTokens[].lifeTail.then.permission.affinityFor	string
+movesAwaitingTokens[].lifeTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].lifeTail.then.permission.altCostKey	string
 movesAwaitingTokens[].lifeTail.then.permission.anyColor	bool
 movesAwaitingTokens[].lifeTail.then.permission.anyColorFrom	string
@@ -33908,6 +33941,7 @@ movesAwaitingTokens[].millTail.run.then.paid.offer.picks[].cards[]	custom(uuid.U
 movesAwaitingTokens[].millTail.run.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.permission	object
 movesAwaitingTokens[].millTail.run.then.permission.affinityFor	string
+movesAwaitingTokens[].millTail.run.then.permission.allGraveyards	bool
 movesAwaitingTokens[].millTail.run.then.permission.altCostKey	string
 movesAwaitingTokens[].millTail.run.then.permission.anyColor	bool
 movesAwaitingTokens[].millTail.run.then.permission.anyColorFrom	string
@@ -34578,6 +34612,7 @@ movesAwaitingTokens[].millTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission	object
 movesAwaitingTokens[].millTail.then.permission.affinityFor	string
+movesAwaitingTokens[].millTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].millTail.then.permission.altCostKey	string
 movesAwaitingTokens[].millTail.then.permission.anyColor	bool
 movesAwaitingTokens[].millTail.then.permission.anyColorFrom	string
@@ -36309,6 +36344,7 @@ movesAwaitingTokens[].tokenTail.then.paid.offer.picks[].cards[]	custom(uuid.UUID
 movesAwaitingTokens[].tokenTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.permission	object
 movesAwaitingTokens[].tokenTail.then.permission.affinityFor	string
+movesAwaitingTokens[].tokenTail.then.permission.allGraveyards	bool
 movesAwaitingTokens[].tokenTail.then.permission.altCostKey	string
 movesAwaitingTokens[].tokenTail.then.permission.anyColor	bool
 movesAwaitingTokens[].tokenTail.then.permission.anyColorFrom	string
@@ -38300,6 +38336,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[].cards[]	c
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
@@ -39005,6 +39042,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].car
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
@@ -39675,6 +39713,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[].cards[]	custom
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.anyColorFrom	string
@@ -40365,6 +40404,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[].cards[]	cust
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.anyColorFrom	string
@@ -41124,6 +41164,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[].cards[]	cus
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.affinityFor	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.allGraveyards	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.altCostKey	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyColor	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
@@ -44676,6 +44717,7 @@ pendingChoices[].attackSplit.tail.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission	object
 pendingChoices[].attackSplit.tail.permission.affinityFor	string
+pendingChoices[].attackSplit.tail.permission.allGraveyards	bool
 pendingChoices[].attackSplit.tail.permission.altCostKey	string
 pendingChoices[].attackSplit.tail.permission.anyColor	bool
 pendingChoices[].attackSplit.tail.permission.anyColorFrom	string
@@ -46908,6 +46950,7 @@ pendingChoices[].diceRoll.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission	object
 pendingChoices[].diceRoll.then.permission.affinityFor	string
+pendingChoices[].diceRoll.then.permission.allGraveyards	bool
 pendingChoices[].diceRoll.then.permission.altCostKey	string
 pendingChoices[].diceRoll.then.permission.anyColor	bool
 pendingChoices[].diceRoll.then.permission.anyColorFrom	string
@@ -48051,6 +48094,7 @@ pendingChoices[].divideShield.walk.each.paid.offer.picks[].cards[]	custom(uuid.U
 pendingChoices[].divideShield.walk.each.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission	object
 pendingChoices[].divideShield.walk.each.permission.affinityFor	string
+pendingChoices[].divideShield.walk.each.permission.allGraveyards	bool
 pendingChoices[].divideShield.walk.each.permission.altCostKey	string
 pendingChoices[].divideShield.walk.each.permission.anyColor	bool
 pendingChoices[].divideShield.walk.each.permission.anyColorFrom	string
@@ -48723,6 +48767,7 @@ pendingChoices[].divideShield.walk.then.paid.offer.picks[].cards[]	custom(uuid.U
 pendingChoices[].divideShield.walk.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission	object
 pendingChoices[].divideShield.walk.then.permission.affinityFor	string
+pendingChoices[].divideShield.walk.then.permission.allGraveyards	bool
 pendingChoices[].divideShield.walk.then.permission.altCostKey	string
 pendingChoices[].divideShield.walk.then.permission.anyColor	bool
 pendingChoices[].divideShield.walk.then.permission.anyColorFrom	string
@@ -49401,6 +49446,7 @@ pendingChoices[].libraryOrder.then.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission	object
 pendingChoices[].libraryOrder.then.permission.affinityFor	string
+pendingChoices[].libraryOrder.then.permission.allGraveyards	bool
 pendingChoices[].libraryOrder.then.permission.altCostKey	string
 pendingChoices[].libraryOrder.then.permission.anyColor	bool
 pendingChoices[].libraryOrder.then.permission.anyColorFrom	string
@@ -50133,6 +50179,7 @@ pendingChoices[].nameThen.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].nameThen.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].nameThen.permission	object
 pendingChoices[].nameThen.permission.affinityFor	string
+pendingChoices[].nameThen.permission.allGraveyards	bool
 pendingChoices[].nameThen.permission.altCostKey	string
 pendingChoices[].nameThen.permission.anyColor	bool
 pendingChoices[].nameThen.permission.anyColorFrom	string
@@ -51312,6 +51359,7 @@ pendingChoices[].pickTail.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].pickTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].pickTail.permission	object
 pendingChoices[].pickTail.permission.affinityFor	string
+pendingChoices[].pickTail.permission.allGraveyards	bool
 pendingChoices[].pickTail.permission.altCostKey	string
 pendingChoices[].pickTail.permission.anyColor	bool
 pendingChoices[].pickTail.permission.anyColorFrom	string
@@ -52029,6 +52077,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[].car
 pendingChoices[].replacementResume.event.counterTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.permission	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.anyColorFrom	string
@@ -52710,6 +52759,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[]
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.permission	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.affinityFor	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.anyColorFrom	string
@@ -53382,6 +53432,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[]
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.permission	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.anyColorFrom	string
@@ -54272,6 +54323,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[].card
 pendingChoices[].replacementResume.event.damageTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.permission	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.anyColorFrom	string
@@ -55067,6 +55119,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.anyColorFrom	string
@@ -55815,6 +55868,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[]
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.anyColorFrom	string
@@ -56487,6 +56541,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[].card
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.permission	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.anyColorFrom	string
@@ -57192,6 +57247,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.off
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.anyColorFrom	string
@@ -57885,6 +57941,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.anyColorFrom	string
@@ -59009,6 +59066,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.anyColorFrom	string
@@ -59705,6 +59763,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[].c
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.anyColorFrom	string
@@ -60380,6 +60439,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[].cards[
 pendingChoices[].replacementResume.event.lifeTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.permission	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.anyColorFrom	string
@@ -61915,6 +61975,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[].ca
 pendingChoices[].replacementResume.event.millTail.run.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.permission	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.anyColorFrom	string
@@ -62585,6 +62646,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[].cards[
 pendingChoices[].replacementResume.event.millTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.permission	object
 pendingChoices[].replacementResume.event.millTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.millTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.millTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.anyColorFrom	string
@@ -64316,6 +64378,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[].cards
 pendingChoices[].replacementResume.event.tokenTail.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.permission	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.anyColorFrom	string
@@ -66307,6 +66370,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offe
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.anyColorFrom	string
@@ -67012,6 +67076,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.anyColorFrom	string
@@ -67682,6 +67747,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.pic
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.anyColorFrom	string
@@ -68372,6 +68438,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.p
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.anyColorFrom	string
@@ -69131,6 +69198,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.affinityFor	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.allGraveyards	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.altCostKey	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColor	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.anyColorFrom	string
@@ -70261,6 +70329,7 @@ pendingChoices[].scryThen.paid.offer.picks[].cards[]	custom(uuid.UUID)
 pendingChoices[].scryThen.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].scryThen.permission	object
 pendingChoices[].scryThen.permission.affinityFor	string
+pendingChoices[].scryThen.permission.allGraveyards	bool
 pendingChoices[].scryThen.permission.altCostKey	string
 pendingChoices[].scryThen.permission.anyColor	bool
 pendingChoices[].scryThen.permission.anyColorFrom	string
@@ -70979,6 +71048,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[].cards[]	custom(uu
 pendingChoices[].searchPrompt.spec.thenTail.paid.offer.picks[].seat	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.affinityFor	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.allGraveyards	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.altCostKey	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyColor	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.anyColorFrom	string
@@ -77030,6 +77100,7 @@ seats[].botTier	string
 seats[].castPermissions	array
 seats[].castPermissions[]	object
 seats[].castPermissions[].affinityFor	string
+seats[].castPermissions[].allGraveyards	bool
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
 seats[].castPermissions[].anyColorFrom	string
