@@ -485,6 +485,7 @@ body s82-neo-b18/kirin-touched-orochi-counter
 body s82-neo-b18/kirin-touched-orochi-spirit
 body s82-old-b046/make-your-mark-spirit
 body s82-old-b046/valentin-pest-offer
+body s82-old-b064/surtland-flinger-damage
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2428,6 +2429,7 @@ option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
 option option-pick/s82-old-b005-karn-scion-chooser
 option option-pick/s82-old-b046-ingenious-mastery-opponent
+option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3132,6 +3134,7 @@ run prompt-run/ruthless-technomancer-treasures
 run prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-neo-sokenzan-smelter-construct
+run prompt-run/s82-old-b064-surtland-flinger-sacrifice
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -4372,6 +4375,7 @@ tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 tail sacrificed-one/prompt-run/s82-neo-b18-echo-of-deaths-wail
 tail sacrificed-one/prompt-run/s82-neo-sokenzan-smelter-construct
+tail sacrificed-one/prompt-run/s82-old-b064-surtland-flinger-sacrifice
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
@@ -4843,6 +4847,7 @@ tail then/s82-gap-b156-ib-halfheart-sacrificed
 tail then/s82-gap-b157-choose-one-play
 tail then/s82-mid-scry-n
 tail then/s82-old-b023-kogla-indestructible
+tail then/s82-old-b064-hakka-scry
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
