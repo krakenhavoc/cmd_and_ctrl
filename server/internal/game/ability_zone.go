@@ -94,6 +94,9 @@ func AbilityNeedsPermanentSource(cost AbilityCost) string {
 		// #4799: "Unattach an Equipment from <this>" — only a permanent
 		// has Equipment attached to it (CR 701.3d).
 		return "an unattach-an-Equipment cost"
+	case cost.UnattachThis:
+		// Only a permanent can be attached to something (CR 701.3d).
+		return "an unattach-this-Equipment cost"
 	}
 	return ""
 }

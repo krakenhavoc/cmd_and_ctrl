@@ -119,3 +119,35 @@ func (g *Game) payUnattachCostLocked(ids []uuid.UUID) {
 		_ = g.UnattachForEffect(id)
 	}
 }
+
+// validateUnattachThisCostLocked checks "Unattach this Equipment"
+// (AbilityCost.UnattachThis, Sunforger) without unattaching anything: the
+// source must be a battlefield Equipment attached to something right now
+// (CR 701.3d), because a cost is not partially payable (CR 118.3). An
+// ability without the component asks nothing.
+//
+// Caller must hold g.mu.
+func (g *Game) validateUnattachThisCostLocked(sourceID uuid.UUID, srcZone ZoneKind, unattach bool) error {
+	if !unattach {
+		return nil
+	}
+	if srcZone != ZoneBattlefield {
+		return ErrInvalidParam
+	}
+	c := findBattlefieldCard(g, sourceID)
+	if c == nil || !c.IsAttached() {
+		return ErrIllegalTarget
+	}
+	return nil
+}
+
+// payUnattachThisCostLocked unattaches the source (UnattachForEffect, the
+// one primitive every unattach goes through). The Equipment stays on the
+// battlefield. A no-op without the component.
+//
+// Caller must hold g.mu.
+func (g *Game) payUnattachThisCostLocked(sourceID uuid.UUID, unattach bool) {
+	if unattach {
+		_ = g.UnattachForEffect(sourceID)
+	}
+}

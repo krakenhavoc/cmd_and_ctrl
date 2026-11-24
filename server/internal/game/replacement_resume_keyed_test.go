@@ -62,7 +62,7 @@ func keyedFrameSample() *ReplacementEvent {
 		// #4253 slice 9: a discard.
 		DiscardPlayer: id("discarder"), DiscardCause: DiscardCauseEffect, DiscardCauseController: id("dcc"),
 		CardID: id("card"), OldZone: ZoneStack, NewZone: ZoneBattlefield, NewZoneOwner: id("owner"),
-		ShuffleDestinationLibrary: true, ExiledWith: PermissionCardRef{ID: id("ew"), Epoch: 2},
+		ShuffleDestinationLibrary: true, PutOnLibraryBottom: true, ExiledWith: PermissionCardRef{ID: id("ew"), Epoch: 2},
 		ExileCounter: "egg", Destruction: true, CantBeRegenerated: true, StateBasedDestruction: true, LeaveCause: LeaveCauseSacrifice,
 		EntersTapped: true, EntersPrepared: true, EntersDevoured: 2, EntersWithHaste: true, EntersWithHasteTillEOT: true,
 		entryRefused: true, EntersUnlocked: DoorMask(3), EntersAttacking: id("defender"),

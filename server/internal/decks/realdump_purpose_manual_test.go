@@ -283,6 +283,12 @@ var reviewedNotAWipe = map[string]string{
 
 	// #5948 Q3, the secret choice cards.
 	"Call to the Void": "destroys only the creatures the players secretly chose, at most one of their own and one of someone else's each: a handful of chosen creatures, not a board",
+
+	// S82 OLD batch 023 (#5462).
+	"Leveler": "its enters trigger exiles the cards in its controller's own library, not permanents: not a board wipe",
+
+	// S82 older sets batch 35 (#5501).
+	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

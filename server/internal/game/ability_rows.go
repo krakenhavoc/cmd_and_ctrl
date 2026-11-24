@@ -302,6 +302,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
 	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
 	{field: "OpponentsSearchTopN", label: searchTopNRows},
+	{field: "OpponentsCantSearchLibraries", label: boolRow("Your opponents can't search libraries.")},
+	{field: "AttackingPlayerChoosesBlocks", label: boolRow("The attacking player chooses how each creature blocks each combat.")},
 	{field: "DrawsFromBottom", label: boolRow("You draw cards from the bottom of your library rather than the top.")},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},

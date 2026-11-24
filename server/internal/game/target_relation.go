@@ -66,6 +66,13 @@ const (
 	// controlled by a player who is an opponent of that player. It may pick
 	// several permanents, each judged against the anchor alone.
 	TargetControlledByOpponentOfPlayer TargetRelationKind = "controlled_by_opponent_of_player"
+	// TargetManaValueNoGreater is "with mana value equal to or less than
+	// that permanent's", where that permanent is the earlier target
+	// (Puca's Mischief's "target nonland permanent an opponent controls
+	// with equal or lesser mana value"). The anchor must be a card, read
+	// wherever it is now (the mana value it has, CR 202.3), and the
+	// candidate a battlefield permanent whose mana value is no greater.
+	TargetManaValueNoGreater TargetRelationKind = "mana_value_no_greater"
 )
 
 // ManyPicks reports whether a dependent clause of this kind may pick
@@ -120,6 +127,12 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 	case TargetControlledByOpponentOfPlayer:
 		return anchor.Kind == TargetPlayer && anchor.ID != uuid.Nil && z.Kind == ZoneBattlefield &&
 			c.Controller != anchor.ID
+	case TargetManaValueNoGreater:
+		if anchor.Kind != TargetCard || z.Kind != ZoneBattlefield {
+			return false
+		}
+		a := g.findCardByIDLocked(anchor.ID)
+		return a != nil && c.ManaValue() <= a.ManaValue()
 	case TargetSharesCardType:
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&

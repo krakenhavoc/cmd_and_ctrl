@@ -70,6 +70,9 @@ func (g *Game) searchTopNLocked(searcher uuid.UUID) int {
 //
 // Caller must hold g.mu.
 func (g *Game) searchableLibraryCards(searcher uuid.UUID, lib []Card) []Card {
+	if g.searchCantLocked(searcher) {
+		return nil // Stranglehold: the library half of an and/or search finds nothing
+	}
 	n := g.searchTopNLocked(searcher)
 	if n <= 0 || n >= len(lib) {
 		return lib
