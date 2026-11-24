@@ -286,6 +286,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		DamageLastLoyalty:                   spec.DamageLastLoyalty,
 		OpponentEffectProtections:           spec.OpponentEffectProtections,
 		GameEndGates:                        spec.GameEndGates,
+		GameActionReplacements:              spec.GameActionReplacements,
 		CoinFlipRules:                       spec.CoinFlipRules,
 		WantsDistinctColors:                 spec.WantsDistinctColors,
 		ReadsManaSpent:                      spec.ReadsManaSpent,

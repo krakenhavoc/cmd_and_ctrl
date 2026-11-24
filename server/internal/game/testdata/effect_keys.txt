@@ -2388,6 +2388,7 @@ option option-pick/zara-renegade-recruiter-attack
 option option-pick/zimones-hypothesis-parity
 option option-pick/zndrsplts-judgment-friend-or-foe
 option planechase/bottom-order
+option planechase/order-top-two
 option retarget/pinned-slot
 option sticker/choose-sticker
 option sticker/name-position

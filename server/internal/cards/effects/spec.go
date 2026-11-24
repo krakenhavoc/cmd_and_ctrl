@@ -1551,6 +1551,12 @@ type Spec struct {
 	// Issue #749, ADR 0057 Decision 4.
 	GameEndGates []game.GameEndGate
 
+	// GameActionReplacements declares a printed static "If you would lose
+	// the game, instead …" (The Golden Throne) or "If you would planeswalk,
+	// instead …" (Susan Foreman), #6096. Read off the battlefield through
+	// game.CatalogGameActionReplacements; see game_action_replacements.go.
+	GameActionReplacements []game.GameActionReplacement
+
 	// CoinFlipRules declares a printed static over the coins its controller
 	// flips: Edgar, King of Figaro's "Two-Headed Coin — The first time you
 	// flip one or more coins each turn, those coins come up heads and you

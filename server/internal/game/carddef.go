@@ -533,6 +533,11 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogGameEndGates and
 	// ADR 0057 Decision 4 (#749).
 	GameEndGates []GameEndGate
+	// GameActionReplacements are this permanent's printed "If you would
+	// lose the game / planeswalk, instead …" statics (#6096), read from
+	// the battlefield through CatalogGameActionReplacements; see
+	// game_action_replacements.go.
+	GameActionReplacements []GameActionReplacement
 	// CoinFlipRules are this permanent's printed rules over the coins its
 	// controller flips (Edgar, King of Figaro's Two-Headed Coin), read from
 	// the battlefield through CatalogAbilityKey; see coin_flip_rules.go.

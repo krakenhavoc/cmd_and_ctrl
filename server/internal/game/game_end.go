@@ -157,6 +157,10 @@ func (g *Game) loseGameLocked(p *Player, cause LossCause, source uuid.UUID) bool
 	if cause != LossConcede && !g.canLoseLocked(p, cause) {
 		return false
 	}
+	// #6096: "If you would lose the game, instead …" (CR 614.6).
+	if g.replaceLossLocked(p, cause) {
+		return false
+	}
 	return g.leaveGameLocked(p, cause, source)
 }
 
