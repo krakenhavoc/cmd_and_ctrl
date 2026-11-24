@@ -40,12 +40,7 @@ func init() {
 				}
 				dead, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && effects.LeftUnderControlOf(ev, dead) != source.Controller
-			}, "Sarulf, Realm Eater — +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				if !effects.B09SourceStillOnBattlefield(g, item) {
-					return nil
-				}
-				return effects.AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(effects.NewContext(g, item))
-			}),
+			}, "Sarulf, Realm Eater — +1/+1 counter on it", effects.Do(effects.CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 			effects.TriggerWithPurpose(upkeep, game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepExile, Partial: true}}),
 		},
 	})

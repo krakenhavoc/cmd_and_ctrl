@@ -274,6 +274,7 @@ body hylda-of-the-icy-crown/modes
 body hypothesizzle/damage
 body icewrought-sentry/tap
 body ill-timed-explosion/damage
+body immard-the-stormcleaver/modes
 body immortal-coil/exile-per-prevented
 body incandescent-soulstoke/sacrifice
 body incinerator-of-the-guilty/damage
@@ -826,6 +827,7 @@ choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/dormant-volcano-return-an-untapped-mountain
 choose choose-cards/drake-familiar-return
+choose choose-cards/drana-the-last-bloodchief-return
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/duelists-flame-exile
 choose choose-cards/duskmantle-seer-take
@@ -2264,6 +2266,7 @@ option option-pick/hostile-negotiations-opponent
 option option-pick/hostile-negotiations-pile
 option option-pick/hunters-axe-keyword
 option option-pick/ilharg-the-raze-boar-attacks
+option option-pick/immard-the-stormcleaver-charge
 option option-pick/indulgent-tormentor-answer
 option option-pick/inspirit-flagship-vessel-counters
 option option-pick/intellectual-offering-draw
@@ -2638,6 +2641,8 @@ payunless pay-unless/nihil-spellbomb-draw
 payunless pay-unless/nim-deathmantle-return-and-attach
 payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
+payunless pay-unless/old-b008-cumulative-upkeep-add-r
+payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/order-of-the-golden-cricket-flying
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/overencumbered-no-attack
@@ -4024,6 +4029,7 @@ tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
+tail old-b008/cumulative-upkeep-add-r
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage

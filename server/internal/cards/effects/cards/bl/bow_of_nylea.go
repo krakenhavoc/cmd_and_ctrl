@@ -31,8 +31,9 @@ func init() {
 			effects.AttackingCreaturesHave("Attacking creatures you control have deathtouch.", nil, "deathtouch"),
 		},
 		Activated: []effects.ActivatedAbility{{
-			Label: "{1}{G}, {T}: Choose one — put a +1/+1 counter on target creature; or 2 damage to target creature with flying; or you gain 3 life; or put up to four target cards from your graveyard on the bottom of your library in any order.",
-			Cost:  effects.Plus(effects.ManaCost("{1}{G}"), effects.TapCost()),
+			Label:   "{1}{G}, {T}: Choose one — put a +1/+1 counter on target creature; or 2 damage to target creature with flying; or you gain 3 life; or put up to four target cards from your graveyard on the bottom of your library in any order.",
+			Cost:    effects.Plus(effects.ManaCost("{1}{G}"), effects.TapCost()),
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Modes: effects.ChooseOne(
 				effects.ModeDoing("Put a +1/+1 counter on target creature.", effects.TargetCreature("target creature"),
 					func(_ *game.StackItem, ctx *effects.Context, occ int) error {

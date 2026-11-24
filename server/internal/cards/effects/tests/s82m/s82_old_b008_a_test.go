@@ -85,9 +85,14 @@ func TestS82OldB008BraidIsSacrificedWhenTheUpkeepIsDeclined(t *testing.T) {
 func bowOfNylea(t *testing.T, g *game.Game, owner *game.Player) uuid.UUID {
 	t.Helper()
 	id := effectstest.PushPermanentForTest(g, owner.ID, "Bow of Nylea", oldB008Bow, "Legendary Enchantment Artifact")
+	return id
+}
+
+// fundBow puts {1}{G} in the pool; the pool empties between steps, so do it
+// after reaching the main phase.
+func fundBow(owner *game.Player) {
 	owner.ManaPool.AddMana(game.ManaToken{Color: "G"})
 	owner.ManaPool.AddMana(game.ManaToken{Color: "C"})
-	return id
 }
 
 func TestS82OldB008BowGivesAttackingCreaturesDeathtouchOnly(t *testing.T) {
@@ -116,6 +121,7 @@ func TestS82OldB008BowCounterMode(t *testing.T) {
 	bow := bowOfNylea(t, g, me)
 	bear := effectstest.PushVanillaCreature(g, me.ID, "Bear", 2, 2)
 	effectstest.AdvanceToMain(t, g)
+	fundBow(me)
 	if err := g.ActivateCatalogAbility(me.ID, bow, 0, game.ActivateAbilityParams{Strict: true, Modes: []int{0}, Targets: effectstest.CardTarget(bear)}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -142,6 +148,7 @@ func TestS82OldB008BowDamageModeNeedsAFlyingTarget(t *testing.T) {
 		}
 	})
 	effectstest.AdvanceToMain(t, g)
+	fundBow(me)
 	if err := g.ActivateCatalogAbility(me.ID, bow, 0, game.ActivateAbilityParams{Strict: true, Modes: []int{1}, Targets: effectstest.CardTarget(ground)}); err == nil {
 		t.Fatal("the damage mode accepted a creature without flying")
 	}
@@ -160,6 +167,7 @@ func TestS82OldB008BowLifeMode(t *testing.T) {
 	me := g.Seats[0]
 	bow := bowOfNylea(t, g, me)
 	effectstest.AdvanceToMain(t, g)
+	fundBow(me)
 	life := me.Life
 	if err := g.ActivateCatalogAbility(me.ID, bow, 0, game.ActivateAbilityParams{Strict: true, Modes: []int{2}}); err != nil {
 		t.Fatalf("activate: %v", err)
@@ -180,16 +188,13 @@ func TestS82OldB008BowTucksUpToFourGraveyardCardsOnTheBottom(t *testing.T) {
 	}
 	left := effectstest.PushGraveyardCardForTest(me, "Left Behind")
 	effectstest.AdvanceToMain(t, g)
+	fundBow(me)
 	size := me.Library.Size()
 	if err := g.ActivateCatalogAbility(me.ID, bow, 0, game.ActivateAbilityParams{Strict: true, Modes: []int{3}, Targets: effectstest.CardTargets(ids...)}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	effectstest.PassPriorityAroundTable(t, g)
-	for _, c := range g.PendingChoices {
-		if c != nil {
-			t.Logf("pending choice %v (%s)", c.Kind, c.Chooser)
-		}
-	}
+	answerBowOrder(t, g, me)
 	if got := me.Library.Size() - size; got != 4 {
 		t.Errorf("library grew by %d, want 4", got)
 	}
@@ -203,6 +208,21 @@ func TestS82OldB008BowTucksUpToFourGraveyardCardsOnTheBottom(t *testing.T) {
 	}
 }
 
+// answerBowOrder answers the open "put on the bottom in any order" prompt with
+// the cards in the order offered.
+func answerBowOrder(t *testing.T, g *game.Game, p *game.Player) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoicePutInLibrary && c.Chooser == p.ID {
+			if err := g.ResolvePutInLibrary(c.ID, p.ID, append([]uuid.UUID(nil), c.ScryCards...), nil); err != nil {
+				t.Fatalf("ResolvePutInLibrary: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatal("no put_in_library prompt open")
+}
+
 func TestS82OldB008BowRefusesFiveGraveyardTargets(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
@@ -212,6 +232,7 @@ func TestS82OldB008BowRefusesFiveGraveyardTargets(t *testing.T) {
 		ids = append(ids, effectstest.PushGraveyardCardForTest(me, n))
 	}
 	effectstest.AdvanceToMain(t, g)
+	fundBow(me)
 	if err := g.ActivateCatalogAbility(me.ID, bow, 0, game.ActivateAbilityParams{Strict: true, Modes: []int{3}, Targets: effectstest.CardTargets(ids...)}); err == nil {
 		t.Error("five targets were accepted for up to four")
 	}
@@ -229,18 +250,33 @@ func enterCreatureFromHand(t *testing.T, g *game.Game, p *game.Player, name stri
 	return id
 }
 
+// payDiscard answers the open discard payment, naming the card to discard.
+func payDiscard(t *testing.T, g *game.Game, p *game.Player, card uuid.UUID) {
+	t.Helper()
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if c != nil && c.Kind == game.PendingChoicePayUnless && c.Chooser == p.ID {
+			if err := g.ResolvePayUnlessWithOption(c.ID, p.ID, true, nil, []uuid.UUID{card}); err != nil {
+				t.Fatalf("discard payment: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no payment prompt for %s", p.ID)
+}
+
 func TestS82OldB008OliviaDiscardBoostsTheEnteringCreature(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	effectstest.B12Push(g, me.ID, "Olivia, Mobilized for War", "Legendary Creature — Vampire Knight", oldB008Olivia, 3, 3)
 	fodder := effectstest.PushGraveyardCardForTest(me, "unused")
 	_ = fodder
-	me.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Discard Me", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	discard := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: discard, Name: "Discard Me", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
 	hand := me.Hand.Size()
 	bear := enterCreatureFromHand(t, g, me, "Bear")
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerPayUnless(t, g, me.ID, true)
-	effectstest.AnswerChooseCardsOrDiscard(t, g, me)
+	payDiscard(t, g, me, discard)
 	effectstest.PassPriorityAroundTable(t, g)
 	if got := hand - me.Hand.Size(); got != 1 {
 		t.Errorf("hand fell by %d, want 1 (the discard)", got)
@@ -322,7 +358,7 @@ func TestS82OldB008SarulfUpkeepExilesEachOtherNonlandPermanentUpToTheCounters(t 
 	setManaValue(g, pricey, "{3}")
 	effectstest.AdvanceToUpkeepOf(t, g, 1)
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerOptional(t, g, me, true)
+	effectstest.AnswerLatestTriggerPrompt(t, g, me.ID, true)
 	effectstest.PassPriorityAroundTable(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, sarulf); !ok {
 		t.Fatal("Sarulf exiled itself")
@@ -348,7 +384,7 @@ func TestS82OldB008SarulfUpkeepDeclinedKeepsTheCounters(t *testing.T) {
 	other := effectstest.B12Push(g, opp.ID, "Cheap", "Artifact", "", 0, 0)
 	effectstest.AdvanceToUpkeepOf(t, g, 1)
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerOptional(t, g, me, false)
+	effectstest.AnswerLatestTriggerPrompt(t, g, me.ID, false)
 	effectstest.PassPriorityAroundTable(t, g)
 	if n := effectstest.CounterCount(g, sarulf, game.CounterPlusOne); n != 2 {
 		t.Errorf("%d counters, want 2 after declining", n)

@@ -8,21 +8,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// OldB008AddManaCumulativeUpkeep is "Cumulative upkeep—Add {R}" (Braid of
-// Fire): the payment is adding the mana, once per age counter (CR 702.24a),
-// so "yes" puts that much red mana in the controller's pool (to be spent in
-// the upkeep step) and "no" sacrifices the permanent. `symbol` is the colour
-// letter ("R").
-func OldB008AddManaCumulativeUpkeep(label, symbol string) game.TriggeredAbility {
-	branches := PayUnlessBranches("pay-unless/old-b008-cumulative-upkeep-add-"+strings.ToLower(symbol),
-		func(ctx *Context, r game.PayUnlessAnswer) error {
-			age := CounterCountOn(ctx.Game, r.Source, game.CounterAge)
-			return ctx.Game.AddManaForEffect(r.Chooser, r.Source, strings.Repeat(symbol, age))
-		},
-		func(ctx *Context, r game.PayUnlessAnswer) error {
-			return SacrificePermanent{Target: r.Source}.Apply(ctx)
-		})
-	ref := CardTail("old-b008/cumulative-upkeep-add-"+strings.ToLower(symbol), func(ctx *Context, _ game.TailOutcome) error {
+// oldB008AddManaTail is the keyed tail of the add-mana cumulative upkeep:
+// ask the payment once per age counter. It sits above the branches' file
+// position on purpose: the exit-payout guard reads source order.
+func oldB008AddManaTail(label, symbol string, branches game.PayUnlessElse) func(*Context, game.TailOutcome) error {
+	return func(ctx *Context, _ game.TailOutcome) error {
 		age := CounterCountOn(ctx.Game, ctx.Item.SourceCardID, game.CounterAge)
 		if age <= 0 {
 			return nil
@@ -34,7 +24,24 @@ func OldB008AddManaCumulativeUpkeep(label, symbol string) game.TriggeredAbility 
 			Question: label,
 			Else:     branches,
 		}.Apply(ctx)
-	})
+	}
+}
+
+// OldB008AddManaCumulativeUpkeep is "Cumulative upkeep—Add {R}" (Braid of
+// Fire): the payment is adding the mana, once per age counter (CR 702.24a),
+// so "yes" puts that much red mana in the controller's pool (to be spent in
+// the upkeep step) and "no" sacrifices the permanent. `symbol` is the colour
+// letter ("R").
+func OldB008AddManaCumulativeUpkeep(label, symbol string) game.TriggeredAbility {
+	branches := PayUnlessBranches("pay-unless/old-b008-cumulative-upkeep-add-"+strings.ToLower(symbol),
+		func(ctx *Context, r game.PayUnlessAnswer) error {
+			age := CounterCountOn(ctx.Game, r.Source, game.CounterAge)
+			return ctx.Game.AddManaForEffect(r.Chooser, r.Source, strings.Repeat("{"+symbol+"}", age))
+		},
+		func(ctx *Context, r game.PayUnlessAnswer) error {
+			return SacrificePermanent{Target: r.Source}.Apply(ctx)
+		})
+	ref := CardTail("old-b008/cumulative-upkeep-add-"+strings.ToLower(symbol), oldB008AddManaTail(label, symbol, branches))
 	return cumulativeUpkeepTrigger(label, ref)
 }
 
