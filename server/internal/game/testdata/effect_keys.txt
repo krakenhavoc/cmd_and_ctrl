@@ -402,6 +402,7 @@ body phyrexian-vindicator/prevented
 body phyrexian-vindicator/strike
 body pit-automaton/copy-exhaust
 body planechase/planeswalk
+body planeswalk/tardis-next-cast
 body plasm-capture/refund
 body poison/the-payload-creatures-controller
 body portent/draw
@@ -1458,6 +1459,7 @@ choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
+choose choose-cards/scion-of-halaster-pick
 choose choose-cards/search-for-blex-take
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
@@ -2112,6 +2114,7 @@ drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
+drawinstead scion-of-halaster
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
 drawthen alpharael-discard-two-unless-artifact
@@ -2138,6 +2141,7 @@ drawthen discard:Temmet, Naktamun's Will — discard a card
 drawthen discard:The Royal Scions — draw a card, then discard a card
 drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
+drawthen draw-then/scion-of-halaster-rest
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
 drawthen evie-frye/discard
@@ -2179,6 +2183,7 @@ maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
 milluntil until/creature-card-or-count
 milluntil until/illuna-nonland-permanent-card
+milluntil until/instant-or-sorcery-card
 milluntil until/land-card
 milluntil until/legendary-card
 milluntil until/nonland-card
@@ -3666,6 +3671,7 @@ tail dice/treasure-chest-rolled
 tail dice/underdark-rift-rolled
 tail dice/valiant-endeavor-rolled
 tail dice/velukan-dragon-plus-result-minus-one
+tail dice/wand-of-wonder-table
 tail dice/wild-endeavor-rolled
 tail dice/wizards-spellbook-exiled
 tail dice/wizards-spellbook-rolled
@@ -4922,6 +4928,7 @@ tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/ulamogs-nullifier-counter
+tail then/unnatural-selection-type-chosen
 tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
@@ -5022,6 +5029,8 @@ tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
 tail wake-to-slaughter/entered
+tail wand-of-wonder/after-exile
+tail wand-of-wonder/after-tuck
 tail wanderwine-farewell/merfolk-tokens
 tail waste-management/rogue-per-creature
 tail wheel-of-potential/exiled-hand

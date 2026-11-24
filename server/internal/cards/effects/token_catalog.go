@@ -584,6 +584,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
 	printedBoarFoodToken,
 
+	// Dwarven Confluencer's Mana Confluence (GAP2 batch 1, #5948).
+	printedManaConfluenceToken,
 	// The Rani's Mark of the Rani (S82 GAP2 batch 10, #5948).
 	printedMarkOfTheRaniToken,
 	// Volo, Itinerant Scholar's Volo's Journal (S82 GAP2 batch 10, #5948).
