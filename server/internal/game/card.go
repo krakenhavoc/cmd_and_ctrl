@@ -809,6 +809,16 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
+	// CommanderColor is the colour its owner chose for this commander
+	// before the game began, for a card that prints "If <this> is your
+	// commander, choose a color before the game begins. <This> is the
+	// chosen color." (CR 903.4b, commander_color.go). One uppercase
+	// letter, or empty when no choice was made (not a commander, or no
+	// such ability). Like IsCommander it is an attribute of the card and
+	// survives every zone change; it is never copied (CR 707.2), so a
+	// copy of the card is not that colour.
+	CommanderColor string
+
 	// ChosenPlayer is the player chosen for this permanent by an "as
 	// this enters, choose a player" instruction (CR 614.12) —
 	// True-Name Nemesis. uuid.Nil when none has been chosen, which is
@@ -1632,15 +1642,8 @@ type Card struct {
 	// Commanders live in the command zone at game start.
 	IsCommander bool
 
-	// CommanderColor is the colour its owner chose for this commander
-	// before the game began, for a card that prints "If <this> is your
-	// commander, choose a color before the game begins. <This> is the
-	// chosen color." (CR 903.4b, commander_color.go). One uppercase
-	// letter, or empty when no choice was made (not a commander, or no
-	// such ability). Like IsCommander it is an attribute of the card and
-	// survives every zone change; it is never copied (CR 707.2), so a
-	// copy of the card is not that colour.
-	CommanderColor string
+	// CommanderColor (CR 903.4b) sits beside ChosenColor, with the
+	// other strings, to keep Card free of padding.
 
 	// IsCompanion marks the card a deck revealed as its companion (CR
 	// 702.139a, ADR 0172 §3). It routes the card into Player.Companion
