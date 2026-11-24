@@ -11800,6 +11800,9 @@ A spell that takes the turn and then puts itself back in the library
 says "if this would be put into a graveyard from anywhere, shuffle it
 into its owner's library instead" (Nexus of Fate, Blightsteel Colossus)
 declares `ShuffleIntoOwnersLibraryInstead(label)` in `Replacements`.
+A replacement that says "put it on the bottom of … library instead" (Wheel of Sun and
+Moon) sets `ev.NewZone = ZoneLibrary` and `ev.PutOnLibraryBottom = true` in its `Replace`; the card is placed
+at the bottom once it has landed, by either landing path, with no shuffle.
 A spell file that moves its own card (Beacon, Rise of the Eldrazi's
 "Exile Rise of the Eldrazi") goes in the `spells` list of
 `TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking`, because a
