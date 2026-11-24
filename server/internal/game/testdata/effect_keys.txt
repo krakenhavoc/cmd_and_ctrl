@@ -367,6 +367,7 @@ body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
 body ogre-battlecaster/pump
+body old-b036/mount-velus-manticore-strike
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -1271,6 +1272,7 @@ choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/old-b036-mount-velus-manticore-strike
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -4017,6 +4019,8 @@ tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
+tail old-b036/glimpse-of-tomorrow-auras
+tail old-b036/glimpse-of-tomorrow-shuffled
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
