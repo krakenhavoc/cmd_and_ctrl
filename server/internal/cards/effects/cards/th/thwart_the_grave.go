@@ -27,12 +27,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerValue},
 		SelfCostModifiers: []game.CostModifier{
-			effects.CostsLessEach(func(q game.CostQuery) int {
-				if q.Game == nil {
-					return 0
-				}
-				return effects.FinB9PartySize(q.Game, q.Controller)
-			}, "This spell costs {1} less to cast for each creature in your party."),
+			effects.CostsLessEach(effects.OldB094PartySizeForCost, "This spell costs {1} less to cast for each creature in your party."),
 		},
 		Targets: effects.Clauses(
 			effects.TargetCardInGraveyard("target creature card from your graveyard", effects.YouOwn(), effects.Creature()),
