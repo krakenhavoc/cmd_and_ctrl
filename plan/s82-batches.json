@@ -43085,5 +43085,61 @@
   ],
   "after": [],
   "status": "ready"
+ },
+ {
+  "set": "GAP3",
+  "issue": 5948,
+  "batch": 1,
+  "theme": "Q4 one-offs on engine seams: a not-the-starting-player check, variable sacrifice/graveyard/counter costs, X set by a non-mana cost or read by a target, a player-loss trigger with last-known information, memory counters and copies of exiled cards, filtered picks from a revealed hand",
+  "missing": [
+   "Forsaken Crossroads",
+   "Baba Lysaga, Night Witch",
+   "Battlefield Scrounger",
+   "Hierophant Bio-Titan",
+   "Summons of Saruman",
+   "Ent-Draught Basin",
+   "Miss Highwater",
+   "The Animus",
+   "Distended Mindbender"
+  ],
+  "oracle_ids": [
+   "c70598e1-30c6-4f92-a265-34a7a73bc2b8",
+   "d6cd4aa1-ff3a-4453-8735-e5ace5cbe386",
+   "92ac7531-10bb-47a2-9dd0-378d547b4ed6",
+   "f334c57b-0a57-4fbd-8798-948371d6589d",
+   "aede5485-7b8c-4e29-a3a4-9a3513dc733f",
+   "02acf8b2-6108-4496-9803-7199ca7e199a",
+   "75d7f864-1240-43f5-8dd5-a5f7577bfa5b",
+   "7e0062fb-aff8-4c41-96eb-1af656d8b195",
+   "36d32194-d547-4e2d-894f-f4bf13cf7da6"
+  ],
+  "after": [
+   6121,
+   6122,
+   6123,
+   6124
+  ],
+  "status": "ready"
+ },
+ {
+  "set": "GAP3",
+  "issue": 5948,
+  "batch": 2,
+  "theme": "Q4 one-offs needing protocol and client work: {X} mana abilities, a 'Choose X' mode count that sets X, a mulligan-time card action",
+  "missing": [
+   "Wizard's Rockets",
+   "Doomsday Confluence",
+   "Serum Powder"
+  ],
+  "oracle_ids": [
+   "755153b5-81b8-4ebc-b6f8-9296654fcaa4",
+   "01bc8bfa-2e46-4324-a848-cc68bc9330d0",
+   "4e734493-9cb8-4409-8a30-cc15d519a27e"
+  ],
+  "after": [
+   6125,
+   6126
+  ],
+  "status": "ready"
  }
 ]
