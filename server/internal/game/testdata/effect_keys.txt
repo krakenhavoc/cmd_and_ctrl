@@ -84,6 +84,7 @@ body breeches/copy-that-spell
 body bullseye-death-dealer/damage
 body caesar-legions-emperor/modes
 body cait-sith/boost
+body calibrated-blast/damage
 body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
 body cascade/the-spell-just-cast
@@ -599,6 +600,7 @@ body xira-the-golden-sting/draw-and-insect
 body yathan-roadwatcher/return
 body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
+body young-necromancer/return
 body yunas-whistle/counters
 body zara/return-to-hand
 body zevlor/copy-for-each-other-opponent
@@ -1272,6 +1274,7 @@ choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/old-b032-dihadas-ploy-life
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1582,6 +1585,7 @@ choose choose-cards/xenagos-the-reveler-put
 choose choose-cards/yggdrasil-return
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yotia-declares-war-tap
+choose choose-cards/young-necromancer-exile-two
 choose choose-cards/yue-the-moon-spirit-cast
 choose choose-cards/yuffie-materia-hunter-attach
 choose choose-cards/yunas-decision-put
@@ -4679,6 +4683,7 @@ tail then/s82-rpr-b25-jace-architect-take
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
+tail then/scour-the-desert-birds
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
@@ -4762,6 +4767,7 @@ tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
 tail then/xenagos-the-reveler-exiled
+tail then/young-necromancer-when-you-do
 tail then/zoological-study-milled
 tail then/zoyowas-justice-shuffle-discover
 tail theorix-charm/after-mill
