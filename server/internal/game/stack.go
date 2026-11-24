@@ -585,6 +585,14 @@ type StackItem struct {
 	// graveyard. Set by MarkSpellExilesAndPlotsForEffect; never on a copy.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
 
+	// ExileAndReturn is Feather, the Redeemed's "exile that card instead of
+	// putting it into your graveyard as it resolves. If you do, return it to
+	// your hand at the beginning of the next end step" as a fact about this
+	// stack object. Resolution only, like ExileAndPlot: a countered or
+	// fizzled spell goes to the graveyard. Set by
+	// MarkSpellExilesAndReturnsForEffect; never on a copy.
+	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
+
 	// ExileAndSuspend, when positive, is Gandalf of the Secret Fire's
 	// "exile that card with three time counters on it instead of putting
 	// it into your graveyard as it resolves. Then if the exiled card
