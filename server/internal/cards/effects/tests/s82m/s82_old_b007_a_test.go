@@ -141,7 +141,7 @@ func TestS82OldB007AAssassinTokenDestroysAPlaneswalkerItDamages(t *testing.T) {
 		t.Fatalf("%d Assassins", len(toks))
 	}
 	effectstest.DealCombatDamage(g, me.ID, toks[0].InstanceID, enemy)
-	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AlaB1Settle(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, enemy); ok {
 		t.Error("the damaged planeswalker is still on the battlefield")
 	}
@@ -163,7 +163,7 @@ func TestS82OldB007AAssassinTokenLeavesAPlayerOrCreatureHitAlone(t *testing.T) {
 	tok := s82OldB007Named(g, "Assassin")[0].InstanceID
 	effectstest.DealCombatDamage(g, me.ID, tok, opp.ID)
 	effectstest.DealCombatDamage(g, me.ID, tok, bear)
-	effectstest.PassPriorityAroundTable(t, g)
+	effectstest.AlaB1Settle(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, enemy); !ok {
 		t.Error("an unrelated planeswalker was destroyed")
 	}
@@ -203,7 +203,7 @@ func TestS82OldB007ADarettiMinusOneSacrificesAnArtifactToDestroyACreature(t *tes
 	effectstest.AdvanceToMain(t, g)
 	effectstest.S82Activate(t, g, me.ID, daretti, 1, game.ActivateAbilityParams{Targets: effectstest.S82TargetCard(bear)})
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerSacrifice(t, g, me.ID, trinket)
+	effectstest.AnswerOwnPermanents(t, g, me.ID, trinket)
 	effectstest.PassPriorityAroundTable(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, trinket); ok {
 		t.Error("the artifact was not sacrificed")
@@ -225,7 +225,7 @@ func TestS82OldB007ADarettiMinusOneCanDestroyAnArtifactToo(t *testing.T) {
 	effectstest.AdvanceToMain(t, g)
 	effectstest.S82Activate(t, g, me.ID, daretti, 1, game.ActivateAbilityParams{Targets: effectstest.S82TargetCard(theirs)})
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerSacrifice(t, g, me.ID, mine)
+	effectstest.AnswerOwnPermanents(t, g, me.ID, mine)
 	effectstest.PassPriorityAroundTable(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, theirs); ok {
 		t.Error("the target artifact survived")
@@ -241,7 +241,7 @@ func TestS82OldB007ADarettiMinusOneDeclinedDestroysNothing(t *testing.T) {
 	effectstest.AdvanceToMain(t, g)
 	effectstest.S82Activate(t, g, me.ID, daretti, 1, game.ActivateAbilityParams{Targets: effectstest.S82TargetCard(bear)})
 	effectstest.PassPriorityAroundTable(t, g)
-	effectstest.AnswerSacrifice(t, g, me.ID) // sacrifice nothing
+	effectstest.AnswerOwnPermanents(t, g, me.ID) // sacrifice nothing
 	effectstest.PassPriorityAroundTable(t, g)
 	if _, ok := effectstest.BattlefieldCard(g, bear); !ok {
 		t.Error("the creature died although no artifact was sacrificed")
@@ -377,11 +377,7 @@ func TestS82OldB007ARalMinusTwoCopiesTheNextInstantAndBothPing(t *testing.T) {
 	effectstest.PassPriorityAroundTable(t, g)
 	life := opp.Life
 	effectstest.B02dCastInstantAs(t, g, me, "Idle Instant", nil)
-	for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
-		effectstest.AnswerPickTargetPlayerIfOpen(t, g, opp.ID)
-		effectstest.PassPriorityAroundTable(t, g)
-	}
-	effectstest.PassPriorityAroundTable(t, g)
+	s82OldB007Settle(t, g, opp.ID)
 	copied := 0
 	for _, ev := range g.Events {
 		if ev.Kind == game.EventSpellCopied {
@@ -396,11 +392,7 @@ func TestS82OldB007ARalMinusTwoCopiesTheNextInstantAndBothPing(t *testing.T) {
 	}
 	// Only the NEXT instant or sorcery is copied.
 	effectstest.B02dCastInstantAs(t, g, me, "Second Instant", nil)
-	for i := 0; i < 4 && len(g.PendingChoices) > 0; i++ {
-		effectstest.AnswerPickTargetPlayerIfOpen(t, g, opp.ID)
-		effectstest.PassPriorityAroundTable(t, g)
-	}
-	effectstest.PassPriorityAroundTable(t, g)
+	s82OldB007Settle(t, g, opp.ID)
 	copied = 0
 	for _, ev := range g.Events {
 		if ev.Kind == game.EventSpellCopied {
@@ -506,5 +498,18 @@ func TestS82OldB007ASarkhanUltimateFetchesEveryDragonCreature(t *testing.T) {
 	}
 	if _, ok := effectstest.BattlefieldCard(g, wurm); ok {
 		t.Error("a non-Dragon entered the battlefield")
+	}
+}
+
+// s82OldB007Settle resolves the stack, ordering simultaneous triggers as
+// offered and pointing every target prompt at the player.
+func s82OldB007Settle(t *testing.T, g *game.Game, victim uuid.UUID) {
+	t.Helper()
+	for i := 0; i < 12; i++ {
+		effectstest.AlaB1Settle(t, g)
+		if len(g.PendingChoices) == 0 {
+			return
+		}
+		effectstest.AnswerPickTargetPlayerIfOpen(t, g, victim)
 	}
 }
