@@ -1844,6 +1844,15 @@ type ReplacementEffect struct {
 	// (ReplacementEvent.DrawInstruction) and must refuse every other.
 	DrawInstructionExtra int
 
+	// DrawInstructionEachDrawOne, on a RepEventDraw replacement, is "If
+	// an opponent would draw two or more cards, instead you and that
+	// player each draw a card" (Alms Collector, #6089): it rewrites a
+	// whole draw instruction to one draw for the drawing player and one
+	// for this effect's controller (draw_instruction_rewrite.go).
+	// AppliesTo sees the synthetic event (ReplacementEvent.DrawInstruction)
+	// and must refuse every other.
+	DrawInstructionEachDrawOne bool
+
 	// KeywordInstead, on a RepEventKeywordAction replacement, replaces
 	// the keyword action with an effect (learn_action.go): Retriever
 	// Phoenix's "if you would learn, you may instead return this card to

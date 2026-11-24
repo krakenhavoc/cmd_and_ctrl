@@ -125,7 +125,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, 1), DrawThen{})
+	return g.drawInstructionRunLocked(playerID, 1, DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
@@ -175,7 +175,8 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	c, err := p.Library.PopTop()
+	// #6089: River Song draws from the bottom (draw_from_bottom.go).
+	c, err := g.popDrawnCardLocked(p)
 	if err != nil {
 		if err == ErrZoneEmpty {
 			p.AttemptedEmptyDraw = true

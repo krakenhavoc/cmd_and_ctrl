@@ -274,6 +274,8 @@ func BuildDef(spec Spec) *game.CardDef {
 		ExtraVote:                           spec.ExtraVote,
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
 		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,
+		OpponentsSearchTopN:                 spec.OpponentsSearchTopN,
+		DrawsFromBottom:                     spec.DrawsFromBottom,
 		DamageCantBePrevented:               spec.DamageCantBePrevented,
 		CantGainLife:                        spec.CantGainLife,
 		DrawLimits:                          spec.DrawLimits,
