@@ -868,6 +868,7 @@ choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/fell-beasts-shriek-pick
 choose choose-cards/feral-encounter
+choose choose-cards/fervent-mastery-discarded
 choose choose-cards/fiend-of-the-shadows-exile
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
@@ -1271,6 +1272,8 @@ choose choose-cards/o-kagachi-made-manifest-pick
 choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/old-b043-augusta-tap
+choose choose-cards/old-b043-discard-two-unless-instant-or-sorcery
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -2079,6 +2082,7 @@ drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
+drawthen old-b043-discard-two-unless-instant-or-sorcery
 drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen seasoned-cryomancer/discard-two
@@ -2242,6 +2246,7 @@ option option-pick/fact-or-fiction-splitter
 option option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life
 option option-pick/faramir-prince-of-ithilien-opponent
 option option-pick/fateful-handoff-opponent
+option option-pick/fervent-mastery-opponent
 option option-pick/flicker-return-under-an-opponent
 option option-pick/gap-b82-indoraptor-answer
 option option-pick/gap-b82-owen-grady-counter
@@ -4017,6 +4022,8 @@ tail nyla-shirshu-sleuth/lose-x-make-x-clues
 tail okiba-salvage/counters
 tail oko-shadowmoor-scion/after-mill
 tail oko-shadowmoor-scion/emblem-type
+tail old-b043/extraction-victim-draws
+tail old-b043/fervent-mastery-random-discard
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
