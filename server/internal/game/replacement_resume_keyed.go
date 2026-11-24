@@ -478,6 +478,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
+	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
 	"entryRefused":              repFieldCarried,
 	"EntersUnlocked":            repFieldCarried,
@@ -813,6 +814,7 @@ type replacementEventSnapshot struct {
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
+	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
 	EntersUnlocked            DoorMask            `json:"entersUnlocked,omitempty"`
 	EntersAttacking           *uuid.UUID          `json:"entersAttacking,omitempty"`
@@ -1283,6 +1285,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
 		EntersWithHaste:           ev.EntersWithHaste,
+		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
 		EntersUnlocked:            ev.EntersUnlocked,
 		EntersAttacking:           uuidPtrOrNil(ev.EntersAttacking),
@@ -1463,6 +1466,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
 		EntersWithHaste:           s.EntersWithHaste,
+		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,
 		EntersUnlocked:            s.EntersUnlocked,
 		EntersAttacking:           uuidOrNil(s.EntersAttacking),

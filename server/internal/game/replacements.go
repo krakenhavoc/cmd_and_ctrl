@@ -613,6 +613,13 @@ type ReplacementEvent struct {
 	// answered "haste" are one record.
 	EntersWithHaste bool
 
+	// EntersWithHasteTillEOT is "it gains haste until end of turn" for
+	// a permanent that has just entered (The Fourteenth Doctor, #5462): the
+	// same record as EntersWithHaste, ended at the cleanup step instead of
+	// lasting for as long as it is the same object. Set by an entry copy's
+	// Except clause; read by every battlefield landing beside EntersWithHaste.
+	EntersWithHasteTillEOT bool
+
 	// lookAhead caches the CR 614.12 look-ahead for this entry
 	// (entry_lookahead.go), so the gather, which runs once per pass of
 	// the apply-loop, does not run a dry layer pass every time. It is
