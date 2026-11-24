@@ -98,6 +98,8 @@ var untilEndOfTurnExempt = map[string]string{
 	// The target is a card in a graveyard, which a permanent direction
 	// cannot describe: it gains embalm until end of turn.
 	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
+	"Sapphire Collector":   "the target is a graveyard card, not a permanent",
+
 	// The same: the target is a legendary creature card in a graveyard, and
 	// it gains escape until end of turn (S82 GAP2 batch 2).
 	"Confession Dial": "the target is a graveyard card, not a permanent",

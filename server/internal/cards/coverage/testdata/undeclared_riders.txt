@@ -79,6 +79,7 @@ Neva, Stalked by Nightmares | scry | on a triggered row that is not the card's e
 New Benalia | scry | a land's enters effect; a land play is not priced by its purpose
 Norn's Wellspring | scry | on a triggered row that is not the card's enters effect, which nothing prices
 One Ring to Rule Them All | ring | on a triggered row that is not the card's enters effect, which nothing prices
+Oracle of the Alpha | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Origin of the Avengers | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Overgrown Arch | learn | the row declares only its answer, and a rider would make it more than one (PurposeView.Priced)
 Palantír of Orthanc | scry | on a triggered row that is not the card's enters effect, which nothing prices

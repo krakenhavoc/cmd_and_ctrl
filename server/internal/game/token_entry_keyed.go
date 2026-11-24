@@ -90,6 +90,12 @@ type tokenEntryRun struct {
 	// rather than as EventTokenCreated. Additive within schema v9: a
 	// file without it is a created token, which every run before it was.
 	NotCreated bool `json:"notCreated,omitempty"`
+	// Conjured marks a batch of conjured CARDS (conjure.go, ADR 0099
+	// amendment 2026-11-24): staged here like created tokens because
+	// they come from no zone, but neither tokens nor "created", so
+	// announceEntryLocked tells each arrival as a move from no zone.
+	// Additive: a file without it is a token batch.
+	Conjured bool `json:"conjured,omitempty"`
 	// report is a synchronous door's result (tokenTail.report). Never
 	// written: a creation that paused has returned to the door already.
 	report *[]uuid.UUID
@@ -153,7 +159,7 @@ func (g *Game) enterStagedTokensLocked(r *tokenEntryRun) error {
 	ev := createdTokenEntryEvent(card, next.Entry.options(), r.Source)
 	ev.entryTail = &entryTail{tokens: &tokenEntryRun{
 		Token: next.ID, Blocking: next.Blocking, Rest: rest[1:], Created: r.Created, Source: r.Source,
-		Then: r.Then, NotCreated: r.NotCreated, report: r.report,
+		Then: r.Then, NotCreated: r.NotCreated, Conjured: r.Conjured, report: r.report,
 	}}
 	_, err := g.enterBattlefieldThroughPipelineLocked(ev)
 	if err != nil {
@@ -182,7 +188,7 @@ func (g *Game) runTokenEntryStepLocked(r *tokenEntryRun, entered uuid.UUID) erro
 		}
 	}
 	return g.enterStagedTokensLocked(&tokenEntryRun{
-		Rest: r.Rest, Created: landed, Source: r.Source, Then: r.Then, NotCreated: r.NotCreated, report: r.report,
+		Rest: r.Rest, Created: landed, Source: r.Source, Then: r.Then, NotCreated: r.NotCreated, Conjured: r.Conjured, report: r.report,
 	})
 }
 
@@ -191,6 +197,13 @@ func (g *Game) runTokenEntryStepLocked(r *tokenEntryRun, entered uuid.UUID) erro
 // announceEntryLocked, before the deferred entry tail clears the run.
 func (ev *ReplacementEvent) entryTokenNotCreated() bool {
 	return ev != nil && ev.entryTail != nil && ev.entryTail.tokens != nil && ev.entryTail.tokens.NotCreated
+}
+
+// entryConjured reports whether ev is the entry of a conjured card
+// (tokenEntryRun.Conjured). Read by announceEntryLocked, as
+// entryTokenNotCreated is.
+func (ev *ReplacementEvent) entryConjured() bool {
+	return ev != nil && ev.entryTail != nil && ev.entryTail.tokens != nil && ev.entryTail.tokens.Conjured
 }
 
 // createdTokenEntryEvent is a staged token's battlefield entry event,
