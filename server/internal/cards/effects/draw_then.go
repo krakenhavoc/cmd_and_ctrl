@@ -46,6 +46,7 @@ var DrawThenDiscardQuestions = []string{
 	"Arni, Humble Scribe — discard a card",
 	"Depth Defiler — discard a card",
 	"Temmet, Naktamun's Will — discard a card",
+	"The Royal Scions — draw a card, then discard a card",
 	"Whirlwind Technique — discard a card",
 }
 

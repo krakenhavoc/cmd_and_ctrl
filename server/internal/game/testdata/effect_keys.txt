@@ -50,6 +50,7 @@ body ambulatory-edifice/shrink
 body ancestral-katana/attach
 body ancient-brass-dragon/reanimate
 body angel-of-suffering/mill-twice
+body angrath-the-flame-chained/sacrifice-if-mv-3
 body annihilator/sacrifice
 body anointer-of-valor/counter
 body ant-man-colony-commander/counter
@@ -555,6 +556,7 @@ body the-motherlode/destroy-and-no-blocks
 body the-pandorica/that-permanent-phases-in
 body the-restoration-of-eiganjo/return-tapped
 body the-ring/sacrifice-blocker-at-end-of-combat
+body the-royal-scions/damage
 body the-sea-devils/salamander-deals-that-much-to-target-creature
 body the-thing/double-counters
 body the-war-games/exile-all-warriors
@@ -1261,6 +1263,7 @@ choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-dragon-god-exile
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
+choose choose-cards/nicol-bolas-planeswalker-sacrifice
 choose choose-cards/nihiloor-tap-for-opponent
 choose choose-cards/ninjas-blades-loot
 choose choose-cards/niv-mizzet-reborn-color-pair
@@ -1391,6 +1394,8 @@ choose choose-cards/s82-mom-b12-warcrafting-exile
 choose choose-cards/s82-mom-b13-sandstalker-moloch-permanent
 choose choose-cards/s82-mom-b21-djeru-exile
 choose choose-cards/s82-mom-b21-omnath-reveal
+choose choose-cards/s82-old-b005-karn-scion-pick
+choose choose-cards/s82-old-b005-karn-scion-take
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2336,6 +2341,7 @@ option option-pick/s82-gap-b154-kenessos-top-card
 option option-pick/s82-gap-b36-assassin-initiate-keyword
 option option-pick/s82-mid-b14-lynde-attach
 option option-pick/s82-neo-b18-long-reach-of-night
+option option-pick/s82-old-b005-karn-scion-chooser
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3093,6 +3099,7 @@ run prompt-run/visions-of-ruin-treasures
 run prompt-run/vivien-on-the-hunt-sacrificed
 run prompt-run/vonas-hunger-sacrifice
 run prompt-run/voracious-fell-beast-food
+run prompt-run/vraska-golgari-queen-sacrifice
 run prompt-run/way-of-the-deathbringer-beast
 run prompt-run/wedding-security-counter-draw
 run prompt-run/west-wind-avatar-gain-3
@@ -3361,6 +3368,7 @@ tail cemetery-tampering/offer-the-exiled-card
 tail chainer-dementia-master/black-nightmares
 tail chandra-dressed-to-kill/cast-if-red
 tail chandra-dressed-to-kill/ultimate
+tail chandra-flamecaller/exile-the-elementals
 tail chandra-flameshaper/choose-exiled
 tail chandra-hopes-beacon/grant-cast
 tail chaotic-transformation/exiled
@@ -4238,6 +4246,7 @@ tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
 tail sacrificed-one/prompt-run/vivien-on-the-hunt-sacrificed
+tail sacrificed-one/prompt-run/vraska-golgari-queen-sacrifice
 tail sacrificed-one/prompt-run/wedding-security-counter-draw
 tail sacrificed-one/prompt-run/west-wind-avatar-gain-3
 tail sacrificed-one/prompt-run/wilhelt-the-rotcleaver-draw
@@ -4374,6 +4383,7 @@ tail tail/s82-mom-b21-zimone-repeat
 tail tail/s82-neo-b18-behold-the-unspeakable-draw-two
 tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
+tail tail/s82-old-b005-karn-silver
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun

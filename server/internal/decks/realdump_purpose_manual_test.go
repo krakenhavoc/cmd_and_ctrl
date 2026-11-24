@@ -277,6 +277,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP2 batch 07 (#5948).
 	"Fires of Mount Doom": "2 damage to one target creature, the Equipment on it destroyed, and 2 damage to each PLAYER when a card is played: no creature but the target is touched",
+
+	// S82 old sets, batch 005 (own group).
+	"Nicol Bolas, the Ravager // Nicol Bolas, the Arisen": "its -12 exiles cards from one library, not permanents; the 10 damage hits one target",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
