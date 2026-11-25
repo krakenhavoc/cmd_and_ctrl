@@ -2428,6 +2428,7 @@ option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
+option option-pick/linvala-shield-of-sea-gate-keyword
 option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
