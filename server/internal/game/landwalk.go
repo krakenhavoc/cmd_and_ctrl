@@ -13,10 +13,19 @@ package game
 // canonicalKeywords, so the deck importer keeps them off Scryfall's
 // keyword array (Cold-Eyed Selkie imports `["Landwalk", "Islandwalk"]`
 // as `islandwalk`; the bare "Landwalk" family name is not a token and
-// is dropped). The rarer variants CR 702.14a allows — legendary
-// landwalk, snow swampwalk, desertwalk, artifact landwalk — join this
-// table with the first card that prints one, as the table's
-// closedness requires.
+// is dropped). The rarer variants CR 702.14a allows join this table
+// with the first card that prints one, as the table's closedness
+// requires: desertwalk and artifact landwalk did, and snow landwalk,
+// legendary landwalk and snow <basic land type>walk joined with
+// Zombie Musher, Livonya Silone, Rime Dryad and Legions of Lim-Dûl
+// (#6143).
+//
+// One family is not in the table: "snow landwalk of the chosen type"
+// (Barbarian Guides) can name any of CR 205.3i's land types, so it is a
+// parameterised token, "snow <land type>walk" ("snow gatewalk"), built
+// by SnowLandwalkToken and parsed by landwalkRequirement. It is only
+// ever granted, never printed, so the importer has nothing to keep and
+// it is not canonical; the five basic types are both.
 //
 // Everything is read from EFFECTIVE characteristics, on both sides. A
 // granted islandwalk (Lord of Atlantis, layer 6) is visible through
@@ -26,7 +35,11 @@ package game
 // types") switches swampwalk on, and a Blood Moon Mountain switches
 // mountainwalk on.
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // landwalkSpec is what one landwalk token asks of a land: a land
 // subtype it must have, and/or a supertype it must have or (negated)
@@ -53,6 +66,56 @@ var landwalkTokens = []struct {
 	{"desertwalk", landwalkSpec{subtype: "Desert"}},
 	{"nonbasic landwalk", landwalkSpec{supertype: "basic", negated: true}},
 	{"artifact landwalk", landwalkSpec{artifact: true}},
+	// CR 702.14c: "with the specified type or supertype …, or with both
+	// the specified type or supertype and the specified subtype (as in
+	// "snow swampwalk")" (#6143).
+	{"snow landwalk", landwalkSpec{supertype: "snow"}},
+	{"legendary landwalk", landwalkSpec{supertype: "legendary"}},
+	{"snow plainswalk", landwalkSpec{subtype: "Plains", supertype: "snow"}},
+	{"snow islandwalk", landwalkSpec{subtype: "Island", supertype: "snow"}},
+	{"snow swampwalk", landwalkSpec{subtype: "Swamp", supertype: "snow"}},
+	{"snow mountainwalk", landwalkSpec{subtype: "Mountain", supertype: "snow"}},
+	{"snow forestwalk", landwalkSpec{subtype: "Forest", supertype: "snow"}},
+}
+
+// snowLandwalkPrefix and landwalkSuffix frame the parameterised "snow
+// <land type>walk" token (Barbarian Guides, #6143).
+const (
+	snowLandwalkPrefix = "snow "
+	landwalkSuffix     = "walk"
+)
+
+// SnowLandwalkToken is the keyword token for "snow landwalk of the
+// chosen type" (Barbarian Guides): "snow " + the land type in lower
+// case + "walk", so a chosen Swamp is the table's own "snow swampwalk"
+// and a chosen Gate is "snow gatewalk". landType must be one of CR
+// 205.3i's land types; anything else answers "".
+func SnowLandwalkToken(landType string) string {
+	for _, t := range LandTypes {
+		if typeIn(landType, []string{t}) {
+			return snowLandwalkPrefix + strings.ToLower(t) + landwalkSuffix
+		}
+	}
+	return ""
+}
+
+// LandwalkTokens is every landwalk token the engine reads, the table's
+// and the parameterised snow family's for every CR 205.3i land type,
+// for an effect that removes "all landwalk abilities" (Hammerheim). A
+// fresh slice; the caller may keep it.
+func LandwalkTokens() []string {
+	out := make([]string, 0, len(landwalkTokens)+len(LandTypes))
+	seen := map[string]bool{}
+	for _, t := range landwalkTokens {
+		out = append(out, t.token)
+		seen[t.token] = true
+	}
+	for _, lt := range LandTypes {
+		if tok := SnowLandwalkToken(lt); !seen[tok] {
+			out = append(out, tok)
+		}
+	}
+	return out
 }
 
 // landwalkRequirement parses a landwalk token into what it asks of a
@@ -62,6 +125,22 @@ func landwalkRequirement(token string) (landwalkSpec, bool) {
 	for _, t := range landwalkTokens {
 		if t.token == token {
 			return t.spec, true
+		}
+	}
+	return parameterisedSnowLandwalk(token)
+}
+
+// parameterisedSnowLandwalk parses "snow <land type>walk" for a land
+// type outside the table ("snow gatewalk"), the granted-only family
+// SnowLandwalkToken builds.
+func parameterisedSnowLandwalk(token string) (landwalkSpec, bool) {
+	if !strings.HasPrefix(token, snowLandwalkPrefix) || !strings.HasSuffix(token, landwalkSuffix) {
+		return landwalkSpec{}, false
+	}
+	name := strings.TrimSuffix(strings.TrimPrefix(token, snowLandwalkPrefix), landwalkSuffix)
+	for _, t := range LandTypes {
+		if strings.ToLower(t) == name {
+			return landwalkSpec{subtype: t, supertype: "snow"}, true
 		}
 	}
 	return landwalkSpec{}, false
@@ -91,8 +170,10 @@ func (s landwalkSpec) describe() string {
 	switch {
 	case s.artifact:
 		return "an artifact land"
+	case s.subtype != "" && s.supertype != "":
+		return "a " + s.supertype + " " + s.subtype
 	case s.subtype != "":
-		if s.subtype[0] == 'I' {
+		if strings.ContainsRune("AEIOU", rune(s.subtype[0])) {
 			return "an " + s.subtype
 		}
 		return "a " + s.subtype
@@ -123,23 +204,56 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 		return "", nil
 	}
 	var defender uuid.UUID
+	noDefender := false
+	// check is one landwalk ability against the defending player's
+	// lands; it reports the land that switches it on.
+	check := func(spec landwalkSpec) *Card {
+		if defender == uuid.Nil && !noDefender {
+			if defender = g.defendingPlayerForAttackerLocked(attacker); defender == uuid.Nil {
+				noDefender = true
+			}
+		}
+		if noDefender {
+			return nil
+		}
+		for i := range g.Battlefield.Cards {
+			land := &g.Battlefield.Cards[i]
+			if land.Controller == defender && spec.matches(land) {
+				return land
+			}
+		}
+		return nil
+	}
 	for _, t := range landwalkTokens {
 		if !HasKeyword(attacker, t.token) {
 			continue
 		}
-		if defender == uuid.Nil {
-			if defender = g.defendingPlayerForAttackerLocked(attacker); defender == uuid.Nil {
-				return "", nil
-			}
+		if land := check(t.spec); land != nil {
+			return t.token, land
 		}
-		for i := range g.Battlefield.Cards {
-			land := &g.Battlefield.Cards[i]
-			if land.Controller == defender && t.spec.matches(land) {
-				return t.token, land
-			}
+		if noDefender {
+			return "", nil
 		}
 	}
-	return "", nil
+	// The parameterised "snow <land type>walk" family (Barbarian
+	// Guides), in the attacker's ability order.
+	var token string
+	var hit *Card
+	forEachAbilityToken(attacker, func(a string) bool {
+		if !strings.HasPrefix(a, snowLandwalkPrefix) {
+			return true
+		}
+		spec, ok := parameterisedSnowLandwalk(a)
+		if !ok {
+			return true
+		}
+		if land := check(spec); land != nil {
+			token, hit = a, land
+			return false
+		}
+		return !noDefender
+	})
+	return token, hit
 }
 
 // IsLandwalkToken reports whether token is a landwalk keyword the

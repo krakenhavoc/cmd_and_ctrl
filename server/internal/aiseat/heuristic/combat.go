@@ -826,27 +826,35 @@ func sharesColor(a, b *protocol.CardView) bool {
 func isArtifact(c *protocol.CardView) bool { return isType(c, "artifact") }
 
 // landwalkLand is what one landwalk keyword asks of a land (CR
-// 702.14c): a land subtype, or, for nonbasic landwalk, the absence of
-// the basic supertype. The engine's own table is game/landwalk.go;
-// this package may not import it (ADR 0033 §3), so the estimate keeps
-// the six tokens it knows.
+// 702.14c): a land subtype, a supertype it must have (snow, legendary),
+// or, for nonbasic landwalk, the absence of the basic supertype. The
+// engine's own table is game/landwalk.go; this package may not import
+// it (ADR 0033 §3), so the estimate keeps the tokens it knows.
 var landwalkLand = []struct {
-	keyword  string
-	subtype  string
-	nonbasic bool
+	keyword   string
+	subtype   string
+	supertype string
+	nonbasic  bool
 }{
-	{"plainswalk", "plains", false},
-	{"islandwalk", "island", false},
-	{"swampwalk", "swamp", false},
-	{"mountainwalk", "mountain", false},
-	{"forestwalk", "forest", false},
-	{"desertwalk", "desert", false},
-	{"nonbasic landwalk", "", true},
+	{"plainswalk", "plains", "", false},
+	{"islandwalk", "island", "", false},
+	{"swampwalk", "swamp", "", false},
+	{"mountainwalk", "mountain", "", false},
+	{"forestwalk", "forest", "", false},
+	{"desertwalk", "desert", "", false},
+	{"nonbasic landwalk", "", "", true},
+	{"snow landwalk", "", "snow", false},
+	{"legendary landwalk", "", "legendary", false},
+	{"snow plainswalk", "plains", "snow", false},
+	{"snow islandwalk", "island", "snow", false},
+	{"snow swampwalk", "swamp", "snow", false},
+	{"snow mountainwalk", "mountain", "snow", false},
+	{"snow forestwalk", "forest", "snow", false},
 }
 
 // landwalkBites reports whether `atk` has a landwalk keyword that a
 // land `defender` controls switches on, reading each land's effective
-// type line from the view ("Basic Land — Island").
+// type line from the view ("Snow Land — Island").
 func landwalkBites(st *state, defender string, atk *protocol.CardView) bool {
 	for _, lw := range landwalkLand {
 		if !hasKeyword(atk, lw.keyword) {
@@ -858,13 +866,17 @@ func landwalkBites(st *state, defender string, atk *protocol.CardView) bool {
 				continue
 			}
 			left, right, _ := strings.Cut(strings.ToLower(c.TypeLine), "—")
+			supers := strings.Fields(left)
 			if lw.nonbasic {
-				if !slices.Contains(strings.Fields(left), "basic") {
+				if !slices.Contains(supers, "basic") {
 					return true
 				}
 				continue
 			}
-			if slices.Contains(strings.Fields(right), lw.subtype) {
+			if lw.supertype != "" && !slices.Contains(supers, lw.supertype) {
+				continue
+			}
+			if lw.subtype == "" || slices.Contains(strings.Fields(right), lw.subtype) {
 				return true
 			}
 		}
