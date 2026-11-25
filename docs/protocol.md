@@ -4076,6 +4076,18 @@ Feral Hydra, Excavation) says everyone.
   "mana_abilities": ["own:0"], …}`), and the activation is an
   `activate_across` log line. A mana activation by the controller stays
   off the log.
+- **`tap_across: true` on a `mana_abilities[i]` row** (2026-11-25,
+  #6204). Piracy's "Until end of turn, you may tap lands you don't
+  control for mana. Spend this mana only to cast spells." Additive,
+  absent on every other row. Stamped only on the copy of another
+  player's LAND that goes to the seat the effect names, through the same
+  per-seat carrier, with that seat as the activator. That seat may send
+  `activate_mana_ability` for the row; the mana goes into its pool and
+  carries the `purpose:cast` restriction, so it pays for spells and not
+  for activated abilities. The digest lists the row under
+  `mana_abilities` exactly when it is live, and the auto-tapper (`auto_tap`
+  on a cast) may tap those lands for a spell. The client treats it as it
+  treats an `any_player` mana row.
 
 ## Declared purpose: what a spell or an ability does (ADR 0126 §6, 2026-10-06)
 

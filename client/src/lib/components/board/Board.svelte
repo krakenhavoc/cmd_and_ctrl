@@ -3529,7 +3529,7 @@
     // mana goes to the viewer's pool (CR 602.1a, CR 106.4).
     // Off the battlefield the owner is the activator (CR 108.4).
     const activator =
-      ability?.any_player && viewerID && card.controller !== viewerID
+      (ability?.any_player || ability?.tap_across) && viewerID && card.controller !== viewerID
         ? viewerID
         : card.controller || card.owner;
     guardedSendAction("activate_mana_ability", params, activator);

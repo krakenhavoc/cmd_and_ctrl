@@ -29,6 +29,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Granting an ability to another permanent (ADR 0093, #754)](#granting-an-ability-to-another-permanent-adr-0093-754)
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](#abilities-any-player-may-activate-adr-0106-1793)
+  - ["You may tap lands you don't control for mana" (ADR 0106 amendment 2026-11-25, #6204)](#you-may-tap-lands-you-dont-control-for-mana-adr-0106-amendment-2026-11-25-6204)
   - [A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)](#a-token-with-all-triggered-abilities-of-other-cards-and-exiling-by-name-as-a-cost-5683)
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
@@ -1855,6 +1856,18 @@ whoever controls it), the mana goes into the activator's pool, and the
 sacrifice-this, exert, put-a-counter or exile-this component and off the
 battlefield. The auto-tapper never plans a row with no `{T}`, so the
 activator floats the mana from the board.
+
+### "You may tap lands you don't control for mana" (ADR 0106 amendment 2026-11-25, #6204)
+
+Piracy's "Until end of turn, you may tap lands you don't control for mana.
+Spend this mana only to cast spells." is `effects.TapLandsYouDontControlThisTurn(name)`
+([cards/effects/tap_others_lands.go](../server/internal/cards/effects/tap_others_lands.go)).
+It registers a `tapLandsYouDontControl` record for the caster
+([game/tap_others_lands.go](../server/internal/game/tap_others_lands.go)). The
+caster may then activate any mana ability of another player's land. The mana
+goes to the caster's pool tagged `purpose:cast`, the auto-tapper takes those
+lands for a spell, and the client shows the row (`tap_across`). Nothing else
+to declare on the card.
 
 ### Declaring what a card does: Purpose (ADR 0126 §6)
 

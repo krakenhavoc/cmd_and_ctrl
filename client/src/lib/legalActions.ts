@@ -420,7 +420,9 @@ export function acrossActions(
       refs.set(c.instance_id, live);
     }
     const ownMana = new Set(
-      (c.mana_abilities ?? []).filter((a) => a.any_player && a.ref).map((a) => a.ref),
+      (c.mana_abilities ?? [])
+        .filter((a) => (a.any_player || a.tap_across) && a.ref)
+        .map((a) => a.ref),
     );
     if (ownMana.size > 0) {
       const live = actions.readyManaRefs(c.instance_id).filter((r) => ownMana.has(r));

@@ -619,3 +619,32 @@ Autumn's Veil prints "Spells you control can't be countered by blue or black spe
 Snapshot impact: additive under v9 (`seats[].statics[].cantBeCountered.byColors`; the mod kind is a new string value).
 
 Cards: Autumn's Veil is built by its OLD batch (b452).
+
+## Amendment (2026-11-25, [#6204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6204)): tapping lands you don't control for mana
+
+Owner decision on #6204: Piracy ships Full. Its "Until end of turn, you may tap lands you don't control for mana. Spend
+this mana only to cast spells." is the effect CR 602.2 means by "unless the object specifically says otherwise", for every
+mana ability of every land another player controls, granted to one player rather than printed on a row.
+
+- **The record.** `tapLandsYouDontControl` (ScopeGame, `Player` the one player, until end of turn).
+- **One predicate.** `MayActivateManaForEffect(player, source, zone, ab)` is `MayActivateMana` plus that permission, with
+  `MayVisitManaSourceForEffect` as the cheap negative. The activation path, the enumerator (`manaMoves`) and the view ask
+  it, so a bot and the client are offered exactly what the engine accepts. A row printed for any player keeps its own
+  permission and is not restricted by this.
+- **The mana.** It goes to the activator's pool (CR 106.4) and carries `purpose:cast`. The tag is added in
+  `restrictionsFor`, which every mint reads (the click, a pending colour pick, the auto-tapper's executor), so no path
+  makes unrestricted Piracy mana.
+- **The auto-tapper.** It gathers those lands as sources for the player. Their output counts as restricted, so it is planned
+  only for a cast (`autoTapAdmitsRestricted`, ADR 0040 amendment 2026-10-16), and the executor's control re-check allows
+  them.
+- **The wire.** `tap_across` on the mana row in that seat's own copy (protocol.md). The client lists it beside
+  `any_player` mana rows, and the digest greys it the same way.
+
+Back-out: drop the permission from `MayActivateManaForEffect` and `TestPiracyTapsAnOpponentsMountainForSpellOnlyMana`
+fails; drop the tag from `restrictionsFor` and the same test's activated-ability check fails; drop the gather and
+`TestPiracyAutoTapCastsASpellWithAnOpponentsLand` fails.
+
+Tests: `game/tap_others_lands_test.go`, `legal/tap_others_lands_test.go`, `protocol/tap_others_lands_view_test.go`,
+`client/src/lib/tapAcrossMana.test.ts`.
+
+Cards: Piracy is built by its OLD batch (b701) on `effects.TapLandsYouDontControlThisTurn`.

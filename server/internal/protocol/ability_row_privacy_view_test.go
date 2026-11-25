@@ -157,7 +157,9 @@ var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
 	"Ref": rowPublic, "GrantedBy": rowPublic, "BorrowedFrom": rowPublic,
 	// #1864: the printed "Any player may activate this ability".
-	"AnyPlayer":     rowPublic,
+	"AnyPlayer": rowPublic,
+	// #6204: Piracy's mark on a seat's own copy; it reads no hidden zone.
+	"TapAcross":     rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §5: the printed energy component (a player's energy is
 	// public).

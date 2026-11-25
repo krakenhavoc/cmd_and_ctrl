@@ -3351,7 +3351,8 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// sacrifice cost can only eat what you control, so the
 		// component this function now pays makes the re-check load-
 		// bearing rather than tidy.
-		if card.Controller != p.ID {
+		// #6204: or a land Piracy lets this payer tap.
+		if card.Controller != p.ID && (!card.IsLand() || !g.mayTapLandsYouDontControlLocked(p.ID)) {
 			continue
 		}
 		// #2455: a Costed entry re-finds its ability through the costed
@@ -8453,7 +8454,8 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// for a non-controller, unless some row says "Any player may
 		// activate this ability" (Mana Cache). The row actually named is
 		// held to MayActivateMana after the index lookup below.
-		if card.Controller != playerID && !HasAnyPlayerManaAbility(*card) {
+		// #6204: or a land under Piracy's permission.
+		if !g.MayVisitManaSourceForEffect(playerID, *card) {
 			return ErrCardCallerMismatch
 		}
 		// CR 602.5: an effect that stops this permanent's activated
@@ -8511,7 +8513,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
 	// controller, or anyone for an any-player row.
-	if !MayActivateMana(playerID, *card, srcZone, ab) {
+	if !g.MayActivateManaForEffect(playerID, *card, srcZone, ab) {
 		return ErrCardCallerMismatch
 	}
 	// CR 113.6 (#1228): the ability has to function from the zone the

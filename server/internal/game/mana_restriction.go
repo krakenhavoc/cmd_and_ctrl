@@ -1114,9 +1114,11 @@ func (ctx ManaSpendContext) matchesManaValue(value string) bool {
 // activation, which does).
 func restrictionsFor(g *Game, ab *ManaAbilityShape, controller, source uuid.UUID) []string {
 	if ab.RestrictionsFunc != nil {
-		return copyRestrictions(ab.RestrictionsFunc(g, controller, source))
+		return g.withAcrossRestrictionLocked(copyRestrictions(ab.RestrictionsFunc(g, controller, source)), ab, controller, source)
 	}
-	return g.costTextLocked(source).manaTags(copyRestrictions(ab.Restrictions))
+	// #6204: Piracy's "Spend this mana only to cast spells" on a land
+	// tapped by a player who doesn't control it.
+	return g.withAcrossRestrictionLocked(g.costTextLocked(source).manaTags(copyRestrictions(ab.Restrictions)), ab, controller, source)
 }
 
 // spendRidersFor is a mana ability's declared spend riders for one

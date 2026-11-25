@@ -6093,6 +6093,12 @@ export interface ManaAbilityView {
   // activator's pool. Whether it is live for the viewer right now is the
   // digest's answer. Absent on every other row.
   any_player?: boolean;
+  // #6204 (Piracy): set on the viewer's own copy of another player's
+  // land's mana row while an effect lets the viewer "tap lands you don't
+  // control for mana" this turn. Listed like an any_player row for a
+  // non-controller; the mana goes to the viewer's pool and may be spent
+  // only to cast spells. Absent on every other row.
+  tap_across?: boolean;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

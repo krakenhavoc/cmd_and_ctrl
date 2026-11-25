@@ -1358,6 +1358,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6204: Piracy's "you may tap lands you don't control for mana",
+	// read by the mana activation gate (tap_others_lands.go).
+	ModTapLandsYouDontControl: {reader: readerRule},
 	// #6201: "can't phase out", read by phaseOutSetLocked
 	// (phasing_extras.go).
 	ModCantPhaseOut: {reader: readerRule},

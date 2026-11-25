@@ -1023,7 +1023,9 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	// only their lands' mana abilities may be activated.
 	landsOnly := g.LandManaOnlyLocked(controller)
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller != controller {
+		// #6204: another player's land is a source while Piracy lets
+		// this player tap it; its output is restricted to casts.
+		if c.Controller != controller && (!c.IsLand() || !g.mayTapLandsYouDontControlLocked(controller)) {
 			continue
 		}
 		if landsOnly && !c.IsLand() {
@@ -1162,7 +1164,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				RiderRank: wish.riderRank(picked.SpendRiders),
 				// #3874: restricted output the cast's spend context
 				// admitted (the picker refuses it in every other).
-				Restricted: manaAbilityRestricted(*picked),
+				Restricted: g.manaOutputRestrictedLocked(controller, c, *picked),
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.
@@ -1874,7 +1876,7 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	}
 	// #3874: restricted output only for a cast it admits — see the
 	// RESTRICTED bullet above and autoTapAdmitsRestricted.
-	if manaAbilityRestricted(a) && !g.autoTapAdmitsRestricted(asker, source, a, spend) {
+	if g.manaOutputRestrictedLocked(asker, source, a) && !g.autoTapAdmitsRestricted(asker, source, a, spend) {
 		return false
 	}
 	// #789: a cost that PUTS a counter on the source spends a

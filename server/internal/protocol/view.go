@@ -5909,6 +5909,13 @@ type ManaAbilityView struct {
 	// of the row stamped with that seat as the activator
 	// (stampAnyPlayerOffers): its condition, cost options and price.
 	AnyPlayer bool `json:"any_player,omitempty"`
+	// TapAcross marks a row the VIEWER may activate on a land they
+	// don't control because Piracy lets them this turn ("you may tap
+	// lands you don't control for mana", #6204). Set only on that seat's
+	// own copy of the rows (abilityOffers); the mana it makes may be
+	// spent only to cast spells. The client lists it beside AnyPlayer
+	// rows for a non-controller.
+	TapAcross bool `json:"tap_across,omitempty"`
 	// TapCost reflects the "{T}:" portion of the ability. Drives
 	// the client's greying of the menu entry when the source is
 	// tapped — or, for a creature source like Birds of Paradise,
@@ -9759,11 +9766,26 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 			break
 		}
 	}
-	if !anyRow && !anyMana {
+	// #6204: a land, and some other seat may tap it under Piracy.
+	across := card.IsLand() && len(c.ManaAbilities) > 0 && c.anySeatTapsAcross(g, controller)
+	if !anyRow && !anyMana && !across {
 		return
 	}
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller {
+			continue
+		}
+		if across && g.MayTapLandsYouDontControlForEffect(p.ID) {
+			if c.abilityOffers == nil {
+				c.abilityOffers = make(map[string]abilityOfferRows, len(g.Seats))
+			}
+			c.abilityOffers[p.ID.String()] = abilityOfferRows{
+				ActivatedAbilities: c.ActivatedAbilities,
+				ManaAbilities:      c.tapAcrossManaRowsFor(g, card, p.ID, restricted),
+			}
+			continue
+		}
+		if !anyRow && !anyMana {
 			continue
 		}
 		rows := c.ActivatedAbilities
@@ -9842,6 +9864,38 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 			continue
 		}
 		rows[i] = m
+	}
+	return rows
+}
+
+// anySeatTapsAcross reports whether a seat other than the controller has
+// Piracy's permission this turn (#6204).
+func (c *CardView) anySeatTapsAcross(g *game.Game, controller uuid.UUID) bool {
+	for _, p := range g.Seats {
+		if p != nil && p.ID != controller && g.MayTapLandsYouDontControlForEffect(p.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+// tapAcrossManaRowsFor is a Piracy seat's copy of a land's mana rows
+// (#6204): every row it may activate is projected afresh with `seat` as
+// the activator, through the stamps anyPlayerManaRowsFor runs, and
+// marked TapAcross. The game's own predicate decides which rows those
+// are (MayActivateManaForEffect), so the view offers what the engine
+// accepts.
+func (c *CardView) tapAcrossManaRowsFor(g *game.Game, card game.Card, seat uuid.UUID, restricted bool) []ManaAbilityView {
+	rows := c.anyPlayerManaRowsFor(g, card, seat, restricted)
+	shapes := game.ManaAbilitiesForCard(card)
+	for i := range rows {
+		idx := rows[i].Index
+		if idx < 0 || idx >= len(shapes) || rows[i].AnyPlayer {
+			continue
+		}
+		if g.MayActivateManaForEffect(seat, card, game.ZoneBattlefield, shapes[idx]) {
+			rows[i].TapAcross = true
+		}
 	}
 	return rows
 }

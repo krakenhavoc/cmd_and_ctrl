@@ -395,7 +395,15 @@ function openAcrossRows(card: CardView, viewerID: string): ActivatedAbilityView[
 // any-player mana ability functions from another zone, and the server
 // refuses one there.
 export function anyPlayerManaRows(card: CardView): ManaAbilityView[] {
-  return (card.mana_abilities ?? []).filter((a) => a.any_player === true);
+  return (card.mana_abilities ?? []).filter(acrossManaRow);
+}
+
+// acrossManaRow is a mana row a viewer who does not control the
+// permanent may activate: its own "Any player may activate" (#1864), or
+// another player's land the viewer may tap this turn (Piracy, #6204:
+// `tap_across`, stamped on the viewer's own copy only).
+export function acrossManaRow(a: Partial<ManaAbilityView>): boolean {
+  return a.any_player === true || a.tap_across === true;
 }
 
 // mayActivateAcross is CR 602.2's exception for the client: a SEATED
@@ -472,7 +480,7 @@ export function menuManaRows(
   if (viewerID === undefined) return rows;
   if (viewerID === null) return [];
   if ((card.controller || card.owner) === viewerID) return rows;
-  return card.mana_abilities ? rows.filter((a) => a.any_player === true) : [];
+  return card.mana_abilities ? rows.filter(acrossManaRow) : [];
 }
 
 // BattlefieldClickIntent is what a plain left-click on a battlefield
@@ -1389,7 +1397,7 @@ export function abilityRowBlocked(
   if (
     kind === "mana" &&
     ctx.across &&
-    (a as Partial<ManaAbilityView>).any_player === true &&
+    acrossManaRow(a as Partial<ManaAbilityView>) &&
     digestRefusesManaRow(
       ctx.legalGate ?? NO_LEGAL_ACTIONS,
       ctx.cardID ?? ctx.card?.instance_id ?? "",

@@ -394,6 +394,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0187 §4: a rules gate read in the combat damage pass. Its
 		// cases are in assigns_no_combat_damage_test.go.
 		ModAssignsNoCombatDamage: true,
+		// #6204: Piracy's permission, read by the mana activation gate.
+		// Its cases are in tap_others_lands_test.go.
+		ModTapLandsYouDontControl: true,
 		// #3275: a rules gate read by every sacrifice route. Its cases
 		// are in cant_be_sacrificed_test.go.
 		ModCantBeSacrificed: true,
