@@ -120,6 +120,16 @@ type BlockRule struct {
 	// own to be about.
 	NotAlone bool
 
+	// NotAloneMinOthers and NotAloneOthersPowerGreater widen NotAlone
+	// to the companion family (#6197, CR 509.1b): Orcish Conscripts'
+	// "can't block unless at least two other creatures block" is
+	// NotAloneMinOthers 2, and Okk's "can't block unless a creature with
+	// greater power also blocks" is NotAloneOthersPowerGreater. The other
+	// blockers counted are the same defending player's (CR 802.4b).
+	// Below 1 is 1; ignored without NotAlone. Plain data.
+	NotAloneMinOthers          int
+	NotAloneOthersPowerGreater bool
+
 	// Reason is the BlockReason a refused pair reports. Empty defaults
 	// to BlockReasonCantBeBlockedBy, which is the commonest shape.
 	// Ignored for a Count or Limit rule: a bound is judged on the

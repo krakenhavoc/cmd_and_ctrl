@@ -438,3 +438,19 @@ func YouHaveCardsInHandAtLeast(n int) func(*game.Game, uuid.UUID) bool {
 func CantBlockAlone() game.BlockRule {
 	return game.BlockRule{NotAlone: true}
 }
+
+// CantBlockUnlessNOtherCreaturesBlock — "This creature can't block
+// unless at least N other creatures block" (Orcish Conscripts, #6197;
+// CR 509.1b). The companion family of CantBlockAlone, which is this
+// with N = 1. The others counted are the same defending player's
+// (CR 802.4b), on any attacker.
+func CantBlockUnlessNOtherCreaturesBlock(n int) game.BlockRule {
+	return game.BlockRule{NotAlone: true, NotAloneMinOthers: n}
+}
+
+// CantBlockUnlessACreatureWithGreaterPowerBlocks — "This creature can't
+// block unless a creature with greater power also blocks" (Okk, #6197;
+// CR 509.1b). Power is compared as blockers are declared (CR 208.1).
+func CantBlockUnlessACreatureWithGreaterPowerBlocks() game.BlockRule {
+	return game.BlockRule{NotAlone: true, NotAloneOthersPowerGreater: true}
+}

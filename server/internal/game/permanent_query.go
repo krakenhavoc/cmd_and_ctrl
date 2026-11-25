@@ -74,6 +74,10 @@ type PermanentQuery struct {
 	HasExactPT     bool `json:",omitempty"`
 	ExactPower     int  `json:",omitempty"`
 	ExactToughness int  `json:",omitempty"`
+	// Untapped asks for an untapped permanent: "an untapped creature with
+	// power 2 or less" (Mogg Jailer, #6197). Read live off the
+	// battlefield permanent.
+	Untapped bool `json:",omitempty"`
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -110,7 +114,8 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.Enchanted == o.Enchanted &&
 		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
 		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast &&
-		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness
+		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness &&
+		q.Untapped == o.Untapped
 }
 
 // samePermanentQueries compares two any-of lists in order.
@@ -148,6 +153,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if q.Enchanted && !g.isEnchantedLocked(c.InstanceID) {
+		return false
+	}
+	if q.Untapped && c.Tapped {
 		return false
 	}
 	if q.boundsPower() {
@@ -253,6 +261,9 @@ func permanentQueriesPlural(qs []PermanentQuery) string {
 // Island").
 func (q PermanentQuery) Noun() string {
 	var words []string
+	if q.Untapped {
+		words = append(words, "untapped")
+	}
 	if q.Enchanted {
 		words = append(words, "enchanted")
 	}

@@ -175,6 +175,15 @@ type AttackRequirement struct {
 	// binary that drops it misreads only last-known information, which
 	// no attack declaration is judged against.
 	IfSourceAttacks bool
+	// IfAnotherYouControlAttacks, when set, makes the requirement exist
+	// only in a declaration in which another creature controlled by the
+	// requirement's creature's controller is attacking: Ekundu Cyclops'
+	// "If a creature you control attacks, this creature also attacks if
+	// able" (#6197, CR 508.1d). The same monotone gate as
+	// IfSourceAttacks, with the condition read off the declaration rather
+	// than off one source, so staging an attacker can only raise reach.
+	// Additive in the snapshot for IfSourceAttacks's reason.
+	IfAnotherYouControlAttacks bool
 	// AtLeastOneCreature, when set, makes the requirement its creature's
 	// CONTROLLER's rather than the creature's own: "each opponent must
 	// attack with at least one creature each combat if able" (Seeker of
@@ -320,6 +329,9 @@ func (g *Game) attackRequirementsOfLocked(c *Card, assign map[uuid.UUID]uuid.UUI
 		if r.IfSourceAttacks && (r.Source == c.InstanceID || assign[r.Source] == uuid.Nil) {
 			continue
 		}
+		if r.IfAnotherYouControlAttacks && !g.anotherOfControllerAttacksLocked(c, assign) {
+			continue
+		}
 		out = append(out, r)
 	}
 	for _, gd := range c.Goads {
@@ -329,6 +341,23 @@ func (g *Game) attackRequirementsOfLocked(c *Card, assign map[uuid.UUID]uuid.UUI
 		)
 	}
 	return out
+}
+
+// anotherOfControllerAttacksLocked reports whether `assign` has a
+// creature other than `c` attacking that `c`'s controller controls: the
+// condition of an IfAnotherYouControlAttacks requirement (#6197).
+//
+// Caller must hold g.mu.
+func (g *Game) anotherOfControllerAttacksLocked(c *Card, assign map[uuid.UUID]uuid.UUID) bool {
+	for id, target := range assign {
+		if id == c.InstanceID || target == uuid.Nil {
+			continue
+		}
+		if o := findBattlefieldCard(g, id); o != nil && o.Controller == c.Controller {
+			return true
+		}
+	}
+	return false
 }
 
 // requirementWeightLocked is how many of `reqs` an attack at `target`
@@ -723,7 +752,7 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 		}
 		notAlone := g.notAloneSourcesLocked()
 		for _, c := range alone {
-			if notAlone[c.id] {
+			if _, ok := notAlone[c.id]; ok {
 				// Can only attack alone and can't attack alone: it
 				// can never attack (CR 508.1c).
 				continue
@@ -744,7 +773,7 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 	// "Can't attack alone" (AttackLimitNotAlone, CR 506.5): a completion
 	// whose one attacker is such a creature counts only if a companion
 	// can be declared beside it for free.
-	return g.reachWithoutLoneNotAloneLocked(ap, assign, out, best)
+	return g.reachWithoutLoneNotAloneLocked(assign, out, best)
 }
 
 // onlyAloneAttackersLocked is every creature an active "can only attack
@@ -903,6 +932,10 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 		// attacking, so the sentence says that rather than "this
 		// combat", which would read as owed whatever the player does.
 		return who + " must attack if able, because " + nameOr(r.SourceName, "another creature") + " is attacking."
+	} else if r.IfAnotherYouControlAttacks {
+		// #6197: owed only because another creature of the same
+		// controller is attacking.
+		return who + " must attack if able, because another creature its controller controls is attacking."
 	} else {
 		s = who + " must attack this combat if able"
 	}
