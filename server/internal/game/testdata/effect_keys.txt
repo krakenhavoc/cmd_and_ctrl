@@ -1515,6 +1515,7 @@ choose choose-cards/reinterpret-cast
 choose choose-cards/rejoin-the-fight-pick
 choose choose-cards/relentless-pursuit-take
 choose choose-cards/relic-of-progenitus-exile
+choose choose-cards/remorseless-punishment-discarded
 choose choose-cards/rent-is-due-tap-two
 choose choose-cards/research-shuffle
 choose choose-cards/resolute-strike-attach
@@ -2672,6 +2673,7 @@ option option-pick/reality-fracture-remove-up-to-counters
 option option-pick/realms-uncharted-opponent
 option option-pick/regnas-sanction-friend-or-foe
 option option-pick/rejoinder-tap-or-untap
+option option-pick/remorseless-punishment
 option option-pick/remove-a-counter-of-your-choice
 option option-pick/reselect-attack
 option option-pick/resolution-exit
@@ -5345,6 +5347,7 @@ tail then/raise-the-palisade-type-chosen
 tail then/reality-scramble-reveal
 tail then/reckless-endeavor-treasures
 tail then/reflections-of-littjara-type-chosen
+tail then/remorseless-punishment-sacrificed
 tail then/ringsight-search
 tail then/ripples-of-potential-proliferated
 tail then/risky-research-draw-two-lose-two
