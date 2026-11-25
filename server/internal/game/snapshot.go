@@ -458,6 +458,11 @@ type GameSnapshot struct {
 	// abilities twice this turn. Additive.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
 
+	// TapForeignLandsThisTurn is Game's (#6204, ADR 0106 §1 amendment
+	// 2026-11-25): the players who may tap lands they don't control for
+	// mana this turn. Additive.
+	TapForeignLandsThisTurn map[uuid.UUID]bool `json:"tapForeignLandsThisTurn,omitempty"`
+
 	// LoyaltyPermanentTwiceThisTurn is Game's (#5479): the permanents
 	// whose loyalty abilities may be activated twice this turn. Additive.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyPermanentTwiceThisTurn,omitempty"`
@@ -2842,6 +2847,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	s.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
@@ -4239,6 +4245,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
+	g.TapForeignLandsThisTurn = copyBoolMap(s.TapForeignLandsThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
 	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
 	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)

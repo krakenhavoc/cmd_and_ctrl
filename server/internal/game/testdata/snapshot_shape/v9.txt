@@ -91458,6 +91458,8 @@ stepRecords[].record.strs	array
 stepRecords[].record.strs[]	string
 tableRollNext	number:uint64
 takenAt	custom(time.Time)
+tapForeignLandsThisTurn	map:array
+tapForeignLandsThisTurn{}	bool
 turn	object
 turn.ActiveSeat	number:int
 turn.Extra	bool
