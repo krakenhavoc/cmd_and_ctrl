@@ -745,6 +745,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			// Vultures) gains nothing this evaluator can see, and loses
 			// the card. Never taken on its own.
 			return -1, "discard as a special action"
+		case "end_effect":
+			// #5781, CR 116.2c: ending a licid's effect (the licids) takes
+			// its Aura off the creature it was put on, which this
+			// evaluator cannot weigh. Never taken on its own.
+			return -1, "end a licid's effect"
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 

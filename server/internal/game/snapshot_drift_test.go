@@ -716,6 +716,10 @@ var cardFields = plan(
 	// returned as an Aura, set as the entry lands. Carried: a restore that
 	// dropped it would give the Aura its creature back.
 	"ReturnedAura", carried, "",
+	// #5781: a licid's "you may pay to end this effect", carried for
+	// ReturnedAura's reason.
+	"AuraFormEndBy", carried, "",
+	"AuraFormEndCost", carried, "",
 	"EnchantReturned", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for

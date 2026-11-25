@@ -1487,6 +1487,13 @@ type cardSnapshot struct {
 	// version: an older binary ignores the key and a file without it
 	// restores every card as printed.
 	ReturnedAura bool `json:"returnedAura,omitempty"`
+	// AuraFormEndBy and AuraFormEndCost are a licid's "you may pay {X} to
+	// end this effect" (licid.go, #5781), carried for ReturnedAura's
+	// reason: a restore that dropped them would leave the licid an Aura
+	// nobody can ever end. Additive: a file without them restores no
+	// offer, which is every card before this change.
+	AuraFormEndBy   *uuid.UUID `json:"auraFormEndBy,omitempty"`
+	AuraFormEndCost string     `json:"auraFormEndCost,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -3394,6 +3401,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EnchantSwapped:             c.EnchantSwapped,
 		EnchantReturned:            snapshotObjectRefPtr(c.EnchantReturned),
 		ReturnedAura:               c.ReturnedAura,
+		AuraFormEndBy:              uuidPtrOrNil(c.AuraFormEndBy),
+		AuraFormEndCost:            c.AuraFormEndCost,
 		Saddled:                    c.Saddled,
 		SaddledBy:                  append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                  c.Suspected,
@@ -4599,6 +4608,8 @@ func restoreCard(c *cardSnapshot) Card {
 		EnchantSwapped:             c.EnchantSwapped,
 		EnchantReturned:            restoreObjectRefPtr(c.EnchantReturned),
 		ReturnedAura:               c.ReturnedAura,
+		AuraFormEndBy:              uuidOrNil(c.AuraFormEndBy),
+		AuraFormEndCost:            c.AuraFormEndCost,
 		Saddled:                    c.Saddled,
 		SaddledBy:                  append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                  c.Suspected,
