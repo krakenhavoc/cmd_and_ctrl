@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // alternative_cost.go — S22: a cost paid *instead of* a spell's mana
 // cost (CR 118.9). The fourth kind of cost the engine models, after
@@ -200,6 +204,16 @@ type AlternativeCost struct {
 	// coincidence of escape rather than a rule: FromZone is the
 	// place, this is the price, and the two are still independent.
 	ExileFromGraveyard *TargetSpec
+
+	// GraveyardTopOnly narrows ExileFromGraveyard to the topmost N
+	// cards of the caster's graveyard that match it (#6194: Spinning
+	// Darkness's "You may exile the top three black cards of your
+	// graveyard rather than pay this spell's mana cost"). The cards are
+	// not the caster's to pick (CR 404.2, the pile's order): the walk
+	// offers exactly those, and the validator refuses any other. With
+	// fewer than N matches it can't be paid, as before. False is every
+	// offer before it, additive.
+	GraveyardTopOnly bool
 
 	// Sacrifice is a "sacrifice N <permanents>" component of the
 	// price — Dread Return's "Flashback—Sacrifice three creatures",
@@ -1339,6 +1353,16 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 			return ErrInvalidParam
 		}
 	}
+	if alt.GraveyardTopOnly && zone == ZoneGraveyard {
+		// #6194: "the top three black cards" are those three, and no
+		// matching card below them.
+		top := g.AltCostCandidatesLocked(playerID, castID, alt)
+		for _, id := range ids {
+			if !slices.Contains(top, id) {
+				return ErrInvalidParam
+			}
+		}
+	}
 	// ADR 0135 §2: a set rule over the picks (Foil's "an Island card
 	// and another card"). Each card passed the clause's union predicate
 	// above; the SET must still fill every entry, one card each. Two
@@ -1437,6 +1461,11 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 			continue
 		}
 		out = append(out, c.InstanceID)
+	}
+	if alt.GraveyardTopOnly && kind == ZoneGraveyard {
+		// #6194: only the topmost N matches, never one below them.
+		_, _, want := alt.cardComponent()
+		return topOfPileOrder(out, want)
 	}
 	if alt.Sacrifice != nil || alt.TapOthers != nil {
 		// #1727: a sacrifice payment is offered in the order every

@@ -168,6 +168,7 @@
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
+    kicksOf,
     optionalCostXFloor,
     castTeamworkOffer,
     castBlightOffer,
@@ -682,7 +683,8 @@
     // TOP of whichever that turns out to be. They compose, so neither
     // branch of `key` drops the other.
     let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
-    if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    if (optional.length > 0)
+      next = { ...next, optionalCosts: optional, kicks: kicksOf(card, optional) };
     // #1267: the gift's opponent is part of the same announcement; the
     // modal only hands one back when the gift toggle is on.
     if (giftOpponent !== undefined) next = { ...next, giftOpponent };

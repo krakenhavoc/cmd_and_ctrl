@@ -359,6 +359,12 @@ type DelayedTrigger struct {
 	// land's controller; they are the same player for every printed
 	// card, and the pool is who the extra mana lands with.
 	ManaTapControllerOnly bool
+
+	// CopiesSpell is the spell an epic trigger copies at each of its
+	// controller's upkeeps (CR 702.50a, #6141, epic.go): the card and its
+	// stack item as they resolved, as snapshot records. Nil on every other
+	// trigger. Plain data, never mutated once scheduled.
+	CopiesSpell *EpicSpell
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -615,6 +621,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		ManaAdds:           dt.ManaAdds,
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
+		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration

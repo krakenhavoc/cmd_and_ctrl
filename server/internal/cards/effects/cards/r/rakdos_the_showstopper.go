@@ -18,7 +18,9 @@ import (
 // (CR 705.1, FlipCoinsForEffect: nobody wins or loses), and every creature
 // whose flip is tails is destroyed together. Rakdos is a Demon, so it is
 // never flipped for. Regeneration and indestructible apply as for any
-// destruction. A declared partial sweep (ADR 0126).
+// destruction. A declared partial sweep (ADR 0126). Under Krark's Thumb
+// the flipper keeps heads for their own creatures and tails for the rest
+// (#6152).
 func init() {
 	effects.Register(effects.Spec{
 		OracleID:        "03a4b997-4738-41a9-933f-e1f765e3a75a",
@@ -34,7 +36,14 @@ func init() {
 					if len(flipped) == 0 {
 						return nil
 					}
-					faces, err := g.FlipCoinsForEffect(game.RandomDraw{Player: item.Controller, Source: item.SourceCardID}, len(flipped))
+					// The face the flipper wants for each coin, read only when
+					// Krark's Thumb has them flip several and keep one (#6152):
+					// their own creature heads, everyone else's tails.
+					prefer := make([]bool, len(flipped))
+					for i, c := range flipped {
+						prefer[i] = c.Controller == item.Controller
+					}
+					faces, err := g.FlipCoinsPreferringForEffect(game.RandomDraw{Player: item.Controller, Source: item.SourceCardID}, prefer)
 					if err != nil {
 						return err
 					}
