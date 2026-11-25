@@ -154,6 +154,12 @@ type AttackTargetRestriction struct {
 	// the city's blessing a fact about the controller alone, so it refuses
 	// every target while it is unmet.
 	ControllerHandAtLeast int `json:",omitempty"`
+	// ControllerHandAtMost, when above zero, forbids attacking anything while
+	// the attacking creature's controller has more cards than this in hand:
+	// "can't attack unless you have one or fewer cards in hand" (Hazoret the
+	// Fervent, CR 508.1c). Read live at declaration, a fact about the
+	// controller alone like ControllerHandAtLeast.
+	ControllerHandAtMost int `json:",omitempty"`
 	// ControllerMustControl, when set, forbids attacking anything while the
 	// attacking creature's controller controls no permanent matching ANY of
 	// these queries: "can't attack unless you control a 1/1 creature"
@@ -249,6 +255,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
+		r.ControllerHandAtMost == o.ControllerHandAtMost &&
 		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
 		samePermanentQueries(r.ControllerMustControlAnother, o.ControllerMustControlAnother) &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
@@ -275,7 +282,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0 ||
+		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
 		len(r.ControllerMustControlAnother) > 0
 }
 
@@ -315,6 +322,15 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	if n := r.ControllerHandAtLeast; n > 0 {
 		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {
 			return g.playerNameLocked(you) + " has fewer than " + countWord(n) + " cards in hand"
+		}
+	}
+	if n := r.ControllerHandAtMost; n > 0 {
+		if yp := g.playerByIDLocked(you); yp != nil && yp.Hand != nil && yp.Hand.Size() > n {
+			noun := " cards in hand"
+			if n == 1 {
+				noun = " card in hand"
+			}
+			return g.playerNameLocked(you) + " has more than " + countWord(n) + noun
 		}
 	}
 	if qs := r.ControllerMustControl; len(qs) > 0 && !g.controlsMatchingLocked(you, qs) {
