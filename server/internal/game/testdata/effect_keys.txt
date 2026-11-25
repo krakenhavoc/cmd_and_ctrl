@@ -977,6 +977,7 @@ choose choose-cards/firja-judge-of-valor-take
 choose choose-cards/floriferous-vinewall-take
 choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
+choose choose-cards/fork-in-the-road-settle
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortunate-few-pick
 choose choose-cards/fortune-loyal-steed-saddler
@@ -4170,6 +4171,7 @@ tail foggy-swamp-visions/sacrifice-copies
 tail foot-chopper/draw-cards-equal-to-sacrificed-power
 tail foray-of-orcs/reflexive-damage
 tail forgotten-creation/draw-per-discarded
+tail fork-in-the-road/choose
 tail fortune-loyal-steed/return-exiled-together
 tail forum-filibuster/inkling-created
 tail founding-the-third-path/copy-exiled
