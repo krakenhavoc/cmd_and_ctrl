@@ -1,10 +1,7 @@
 package cardsj
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Jaya's Immolating Inferno — Legendary Sorcery {X}{R}{R} (Secret Lair Drop,
@@ -35,12 +32,6 @@ func init() {
 		CastConditionLabel: effects.LegendarySorceryLabel,
 		Targets:            upToThree,
 		Purpose:            effects.ForTargets(effects.DamageXToTarget(0)),
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			var ids []uuid.UUID
-			for _, t := range ctx.LegalTargets() {
-				ids = append(ids, t.ID)
-			}
-			return effects.DealDamageToEachThen(ctx, ids, ctx.X(), effects.RecipientThen{})
-		},
+		OnResolve:          effects.DamageXToEachLegalTarget(),
 	})
 }

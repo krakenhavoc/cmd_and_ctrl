@@ -1231,6 +1231,12 @@ type LegalTargetsView struct {
 	// than the exact count: "up to X target cards". The picker lets
 	// the player confirm with fewer.
 	UpToX bool `json:"up_to_x,omitempty"`
+	// CountFromKicks marks a clause whose count is one plus the number
+	// of times the spell is kicked (#6150, CR 601.2c): "choose another
+	// target for each time this spell was kicked" (Comet Storm). Min /
+	// Max are the unkicked count; the client adds the kicks it collected
+	// in the cost prompt.
+	CountFromKicks bool `json:"count_from_kicks,omitempty"`
 
 	// LifeTaxes is the extra life each legal card costs the caster to
 	// name, keyed by wire id (CR 601.2f, #3860): Terror of the Peaks'
@@ -8680,7 +8686,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, CountFromKicks: spec.CountFromKicks, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}

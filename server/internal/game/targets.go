@@ -1073,6 +1073,17 @@ type TargetSpec struct {
 	// printed card (issue #259).
 	CountFromX bool
 
+	// CountFromKicks makes the clause's target count one plus the number
+	// of times the spell was kicked (#6150, CR 601.2c, 702.33c-d): "choose
+	// any target, then choose another target for each time this spell was
+	// kicked" (Comet Storm, Strength of the Tajuru). Min and Max are the
+	// unkicked count, 1. TargetSpecUnderOptionalCosts binds it to the
+	// announced kicks wherever the announcement is judged (announce, the
+	// CR 608.2b re-check, the move enumerator); the wire ships it as
+	// count_from_kicks so the picker asks for 1 + kicks. A spell's single
+	// card-level clause only (effects.Register).
+	CountFromKicks bool
+
 	// UpToX turns CountFromX into "up to X": the announced X is the
 	// CEILING and zero targets is a legal pick ("up to X target cards
 	// from graveyards", Kozilek's Command; "up to X targets", Crackle
