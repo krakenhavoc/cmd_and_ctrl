@@ -1369,6 +1369,7 @@ choose choose-cards/mordor-on-the-march-exile
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
+choose choose-cards/mystic-meditation-discard-two-unless-creature
 choose choose-cards/nael-avizoa-aeronaut-arranged
 choose choose-cards/nahiri-heir-of-the-ancients-attach-equipment
 choose choose-cards/nahiri-the-lithomancer-attach-equipment
@@ -2359,6 +2360,7 @@ drawthen leonardo-da-vinci/discard
 drawthen malcolm-discard
 drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
+drawthen mystic-meditation-discard-two-unless-creature
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen old-b043-discard-two-unless-instant-or-sorcery
