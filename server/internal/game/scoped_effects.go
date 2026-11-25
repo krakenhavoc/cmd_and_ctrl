@@ -1278,6 +1278,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// #1997: Hall of Gemstone's "lands tapped for mana produce mana of
 	// the chosen color instead" (land_mana_color.go).
 	ModLandManaIsColor: {reader: readerReplacement},
+	// #6210: Harvest Mage's "one mana of a color of your choice instead".
+	ModLandManaOfChosenColor: {reader: readerReplacement},
 	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// Don't Blink: creatures entering from exile are shuffled into their

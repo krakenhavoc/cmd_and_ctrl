@@ -186,6 +186,10 @@ func replacementModProblem(m Mod) string {
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
+	case ModLandManaOfChosenColor:
+		if m.Player == uuid.Nil {
+			return "a landManaOfChosenColor replacement names no player"
+		}
 	case ModExileInsteadOfYourGraveyard:
 		if m.Player == uuid.Nil {
 			return "an exileInsteadOfYourGraveyard replacement names no player"
@@ -249,7 +253,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModNextEntersAsCopies:
 		// #6160: Mystic Reflection's one-shot entry copy.
 		return watchZoneMove
-	case ModLandManaIsColor:
+	case ModLandManaIsColor, ModLandManaOfChosenColor:
 		return watchManaAdded
 	}
 	return nil
@@ -842,6 +846,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return redirectTokensAppliesLocked(m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
+	case ModLandManaOfChosenColor:
+		return landManaOfChosenColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, m, ev)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
@@ -963,6 +969,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	case ModLandManaIsColor:
 		// #1997: every coloured mana becomes the chosen colour.
 		applyLandManaColorLocked(m, ev)
+	case ModLandManaOfChosenColor:
+		// #6210: one mana of the colour chosen at the tap.
+		ev.ManaColors = []string{ManaOfChosenColor}
 	case ModExileInsteadOfGraveyard:
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil

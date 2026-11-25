@@ -75,6 +75,10 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 		return nil
 	}
 	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
+	if err == nil {
+		// #6210: "mana of a color of your choice instead" offers five.
+		slots = g.widenChosenColorSlotsLocked(playerID, cardID, slots, ab.TapCost)
+	}
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return nil
 	}
@@ -157,6 +161,10 @@ func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbil
 		return ErrIllegalManaColor
 	}
 	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
+	if err == nil {
+		// #6210: "mana of a color of your choice instead" offers five.
+		slots = g.widenChosenColorSlotsLocked(playerID, cardID, slots, ab.TapCost)
+	}
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return ErrIllegalManaColor
 	}

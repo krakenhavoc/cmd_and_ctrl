@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
+  - ["Produces mana of a color of your choice instead" (ADR 0013 amendment 2026-11-25, #6210)](#produces-mana-of-a-color-of-your-choice-instead-adr-0013-amendment-2026-11-25-6210)
   - ["As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)](#as-long-as-this-is-on-the-stack-adr-0048-amendment-2026-11-25-6222)
   - ["Counter target spell if it would destroy a land you control" (ADR 0228, #6225)](#counter-target-spell-if-it-would-destroy-a-land-you-control-adr-0228-6225)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
@@ -5126,6 +5127,22 @@ right, and the replacement knows who is countering. Declare
 - **It can pause.** Two replacements that disagree are ordered by the
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
+
+### "Produces mana of a color of your choice instead" (ADR 0013 amendment 2026-11-25, #6210)
+
+Pulse of Llanowar, Harvest Mage. The colour is chosen as part of the
+tap (a mana ability can't pause, CR 605.3b), so the card only declares
+the replacement:
+
+- **A static** ("if a basic land you control is tapped for mana"):
+  `Spec.Replacements` gets
+  `effects.TappedForManaProducesAColorOfYourChoice(label, oneMana, applies)`.
+  `oneMana` is "one mana … instead of any other type and amount", and
+  `effects.BasicLandYouControl` is Pulse's `applies`.
+- **Until end of turn** (Harvest Mage's activated ability):
+  `ctx.Game.LandsYouTapProduceOneManaOfAColorOfYourChoiceThisTurnForEffect(source, you, label)`.
+- Nothing else: a hand tap asks the five-colour pick, and the auto-tapper
+  picks the colour the cost needs.
 
 ### "As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)
 

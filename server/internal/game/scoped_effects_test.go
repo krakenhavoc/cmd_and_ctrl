@@ -521,6 +521,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,
+		// #6210: Harvest Mage's chosen colour; cases in
+		// cards/effects/tests/m/mana_color_of_choice_test.go.
+		ModLandManaOfChosenColor: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,
