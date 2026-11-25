@@ -6585,6 +6585,10 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	// face-down exiled cards are revealed on the way out only when the
 	// departure does not end the game (the same test as below).
 	g.recordFinalBoardLocked(p, g.survivingSeatsLocked() > 1)
+	// #6123: and what they controlled, as copy sources with their
+	// last-known types, for a trigger on this loss that resolves after
+	// CR 800.4a has taken the objects out of the game.
+	g.recordDepartedPermanentsLocked(p)
 	// #2450: a player leaving the game is loop progress (ADR 0055's
 	// 2026-10-07 amendment, option B, owner decision 3a).
 	g.noteLoopProgressLocked()

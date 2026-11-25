@@ -571,6 +571,7 @@ const SPECIAL_ACTION_NAMES: Readonly<Record<string, string>> = Object.freeze({
   unlock: "unlock a door",
   ignore_effect: "ignore its effect",
   discard: "discard",
+  end_effect: "end the effect",
 });
 
 /** The generic name of a special action, and of the star pip. */
@@ -801,6 +802,7 @@ const SPECIAL_ACTION_PHRASES: Readonly<Record<string, string>> = Object.freeze({
   turn_face_up: "can be turned face up",
   unlock: "has a door you can unlock",
   ignore_effect: "has an effect you can ignore",
+  end_effect: "has an effect you can end",
 });
 
 /** The phrase for a ready card none of the specific phrases explain. */

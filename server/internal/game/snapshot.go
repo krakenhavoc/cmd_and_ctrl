@@ -964,6 +964,10 @@ type playerSnapshot struct {
 	// zones as they left, plain data. Additive within v9: a file written
 	// before it restores an eliminated player with no final board.
 	FinalBoard *FinalBoard `json:"finalBoard,omitempty"`
+	// DepartedPermanents is Player.DepartedPermanents (#6123): what an
+	// eliminated player controlled as they left, plain data. Additive
+	// within the version: a file written before it restores with none.
+	DepartedPermanents []departedPermanentSnapshot `json:"departedPermanents,omitempty"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -1487,6 +1491,13 @@ type cardSnapshot struct {
 	// version: an older binary ignores the key and a file without it
 	// restores every card as printed.
 	ReturnedAura bool `json:"returnedAura,omitempty"`
+	// AuraFormEndBy and AuraFormEndCost are a licid's "you may pay {X} to
+	// end this effect" (licid.go, #5781), carried for ReturnedAura's
+	// reason: a restore that dropped them would leave the licid an Aura
+	// nobody can ever end. Additive: a file without them restores no
+	// offer, which is every card before this change.
+	AuraFormEndBy   *uuid.UUID `json:"auraFormEndBy,omitempty"`
+	AuraFormEndCost string     `json:"auraFormEndCost,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -3394,6 +3405,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EnchantSwapped:             c.EnchantSwapped,
 		EnchantReturned:            snapshotObjectRefPtr(c.EnchantReturned),
 		ReturnedAura:               c.ReturnedAura,
+		AuraFormEndBy:              uuidPtrOrNil(c.AuraFormEndBy),
+		AuraFormEndCost:            c.AuraFormEndCost,
 		Saddled:                    c.Saddled,
 		SaddledBy:                  append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                  c.Suspected,
@@ -3491,6 +3504,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  string(p.LossCause),
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         snapshotDepartedPermanents(p.DepartedPermanents, cen),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,
@@ -4599,6 +4613,8 @@ func restoreCard(c *cardSnapshot) Card {
 		EnchantSwapped:             c.EnchantSwapped,
 		EnchantReturned:            restoreObjectRefPtr(c.EnchantReturned),
 		ReturnedAura:               c.ReturnedAura,
+		AuraFormEndBy:              uuidOrNil(c.AuraFormEndBy),
+		AuraFormEndCost:            c.AuraFormEndCost,
 		Saddled:                    c.Saddled,
 		SaddledBy:                  append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                  c.Suspected,
@@ -4728,6 +4744,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  LossCause(p.LossCause),
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         restoreDepartedPermanents(p.DepartedPermanents),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,

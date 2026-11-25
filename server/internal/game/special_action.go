@@ -238,6 +238,11 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	// ADR 0103: the unlock offers are derived from the card too — a
 	// face-up Room with a locked door (CR 709.5e).
 	out = append(out, UnlockOffers(c)...)
+	// #5781: a licid's "you may pay to end this effect" (CR 116.2c),
+	// derived from its Aura form (licid.go).
+	if eo := EndEffectOffer(c); eo != nil {
+		out = append(out, *eo)
+	}
 	return append(out, SpecialActionsFor(CatalogKey(c))...)
 }
 
@@ -262,6 +267,9 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 	}
 	if kind == SpecialActionCompanion {
 		return CompanionOffer(c)
+	}
+	if kind == SpecialActionEndEffect {
+		return EndEffectOffer(c)
 	}
 	if kind == SpecialActionUnlock {
 		if offers := UnlockOffers(c); len(offers) > 0 {
@@ -297,7 +305,7 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
 	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot, SpecialActionDiscard:
 		return ZoneHand
-	case SpecialActionTurnFaceUp, SpecialActionUnlock:
+	case SpecialActionTurnFaceUp, SpecialActionUnlock, SpecialActionEndEffect:
 		return ZoneBattlefield
 	case SpecialActionCompanion:
 		return ZoneOutside
@@ -503,6 +511,12 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// stack, but not under split second, where no instant can be
 		// cast (CR 702.61a). See discard_special_action.go.
 		return !g.SplitSecondActive && g.holdsPriorityLocked(playerID)
+
+	case SpecialActionEndEffect:
+		// CR 116.2c: "any time they have priority" — on any turn, with
+		// anything on the stack, and under split second too (CR
+		// 702.61b stops casts and activations only). See licid.go.
+		return g.holdsPriorityLocked(playerID)
 	}
 	return false
 }
@@ -712,6 +726,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).revealAgendaLocked
 	case SpecialActionDiscard:
 		return (*Game).discardSpecialActionLocked
+	case SpecialActionEndEffect:
+		return (*Game).endEffectLocked
 	}
 	return nil
 }
@@ -750,6 +766,15 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 			// is told the card is not there rather than that it is
 			// not theirs — a face-down permanent's identity is not
 			// theirs to probe.
+			//
+			// #5781: a licid's effect is ended by the player the effect
+			// names ("you", CR 109.5), whoever controls the licid now.
+			if kind == SpecialActionEndEffect {
+				if c.AuraFormEndBy != p.ID {
+					return Card{}, "", ErrCardNotFound
+				}
+				return c, zone, nil
+			}
 			if c.Controller != p.ID {
 				return Card{}, "", ErrCardNotFound
 			}
