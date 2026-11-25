@@ -124,6 +124,14 @@ type ModeSpec struct {
 	// card that does not say the words expects. Added by #764.
 	Repeatable bool
 
+	// CountIsX is "Choose X. You may choose the same mode more than
+	// once." (#6125, Doomsday Confluence {X}{X}{B}): the number of modes
+	// IS the spell's announced X (CR 601.2b announces both, CR 700.2d lets
+	// a mode repeat), with no printed ceiling. Min and Max are both X at
+	// announce (modeBoundsLocked); X = 0 chooses none. A spell's ModeSpec
+	// only, always Repeatable; effects.Register refuses it elsewhere.
+	CountIsX bool `json:",omitempty"`
+
 	// RaisedMax / RaisedMin / RaiseMaxIf are a CONDITIONAL mode count
 	// (#1590, #1655). While RaiseMaxIf holds, the upper bound is
 	// RaisedMax instead of Max, and the lower bound is RaisedMin
@@ -545,6 +553,11 @@ func (g *Game) modeBoundsLocked(ms *ModeSpec, q ModeCountQuery) (lo, hi int) {
 	if ms == nil {
 		return 0, 0
 	}
+	if ms.CountIsX {
+		// #6125: "Choose X" — exactly the announced X, uncapped, since
+		// the modes may repeat (CR 700.2d).
+		return max(q.X, 0), max(q.X, 0)
+	}
 	if ms.upToX() {
 		// CR 107.3m for a cast X, CR 603.3c for a counted one (both
 		// set q.X in queueModePickLocked); CR 700.2d caps it at the
@@ -627,6 +640,11 @@ func validateModes(spec *ModeSpec, lo, hi int, modes []int) error {
 		seen[m] = true
 	}
 	if len(modes) < lo || (hi > 0 && len(modes) > hi) {
+		return ErrInvalidParam
+	}
+	// #6125: "Choose X" is exactly X, and X = 0 is a real bound of none
+	// rather than the open count a zero Max means elsewhere.
+	if spec.CountIsX && len(modes) != hi {
 		return ErrInvalidParam
 	}
 	// CR 700.2i (#4786): a pawprint spell is bounded by the {P} its

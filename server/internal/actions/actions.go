@@ -2985,6 +2985,10 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #6125 — x_value is the X a mana ability with X in its cost
+			// announces (Wizard's Rockets' {X}, Springjack Pasture's
+			// "Sacrifice X Goats"). See game.ManaAbilityParams.XValue.
+			XValue int `json:"x_value,omitempty"`
 			// #5397 — cost_branch is the branch of an either/or cost
 			// the activation pays: forage on a mana ability (Thornvault
 			// Forager), 0 exiles three graveyard cards (exile_ids), 1
@@ -3085,6 +3089,7 @@ func dispatch(g *game.Game, a Action) error {
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
 			PhyrexianLife:     p.PhyrexianLife,
+			XValue:            p.XValue,
 			CostBranch:        p.CostBranch,
 		})
 

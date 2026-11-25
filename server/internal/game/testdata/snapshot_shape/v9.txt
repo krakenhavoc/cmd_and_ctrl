@@ -1252,6 +1252,7 @@ delayedTriggers[].copiesSpell.item.paid.untappedOthers	array
 delayedTriggers[].copiesSpell.item.paid.untappedOthers[]	object
 delayedTriggers[].copiesSpell.item.paid.untappedOthers[].epoch	number:int
 delayedTriggers[].copiesSpell.item.paid.untappedOthers[].id	custom(uuid.UUID)
+delayedTriggers[].copiesSpell.item.paid.xValue	number:int
 delayedTriggers[].copiesSpell.item.params	object
 delayedTriggers[].copiesSpell.item.params.ability	object
 delayedTriggers[].copiesSpell.item.params.ability.key	string
@@ -16445,6 +16446,7 @@ frozenEntries[].event.stackItem.paid.untappedOthers	array
 frozenEntries[].event.stackItem.paid.untappedOthers[]	object
 frozenEntries[].event.stackItem.paid.untappedOthers[].epoch	number:int
 frozenEntries[].event.stackItem.paid.untappedOthers[].id	custom(uuid.UUID)
+frozenEntries[].event.stackItem.paid.xValue	number:int
 frozenEntries[].event.stackItem.params	object
 frozenEntries[].event.stackItem.params.ability	object
 frozenEntries[].event.stackItem.params.ability.key	string
@@ -25346,6 +25348,7 @@ lastKnownStack[].item.paid.untappedOthers	array
 lastKnownStack[].item.paid.untappedOthers[]	object
 lastKnownStack[].item.paid.untappedOthers[].epoch	number:int
 lastKnownStack[].item.paid.untappedOthers[].id	custom(uuid.UUID)
+lastKnownStack[].item.paid.xValue	number:int
 lastKnownStack[].item.params	object
 lastKnownStack[].item.params.ability	object
 lastKnownStack[].item.params.ability.key	string
@@ -39950,6 +39953,7 @@ movesAwaitingTokens[].stackItem.paid.untappedOthers	array
 movesAwaitingTokens[].stackItem.paid.untappedOthers[]	object
 movesAwaitingTokens[].stackItem.paid.untappedOthers[].epoch	number:int
 movesAwaitingTokens[].stackItem.paid.untappedOthers[].id	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.paid.xValue	number:int
 movesAwaitingTokens[].stackItem.params	object
 movesAwaitingTokens[].stackItem.params.ability	object
 movesAwaitingTokens[].stackItem.params.ability.key	string
@@ -47394,6 +47398,7 @@ pausedModeWalk.item.paid.untappedOthers	array
 pausedModeWalk.item.paid.untappedOthers[]	object
 pausedModeWalk.item.paid.untappedOthers[].epoch	number:int
 pausedModeWalk.item.paid.untappedOthers[].id	custom(uuid.UUID)
+pausedModeWalk.item.paid.xValue	number:int
 pausedModeWalk.item.params	object
 pausedModeWalk.item.params.ability	object
 pausedModeWalk.item.params.ability.key	string
@@ -47786,6 +47791,7 @@ pausedResolutionTail.item.paid.untappedOthers	array
 pausedResolutionTail.item.paid.untappedOthers[]	object
 pausedResolutionTail.item.paid.untappedOthers[].epoch	number:int
 pausedResolutionTail.item.paid.untappedOthers[].id	custom(uuid.UUID)
+pausedResolutionTail.item.paid.xValue	number:int
 pausedResolutionTail.item.params	object
 pausedResolutionTail.item.params.ability	object
 pausedResolutionTail.item.params.ability.key	string
@@ -48172,6 +48178,7 @@ pausedStepWalk.item.paid.untappedOthers	array
 pausedStepWalk.item.paid.untappedOthers[]	object
 pausedStepWalk.item.paid.untappedOthers[].epoch	number:int
 pausedStepWalk.item.paid.untappedOthers[].id	custom(uuid.UUID)
+pausedStepWalk.item.paid.xValue	number:int
 pausedStepWalk.item.params	object
 pausedStepWalk.item.params.ability	object
 pausedStepWalk.item.params.ability.key	string
@@ -51248,6 +51255,7 @@ pendingChoices[].copyWalk.item.paid.untappedOthers	array
 pendingChoices[].copyWalk.item.paid.untappedOthers[]	object
 pendingChoices[].copyWalk.item.paid.untappedOthers[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.untappedOthers[].id	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.paid.xValue	number:int
 pendingChoices[].copyWalk.item.params	object
 pendingChoices[].copyWalk.item.params.ability	object
 pendingChoices[].copyWalk.item.params.ability.key	string
@@ -70716,6 +70724,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.untappedOthers	array
 pendingChoices[].replacementResume.event.stackItem.paid.untappedOthers[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.untappedOthers[].epoch	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.untappedOthers[].id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.paid.xValue	number:int
 pendingChoices[].replacementResume.event.stackItem.params	object
 pendingChoices[].replacementResume.event.stackItem.params.ability	object
 pendingChoices[].replacementResume.event.stackItem.params.ability.key	string
@@ -81909,6 +81918,7 @@ pendingTriggers[].paid.untappedOthers	array
 pendingTriggers[].paid.untappedOthers[]	object
 pendingTriggers[].paid.untappedOthers[].epoch	number:int
 pendingTriggers[].paid.untappedOthers[].id	custom(uuid.UUID)
+pendingTriggers[].paid.xValue	number:int
 pendingTriggers[].params	object
 pendingTriggers[].params.ability	object
 pendingTriggers[].params.ability.key	string
@@ -84822,6 +84832,7 @@ resolving.item.paid.untappedOthers	array
 resolving.item.paid.untappedOthers[]	object
 resolving.item.paid.untappedOthers[].epoch	number:int
 resolving.item.paid.untappedOthers[].id	custom(uuid.UUID)
+resolving.item.paid.xValue	number:int
 resolving.item.params	object
 resolving.item.params.ability	object
 resolving.item.params.ability.key	string
@@ -91268,6 +91279,7 @@ stackMeta[].paid.untappedOthers	array
 stackMeta[].paid.untappedOthers[]	object
 stackMeta[].paid.untappedOthers[].epoch	number:int
 stackMeta[].paid.untappedOthers[].id	custom(uuid.UUID)
+stackMeta[].paid.xValue	number:int
 stackMeta[].params	object
 stackMeta[].params.ability	object
 stackMeta[].params.ability.key	string

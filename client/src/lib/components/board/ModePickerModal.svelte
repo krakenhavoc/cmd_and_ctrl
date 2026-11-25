@@ -86,7 +86,7 @@
   const canConfirm = $derived(
     spec !== null &&
       count >= spec.min &&
-      count <= (spec.max > 0 ? spec.max : count) &&
+      count <= (spec.max > 0 || spec.count_is_x ? spec.max : count) &&
       (budget === 0 || spent <= budget),
   );
 
@@ -131,7 +131,8 @@
       chosen = chosen.filter((x) => x !== i);
       return;
     }
-    if (spec.max > 0 && chosen.length >= spec.max) return;
+    // #6125: "Choose X" caps at the X announced, zero included.
+    if ((spec.max > 0 || spec.count_is_x) && chosen.length >= spec.max) return;
     if (!fitsAnother(i)) return;
     // Appended, never sorted: the order the player clicks in is the
     // order CR 608.2c resolves in and the order the targets are

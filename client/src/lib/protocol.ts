@@ -3356,6 +3356,11 @@ export interface ModeSpecView {
   // (Mystic Confluence). The picker offers a count per option rather
   // than a toggle, and each occurrence is asked for its own targets.
   repeatable?: boolean;
+  // #6125: "Choose X. You may choose the same mode more than once."
+  // (Doomsday Confluence): the mode count is the X the cast announces.
+  // `min` / `max` are 0 here; the client asks X first and then takes
+  // exactly X modes (modesUnderChoices).
+  count_is_x?: boolean;
   // #1655: the bounds with the card's optional costs announced —
   // Inscription of Ruin's "if this spell was kicked, choose any number
   // instead", Depth Defiler-shaped "choose both instead". `min` / `max`
@@ -6209,6 +6214,11 @@ export interface ManaAbilityView {
   // fields of the same names; the engine refuses a pick below the floor.
   exile_cost_any_number?: boolean;
   exile_cost_mana_value_min?: number;
+  // #6125: X in the row's cost — Wizard's Rockets' "{X}, {T}, Sacrifice
+  // this artifact", Springjack Pasture's "Sacrifice X Goats". The client
+  // asks for X (or, for a sacrifice-X clause, takes the number picked) and
+  // sends it on activate_mana_ability as `x_value`.
+  demands_x?: boolean;
   // #5397: an either/or part of the cost — forage, Thornvault Forager's
   // "{T}, Forage: Add two mana in any combination of colors" (exile three
   // cards from your graveyard, or sacrifice a Food). The same entries

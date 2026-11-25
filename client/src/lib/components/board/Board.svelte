@@ -258,6 +258,7 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaXPayment,
     manaTapNeedsPicker,
     manaCostBranchPayment,
     manaExilePermanentPayment,
@@ -3292,6 +3293,19 @@
     startManaCardCosts(card, ability);
   }
 
+  // #6125: the X of a mana ability with {X} in its cost, carried on the
+  // side like the discard picks until the one activate_mana_ability goes
+  // out as `x_value`.
+  let manaXPrompt = $state<{ card: CardView; ability: ManaAbilityView } | null>(null);
+  let manaXValue: number | undefined = undefined;
+  function confirmManaX(x: number): void {
+    const p = manaXPrompt;
+    manaXPrompt = null;
+    if (!p) return;
+    manaXValue = x;
+    startManaCardCosts(p.card, p.ability);
+  }
+
   // #5397: the branch of a mana ability's either/or cost, carried on the
   // side like the discard picks until the one activate_mana_ability goes
   // out as `cost_branch`. undefined means the row has no branches.
@@ -3325,6 +3339,13 @@
   // startManaCardCosts is the head of the mana cost chain once any
   // either/or branch is folded in (#5397).
   function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    // #6125: an {X} in the mana ability's own cost (Wizard's Rockets) is
+    // asked first. A "Sacrifice X Goats" clause needs no prompt: the
+    // permanents picked are the X (confirmSacrifice).
+    if (ability.demands_x && !ability.sacrifice_options?.count_from_x && manaXValue === undefined) {
+      manaXPrompt = { card, ability };
+      return;
+    }
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -3525,6 +3546,9 @@
         ...manaColorParams(manaColors),
         // #5397: absent unless the row's cost is an either/or (forage).
         ...manaCostBranchPayment(manaCostBranch),
+        // #6125: the X — asked for an {X}, or the number a "Sacrifice X"
+        // clause sacrificed. Absent for every other row.
+        ...manaXPayment(ability, manaXValue, sacrificeIDs),
       },
       viewerID ?? undefined,
     );
@@ -3532,6 +3556,7 @@
   }
 
   function resetManaCostPayment(): void {
+    manaXValue = undefined;
     manaDiscardIDs = [];
     manaExileIDs = [];
     manaExilePermanentIDs = [];
@@ -5135,6 +5160,20 @@
       abilityTopIDs = [];
       abilityExileIDs = [];
       abilityDiscardIDs = [];
+    }}
+  />
+  <!-- #6125: X in a mana ability's own cost (Wizard's Rockets' "{X},
+       {T}, Sacrifice this artifact"). The X rides activate_mana_ability
+       as x_value. -->
+  <XCostModal
+    gameID={view.id}
+    card={manaXPrompt?.card ?? null}
+    suggestedMax={suggestedX}
+    costLabel={manaXPrompt?.ability.mana_cost}
+    onConfirm={confirmManaX}
+    onCancel={() => {
+      manaXPrompt = null;
+      resetManaCostPayment();
     }}
   />
   <!-- #1213: the mana-ability half of the discard picker (Skirge

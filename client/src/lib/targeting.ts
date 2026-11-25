@@ -1547,6 +1547,11 @@ export function castTargetOverride(
 // may take any number of bullets and an unkicked one exactly one.
 export function modesUnderChoices(card: CardView, choices: CastChoices | undefined): CardView {
   const modes = card.modes;
+  // #6125: "Choose X" (Doomsday Confluence) — exactly the X just announced.
+  if (modes?.count_is_x) {
+    const x = Math.max(choices?.xValue ?? 0, 0);
+    return { ...card, modes: { ...modes, min: x, max: x } };
+  }
   const paid = modes?.if_optional_paid;
   if (!modes || !paid || (choices?.optionalCosts?.length ?? 0) === 0) return card;
   return { ...card, modes: { ...modes, min: paid.min, max: paid.max } };

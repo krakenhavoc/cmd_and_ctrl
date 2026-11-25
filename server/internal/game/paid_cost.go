@@ -405,6 +405,14 @@ type PaidCost struct {
 	// and for a roll that was replaced with no roll at all. A CR 707.10
 	// copy of the ability keeps it, as it keeps X.
 	Rolled []int `json:"rolled,omitempty"`
+
+	// XValue is the X a MANA ability announced (#6125,
+	// ManaAbilityParams.XValue): Wizard's Rockets' "Add X mana",
+	// Springjack Pasture's "Add X mana … You gain X life". A mana ability
+	// has no stack item (CR 605.3b), so its ProducedForPaid and Rider read
+	// X here. Zero on every other record, which keeps its X on the stack
+	// item.
+	XValue int `json:"xValue,omitempty"`
 }
 
 // PaidCostBranch reports whether the either/or branch keyed `key` was

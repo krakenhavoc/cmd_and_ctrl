@@ -119,6 +119,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Rider:                     manaRider(a),
 			RiderSelfDamage:           a.PainToYou,
 			RiderSelfLifeGain:         a.GainLife,
+			RiderGainLifeX:            a.GainLifeX,
 			RiderOpponentLifeGain:     a.OpponentsGainLife,
 			TriggerOpponentDamage:     a.PingOpponentsTrigger,
 			PreRider:                  a.PreRider,
