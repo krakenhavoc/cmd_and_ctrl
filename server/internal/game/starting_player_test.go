@@ -78,7 +78,7 @@ func TestRoundReturnsToTheRolledStartingSeat(t *testing.T) {
 	}{{3, 1}, {0, 1}, {1, 1}, {2, 2}}
 	for _, step := range want {
 		turn.Step = StepCleanup
-		turn = turn.advance(4, 2)
+		turn = turn.advance(4, 2, 1)
 		if turn.ActiveSeat != step.seat || turn.Round != step.round {
 			t.Fatalf("after rotation: seat=%d round=%d, want seat=%d round=%d", turn.ActiveSeat, turn.Round, step.seat, step.round)
 		}

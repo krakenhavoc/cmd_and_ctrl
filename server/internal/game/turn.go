@@ -298,7 +298,11 @@ func (t Turn) IsNewTurn(next Turn) bool {
 // PriorityHolder is set via initialPriorityHolder so that landing on
 // Untap or Cleanup yields NoPriority (S13 — those steps don't grant
 // priority per CR 502.4 / 514.3).
-func (t Turn) advance(numSeats, roundStartSeat int) Turn {
+//
+// step is the turn order's direction (#6223, Game.turnOrderStepLocked):
+// +1 for the default order and -1 once it has been reversed. Only the
+// wrap to the next seat reads it.
+func (t Turn) advance(numSeats, roundStartSeat, step int) Turn {
 	idx := indexOfStep(t.Step)
 	next := idx + 1
 	if next < len(turnSequence) {
@@ -321,7 +325,7 @@ func (t Turn) advance(numSeats, roundStartSeat int) Turn {
 	// Wrap: past cleanup, move to the next seat's untap. A table-facing
 	// round is one full rotation from the player who started the game,
 	// not from seat 0; join order must not leak back into turn display.
-	nextSeat := (t.ActiveSeat + 1) % numSeats
+	nextSeat := ((t.ActiveSeat+step)%numSeats + numSeats) % numSeats
 	nextRound := t.Round
 	if nextSeat == roundStartSeat {
 		nextRound++
