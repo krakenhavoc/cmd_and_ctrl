@@ -91256,6 +91256,7 @@ seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
 seats[].statics[].castBan.manaValue	number:int
 seats[].statics[].castBan.maxPerTurn	number:int
+seats[].statics[].castBan.onTurnBegun	number:int
 seats[].statics[].creaturesEnterWithCounters	object
 seats[].statics[].creaturesEnterWithCounters.count	number:int
 seats[].statics[].creaturesEnterWithCounters.enchantmentOnly	bool
