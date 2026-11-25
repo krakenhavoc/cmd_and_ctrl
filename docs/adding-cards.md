@@ -6435,6 +6435,14 @@ spell whose mana cost (or the alternative cost it is cast for) has {X},
 or an activated ability with {X} in its mana, and the mana then pays the
 whole cost, not only X.
 
+"…or pay a cost that contains {C}" (Cultivator Drone, #6259) is
+`game.ManaRestrictColorlessCost`, matched on a cast or an activation whose
+cost being paid prints `{C}` (`ManaSpendContext.CostHasC`). The mana may pay
+any part of that cost. Cultivator Drone's whole clause is
+`ManaRestrictAnyOf([]string{ManaRestrictCast, ManaRestrictColorless},
+[]string{ManaRestrictActivate, ManaRestrictColorless},
+[]string{ManaRestrictColorlessCost})`.
+
 **Mana for spells with {X} in their mana costs (#4834):** "Spend this mana
 only to cast spells with {X} in their mana costs" is
 `game.ManaRestrictSpellXCost` (Troyan, Gutsy Explorer), usually inside a
