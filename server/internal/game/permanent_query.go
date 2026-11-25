@@ -78,6 +78,11 @@ type PermanentQuery struct {
 	// power 2 or less" (Mogg Jailer, #6197). Read live off the
 	// battlefield permanent.
 	Untapped bool `json:",omitempty"`
+	// ToughnessOverPower asks for a permanent whose toughness is greater
+	// than its power, both read live after the layers and its counters:
+	// "each creature with toughness greater than its power" (Immobilizer
+	// Eldrazi, S82 OLD b295). Needs a battlefield permanent.
+	ToughnessOverPower bool `json:",omitempty"`
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -115,7 +120,7 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
 		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast &&
 		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness &&
-		q.Untapped == o.Untapped
+		q.Untapped == o.Untapped && q.ToughnessOverPower == o.ToughnessOverPower
 }
 
 // samePermanentQueries compares two any-of lists in order.
@@ -156,6 +161,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if q.Untapped && c.Tapped {
+		return false
+	}
+	if q.ToughnessOverPower && c.CurrentToughness() <= c.PowerForComparison() {
 		return false
 	}
 	if q.boundsPower() {
@@ -320,6 +328,9 @@ func (q PermanentQuery) Noun() string {
 		with = append(with, fmt.Sprintf("power %d or less", q.PowerAtMost))
 	case q.HasPowerAtLeast:
 		with = append(with, fmt.Sprintf("power %d or greater", q.PowerAtLeast))
+	}
+	if q.ToughnessOverPower {
+		with = append(with, "toughness greater than its power")
 	}
 	if len(with) > 0 {
 		s += " with " + strings.Join(with, " and ")

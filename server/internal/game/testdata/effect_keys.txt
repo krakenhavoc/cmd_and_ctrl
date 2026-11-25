@@ -2901,6 +2901,7 @@ payunless pay-unless/goblin-vandal-destroy-artifact
 payunless pay-unless/goblin-war-wagon-untap
 payunless pay-unless/graveyard-return-this-card-to-battlefield
 payunless pay-unless/graveyard-return-this-card-to-hand
+payunless pay-unless/gravity-negator-flying
 payunless pay-unless/grim-reaper-lethal-legionnaire-return
 payunless pay-unless/grist-voracious-larva-transform
 payunless pay-unless/gryffwing-cavalry-flying
