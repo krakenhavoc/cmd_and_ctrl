@@ -122,9 +122,12 @@ func (g *Game) RandomStepFillableForEffect(src TargetSource, steps []AnnouncedCl
 //
 // Caller must hold g.mu.
 func (g *Game) emitAnnouncedRandomTargetsLocked(actor, source uuid.UUID, steps []AnnouncedClause, drawn []TargetRef) {
+	n := 0
 	for _, ref := range drawn {
 		if i := stepIndexOf(steps, ref.Mode, ref.Slot); i >= 0 {
 			g.emitRandomTargetLocked(actor, source, steps[i], ref)
+			n++
 		}
 	}
+	g.emitChoseAtRandomLocked(EventTargetsSelectedAtRandom, actor, source, n)
 }
