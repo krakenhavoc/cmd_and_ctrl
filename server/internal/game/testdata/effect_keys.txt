@@ -2264,6 +2264,8 @@ confirm may/alania-divergent-storm-draw-and-copy
 confirm may/carpet-of-flowers-add-mana
 confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
+confirm may/deceiver-of-form-bottom
+confirm may/deceiver-of-form-copies
 confirm may/gempalm-incinerator-damage
 confirm may/jecht-reluctant-guardian-transform
 confirm may/radha-heir-to-keld-add-mana
