@@ -817,6 +817,21 @@ unless the card prints one (The Deck of Many Things' "0 or less").
   (CR 706.7). "…and ignore one" with a chooser is Ichor Elixir's
   `ev.RollOneMoreAndIgnoreOne`.
 
+**"Whenever you discard one or more cards at random, select one or more
+targets at random, choose one or more modes at random"** (Chira, All In,
+#6101) watches three events the engine emits once per instruction where
+it makes the draw ([game/random_events.go](../server/internal/game/random_events.go)):
+`EventDiscardedAtRandom` (every effect discard at random, a "discard N
+cards at random" activation cost, a pay-unless random discard),
+`EventTargetsSelectedAtRandom` (`ChosenAtRandom` targets and
+`ReselectTargetsAtRandomForEffect`) and `EventModesChosenAtRandom`
+(`ChooseOneAtRandom`). `Actor` is the player who discards, selects or
+chooses. A card never emits them itself: route a random discard through
+`DiscardCards`, `DiscardRandomForEffect` or `DiscardAtRandom`, never a
+`ChooseAtRandomForEffect` over the hand followed by a discard. Coins and
+dice are one event per coin or die; "one or more" takes the first of the
+batch (`ev.Seq == ev.BatchSeq`).
+
 Two rolls are not an effect's, and each has its own declaration (#5682,
 [game/dice_cost.go](../server/internal/game/dice_cost.go)); both still go
 through the dice door, so a replacement of the roll and `WheneverYouRollDice`

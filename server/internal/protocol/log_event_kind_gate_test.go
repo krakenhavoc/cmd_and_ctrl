@@ -218,6 +218,15 @@ var silentEventKinds = map[string]string{
 	// is missing is the HISTORY, and that is what makes this a
 	// temporary silence rather than a permanent one.
 	"EventPlayerCounterPlaced": "TEMPORARY: ADR 0056 Decision 6 gives it the `poison` line (\"Alice got 3 poison counters (7/10)\") in the client PR; until then PlayerView.poison shows every viewer the current total",
+
+	// #6101: the trigger signal for "whenever you discard one or more
+	// cards at random, select one or more targets at random, choose one
+	// or more modes at random" (Chira, All In). The discard is already
+	// the LogZone line for each card, and each drawn target or mode is
+	// already an EventOptionChosen "… (at random)" line.
+	"EventDiscardedAtRandom":       silentImpliedByAnotherLine,
+	"EventTargetsSelectedAtRandom": silentImpliedByAnotherLine,
+	"EventModesChosenAtRandom":     silentImpliedByAnotherLine,
 }
 
 // TestEveryEventKindIsNarratedOrDeliberatelySilent is the mechanism.

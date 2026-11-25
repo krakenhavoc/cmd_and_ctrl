@@ -792,6 +792,7 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 			return ErrInvalidParam
 		}
 		ids := g.ChooseAtRandomForEffect(RandomDraw{Player: chooser, Source: source}, pool, a.Count)
+		g.emitChoseAtRandomLocked(EventDiscardedAtRandom, chooser, source, len(ids))
 		return g.discardCardsLocked(chooser, ids, discardOptions{
 			cause:  DiscardCauseCost,
 			source: source,

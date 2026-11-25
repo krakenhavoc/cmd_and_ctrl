@@ -245,6 +245,7 @@ func (g *Game) DiscardRandomKeyedForEffect(playerID uuid.UUID, n int, then Keyed
 		ids[i] = c.InstanceID
 	}
 	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
+	g.emitChoseAtRandomLocked(EventDiscardedAtRandom, playerID, uuid.Nil, len(picked))
 	return g.discardCardsKeyedLocked(playerID, picked, DiscardCauseEffect, uuid.Nil, then)
 }
 

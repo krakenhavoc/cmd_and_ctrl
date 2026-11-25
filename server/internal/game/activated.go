@@ -2884,6 +2884,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// joins PaidCost.Exiled, top first, for "the exiled card"
 	// (Phyrexian Devourer, Storm Elemental).
 	if len(randoms) > 0 {
+		g.emitChoseAtRandomLocked(EventDiscardedAtRandom, playerID, cardID, len(randoms))
 		if err := g.discardCardsLocked(playerID, randoms, discardOptions{
 			cause:            DiscardCauseCost,
 			source:           cardID,

@@ -210,6 +210,7 @@ func (g *Game) pickModeAtRandomLocked(tc TriggerContext, source Card, lki Charac
 		CardID: source.InstanceID,
 		Label:  ms.Options[mode].Label + " (at random)",
 	})
+	g.emitChoseAtRandomLocked(EventModesChosenAtRandom, source.Controller, source.InstanceID, 1)
 	g.buildOrPickTriggerLocked(tc, source, lki, t, doubledBy, []int{mode})
 }
 
