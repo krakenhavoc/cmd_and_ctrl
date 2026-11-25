@@ -1231,6 +1231,12 @@ type LegalTargetsView struct {
 	// than the exact count: "up to X target cards". The picker lets
 	// the player confirm with fewer.
 	UpToX bool `json:"up_to_x,omitempty"`
+	// CountFromKicks marks a clause whose count is one plus the number
+	// of times the spell is kicked (#6150, CR 601.2c): "choose another
+	// target for each time this spell was kicked" (Comet Storm). Min /
+	// Max are the unkicked count; the client adds the kicks it collected
+	// in the cost prompt.
+	CountFromKicks bool `json:"count_from_kicks,omitempty"`
 
 	// LifeTaxes is the extra life each legal card costs the caster to
 	// name, keyed by wire id (CR 601.2f, #3860): Terror of the Peaks'
@@ -4799,6 +4805,10 @@ type CastPriceView struct {
 	// Life is the life a Bolas's-Citadel-shaped price charges on top
 	// (CR 119.4). Absent for every exile price today.
 	Life int `json:"life,omitempty"`
+	// CommanderTaxLife is the part of Life that is a commander tax paid
+	// in life (#6151, Liesa, Shroud of Dusk): 2 per previous cast from
+	// the command zone, in place of {2} each. Absent for every other card.
+	CommanderTaxLife int `json:"commander_tax_life,omitempty"`
 	// Energy is the energy a price charges on top (ADR 0129 §5): Amped
 	// Raptor's "an amount of {E} equal to its mana value". Absent for
 	// every price that charges none.
@@ -8399,6 +8409,10 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 			// refuse; showing a guess would be worse than no badge.
 			continue
 		}
+		// #6151: a commander tax paid in life (Liesa) rides the price's
+		// life, as an offer's own life does.
+		v.CommanderTaxLife = g.CommanderTaxLifeForEffect(caster, card, params.FromZone)
+		v.Life += v.CommanderTaxLife
 		v.Cost = price.Total.String()
 		if v.Cost == "" {
 			v.Cost = "{0}"
@@ -8680,7 +8694,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, CountFromKicks: spec.CountFromKicks, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}

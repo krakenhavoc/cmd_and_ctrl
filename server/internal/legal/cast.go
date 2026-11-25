@@ -1020,6 +1020,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// (castCostBranches): an optional payment that would leave the seat
 	// at 0 life is never offered, because the next state-based check
 	// would kill it (CR 704.5a) for a kicker or a buyback.
+	// #6151: a commander tax paid in life (CR 903.8, Liesa) is owed by
+	// every move from the command zone, under the same policy: never at
+	// the cost of the seat's last life.
+	if owed := e.g.CommanderTaxLifeForEffect(e.seat, card, from); owed > 0 {
+		lifeReserved += owed
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
+			return
+		}
+	}
 	if owed := optionalLife(optional, chosen); owed > 0 {
 		lifeReserved += owed
 		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
@@ -2045,7 +2054,7 @@ func (e *enumerator) castMoveEmitter(
 			// cast always carries a Cost.
 			// #5390: and the counters the offer removes, priced against
 			// the creatures they come off as an activation's are.
-			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen), 0), phyLife),
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen)+g.CommanderTaxLifeForEffect(e.seat, card, from), 0), phyLife),
 				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is

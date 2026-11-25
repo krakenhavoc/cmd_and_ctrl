@@ -4788,6 +4788,11 @@ export interface LegalTargetsView {
   // With count_from_x: the announced X is a ceiling ("up to X target
   // cards"), so the picker confirms with any number from 0 to X.
   up_to_x?: boolean;
+  // #6150: the clause's count is one plus the number of times the spell
+  // is kicked ("choose another target for each time this spell was
+  // kicked", Comet Storm). min / max are the unkicked count; the picker
+  // adds the kicks collected in the cost prompt (CastChoices.kicks).
+  count_from_kicks?: boolean;
   // #764: the clause's printed wording, shown in the picker banner
   // when a statement has more than one clause and the banner has to
   // say which question it is asking.
@@ -5140,6 +5145,9 @@ export interface CastPriceView {
   cost: string;
   // Life charged on top (CR 119.4). Absent for every exile price today.
   life?: number;
+  // #6151: the part of `life` that is a commander tax paid in life
+  // (Liesa, Shroud of Dusk), 2 per earlier cast from the command zone.
+  commander_tax_life?: number;
   // ADR 0129 §5: energy charged on top (Amped Raptor's "an amount of {E}
   // equal to its mana value"). Absent for every price that charges none.
   energy?: number;
@@ -5924,7 +5932,9 @@ export interface ProtectionView {
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
   // (#4307), "multicolored" (#4834), "mana_value_at_least" (value = N)
-  // or "colorless" (a source with no colour, #5650).
+  // or "colorless" (a source with no colour, #5650), "mana_value"
+  // (exactly N, #6149) or "permanents_with_counter" (value = the
+  // counter kind, #6149).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

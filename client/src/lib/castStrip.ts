@@ -151,7 +151,12 @@ export function commanderCostBadge(card: CardView, casts = 0): ExileCostBadge | 
   ];
   if (card.mana_cost) lines.push(`printed cost ${card.mana_cost}`);
   const tax = commanderTax(casts);
-  if (tax > 0) {
+  if (cheapest.commander_tax_life) {
+    // #6151: Liesa pays the tax in life, 2 per earlier cast.
+    lines.push(
+      `commander tax ${cheapest.commander_tax_life} life (cast ${casts} ${casts === 1 ? "time" : "times"} before)`,
+    );
+  } else if (tax > 0) {
     lines.push(`commander tax +{${tax}} (cast ${casts} ${casts === 1 ? "time" : "times"} before)`);
   }
   for (const p of prices.slice(1)) {
