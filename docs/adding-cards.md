@@ -10615,6 +10615,17 @@ life it costs leaves it at 10 or more, and a person's stepper opens on
 it, so declare it whenever the card has one. `Marks` are other numbers
 worth offering a bot.
 
+**Life bidding** (#6212, ADR 0129 amendment 2026-11-25,
+[life_bidding.go](../server/internal/cards/effects/life_bidding.go)):
+"You start the bidding with a bid of 0. In turn order, each player may top
+the high bid. The bidding ends if the high bid stands." is
+`LifeBidding{Opening: 0, Then: won}` (`OpeningChosen: true` for "a bid of
+any number"; `Bidders` for "you and target spell's controller"). `won` is
+a `NumberThen` that gets the high bidder as `r.Chooser` (`uuid.Nil` if they
+left) and the high bid as `r.Number`, with the resolving item as
+`ctx.Item`; it does the rest of the card ("loses life equal to the high
+bid and draws four cards", "if you win the bidding, counter that spell").
+
 **A payment with {X} in it** (#2727, the same ADR's next amendment,
 [may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is
 `MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, Then}`: "you may
