@@ -510,6 +510,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaValueFromSource {
 			out.ManaValueFromSource = true
 		}
+		// #6270 (Back from the Brink): and "pay its mana cost" off the
+		// exiled card; dropped, the copy would be free.
+		if c.ManaFromExiledCard {
+			out.ManaFromExiledCard = true
+		}
 		// Soul Foundry: and "X is the mana value of the exiled card".
 		if c.ManaValueOfExiledWith {
 			out.ManaValueOfExiledWith = true
