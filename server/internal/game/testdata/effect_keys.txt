@@ -526,6 +526,7 @@ body s82-old-b107/basri-devoted-paladin-attacker-counter
 body s82-old-b166/cabal-therapist-name
 body s82-old-b198/viviens-invocation-damage
 body s82-old-b199/skyrider-patrol-counter-and-flying
+body s82-old-b214/destroy-attached-equipment
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -740,6 +741,7 @@ choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
+choose choose-cards/azors-gateway-exile
 choose choose-cards/azra-oddsmaker-chosen
 choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
@@ -1561,6 +1563,9 @@ choose choose-cards/s82-old-b206-fumble-attach
 choose choose-cards/s82-old-b206-return-picked
 choose choose-cards/s82-old-b206-sacrifice-picked
 choose choose-cards/s82-old-b207-each-player-returns-lands
+choose choose-cards/s82-old-b209-aim-counters
+choose choose-cards/s82-old-b212-board-the-weatherlight-take
+choose choose-cards/s82-old-b212-urzas-tome-exile
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1706,6 +1711,7 @@ choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-fortress-return
 choose choose-cards/tomb-of-annihilation-veils-discarded
+choose choose-cards/tomb-of-the-dusk-rose-return
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/torment-of-scarabs-discarded
@@ -3015,6 +3021,7 @@ payunless pay-unless/s82-old-b046-lisette-counters
 payunless pay-unless/s82-old-b046-valentin-pest
 payunless pay-unless/s82-old-b199-skyrider-patrol
 payunless pay-unless/s82-old-b205-tenacious-dead-return
+payunless pay-unless/s82-old-b212-lingering-phantom-return
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4975,6 +4982,7 @@ tail then/audacious-swap-exiled
 tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
 tail then/awaken-the-sky-tyrant-dragon
+tail then/azors-gateway-check
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
@@ -5108,6 +5116,7 @@ tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/guided-passage-shuffle
 tail then/gyrus-waker-of-corpses-copy
+tail then/hadanas-climb-transform
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/harsh-mercy-type-chosen
@@ -5208,6 +5217,7 @@ tail then/polygraph-orb-punisher-sacrificed
 tail then/precognitive-perception-draw
 tail then/prevent-damage-from-chosen-color
 tail then/prize-pig-ribbon-check
+tail then/profane-procession-transform
 tail then/proliferate-again
 tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
