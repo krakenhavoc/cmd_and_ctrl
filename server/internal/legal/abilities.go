@@ -268,6 +268,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// could blight, since that creature is the activation's price.
 	for _, er := range e.expandBlightPicks(e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities))) {
 		row, ab, costBranch, unattach, blight := er.row, er.ab, er.branch, er.unattach, er.blight
+		// #6148, CR 606.5: the loyalty cost as the engine charges it,
+		// combined with every addition on the board (Carth the Lion).
+		ab.Cost = g.LoyaltyAdjustedCostForEffect(e.seat, ab.Cost)
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]

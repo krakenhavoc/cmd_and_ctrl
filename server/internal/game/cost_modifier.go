@@ -432,6 +432,12 @@ type AbilityCostSubject struct {
 	// hand, where the card being cycled is (CR 113.6).
 	Cycling bool
 
+	// Loyalty says this is a loyalty ability (CR 606.1: an ability with a
+	// loyalty symbol in its cost, #6148): "Loyalty abilities of
+	// planeswalkers your opponents control cost {1} more to activate"
+	// (Eidolon of Obstruction).
+	Loyalty bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation — set by manaAbilityCostQueryLocked (#1191), so a
 	// predicate says which kind it means. CR 605.1a makes both
@@ -1170,6 +1176,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			PowerUp:  ab.PowerUp,
 			Ninjutsu: ab.Ninjutsu,
 			Cycling:  ab.Cycling,
+			Loyalty:  ab.Cost.Loyalty != nil,
 			own:      ab.CostModifiers,
 		},
 		Targets: targets,

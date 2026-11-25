@@ -643,6 +643,10 @@ type CardDef struct {
 	// MadnessLife is the "Pay N life" a madness cost adds to its mana
 	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
 	MadnessLife int
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148), read
+	// through LoyaltyAdjustedCostForEffect.
+	LoyaltyCostAdd int
 
 	// XCeiling is the spell's printed "X can't be greater than
 	// <count>" (#2581), read at announce through XCeilingFor; see
@@ -1449,6 +1453,12 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogLoyaltyCostAdd = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.LoyaltyCostAdd
+		}
+		return 0
 	}
 	CatalogMadnessLife = func(key string) int {
 		if d := catalogDef(key); d != nil {

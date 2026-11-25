@@ -14168,6 +14168,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	}
 	var out []ActivatedAbilityView
 	for k, a := range rows {
+		// #6148, CR 606.5: the loyalty cost the controller would pay,
+		// combined with every addition on the board (Carth the Lion).
+		a.Cost = g.LoyaltyAdjustedCostForEffect(c.Controller, a.Cost)
 		i, wireIndex, wireRef := k, k, origins.Ref(k)
 		if k >= len(raw) {
 			tw := twins[k-len(raw)]

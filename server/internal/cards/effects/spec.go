@@ -1161,6 +1161,12 @@ type Spec struct {
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
 
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148): N
+	// loyalty combined into the printed loyalty cost of every loyalty
+	// ability its controller activates (CR 606.5).
+	LoyaltyCostAdd int
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice
