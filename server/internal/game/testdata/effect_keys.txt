@@ -927,6 +927,8 @@ choose choose-cards/dormant-volcano-return-an-untapped-mountain
 choose choose-cards/drake-familiar-return
 choose choose-cards/drana-the-last-bloodchief-return
 choose choose-cards/draw-instead-graveyard-return
+choose choose-cards/dubious-challenge-choose
+choose choose-cards/dubious-challenge-exile
 choose choose-cards/duelists-flame-exile
 choose choose-cards/duskmantle-seer-take
 choose choose-cards/dyadrine-remove-two-counters
@@ -2456,6 +2458,7 @@ option option-pick/allure-of-the-unknown-opponent
 option option-pick/aminatou-the-fateshifter-rotate
 option option-pick/amy-pond-suspended
 option option-pick/animal-magnetism-opponent
+option option-pick/animation-module-counter-kind
 option option-pick/anointed-peacekeeper-look
 option option-pick/apocalypse-demon-sacrifice-or-tap
 option option-pick/arachne-psionic-weaver-look
@@ -2791,6 +2794,7 @@ payunless pay-unless/agrus-kos-copy-ability
 payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/alistair-the-brigadier-pump
 payunless pay-unless/ancestral-katana-attach
+payunless pay-unless/animation-module-servo
 payunless pay-unless/anointer-of-valor-counter
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/antagonist-incorporator-borg
