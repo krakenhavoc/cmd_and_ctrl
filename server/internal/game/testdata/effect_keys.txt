@@ -4355,6 +4355,7 @@ tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-any-order
 tail put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15
 tail put-from-library/rest-on-bottom-in-random-order
+tail put-from-library/s82-old-b109-shuffle-the-rest
 tail put-from-library/songbirds-blessing-hand-or-bottom
 tail q-stacking-the-deck/gains-copy-ability
 tail quag-feast/after-mill
@@ -4658,6 +4659,7 @@ tail tail/lord-of-the-void-exiled
 tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
+tail tail/necromentia-exiled
 tail tail/old-b051-will-elementals
 tail tail/old-b070-open-the-omenpaths-first-color
 tail tail/old-b070-open-the-omenpaths-second-color
@@ -4924,6 +4926,7 @@ tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/necromentia-named
 tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
