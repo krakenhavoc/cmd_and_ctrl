@@ -539,6 +539,8 @@ func (e *BlockRefusedError) requirementSentence(blocker, attacker string) string
 		}
 	case BlockRequirementExactlyOne:
 		s, subject = attacker+" must be blocked by exactly one creature if able", e.AttackerName
+	case BlockRequirementTwoOrMore:
+		s, subject = attacker+" must be blocked by two or more creatures if able", e.AttackerName
 	default:
 		s = "A creature must block this combat if able"
 	}
