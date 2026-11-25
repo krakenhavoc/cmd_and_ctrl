@@ -3138,6 +3138,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		g.payUntapOthersCostLocked(params.TapIDs, paidFirst)
 	} else {
 		item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+		// #6217: which permanents paid this source's ability this turn.
+		g.noteTappedToPayLocked(cardID, item.Paid.TappedOthers)
 	}
 	// Fishing Pole: and the tap-the-grantor half, for the same reason.
 	g.payTapGrantorCostLocked(playerID, tapGrantor)

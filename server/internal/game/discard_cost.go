@@ -165,6 +165,14 @@ type DiscardCost struct {
 	// Build it with effects.DiscardYourHand, never by hand.
 	Hand bool
 
+	// LastDrawn is "Discard the last card you drew this turn" (#6217,
+	// Jandor's Ring): the one card the clause accepts is the last card
+	// the activator drew this turn (Game.DrawnThisTurn), and only while it
+	// is still in their hand. A player who drew nothing this turn, or whose
+	// last drawn card has left their hand, can't pay it (CR 118.3). N is 1.
+	// Plain data, additive.
+	LastDrawn bool
+
 	// CountFromX is "Discard X cards" (#2527, ADR 0113's 2026-10-07
 	// amendment) — Gix, Yawgmoth Praetor's "{4}{B}{B}{B}, Discard X
 	// cards". The discard twin of a CountFromX sacrifice clause
@@ -265,6 +273,11 @@ func (d *DiscardCost) Matches(c Card) bool {
 // Caller must hold g.mu.
 func (g *Game) discardClauseAcceptsLocked(playerID uuid.UUID, d *DiscardCost, c Card) bool {
 	if !d.Matches(c) {
+		return false
+	}
+	// #6217: "Discard the last card you drew this turn" (Jandor's Ring)
+	// takes that card and no other, and only while it is in hand.
+	if d.LastDrawn && !g.isLastDrawnThisTurnLocked(playerID, c.InstanceID) {
 		return false
 	}
 	// #4896: CR 201.2b — a card with no name can never be one of a set
