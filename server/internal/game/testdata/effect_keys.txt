@@ -2355,6 +2355,7 @@ option option-pick/bellowing-mauler-lose-or-sacrifice
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
 option option-pick/blank-blank-rocketship-letter
+option option-pick/boneyard-parley-chosen
 option option-pick/boreas-charger-search
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bribe-taker-counter
@@ -4361,6 +4362,7 @@ tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
 tail phthisis/controller-loses-life
 tail picklock-prankster/after-mill
+tail pile/boneyard-parley-dealt
 tail pile/split-the-spoils-settled
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
@@ -4803,6 +4805,7 @@ tail then/blastoneuron-haste-and-sacrifice
 tail then/bloodline-bidding-type-chosen
 tail then/bns-b52-pol-jamaar-type-chosen
 tail then/bonehoard-dracosaur-exiled
+tail then/boneyard-parley-exiled
 tail then/boommobile-color-chosen
 tail then/borborygmos-and-fblthp-discarded
 tail then/boseiju-who-endures-search
@@ -4899,7 +4902,9 @@ tail then/gap-b07-soul-separator-tokens
 tail then/gap-b56-charitable-levy
 tail then/gap-b92-shuffle-then-investigate
 tail then/get-energy
+tail then/ghastly-conscription-exiled
 tail then/ghastly-death-tyrant-lose-life
+tail then/ghired-populated
 tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
 tail then/goblin-recruiter-order
