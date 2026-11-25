@@ -304,6 +304,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		ConditionalLandPlays:                conditionalLandPlays(spec),
 		XMatters:                            spec.XMatters,
 		MadnessLife:                         spec.MadnessLife,
+		LoyaltyCostAdd:                      spec.LoyaltyCostAdd,
 		CommanderTaxInLife:                  spec.CommanderTaxInLife,
 		XCeiling:                            spec.XCeiling,
 		CastPermissions:                     standingCastPermissions(spec.CastPermissions),

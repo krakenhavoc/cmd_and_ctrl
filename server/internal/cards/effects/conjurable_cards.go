@@ -12,7 +12,9 @@ package effects
 // here to the dump.
 //
 // Add a record when a new card conjures a name not listed; the name must
-// also be a catalog card, or the conjured card would do nothing.
+// also be a catalog card, or the conjured card would do nothing. The same
+// records are the Oracle card reference a copy of a card defined by name
+// is built from (CR 707.13, Garth One-Eye, named_card_copy.go).
 
 const conjurableRecordsJSON = `[
 	{
@@ -68,6 +70,22 @@ const conjurableRecordsJSON = `[
 		"toughness": "1"
 	},
 	{
+		"id": "90c99876-b325-432d-ae02-cd34320801fc",
+		"oracle_id": "9908e597-9470-4c13-8387-39431b380138",
+		"name": "Braingeyser",
+		"layout": "normal",
+		"type_line": "Sorcery",
+		"mana_cost": "{X}{U}{U}",
+		"cmc": 2.0,
+		"colors": [
+			"U"
+		],
+		"color_identity": [
+			"U"
+		],
+		"oracle_text": "Target player draws X cards."
+	},
+	{
 		"id": "f0b80608-1455-4899-9d19-1b1d2d068744",
 		"oracle_id": "4a338863-d599-46e7-9c30-e11b898ae1b0",
 		"name": "Chitterspitter",
@@ -98,6 +116,22 @@ const conjurableRecordsJSON = `[
 			"B"
 		],
 		"oracle_text": "Target player loses 1 life and you gain 1 life.\nAt the beginning of your upkeep, if you have more cards in hand than each opponent, you may return this card from your graveyard to your hand."
+	},
+	{
+		"id": "d95ce840-b583-4c48-8a58-b85a4e2b9b2f",
+		"oracle_id": "a7e97fa9-4b72-4548-b854-5be5f18a6f1a",
+		"name": "Disenchant",
+		"layout": "normal",
+		"type_line": "Instant",
+		"mana_cost": "{1}{W}",
+		"cmc": 2.0,
+		"colors": [
+			"W"
+		],
+		"color_identity": [
+			"W"
+		],
+		"oracle_text": "Destroy target artifact or enchantment."
 	},
 	{
 		"id": "bd7a7363-03ba-466e-9d61-2dc5ecdcc630",
@@ -236,6 +270,43 @@ const conjurableRecordsJSON = `[
 		"oracle_text": "{T}: Add {U}."
 	},
 	{
+		"id": "ace2d2c9-6af0-4728-9265-36730df50e83",
+		"oracle_id": "e6e4a8bd-5c40-4654-8de1-0da9afed90fd",
+		"name": "Regrowth",
+		"layout": "normal",
+		"type_line": "Sorcery",
+		"mana_cost": "{1}{G}",
+		"cmc": 2.0,
+		"colors": [
+			"G"
+		],
+		"color_identity": [
+			"G"
+		],
+		"oracle_text": "Return target card from your graveyard to your hand."
+	},
+	{
+		"id": "760d746c-fe1b-4a75-8c71-4fe9966ec9ea",
+		"oracle_id": "711eea87-0fa3-46e0-a42b-fa5a86455f04",
+		"name": "Shivan Dragon",
+		"layout": "normal",
+		"type_line": "Creature — Dragon",
+		"mana_cost": "{4}{R}{R}",
+		"cmc": 6.0,
+		"colors": [
+			"R"
+		],
+		"color_identity": [
+			"R"
+		],
+		"keywords": [
+			"Flying"
+		],
+		"oracle_text": "Flying\n{R}: This creature gets +1/+0 until end of turn.",
+		"power": "5",
+		"toughness": "5"
+	},
+	{
 		"id": "a396551e-882d-48ef-807a-81e5f2dfe517",
 		"oracle_id": "a5550795-8cd3-4f29-a9df-02c48b124dbc",
 		"name": "Sigardian Evangel",
@@ -274,6 +345,22 @@ const conjurableRecordsJSON = `[
 			"Cycling"
 		],
 		"oracle_text": "Put three -1/-1 counters on target creature with flying.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+	},
+	{
+		"id": "f8c2f285-141b-479b-aca6-ceacf60e3f6a",
+		"oracle_id": "b81f041d-98db-4408-9472-c483e4a502bc",
+		"name": "Terror",
+		"layout": "normal",
+		"type_line": "Instant",
+		"mana_cost": "{1}{B}",
+		"cmc": 2.0,
+		"colors": [
+			"B"
+		],
+		"color_identity": [
+			"B"
+		],
+		"oracle_text": "Destroy target nonartifact, nonblack creature. It can't be regenerated."
 	},
 	{
 		"id": "8e9ab027-120f-4bf3-a281-51d7cbb23604",

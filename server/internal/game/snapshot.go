@@ -905,6 +905,12 @@ type playerSnapshot struct {
 	// v9: a file written before it restores with 0, which reads as "has
 	// begun no extra turn this game".
 	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
+	// LifeAsTurnBegan and LifeAsTurnBeganSeq are Player's (#6164): the
+	// life total as the turn began and the turn it was taken on. Additive
+	// within v9: a file written before them restores with seq 0, which
+	// matches no turn, and the reader falls back to the current life.
+	LifeAsTurnBegan    int `json:"lifeAsTurnBegan,omitempty"`
+	LifeAsTurnBeganSeq int `json:"lifeAsTurnBeganSeq,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -1336,6 +1342,9 @@ type cardSnapshot struct {
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
+	// TributePaid is CR 702.104a's paid tribute (#6251). Old snapshots
+	// have no key and read "not paid", which only a tribute card reads.
+	TributePaid bool `json:"tributePaid,omitempty"`
 	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
 	// duration. Carried for ChosenPlayer's reason: a player made the
 	// choices and nothing can re-derive them, so a restore that lost
@@ -3321,6 +3330,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenCard:                 objectRefPtr(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
 		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
 		Solved:                     c.Solved,
@@ -3418,6 +3428,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderDamage:            copyIntMap(p.CommanderDamage),
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -4512,6 +4524,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenCard:                 objectRefValue(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
 		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
 		Solved:                     c.Solved,
@@ -4641,6 +4654,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		HasSideboard:               p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),

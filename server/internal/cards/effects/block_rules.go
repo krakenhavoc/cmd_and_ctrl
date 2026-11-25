@@ -438,3 +438,21 @@ func YouHaveCardsInHandAtLeast(n int) func(*game.Game, uuid.UUID) bool {
 func CantBlockAlone() game.BlockRule {
 	return game.BlockRule{NotAlone: true}
 }
+
+// BlockableAsThoughNoLandwalk — "creatures with <tokens> can be blocked
+// as though they didn't have <tokens>" (Quagmire's swampwalk, Lord
+// Magnus's plainswalk and forestwalk; #6195). The waiver binds every
+// attacking creature at the table, which is what the printed line says:
+// it has no scope. Each token is a landwalk keyword as the engine
+// spells it ("swampwalk"). The creatures keep the keyword; only the
+// CR 702.14c evasion is waived.
+func BlockableAsThoughNoLandwalk(tokens ...string) game.BlockRule {
+	return game.BlockRule{IgnoreLandwalk: tokens}
+}
+
+// BlockableAsThoughNoLandwalkAtAll — Staff of the Ages' "creatures with
+// landwalk abilities can be blocked as though they didn't have those
+// abilities" (#6195): every landwalk keyword is waived.
+func BlockableAsThoughNoLandwalkAtAll() game.BlockRule {
+	return game.BlockRule{IgnoreAllLandwalk: true}
+}
