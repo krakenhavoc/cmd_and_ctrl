@@ -56,12 +56,17 @@ import (
 //     check — attack_limits.go (#1507), judged before the tax is
 //     priced so a refused declaration owes nothing. ADR 0080 §8,
 //     ADR 0045 Decision 44.
-//   - A tax paid in anything but mana or life. Life is here (#5869,
+//   - A tax paid in anything but mana, life or the non-mana components
+//     of combat_cost.go (#6190: a sacrifice, a tap, a return to hand —
+//     Exalted Dragon, Hollow Warrior, Floodtide Serpent). Life is here
+//     (#5869,
 //     Sivitri, Dragon Master's "unless their controller pays 2 life for
 //     each of those creatures"): AttackTax.LifeCost and the
 //     attackTaxLife duration mod, totalled into AttackTaxPrice.Life and
-//     paid after the mana as CR 119.4 allows. A Sacrifice sibling would
-//     be one more field and one more branch in the payer.
+//     paid after the mana as CR 119.4 allows. The Sacrifice sibling the
+//     first version of this comment predicted is AttackTax.NonMana,
+//     one field and one branch in the payer, built on the cost
+//     components an ability's cost already uses (combat_cost.go).
 //   - A tax with a DURATION is attack_tax_duration.go (#3398): the
 //     SECOND source the pricer reads, a ModAttackTax ScopedEffect made
 //     by a resolving spell or ability (Summon: Yojimbo).
@@ -221,6 +226,48 @@ type AttackTax struct {
 	// both halves; each is totalled on its own.
 	LifeCost func(q AttackTaxQuery) int
 
+	// OnAttacker makes this a cost the ATTACKING creature's controller
+	// owes whatever they attack, rather than a toll one defending
+	// player's permanent charges (#6190): "This creature can't attack
+	// unless you sacrifice a land" (Exalted Dragon), "Green creatures
+	// can't attack unless their controller sacrifices a land of their
+	// choice for each green creature they control that's attacking"
+	// (Flooded Woodlands).
+	//
+	// This is the field the comment above AttackTax promised: "A card
+	// that taxes attacks on someone else does not exist; when one does
+	// it gets a field, not a silent reinterpretation of this one."
+	// Three things change with it, and nothing else:
+	//
+	//   - the source may be controlled by ANYONE (Flooded Woodlands
+	//     taxes every player's green attackers, including its
+	//     controller's);
+	//   - Scope is not read: the cost is owed for an attack on a
+	//     player, a planeswalker or a battle alike, because the clause
+	//     says "can't attack", full stop;
+	//   - the payer is unchanged — AttackTaxQuery.Controller, "their
+	//     controller", which is who pays a defender-scoped tax too.
+	//
+	// AppliesTo still does the choosing: Exalted Dragon's is "the
+	// attacker is me", Flooded Woodlands' is "the attacker is green".
+	OnAttacker bool
+
+	// NonMana is the non-mana half of the clause FOR ONE attacking
+	// creature (#6190, CR 508.1h: "Costs may include paying mana,
+	// tapping permanents, sacrificing permanents, discarding cards, and
+	// so on") — a sacrifice, a tap, a return to hand, in the vocabulary
+	// an ability's cost already uses (combat_cost.go). The zero value
+	// asks for nothing, which is every tax before it.
+	//
+	// Summed per taxed attacker, as the mana is: Flooded Woodlands'
+	// "a land ... for each green creature they control that's attacking"
+	// is one land here and three lands in a declaration of three green
+	// creatures.
+	//
+	// Plain data, not a func: a card file writes the clause as a
+	// literal and nothing new is reachable from Game.
+	NonMana CombatCost
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this tax applies only while its source has the designation
 	// named. The zero value is "no gate".
@@ -262,6 +309,18 @@ func attackTaxesOf(c *Card) []AttackTax {
 	return activeOnly(c, CatalogAttackTaxes(key), func(t AttackTax) Designation {
 		return t.ActiveWhen
 	})
+}
+
+// anyOnAttacker reports whether any of these taxes is a cost the
+// attacking creature's controller owes whatever they attack (#6190), the
+// one shape whose source need not be the defending player's permanent.
+func anyOnAttacker(taxes []AttackTax) bool {
+	for _, t := range taxes {
+		if t.OnAttacker {
+			return true
+		}
+	}
+	return false
 }
 
 // AttackTaxLine is one tax charged by one permanent for one attacking
@@ -316,15 +375,33 @@ type AttackTaxPrice struct {
 	// Lines is the per-source, per-creature breakdown, in declaration
 	// order then battlefield order.
 	Lines []AttackTaxLine
+
+	// NonMana is what the declaration owes in permanents (#6190): one
+	// line per (taxing permanent, attacking creature) whose clause asks
+	// for a sacrifice, a tap or a return. Paid from the permanents the
+	// player names on the declaration (CombatCostPayment), never chosen
+	// by the engine.
+	NonMana []CombatCostLine
 }
 
 // IsFree reports that this declaration costs nothing, which is every
 // declaration at a table with no attack tax on the battlefield.
-func (p AttackTaxPrice) IsFree() bool { return p.Cost == "" && p.Life <= 0 }
+func (p AttackTaxPrice) IsFree() bool {
+	return p.Cost == "" && p.Life <= 0 && len(p.NonMana) == 0
+}
 
-// Describe is the price as a player reads it: "{2}{2}", "4 life", or
-// "{2} and 2 life". "" when free.
-func (p AttackTaxPrice) Describe() string { return describeAttackTax(p.Cost, p.Life) }
+// Describe is the price as a player reads it: "{2}{2}", "4 life",
+// "{2} and 2 life", or "sacrificing a land". "" when free.
+func (p AttackTaxPrice) Describe() string {
+	s := describeAttackTax(p.Cost, p.Life)
+	if nm := combatCostDescribe(p.NonMana); nm != "" {
+		if s == "" {
+			return nm
+		}
+		return s + " and " + nm
+	}
+	return s
+}
 
 // describeAttackTax renders a mana string and a life amount as one
 // price, Describe's body.
@@ -409,13 +486,15 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 		}
 		for i := range g.Battlefield.Cards {
 			src := &g.Battlefield.Cards[i]
-			// The "you" is structural: only the defending player's
-			// own permanents tax an attack on them.
-			if src.Controller != defender {
-				continue
-			}
 			taxes := attackTaxesOf(src)
 			if len(taxes) == 0 {
+				continue
+			}
+			// The "you" is structural: only the defending player's own
+			// permanents tax an attack on them. A cost the ATTACKER
+			// owes (OnAttacker, #6190) is the exception, and the only
+			// one: its source may be controlled by anyone.
+			if src.Controller != defender && !anyOnAttacker(taxes) {
 				continue
 			}
 			q := AttackTaxQuery{
@@ -428,7 +507,10 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 				Target:     d.Target,
 			}
 			for _, t := range taxes {
-				if !t.Scope.covers(kind) {
+				if t.OnAttacker {
+					// Scope is not read: "can't attack" says nothing
+					// about what is attacked (#6190).
+				} else if src.Controller != defender || !t.Scope.covers(kind) {
 					continue
 				}
 				if t.AppliesTo != nil && !t.AppliesTo(q) {
@@ -440,6 +522,15 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 				}
 				if t.LifeCost != nil {
 					life = max(t.LifeCost(q), 0)
+				}
+				if !t.NonMana.Empty() {
+					out.NonMana = append(out.NonMana, CombatCostLine{
+						Source:   src.InstanceID,
+						Label:    t.NonMana.Label,
+						Payer:    attacker.Controller,
+						Creature: d.Attacker,
+						Cost:     t.NonMana,
+					})
 				}
 				if mana == "" && life == 0 {
 					continue
@@ -461,6 +552,7 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 	if out.Cost == "" {
 		return out
 	}
+
 	// A malformed cost string is a card-file bug, not a board state:
 	// leave Total zero and let the payer's own ParseCost return
 	// ErrInvalidParam, so there is exactly one place the parse is
@@ -494,6 +586,12 @@ func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, 
 		return ErrPlayerNotFound
 	}
 	if err := g.attackTaxLifeRefusalLocked(p, price, params); err != nil {
+		return err
+	}
+	// #6190: the permanents the declaration owes, judged as the payment
+	// will judge them, so a mixed-seat bulk declaration cannot sacrifice
+	// one seat's land for a declaration a later seat then refuses.
+	if err := g.combatCostRefusalLocked(payer, price.NonMana, params.Pay); err != nil {
 		return err
 	}
 	if price.Cost == "" {
@@ -595,12 +693,21 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	if err := g.attackTaxLifeRefusalLocked(p, price, params); err != nil {
 		return err
 	}
+	// #6190: the non-mana half is judged BEFORE any of the price is
+	// paid, so a declaration that named the wrong permanents spends no
+	// mana and sacrifices nothing.
+	if err := g.combatCostRefusalLocked(payer, price.NonMana, params.Pay); err != nil {
+		return err
+	}
 	source, label := uuid.Nil, "attack tax"
 	if len(price.Lines) > 0 {
 		source, label = price.Lines[0].Source, price.Lines[0].Label
 	}
 	if price.Cost == "" {
-		return g.payAttackTaxLifeLocked(payer, source, price)
+		if err := g.payAttackTaxLifeLocked(payer, source, price); err != nil {
+			return err
+		}
+		return g.payCombatCostsLocked(payer, price.NonMana, params.Pay)
 	}
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
 	for _, id := range params.LockedSources {
@@ -624,7 +731,13 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	if err != nil {
 		return &AttackTaxUnpaidError{Cost: price.Cost, Life: price.Life, Err: err}
 	}
-	return g.payAttackTaxLifeLocked(payer, source, price)
+	if err := g.payAttackTaxLifeLocked(payer, source, price); err != nil {
+		return err
+	}
+	// Last, because a sacrifice is a battlefield exit: the mana the
+	// taps made and the life the tax took are already paid, so a
+	// dies-trigger cannot see a half-paid price.
+	return g.payCombatCostsLocked(payer, price.NonMana, params.Pay)
 }
 
 // payAttackTaxLifeLocked pays the life half of `price` (#5869) once its
@@ -748,4 +861,12 @@ type DeclareAttackersParams struct {
 	// player is paying with life instead of mana (CR 107.4f) — Norn's
 	// Annex's {W/P}, when that card is written.
 	PhyrexianLife int
+
+	// Pay is the permanents the player names for a NON-MANA cost to
+	// attack (#6190, CR 508.1h): the land Exalted Dragon sacrifices,
+	// the creature Hollow Warrior taps, the enchantment Floodtide
+	// Serpent returns. Empty at every table with no such cost on it,
+	// and ids sent for a declaration that owes none are refused rather
+	// than ignored.
+	Pay CombatCostPayment
 }

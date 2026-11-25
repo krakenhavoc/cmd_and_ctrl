@@ -539,6 +539,20 @@ var (
 	// staged: the defender takes blocks back or makes more mana.
 	ErrBlockTaxUnpaid = errors.New("game: the block tax for this declaration was not paid")
 
+	// ErrCombatCostUnpaid is returned by the declaration verbs, and by
+	// finish_blocks, when a NON-MANA cost to attack or block was not
+	// paid — Exalted Dragon's "unless you sacrifice a land", Hollow
+	// Warrior's "unless you tap an untapped creature you control",
+	// Floodtide Serpent's "unless you return an enchantment you
+	// control to its owner's hand" (#6190, CR 508.1h, 509.1d). The
+	// error actually returned is a *CombatCostUnpaidError naming the
+	// clause and which picker the client should open; test with
+	// errors.Is. ALL OR NOTHING, like ErrAttackTaxUnpaid: nothing is
+	// staged, tapped, sacrificed or returned. Which attacks to drop
+	// when the board cannot pay for all of them is the player's
+	// choice, made by declaring fewer.
+	ErrCombatCostUnpaid = errors.New("game: a non-mana cost to attack or block was not paid")
+
 	// ErrAttackLimit is returned by the declaration verbs when the
 	// declaration would put more creatures into the attack than a
 	// CR 508.1c count limit allows — Silent Arbiter's "no more than

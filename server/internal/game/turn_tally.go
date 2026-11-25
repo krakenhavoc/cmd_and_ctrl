@@ -706,6 +706,15 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// Blocks is every creature declared as a blocker this turn, in
+	// declaration order, with the combat phase it blocked in (#6190):
+	// the block-side twin of Attacks, for "not declared as an attacking
+	// or blocking creature this combat" (Hollow Warrior). Keyed by
+	// OBJECT (CR 400.7), so a creature that left and came back blocked
+	// nothing. Read through DeclaredAsBlockerThisCombat. Additive
+	// within the snapshot schema: omitted when empty, flushed with the
+	// rest of the tally at the turn's end.
+	Blocks []BlockTallyRecord `json:"blocks,omitempty"`
 	// BecameTapped counts, per OBJECT, how many times each permanent
 	// became tapped this turn (#4576, CR 701.26a): Captain America,
 	// Living Legend's "if it's the first time that creature has become
@@ -827,6 +836,52 @@ type AttackRecord struct {
 	Controller uuid.UUID `json:"controller,omitempty"`
 	Subtypes   []string  `json:"subtypes,omitempty"`
 	AllTypes   bool      `json:"allTypes,omitempty"`
+}
+
+// BlockTallyRecord is one declared block: the OBJECT that blocked and
+// the combat phase it blocked in (#6190). The attack record's sibling,
+// with no defender — "was this creature declared as a blocker" is the
+// only question asked of it, and which attacker it blocked is on the
+// card itself while the block stands.
+type BlockTallyRecord struct {
+	Blocker uuid.UUID `json:"blocker"`
+	Epoch   int       `json:"epoch,omitempty"`
+	PhaseID int       `json:"phaseId,omitempty"`
+}
+
+// DeclaredAsAttackerThisCombat reports whether the OBJECT `c` is now
+// was declared as an attacker during the combat phase in progress
+// (#6190): Hollow Warrior's "not declared as an attacking ... creature
+// this combat", which stays true for a creature since removed from
+// combat, because the declaration is history (CR 508.1).
+//
+// Caller must hold g.mu.
+func (g *Game) DeclaredAsAttackerThisCombat(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, a := range g.TurnTally.Attacks {
+		if a.Attacker == c.InstanceID && a.Epoch == c.ObjectEpoch && a.PhaseID == g.Turn.PhaseID {
+			return true
+		}
+	}
+	return false
+}
+
+// DeclaredAsBlockerThisCombat is DeclaredAsAttackerThisCombat's block
+// half, off TurnTally.Blocks (#6190).
+//
+// Caller must hold g.mu.
+func (g *Game) DeclaredAsBlockerThisCombat(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, b := range g.TurnTally.Blocks {
+		if b.Blocker == c.InstanceID && b.Epoch == c.ObjectEpoch && b.PhaseID == g.Turn.PhaseID {
+			return true
+		}
+	}
+	return false
 }
 
 // AttackedYouOrYourPlaneswalkerThisTurn reports whether `player`
@@ -2243,6 +2298,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
 	out.CountersPut = copyStringIntMap(t.CountersPut)
 	out.PlusOneCountersPut = copyStringIntMap(t.PlusOneCountersPut)
+	if len(t.Blocks) > 0 {
+		out.Blocks = append([]BlockTallyRecord(nil), t.Blocks...)
+	}
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}
@@ -2493,6 +2551,19 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// an Actor.
 		if ev.Kind == EventCast && ev.CardID != uuid.Nil {
 			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
+		}
+		// #6190: the per-object block history, under the combat phase
+		// it was declared in. A fresh slice every time, never an append
+		// into shared capacity, for TurnTally.Attacks' reason (#1238).
+		if ev.Kind == EventBlock && ev.CardID != uuid.Nil {
+			rec := BlockTallyRecord{
+				Blocker: ev.CardID,
+				Epoch:   g.objectEpochLocked(ev.CardID),
+				PhaseID: g.Turn.PhaseID,
+			}
+			blocks := make([]BlockTallyRecord, len(g.TurnTally.Blocks), len(g.TurnTally.Blocks)+1)
+			copy(blocks, g.TurnTally.Blocks)
+			g.TurnTally.Blocks = append(blocks, rec)
 		}
 		// #5482: a spell cast from exile is a card played from exile.
 		if ev.Kind == EventCast && ev.OldZone == ZoneExile {
