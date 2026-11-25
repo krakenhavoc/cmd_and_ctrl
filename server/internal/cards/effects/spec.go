@@ -498,6 +498,13 @@ type Spec struct {
 	// A card that reads the board at RESOLUTION does not belong here.
 	CastTimeValues []game.CastTimeValue
 
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): the caster names a
+	// creature type as they cast the spell (CR 601.2c), stamped on the
+	// spell as its chosen type, which OfTheChosenType target clauses read
+	// at announce and again at resolution (CR 608.2b).
+	ChoosesCreatureTypeAsCast bool
+
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered": "If X is 5 or more, this spell can't be countered"
 	// (Banefire), "Hellbent — If you have no cards in hand, this spell
@@ -972,6 +979,24 @@ type Spec struct {
 	// target_tax.go. Nil for nearly every card.
 	TargetTaxes []game.TargetTax
 
+	// LifePerTarget is this spell's OWN per-target life surcharge:
+	// "This spell costs 3 life more to cast for each target"
+	// (Phyrexian Purge, #6206, CR 601.2f).
+	//
+	// The target tax one owner over: the same cost, keyed on the same
+	// thing — what the spell targets, read once the targets are
+	// announced (CR 601.2c) and paid with the other additional costs
+	// (CR 601.2h) — charged by the spell itself rather than by somebody's
+	// permanent. So it joins the same sum, and the cast's CR 119.4
+	// refusal, the enumerator's per-target-set pricing, the picker's note
+	// beside each candidate and the bot's move cost all read it at once.
+	//
+	// It counts TARGETS, not targeted permanents, so a clause that
+	// targets a player or a spell pays for those too. Build it with
+	// CostsLifePerTarget in target_tax.go. The zero value is every other
+	// card.
+	LifePerTarget game.LifePerTargetCost
+
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
 	// (ADR 0045 addendum, Decision 11): "can't be blocked except by
@@ -1160,6 +1185,12 @@ type Spec struct {
 	// charges both, and a player with less life than that cannot cast
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
+
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148): N
+	// loyalty combined into the printed loyalty cost of every loyalty
+	// ability its controller activates (CR 606.5).
+	LoyaltyCostAdd int
 
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
@@ -1910,6 +1941,13 @@ type Spec struct {
 	// it is a fact about players' hands, derived from the battlefield on
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
+
+	// RevealsChosenPlayersDraws declares "The chosen player reveals each
+	// card they draw" (Booby Trap, #6238): every card the permanent's
+	// chosen player draws is revealed to the table as it is drawn
+	// (game.CardDef.RevealsChosenPlayersDraws). The player is the one
+	// its "as this enters, choose an opponent" stored.
+	RevealsChosenPlayersDraws bool
 
 	// AttackOnlyNearestOpponentInChosenDirection declares "each player
 	// may attack only the nearest opponent in the chosen direction and

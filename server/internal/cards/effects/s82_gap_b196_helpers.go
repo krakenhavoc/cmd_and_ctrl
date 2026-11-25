@@ -87,6 +87,8 @@ var GapB196PraesidiumPile = CardTail("exile-pile/praesidium-protectiva-back-on-t
 	if len(pile) == 0 {
 		return nil
 	}
+	// #6175: the cards that reached exile are the face-down pile.
+	NotePileOrGuess(ctx)
 	return ctx.Game.PutOnTopInRandomOrderForEffect(ctx.Controller(), game.ZoneExile, pile)
 })
 

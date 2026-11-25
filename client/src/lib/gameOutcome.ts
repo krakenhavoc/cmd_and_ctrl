@@ -42,6 +42,7 @@ export function winnerOf(view: GameView | null | undefined): PlayerView | null {
  *   "The game is a draw."                        everyone left lost at once
  *   "The game is a draw — Flow Engine's loop
  *    can't be stopped."                           a mandatory loop (CR 732.4)
+ *   "The game is a draw — Divine Intervention."  an effect's draw (CR 104.4c)
  *   "Game ended — no survivors."                 an ended view with nobody to name
  *   "Alice wins the match 2–1."                  a finished best-of-three (match.ts)
  *
@@ -70,6 +71,9 @@ export function gameOverText(view: GameView | null | undefined): {
   if (outcome?.kind === "draw" && outcome.cause === "mandatory_loop") {
     const loop = outcome.source_name ? `${outcome.source_name}'s loop` : "a loop";
     return { winner: null, text: `The game is a draw — ${loop} can't be stopped.` };
+  }
+  if (outcome?.kind === "draw" && outcome.cause === "draw_effect" && outcome.source_name) {
+    return { winner: null, text: `The game is a draw — ${outcome.source_name}.` };
   }
   if (outcome?.kind === "draw") return { winner: null, text: "The game is a draw." };
   return { winner: null, text: "Game ended — no survivors." };

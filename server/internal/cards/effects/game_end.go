@@ -76,6 +76,37 @@ func (l LoseTheGame) Apply(ctx *Context) error {
 	return nil
 }
 
+// DrawTheGame is CR 104.4c: "the game is a draw" (Divine Intervention,
+// #6198). The game ends at once for every player still in it, so the
+// resolution stops (game.ErrStopResolution).
+type DrawTheGame struct{}
+
+// Apply implements Primitive.
+func (DrawTheGame) Apply(ctx *Context) error {
+	ctx.Game.DrawTheGameForEffect(ctx.Source())
+	if ctx.Game.State != game.StateActive {
+		return game.ErrStopResolution
+	}
+	return nil
+}
+
+// HighestLifeTotalWins is Celestial Convergence's "the player with the
+// highest life total wins the game. If two or more players are tied for
+// highest life total, the game is a draw" (#6198). A leader who can't
+// win doesn't, and the resolution goes on.
+type HighestLifeTotalWins struct{}
+
+// Apply implements Primitive.
+func (HighestLifeTotalWins) Apply(ctx *Context) error {
+	if _, err := ctx.Game.HighestLifeWinsOrDrawForEffect(ctx.Source()); err != nil {
+		return err
+	}
+	if ctx.Game.State != game.StateActive {
+		return game.ErrStopResolution
+	}
+	return nil
+}
+
 // YouCantLoseOpponentsCantWin is Platinum Angel's and Herald of
 // Eternal Dawn's printed static — "You can't lose the game and your
 // opponents can't win the game." — as the two gates it is.

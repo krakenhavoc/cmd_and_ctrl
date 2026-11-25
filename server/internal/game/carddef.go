@@ -231,6 +231,12 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// LifePerTarget is this card's OWN "This spell costs N life more to
+	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
+	// for the spell being cast, through LifePerTargetFor under
+	// CatalogKey, and never from the battlefield: it is the spell's own
+	// cost, as SelfCostModifiers are. The zero value is every other card.
+	LifePerTarget LifePerTargetCost
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
@@ -396,6 +402,11 @@ type CardDef struct {
 	// (#3781): "where X is the greatest power among creatures you
 	// controlled as you cast this spell". See cast_time_values.go.
 	CastTimeValues []CastTimeValue
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): a creature type the
+	// caster names as they cast the spell (CR 601.2c, with the targets)
+	// on CastSpellParams.ChosenCreatureType. See cast_creature_type.go.
+	ChoosesCreatureTypeAsCast bool
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.
@@ -643,6 +654,10 @@ type CardDef struct {
 	// MadnessLife is the "Pay N life" a madness cost adds to its mana
 	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
 	MadnessLife int
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148), read
+	// through LoyaltyAdjustedCostForEffect.
+	LoyaltyCostAdd int
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
 	// that many times" (#6151), read through CommanderTaxInLifeFor.
@@ -773,6 +788,13 @@ type CardDef struct {
 	// (Revelation) HandRevealEachPlayer. Read through
 	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
 	HandsRevealed HandRevealScope
+
+	// RevealsChosenPlayersDraws is "The chosen player reveals each card
+	// they draw" (Booby Trap, #6238): every card the permanent's
+	// ChosenPlayer draws is revealed to every player as it is drawn (CR
+	// 701.20a), while the permanent is on the battlefield with its
+	// abilities. Read in the draw path (draw_reveal.go).
+	RevealsChosenPlayersDraws bool
 
 	// AttackOnlyNearestOpponentInChosenDirection is "each player may
 	// attack only the nearest opponent in the chosen direction and
@@ -1232,6 +1254,10 @@ func init() {
 		}
 		return nil
 	}
+	CatalogChoosesCreatureTypeAsCast = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ChoosesCreatureTypeAsCast
+	}
 	CatalogCastTimeValues = func(key string) []CastTimeValue {
 		if d := catalogDef(key); d != nil {
 			return d.CastTimeValues
@@ -1453,6 +1479,12 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogLoyaltyCostAdd = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.LoyaltyCostAdd
+		}
+		return 0
 	}
 	CatalogCommanderTaxInLife = func(key string) bool {
 		d := catalogDef(key)

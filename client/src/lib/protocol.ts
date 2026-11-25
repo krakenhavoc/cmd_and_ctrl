@@ -785,8 +785,9 @@ export interface OutcomeView {
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
   // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
   // of only mandatory actions repeated with no way to stop, CR 732.4 —
-  // a draw).
-  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // a draw) or "draw_effect" (an effect stated that the game is a draw,
+  // CR 104.4c — Divine Intervention; `source` is its card).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop" | "draw_effect";
   // The object whose effect won, for an effect win; the loop's card,
   // for a mandatory loop's draw.
   source?: string;
@@ -1907,7 +1908,9 @@ export interface PendingChoiceView {
     // opponents ride pick_options, one per seat with `player` set, and
     // the answer is {option_index: N} as for option_pick.
     // control_purpose says whether the permanent hurts or helps the
-    // seat that receives it.
+    // seat that receives it, or is "tribute" (CR 702.104a, #6251): the
+    // chosen opponent decides whether to pay the tribute, and the
+    // control does not change.
     | "entry_controller"
     // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
     // asked before the permanent enters. The {choice_id, apply} payload
@@ -2104,7 +2107,7 @@ export interface PendingChoiceView {
   // ADR 0102: populated for kind "entry_controller" — what giving the
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
-  control_purpose?: "harm" | "benefit" | string;
+  control_purpose?: "harm" | "benefit" | "tribute" | string;
   // #3309: populated for kind "aura_host" — what the entering Aura does
   // to the permanent it enchants. Absent when the card declares none.
   // The bot reads it; the client ignores it.
@@ -2403,6 +2406,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -4333,6 +4339,12 @@ export interface ActivatedAbilityView {
   // count), so the picker greys a repeat and opens even when the options
   // number exactly `discard_cost_n`. The engine refuses a repeat.
   discard_cost_different_names?: boolean;
+  // #6264: "Discard two nonland cards with the same name" (Sphinx of the
+  // Chimes). The picks must share a name (either half of a split card), so
+  // the picker greys a card that shares none with those already picked and
+  // opens even at exactly `discard_cost_n` options. The engine refuses a
+  // set that doesn't share one.
+  discard_cost_same_name?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.
@@ -4951,6 +4963,12 @@ export interface CastSurfaceView {
   // structured TargetSpec — the players and card instance IDs its
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
+  // #6245: a spell that names a creature type as it is cast (Selective
+  // Snare's "of the creature type of your choice", CR 601.2c). One option
+  // per type with the target clause's legal cards under it; the client
+  // asks for the type before the targets, narrows the picker to that
+  // type's cards and sends the type as `chosen_creature_type`.
+  cast_creature_types?: BeholdTypeOption[];
   legal_targets?: LegalTargetsView;
   // #764: every clause of a MULTI-clause target statement, in
   // printed order, each with its own legal set, count and printed
@@ -6020,6 +6038,13 @@ export interface ManaAbilityView {
   // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #6208: `tap_others_untap` turns the clause over here too, "Untap a
+  // tapped land an opponent controls" (Benthic Explorers): the options
+  // are the TAPPED permanents that could be untapped to pay — an
+  // OPPONENT's, for the one printed mana ability — and the picker's verb
+  // is "Untap". There is no `tap_others_frees_source` twin, because the
+  // activator never controls the permanent.
+  tap_others_untap?: boolean;
   // #1600: "Exile a creature you control" on a mana ability (Food
   // Chain). Same fields as ActivatedAbilityView's; the answer rides
   // activate_mana_ability as `exile_permanent_ids`.

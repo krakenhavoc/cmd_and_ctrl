@@ -2818,6 +2818,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		spend.Equip = price.Ability.Equip
 		spend.ClassLevel = price.Ability.ClassLevel
 		spend.CostHasX = price.Ability.Cost.XSlots() > 0
+		spend.CostHasC = game.CostStringHasColorless(price.Ability.Cost.Mana)
 		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian, nil)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn

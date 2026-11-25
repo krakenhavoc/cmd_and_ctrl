@@ -236,6 +236,17 @@ const (
 	// counter of kind Value on it (Characteristic.SourceCounters). A spell
 	// or an ability's source off the battlefield has no counters.
 	ProtectionQualityPermanentsWithCounter
+	// ProtectionQualitySpells is "protection from spells" (CR 702.16a,
+	// #6098, Emrakul, the World Anew): the source is a spell
+	// (Characteristic.SourceIsSpell), whatever its characteristics. An
+	// ability is not a spell, nor is a permanent.
+	ProtectionQualitySpells
+	// ProtectionQualityPermanentsCastThisTurn is "protection from
+	// permanents that were cast this turn" (#6098, Emrakul, the World
+	// Anew): the source is a permanent whose spell was cast this turn
+	// (Characteristic.SourceCastThisTurn). A permanent that was put onto
+	// the battlefield, or was cast an earlier turn, does not match.
+	ProtectionQualityPermanentsCastThisTurn
 	// ProtectionQualityOpponentsCreatures is "protection from creatures
 	// your opponents control" (CR 702.16a, Crypsis, #6253): the source is
 	// a creature (a creature spell too, CR 702.16a's exception to CR
@@ -243,7 +254,6 @@ const (
 	// (ProtectionQuality.Holder, bound by the reader as for
 	// ProtectionQualityOpponents). A noncreature source an opponent
 	// controls, and a creature the holder controls, are not stopped.
-	// Appended last so every earlier kind keeps its value.
 	ProtectionQualityOpponentsCreatures
 	// ProtectionQualityNonSubtypeCreatures is "protection from
 	// non-<creature type> creatures" (CR 702.16a, Spare from Evil's
@@ -337,6 +347,10 @@ func (k ProtectionQualityKind) String() string {
 		return "mana_value"
 	case ProtectionQualityPermanentsWithCounter:
 		return "permanents_with_counter"
+	case ProtectionQualitySpells:
+		return "spells"
+	case ProtectionQualityPermanentsCastThisTurn:
+		return "permanents_cast_this_turn"
 	case ProtectionQualityOpponentsCreatures:
 		return "opponents_creatures"
 	case ProtectionQualityNonSubtypeCreatures:
@@ -638,6 +652,10 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
 	case "spells that are one or more colors":
 		return ProtectionQuality{Kind: ProtectionQualityColoredSpells, Printed: printed}, true
+	case "spells":
+		return ProtectionQuality{Kind: ProtectionQualitySpells, Printed: printed}, true
+	case "permanents that were cast this turn":
+		return ProtectionQuality{Kind: ProtectionQualityPermanentsCastThisTurn, Printed: printed}, true
 	case "legendary creatures":
 		return ProtectionQuality{Kind: ProtectionQualityLegendaryCreatures, Printed: printed}, true
 	case protectionColorless:
@@ -1112,6 +1130,10 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) >= 2
 	case ProtectionQualityColoredSpells:
 		return src.SourceIsSpell && len(src.Colors) >= 1
+	case ProtectionQualitySpells:
+		return src.SourceIsSpell
+	case ProtectionQualityPermanentsCastThisTurn:
+		return src.SourceIsPermanent && !src.SourceIsSpell && src.SourceCastThisTurn
 	case ProtectionQualityLegendaryCreatures:
 		return typeListHas(src.Types, "creature") && typeListHas(src.Supertypes, "legendary")
 	case ProtectionQualityOpponentsCreatures:
@@ -1280,6 +1302,8 @@ func stampSourceFacts(ch *Characteristic, c *Card, x int) {
 	// A permanent has a layered characteristic; a spell on the stack, or a
 	// card anywhere else, has none (#4307).
 	ch.SourceIsPermanent = c.effective != nil
+	// #6098: a permanent whose spell was cast this turn.
+	ch.SourceCastThisTurn = c.effective != nil && c.Provenance.CastThisTurn
 	// The counters on the source (#6149). Only a permanent's are read
 	// (ProtectionQualityPermanentsWithCounter asks SourceIsPermanent too).
 	ch.SourceCounters = copyCounterMap(c.Counters)

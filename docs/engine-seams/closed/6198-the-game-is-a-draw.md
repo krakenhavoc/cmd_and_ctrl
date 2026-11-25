@@ -1,0 +1,6 @@
+---
+title: "The game is a draw, from an effect"
+date: 2026-11-25
+issues: [6198]
+---
+**The game is a draw, from an effect** (#6198, CR 104.4a, 104.4c) — `Game.DrawTheGameForEffect(source)` ends an active game at once as a draw for every player still in it, with its own outcome cause, `draw_effect` (`game.OutcomeCauseDrawEffect`), and `Source` naming the card. A draw is nobody's win or loss, so no "can't win" or "can't lose" gate stops it. `Game.HighestLifeWinsOrDrawForEffect(source)` is Celestial Convergence's "the player with the highest life total wins the game. If two or more players are tied for highest life total, the game is a draw". It compares only players still in the game, a single leader wins through `WinTheGameForEffect` (so a Platinum Angel holds), and a tie draws. Card files use the primitives `effects.DrawTheGame{}` and `effects.HighestLifeTotalWins{}`, which stop the resolution when the game ended. The log reads "The game is a draw (Divine Intervention)" and the end-of-game banner reads "The game is a draw — Divine Intervention."; gamestats stores the existing `draw` outcome. **Cards**: Celestial Convergence (OLD b675) and Divine Intervention (OLD b873) are built by their OLD batches.

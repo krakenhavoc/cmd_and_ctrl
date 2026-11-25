@@ -1090,6 +1090,15 @@ type CastPermission struct {
 	// Ignored when AnyColor or AnyType is set.
 	AnyColorFrom string `json:"anyColorFrom,omitempty"`
 
+	// AnyColorFromSnow narrows the clause by the mana's SOURCE: "you may
+	// spend mana from snow sources as though it were mana of any color to
+	// cast those spells" (Draugr Necromancer, #6161, CR 609.4b). Each
+	// coloured symbol then also takes any mana a snow source produced
+	// (ColorRequirement.SnowAny); other mana pays as printed, and a {C} or
+	// an {S} is left alone. Ignored when AnyColor or AnyType is set.
+	// Additive.
+	AnyColorFromSnow bool `json:"anyColorFromSnow,omitempty"`
+
 	// --- the window ------------------------------------------------
 
 	// Duration is when the permission ENDS (CR 611.2), in the one
@@ -3694,6 +3703,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyColorCost(cost)
 	case grant.AnyColorFrom != "":
 		return widenFromColors(cost, []string{grant.AnyColorFrom})
+	case grant.AnyColorFromSnow:
+		return widenSnowAny(cost)
 	}
 	return cost
 }
@@ -3719,7 +3730,11 @@ func requiresColorless(req ColorRequirement) bool {
 // the price and the announce path ask it with, so all three judge the
 // cast under the same permission. Caller must hold g.mu.
 func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
-	if from == ZoneHand || from == ZoneCommand {
+	// #6231: a copy of a card in a hand exists only because an offer made
+	// it there (CR 707.12, CardCopyOffer.InHand), and is cast through that
+	// offer's permission, so its reduction is read; a real hand card's
+	// ordinary cast claims no permission.
+	if (from == ZoneHand && !card.CardCopy) || from == ZoneCommand {
 		return 0
 	}
 	// #4509: `card` is the face being cast; a permission that does not

@@ -434,6 +434,11 @@ type GameSnapshot struct {
 	// dilemmas faced this turn.
 	DilemmasFacedThisTurn map[uuid.UUID]int `json:"dilemmasFacedThisTurn,omitempty"`
 
+	// PilesOrGuessesThisTurn is Game.PilesOrGuessesThisTurn (#6175).
+	// Additive within the version: a file written before it restores
+	// with no pile or guess effect this turn.
+	PilesOrGuessesThisTurn []uuid.UUID `json:"pilesOrGuessesThisTurn,omitempty"`
+
 	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
@@ -1342,6 +1347,9 @@ type cardSnapshot struct {
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
+	// TributePaid is CR 702.104a's paid tribute (#6251). Old snapshots
+	// have no key and read "not paid", which only a tribute card reads.
+	TributePaid bool `json:"tributePaid,omitempty"`
 	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
 	// duration. Carried for ChosenPlayer's reason: a player made the
 	// choices and nothing can re-derive them, so a restore that lost
@@ -1899,6 +1907,7 @@ type stackItemSnapshot struct {
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
+	Cycling       bool         `json:"cycling,omitempty"`    // #6169
 	// ExileWithCounter (#3213) is Goliath Daydreamer's mark. Carried: a
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
@@ -2167,6 +2176,8 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	// #6271: each candidate's EachOf filters, as bits. Additive.
+	PickSlots []int `json:"pickSlots,omitempty"`
 	// #4256: the word a keyed outside-the-game collection pick's filter
 	// is handed (its key rides pickThen). Additive within the version.
 	PickMatchArg string `json:"pickMatchArg,omitempty"`
@@ -2817,6 +2828,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
+	s.PilesOrGuessesThisTurn = copyUUIDs(g.PilesOrGuessesThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -3327,6 +3339,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenCard:                 objectRefPtr(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
 		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
 		Solved:                     c.Solved,
@@ -3538,6 +3551,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -3783,6 +3797,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
@@ -4206,6 +4221,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
+	g.PilesOrGuessesThisTurn = copyUUIDs(s.PilesOrGuessesThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
 		g.derivePrePlanOrdinalsLocked()
@@ -4520,6 +4536,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenCard:                 objectRefValue(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
 		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
 		Solved:                     c.Solved,
@@ -4778,6 +4795,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -4952,6 +4970,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
