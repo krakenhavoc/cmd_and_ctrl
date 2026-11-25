@@ -1,8 +1,6 @@
 package cardsap
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -39,17 +37,9 @@ func init() {
 			effects.WhenThisEnters("Arid Archway — return a land you control; if another Desert was returned, surveil 1",
 				effects.Do(effects.Instruction(func(ctx *effects.Context) error {
 					return effects.ChoosePermanents{
-						Question: "Arid Archway — return a land you control to its owner's hand",
-						Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-							var out []uuid.UUID
-							for _, c := range g.BattlefieldCardsForEffect() {
-								if c.Controller == of && c.IsLand() {
-									out = append(out, c.InstanceID)
-								}
-							}
-							return out, 1, 1
-						},
-						Keyed: aridArchwayReturned,
+						Question:   "Arid Archway — return a land you control to its owner's hand",
+						Candidates: effects.S82OldB089LandCandidates,
+						Keyed:      aridArchwayReturned,
 					}.Apply(ctx)
 				}))),
 		},
