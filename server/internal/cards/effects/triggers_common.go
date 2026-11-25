@@ -1437,3 +1437,13 @@ func YouTappedAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Chara
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.IsCreature() && c.Controller != source.Controller
 }
+
+// YouPayLife — "Whenever you pay life" (Font of Agonies, #6234; CR
+// 119.4). Watch game.EventChangeLife. True for life the source's
+// controller PAID as a cost, whatever paid it (a spell's or ability's
+// cost, Phyrexian mana, ward, a "pay N life" choice); never for damage
+// or an effect's life loss. "That many" is -ev.Amount, the life that
+// actually moved.
+func YouPayLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventChangeLife && ev.LifePayment && ev.Amount < 0 && ev.Target == source.Controller
+}
