@@ -4515,6 +4515,10 @@ export interface ActivatedAbilityView {
   // permanent now. Absent on every other row.
   grantor_only?: boolean;
   activator?: string;
+  // #6170: "Only the player this creature is attacking may activate this
+  // ability" (Capricopian). Open to the viewer only while the card's
+  // `attacking_target` is the viewer's seat. Absent on every other row.
+  defending_player_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
@@ -5932,7 +5936,9 @@ export interface ProtectionView {
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
   // (#4307), "multicolored" (#4834), "mana_value_at_least" (value = N)
-  // or "colorless" (a source with no colour, #5650).
+  // or "colorless" (a source with no colour, #5650), "mana_value"
+  // (exactly N, #6149) or "permanents_with_counter" (value = the
+  // counter kind, #6149).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

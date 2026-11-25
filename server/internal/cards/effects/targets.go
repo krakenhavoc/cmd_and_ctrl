@@ -759,6 +759,23 @@ func OfAnOpponentsChoice(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// OfTheFirstTargetsController is "and that opponent chooses target …"
+// after a first clause naming a permanent an opponent controls (Mogg
+// Assassin, #6171): an OfAnOpponentsChoice clause whose chooser is not
+// the controller's to name but the controller of the permanent picked
+// for clause 0 (game.TargetSpec.ChosenByFirstTargetsController). The
+// first clause is the controller's own. Wrap the later clause:
+//
+//	Clauses(
+//		TargetCreature("target creature an opponent controls", OpponentControls()),
+//		OfTheFirstTargetsController(TargetCreature("target creature")),
+//	)
+func OfTheFirstTargetsController(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ChosenByOpponent = true
+	spec.ChosenByFirstTargetsController = true
+	return spec
+}
+
 // OfThatPlayersChoice is "target … that player controls of their
 // choice" on a triggered ability (#1997, ADR 0019 amendment 2026-10-23):
 // the player the triggering event names (the player whose upkeep it is)

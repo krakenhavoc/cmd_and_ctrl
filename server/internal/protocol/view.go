@@ -5694,6 +5694,11 @@ type ActivatedAbilityView struct {
 	// digest's answer.
 	GrantorOnly bool   `json:"grantor_only,omitempty"`
 	Activator   string `json:"activator,omitempty"`
+	// DefendingPlayerOnly is "Only the player this creature is attacking
+	// may activate this ability" (Capricopian, #6170). The client opens
+	// the row to the viewer only while the permanent's attacking_target is
+	// the viewer's seat; whether it is live is still the digest's answer.
+	DefendingPlayerOnly bool `json:"defending_player_only,omitempty"`
 	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
 	// set by effects.EquipAbility and nothing else, #1208). Absent on
 	// every other row. Bot data (#2449): an equip that moves an
@@ -9569,7 +9574,7 @@ func (c CardView) ActivationSick() bool {
 // reachesAcross reports whether the row names an activator other than
 // the plain controller (any player, only opponents, only the owner).
 func (a ActivatedAbilityView) reachesAcross() bool {
-	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly || a.GrantorOnly
+	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly || a.GrantorOnly || a.DefendingPlayerOnly
 }
 
 // stampAnyPlayerOffers files, for every seat that does not control the
@@ -14202,30 +14207,31 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// ADR 0155 Decision 10: the lender of a borrowed row, and
 			// its label with the lender's name read as this card's
 			// (CR 201.5b).
-			BorrowedFrom:     borrowedFromView(g, origins.At(i)),
-			Label:            game.BorrowedLabel(a.Label, origins.At(i), c.Name),
-			TapCost:          a.Cost.Tap,
-			SacrificeSelf:    a.Cost.SacrificeSelf,
-			DiscardSelf:      a.Cost.DiscardSelf,
-			ExileSelf:        a.Cost.ExileSelf,
-			ReturnSelf:       a.Cost.ReturnSelf,
-			BottomSelf:       a.Cost.BottomSelf,
-			ExileGrantor:     a.Cost.ExileGrantor,
-			TapGrantor:       a.Cost.TapGrantor,
-			SacrificeGrantor: a.Cost.SacrificeGrantor,
-			Exert:            a.Cost.Exert,
-			ManaCost:         a.Cost.Mana,
-			LifeCost:         a.Cost.Life,
-			SorcerySpeed:     a.SorcerySpeed,
-			LoyaltyCost:      a.Cost.Loyalty,
-			LoyaltyCostX:     a.Cost.LoyaltyX,
-			AnyPlayer:        a.AnyPlayer,
-			OpponentsOnly:    a.OpponentsOnly,
-			OwnerOnly:        a.OwnerOnly,
-			GrantorOnly:      a.GrantorOnly,
-			Equip:            a.Equip,
-			Reconfigure:      a.Reconfigure,
-			UntapSelf:        a.UntapSelf,
+			BorrowedFrom:        borrowedFromView(g, origins.At(i)),
+			Label:               game.BorrowedLabel(a.Label, origins.At(i), c.Name),
+			TapCost:             a.Cost.Tap,
+			SacrificeSelf:       a.Cost.SacrificeSelf,
+			DiscardSelf:         a.Cost.DiscardSelf,
+			ExileSelf:           a.Cost.ExileSelf,
+			ReturnSelf:          a.Cost.ReturnSelf,
+			BottomSelf:          a.Cost.BottomSelf,
+			ExileGrantor:        a.Cost.ExileGrantor,
+			TapGrantor:          a.Cost.TapGrantor,
+			SacrificeGrantor:    a.Cost.SacrificeGrantor,
+			Exert:               a.Cost.Exert,
+			ManaCost:            a.Cost.Mana,
+			LifeCost:            a.Cost.Life,
+			SorcerySpeed:        a.SorcerySpeed,
+			LoyaltyCost:         a.Cost.Loyalty,
+			LoyaltyCostX:        a.Cost.LoyaltyX,
+			AnyPlayer:           a.AnyPlayer,
+			OpponentsOnly:       a.OpponentsOnly,
+			OwnerOnly:           a.OwnerOnly,
+			GrantorOnly:         a.GrantorOnly,
+			DefendingPlayerOnly: a.DefendingPlayerOnly,
+			Equip:               a.Equip,
+			Reconfigure:         a.Reconfigure,
+			UntapSelf:           a.UntapSelf,
 		}
 		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
 		// "Only you may activate" row is open to.

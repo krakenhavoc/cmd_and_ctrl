@@ -432,10 +432,10 @@ type AbilityCostSubject struct {
 	// hand, where the card being cycled is (CR 113.6).
 	Cycling bool
 
-	// Loyalty says this is a loyalty ability (CR 606.1: an ability with a
-	// loyalty symbol in its cost, #6148): "Loyalty abilities of
-	// planeswalkers your opponents control cost {1} more to activate"
-	// (Eidolon of Obstruction).
+	// Loyalty is the CR 606 loyalty-ability bit (ActivatedAbilityShape.Cost.Loyalty
+	// is set, #5514): "Loyalty abilities of planeswalkers your opponents control
+	// cost {1} more to activate" (Eidolon of Obstruction). Read off the cost
+	// component, never the label, which is prose.
 	Loyalty bool
 
 	// Mana says this is a CR 605 mana ability rather than a CR 602
