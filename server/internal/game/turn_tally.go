@@ -845,6 +845,46 @@ type AttackRecord struct {
 	AllTypes   bool      `json:"allTypes,omitempty"`
 }
 
+// DeclaredAsAttackerThisCombat reports whether the OBJECT `c` is now
+// was declared as an attacker during the combat phase in progress
+// (#6190): Hollow Warrior's "not declared as an attacking ... creature
+// this combat", which stays true for a creature since removed from
+// combat, because the declaration is history (CR 508.1).
+//
+// Caller must hold g.mu.
+func (g *Game) DeclaredAsAttackerThisCombat(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, a := range g.TurnTally.Attacks {
+		if a.Attacker == c.InstanceID && a.Epoch == c.ObjectEpoch && a.PhaseID == g.Turn.PhaseID {
+			return true
+		}
+	}
+	return false
+}
+
+// DeclaredAsBlockerThisCombat is DeclaredAsAttackerThisCombat's block
+// half (#6190), off the per-pair block record the turn already keeps
+// (TurnTally.CombatBlocks, #6193): the blocks this object made in the
+// combat phase in progress, however they were made — the declaration, a
+// creature put onto the battlefield blocking, or an effect. It stays
+// true for a creature since removed from combat, because the record is
+// history.
+//
+// Caller must hold g.mu.
+func (g *Game) DeclaredAsBlockerThisCombat(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, b := range g.TurnTally.CombatBlocks {
+		if b.Blocker.ID == c.InstanceID && b.Blocker.Epoch == c.ObjectEpoch && b.PhaseID == g.Turn.PhaseID {
+			return true
+		}
+	}
+	return false
+}
+
 // AttackedYouOrYourPlaneswalkerThisTurn reports whether `player`
 // attacked `you`, or a planeswalker `you` controlled as the attack was
 // declared, this turn: Sandswirl Wanderglyph's "each opponent who

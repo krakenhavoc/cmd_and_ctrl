@@ -299,10 +299,18 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// #5396: deliberately NOT in redactedCardKeys: it is read off
 		// the card's abilities, which an unknown card does not show.
 		CantBlockAlone: true,
-		GoadedBy:       "goader",
-		Goaders:        []string{"goader"},
-		MustAttack:     true,
-		MustBlock:      true,
+		// #6190: the clause is the card's own text, so redaction clears
+		// it (redactCardForViewer) and it is not in redactedCardKeys.
+		AttackCost: []CombatCostDemandView{
+			{Kind: "sacrifice", Clause: "a land", Source: "Exalted Dragon", Count: 1, Candidates: []string{"land"}},
+		},
+		BlockCost: []CombatCostDemandView{
+			{Kind: "tap", Clause: "an untapped creature you control", Source: "Hollow Warrior", Count: 1, Candidates: []string{"creature"}},
+		},
+		GoadedBy:   "goader",
+		Goaders:    []string{"goader"},
+		MustAttack: true,
+		MustBlock:  true,
 		// #3898: deliberately NOT in redactedCardKeys. The sentence
 		// names both creatures, and the server never stamps either on
 		// a face-down permanent.

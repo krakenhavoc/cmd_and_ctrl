@@ -67,6 +67,15 @@ export const ErrorCode = {
   // `reason` is the whole price ("{1}{1}"), `missing` the shortfall.
   // Nothing was spent; the declaration is still open, blocks staged.
   BlockTaxUnpaid: "block_tax_unpaid",
+  // #6190 (CR 508.1h / 509.1d): a declare_attacker, declare_attackers or
+  // finish_blocks refused because a NON-MANA cost to attack or block was
+  // not paid — Exalted Dragon's "unless you sacrifice a land", Hollow
+  // Warrior's tapped creature, Floodtide Serpent's returned enchantment.
+  // `reason` is the clause as the card prints it and `card_id` the
+  // creature it is about, so the dock can open the picker that pays it;
+  // the permanents ride the declaration as `sacrifice_ids` / `tap_ids` /
+  // `return_ids`. Nothing was staged and there is no override.
+  CombatCostUnpaid: "combat_cost_unpaid",
   // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
   // refused because the declaration breaks a CR 508.1c count limit
   // (Silent Arbiter's "no more than one creature can attack each
@@ -5308,6 +5317,25 @@ export interface FinalCardView {
   attached_to_name?: string;
 }
 
+// CombatCostDemandView is one non-mana cost to attack or block, as the
+// server states it (#6190): which picker to open, the clause as the card
+// prints it, how many permanents it asks for, and the candidates that
+// could pay. The client re-derives none of it.
+export interface CombatCostDemandView {
+  // Which cost component, and so which id list the answer goes in:
+  // `sacrifice` → sacrifice_ids, `tap` → tap_ids, `return` → return_ids.
+  kind: "sacrifice" | "tap" | "return";
+  // The clause without the verb ("a land", "two Islands"), and the name
+  // of the permanent that charges it.
+  clause?: string;
+  source?: string;
+  // How many permanents must be named, and the instance ids that could
+  // pay, in battlefield order. Fewer candidates than `count` means the
+  // declaration cannot be made at all.
+  count: number;
+  candidates?: string[];
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -5502,6 +5530,21 @@ export interface CardView extends CastSurfaceView {
   // block only beside another blocker of its controller's. Omitted
   // otherwise.
   cant_block_alone?: boolean;
+  // #6190 (CR 508.1h / 509.1d): the NON-MANA costs this creature's
+  // controller must pay to attack or block with it — Exalted Dragon's
+  // "unless you sacrifice a land", Hollow Warrior's "unless you tap an
+  // untapped creature you control", Floodtide Serpent's "unless you
+  // return an enchantment you control to its owner's hand".
+  //
+  // `attack_cost` is priced against a target the creature may attack,
+  // so it is present only while it could be declared attacking;
+  // `block_cost` is priced for the creature alone, so the dock can show
+  // the price before the block is staged. Both omitted at a table with
+  // no such cost on it. The permanents are the player's choice and ride
+  // the declaration as `sacrifice_ids` / `tap_ids` / `return_ids`; see
+  // combatCost.ts.
+  attack_cost?: CombatCostDemandView[];
+  block_cost?: CombatCostDemandView[];
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat
