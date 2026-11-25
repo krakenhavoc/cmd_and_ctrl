@@ -3733,6 +3733,7 @@ tail blighted/blight/sourbread-auntie-tokens
 tail blighted/blight/ward-blight
 tail blighted/blight/warren-torchmaster-when-you-do
 tail blitzwing/convert-if-none-lost
+tail blood-tribute/gain-the-life-lost
 tail bloodthirsty-adversary/copy-and-cast
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
