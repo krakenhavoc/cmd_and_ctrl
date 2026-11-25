@@ -85658,6 +85658,10 @@ turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatDamagedPlayers	map:string
 turnTally.combatDamagedPlayers{}	number:int
+turnTally.couldAttack	array
+turnTally.couldAttack[]	object
+turnTally.couldAttack[].epoch	number:int
+turnTally.couldAttack[].id	custom(uuid.UUID)
 turnTally.countersPut	map:string
 turnTally.countersPut{}	number:int
 turnTally.creaturesDied	number:int
