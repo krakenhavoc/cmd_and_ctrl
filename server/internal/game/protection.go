@@ -211,11 +211,22 @@ const (
 	// A spell's colours are those of the card or copy on the stack
 	// (CR 105.2); colourless spells and abilities are not stopped.
 	ProtectionQualityColoredSpells
+	// ProtectionQualityLegendaryCreatures is "protection from legendary
+	// creatures" (CR 702.16a, Tsabo Tavoc): the source is a creature with
+	// the legendary supertype. A fact about two characteristics at once, so
+	// it is its own kind; a legendary noncreature source (a legendary
+	// artifact, or a legendary creature spell's non-creature copy) is not
+	// stopped. Appended last so every earlier kind keeps its value.
+	ProtectionQualityLegendaryCreatures
 )
 
 // protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
 // lowercase: "protection from creatures of type Vampire".
 const protectionCreaturesOfType = "creatures of type "
+
+// ProtectionFromLegendaryCreatures is the token for "protection from
+// legendary creatures" (Tsabo Tavoc).
+const ProtectionFromLegendaryCreatures = protectionPrefix + "legendary creatures"
 
 // ProtectionFromCreaturesOfType is the token for protection from creatures
 // of one creature type.
@@ -266,6 +277,8 @@ func (k ProtectionQualityKind) String() string {
 		return "colorless"
 	case ProtectionQualityColoredSpells:
 		return "colored_spells"
+	case ProtectionQualityLegendaryCreatures:
+		return "legendary_creatures"
 	case ProtectionQualityCreatureSubtype:
 		// Same wire kind as a creature-type quality: the badge reads Value.
 		return "subtype"
@@ -334,6 +347,17 @@ type ProtectionQuality struct {
 	// remove Auras": the instance removes no Aura at all
 	// (ProtectionSparingAuras).
 	SparesAuras bool
+
+	// SparesAttachedOf is CR 702.16p's form, Benevolent Blessing's "This
+	// effect doesn't remove Auras and Equipment you control that are already
+	// attached to it": the instance removes no Aura and no Equipment that
+	// this player controls (ProtectionSparingAttachedOf), and uuid.Nil for
+	// every other instance. "Already attached" needs no field of its own:
+	// protection from the quality stops anything else with it from becoming
+	// attached (CR 303.4d, 301.5c), so the permanents it can spare are
+	// exactly the ones attached when it began to apply. Read, like the
+	// others, only by the CR 704.5m attachment check.
+	SparesAttachedOf uuid.UUID
 }
 
 // protectionSparesHead opens the CR 702.16n exemption a token can end
@@ -346,6 +370,9 @@ type ProtectionQuality struct {
 const (
 	protectionSparesHead  = " (doesn't remove "
 	protectionSparesAuras = "Auras"
+	// protectionSparesAttached opens the CR 702.16p exemption's controller:
+	// "(doesn't remove Auras and Equipment controlled by <player id>)".
+	protectionSparesAttached = "Auras and Equipment controlled by "
 )
 
 // ProtectionSparingAura is `tok` (a "protection from <quality>" token)
@@ -372,11 +399,34 @@ func ProtectionSparingAuras(tok string) string {
 	return tok + protectionSparesHead + protectionSparesAuras + ")"
 }
 
+// ProtectionSparingAttachedOf is ProtectionSparingAura for "This effect
+// doesn't remove Auras and Equipment you control that are already attached
+// to it" (CR 702.16p, Benevolent Blessing): `controller` is the player "you"
+// means, the granting Aura's controller. "" for a token the grammar cannot
+// parse, or a nil player.
+func ProtectionSparingAttachedOf(tok string, controller uuid.UUID) string {
+	if controller == uuid.Nil {
+		return ""
+	}
+	if _, ok := ParseProtectionQuality(tok); !ok || strings.Contains(tok, protectionSparesHead) {
+		return ""
+	}
+	return tok + protectionSparesHead + protectionSparesAttached + controller.String() + ")"
+}
+
 // Spares reports whether this instance of protection leaves the
-// attachment `att` alone under CR 702.16n: `att` is an Aura, and the
-// instance says it doesn't remove that Aura or doesn't remove Auras.
+// attachment `att` alone under CR 702.16n and CR 702.16p: `att` is an Aura
+// the instance says it doesn't remove (that Aura, or all Auras), or an Aura
+// or Equipment controlled by the player a Benevolent Blessing names.
 func (q ProtectionQuality) Spares(att *Card) bool {
-	if att == nil || !att.IsAura() {
+	if att == nil {
+		return false
+	}
+	if q.SparesAttachedOf != uuid.Nil && att.Controller == q.SparesAttachedOf &&
+		(att.IsAura() || att.HasSubtype("Equipment")) {
+		return true
+	}
+	if !att.IsAura() {
 		return false
 	}
 	return q.SparesAuras || (q.SparesAura != uuid.Nil && q.SparesAura == att.InstanceID)
@@ -386,6 +436,8 @@ func (q ProtectionQuality) Spares(att *Card) bool {
 func (q ProtectionQuality) Token() string {
 	tok := protectionPrefix + q.Printed
 	switch {
+	case q.SparesAttachedOf != uuid.Nil:
+		return tok + protectionSparesHead + protectionSparesAttached + q.SparesAttachedOf.String() + ")"
 	case q.SparesAuras:
 		return tok + protectionSparesHead + protectionSparesAuras + ")"
 	case q.SparesAura != uuid.Nil:
@@ -409,8 +461,9 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 	// protection rather than protection that removes the Aura it
 	// promised to spare.
 	var (
-		sparesAura  uuid.UUID
-		sparesAuras bool
+		sparesAura     uuid.UUID
+		sparesAuras    bool
+		sparesAttached uuid.UUID
 	)
 	if i := strings.Index(rest, protectionSparesHead); i >= 0 {
 		what, closed := strings.CutSuffix(rest[i+len(protectionSparesHead):], ")")
@@ -419,6 +472,12 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 		}
 		if strings.EqualFold(what, protectionSparesAuras) {
 			sparesAuras = true
+		} else if who, ok := strings.CutPrefix(what, protectionSparesAttached); ok {
+			id, err := uuid.Parse(who)
+			if err != nil || id == uuid.Nil {
+				return ProtectionQuality{}, false
+			}
+			sparesAttached = id
 		} else if id, err := uuid.Parse(what); err == nil && id != uuid.Nil {
 			sparesAura = id
 		} else {
@@ -430,7 +489,7 @@ func ParseProtectionQuality(token string) (ProtectionQuality, bool) {
 	if !ok {
 		return ProtectionQuality{}, false
 	}
-	q.SparesAura, q.SparesAuras = sparesAura, sparesAuras
+	q.SparesAura, q.SparesAuras, q.SparesAttachedOf = sparesAura, sparesAuras, sparesAttached
 	return q, true
 }
 
@@ -496,6 +555,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
 	case "spells that are one or more colors":
 		return ProtectionQuality{Kind: ProtectionQualityColoredSpells, Printed: printed}, true
+	case "legendary creatures":
+		return ProtectionQuality{Kind: ProtectionQualityLegendaryCreatures, Printed: printed}, true
 	case protectionColorless:
 		return ProtectionQuality{Kind: ProtectionQualityColorless, Printed: printed}, true
 	}
@@ -514,6 +575,14 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 			return ProtectionQuality{Kind: ProtectionQualityCreatureSubtype, Value: ct, Printed: printed}, true
 		}
 		return ProtectionQuality{}, false
+	}
+	// "<creature type> creatures" (Sigrid, God-Favored's "protection from God
+	// creatures"): the same quality as "creatures of type <T>", a source that
+	// is a CREATURE of the type, so a noncreature God does not match.
+	if rest, ok := strings.CutSuffix(lower, " creatures"); ok {
+		if ct, ok := CanonicalCreatureType(strings.TrimSpace(rest)); ok {
+			return ProtectionQuality{Kind: ProtectionQualityCreatureSubtype, Value: ct, Printed: printed}, true
+		}
 	}
 	// A subtype, and only a CREATURE type: those are the ones printed
 	// protection names (Demons, Dragons, Goblins) and the ones
@@ -914,6 +983,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) >= 2
 	case ProtectionQualityColoredSpells:
 		return src.SourceIsSpell && len(src.Colors) >= 1
+	case ProtectionQualityLegendaryCreatures:
+		return typeListHas(src.Types, "creature") && typeListHas(src.Supertypes, "legendary")
 	case ProtectionQualityColorless:
 		// CR 105.2c. The snapshot's colours are the post-layer ones, so
 		// an artifact an effect made red is not colourless and a

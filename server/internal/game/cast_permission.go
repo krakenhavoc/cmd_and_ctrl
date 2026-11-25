@@ -331,6 +331,12 @@ type PermissionFilter struct {
 	// Additive within a snapshot version.
 	ArtifactOrSubtype string `json:"artifactOrSubtype,omitempty"`
 
+	// SpellSubtype is "<subtype> spells" for a subtype that is not a creature
+	// type (Runeforge Champion's "Rune spells"): a qualifying card has this
+	// subtype read through Card.HasSubtype. Empty constrains nothing.
+	// Additive within a snapshot version (S82 old batch 061).
+	SpellSubtype string `json:"spellSubtype,omitempty"`
+
 	// CreatureTypesAny is Deeproot Historian's "MERFOLK AND DRUID cards
 	// in your graveyard have retrace" (#2550): a card qualifies when it
 	// has AT LEAST ONE of the named creature types — "X and Y cards" is
@@ -586,6 +592,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
 		return false
 	}
+	if f.SpellSubtype != "" && !c.HasSubtype(f.SpellSubtype) {
+		return false
+	}
 	if f.NotSubtype != "" && c.HasSubtype(f.NotSubtype) {
 		return false
 	}
@@ -839,6 +848,17 @@ type CastPermission struct {
 	// permission written before this.
 	CostMore int `json:"costMore,omitempty"`
 
+	// CostMoreMana is "by paying {R}{R} in addition to its other costs"
+	// (Ogre Battlecaster, #6091): mana, coloured or not, in Scryfall brace
+	// notation, added to the price of a spell cast through this permission
+	// as an additional cost (CR 601.2f). CostMore's coloured sibling: it is
+	// added with the increases, before any reduction comes off, by the one
+	// pricer (costAfterModifiersLocked) and by the enumerator from the
+	// permission it holds. A land has no cost to raise. Empty adds nothing,
+	// which is every permission written before it. Additive within a
+	// snapshot version.
+	CostMoreMana string `json:"costMoreMana,omitempty"`
+
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
 	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
@@ -887,6 +907,14 @@ type CastPermission struct {
 	// grants, one per other seat, so a resolved Trance stores no new
 	// record; an older binary drops the key.
 	GraveyardsAreYours bool `json:"graveyardsAreYours,omitempty"`
+	// AllGraveyards is a STANDING permission over every graveyard, not
+	// only its holder's: Coram, the Undertaker's "you may play a land and
+	// cast a spell from among cards in graveyards that were put there from
+	// libraries this turn" (#6092). permissionReachesPileLocked lets it
+	// reach a card in any player's graveyard; the filter still narrows
+	// which cards. Meaningless on any other zone. A derived permission
+	// stores nothing, so the key is never written for it; additive.
+	AllGraveyards bool `json:"allGraveyards,omitempty"`
 
 	// DiscardLandCard is retrace's "discarding a land card in addition
 	// to paying its other costs" (CR 702.81a), Six's grant. It makes
@@ -1170,6 +1198,15 @@ type CastPermission struct {
 	// the end of the turn the cast is made in, rather than for as long as the
 	// permanent is on the battlefield. Additive; false writes nothing.
 	GainsUntilEndOfTurn bool `json:"gainsUntilEndOfTurn,omitempty"`
+
+	// GainsExileInsteadOfLeaving is "If you do, it gains 'If this permanent
+	// would leave the battlefield, exile it instead of putting it anywhere
+	// else.'" (The Eighth Doctor, #6091): the permanent a spell cast, or a
+	// land played, through this permission becomes has that replacement
+	// (CR 614.1a) for as long as it is on the battlefield as that object
+	// (CR 400.7), registered with the gains above before it can leave
+	// (Game.grantGainsForCastLocked). Additive within a snapshot version.
+	GainsExileInsteadOfLeaving bool `json:"gainsExileInsteadOfLeaving,omitempty"`
 
 	// EntersWithCounterKind and EntersWithCounters are "If you cast a
 	// creature spell this way, that creature enters with an additional
@@ -2653,7 +2690,8 @@ func (g *Game) storedHandPermissionForLocked(p *Player, card Card, key string) *
 		// #5922: the one standing rule over a hand is a stored one over
 		// ANOTHER player's (Sen Triplets), and it reaches the cards in
 		// that hand and no other.
-		if perm.Scope == ScopeStanding && (!perm.ForeignHandRule() || !g.permissionReachesPileLocked(p.ID, perm, card, ZoneHand)) {
+		if perm.Scope == ScopeStanding && !perm.OwnHandPriceRule() &&
+			(!perm.ForeignHandRule() || !g.permissionReachesPileLocked(p.ID, perm, card, ZoneHand)) {
 			continue
 		}
 		if key != "" && perm.AltCostKey != key {
@@ -2701,6 +2739,19 @@ func (p *CastPermission) ForClaim(alt *AlternativeCost) *CastPermission {
 func (p *CastPermission) ForeignHandRule() bool {
 	return p != nil && p.Zone == ZoneHand && p.Scope == ScopeStanding &&
 		p.ZoneOwner != uuid.Nil && p.ZoneOwner != p.Player
+}
+
+// OwnHandPriceRule reports a stored standing permission over its HOLDER's
+// own hand that names a price: "until end of turn, you may cast spells
+// from your hand without paying their mana costs" (Yusri, Fortune's
+// Flame, #5501). Like a hand grant that prices one claim it is an
+// alternative cost under its AltCostKey (ForClaim), but it covers every
+// card in the hand, so a card drawn after the grant is covered too. A
+// standing rule with no price over the holder's own hand opens nothing
+// (the cast is legal without it). Nil-safe.
+func (p *CastPermission) OwnHandPriceRule() bool {
+	return p != nil && p.Zone == ZoneHand && p.Scope == ScopeStanding && p.Cost != "" &&
+		p.AltCostKey != "" && (p.ZoneOwner == uuid.Nil || p.ZoneOwner == p.Player)
 }
 
 // PileOwnerFor resolves WHOSE graveyard or library this permission
@@ -2781,6 +2832,10 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 		return false
 	}
 	if card.Owner == perm.PileOwnerFor(holder) {
+		return true
+	}
+	// #6092: "cards in graveyards" (Coram, the Undertaker).
+	if zone == ZoneGraveyard && perm.AllGraveyards {
 		return true
 	}
 	// Shaman's Trance (#4177): "as though those cards were in your

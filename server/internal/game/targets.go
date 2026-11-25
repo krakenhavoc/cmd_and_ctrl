@@ -898,6 +898,19 @@ type TargetSpec struct {
 	// object admits NOTHING. Build it with effects.WithTheSameManaValueAsIt.
 	ManaValueEqualsEventObject bool
 
+	// MoreCreaturesThanChooser is "target player who controls more
+	// creatures than they do and is their opponent" on a
+	// ChosenByTriggerActor clause, where they are the player who chooses
+	// (Oath of Druids' upkeep player, #6100): a player candidate must be
+	// someone other than the chooser who controls more creatures than the
+	// chooser does. DATA, judged beside PlayerOK in the player walk
+	// (playerChooserAdmits, more_creatures_than_chooser.go), so the legal
+	// set, the announce check (CR 601.2c) and the resolution re-check (CR
+	// 608.2b) are one answer; a walk with no chooser admits nobody.
+	// Meaningless without ChosenByTriggerActor; effects.Register refuses it
+	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
+	MoreCreaturesThanChooser bool
+
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
 	// only on the value copies AnnouncedClauses hands out, like xBound.
@@ -1081,6 +1094,16 @@ type TargetSpec struct {
 	// each drop the source, the same shape as TapOthersCost.ExcludeSource
 	// and ReturnCost.ExcludeSource. Build it with effects.Another.
 	ExcludeSource bool
+
+	// AttachedToTheSource is the clause "target Equipment attached to it"
+	// (Shackles of Treachery's granted trigger, S82 OLD batch 072): a
+	// candidate must be attached to the permanent whose ability this is. It is
+	// DATA, like RelativeToSource, judged in the one shared walk so the legal
+	// set, the announce check (CR 601.2c) and the resolution re-check
+	// (CR 608.2b) agree. With no live source, or a source that has left (an
+	// attachment falls off a host that leaves, CR 301.5c), nothing is
+	// admitted. Build one with effects.AttachedToTheSource.
+	AttachedToTheSource bool
 
 	// AttachedToSource limits a SACRIFICE clause to permanents attached
 	// to the object paying the cost: "Sacrifice an Aura attached to this
@@ -1556,6 +1579,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
+			if !spec.playerChooserAdmits(g, src, p) {
+				continue
+			}
 			out.Players = append(out.Players, p.ID)
 		}
 	}
@@ -1827,6 +1853,9 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		// makes it fizzle without anything else being taught the
 		// rule, exactly as a creature that gains it does.
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
+			return false
+		}
+		if !spec.playerChooserAdmits(g, src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
@@ -2374,7 +2403,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.attachedToTheSourceAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
@@ -2401,6 +2430,15 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	}
 	return true
+}
+
+// attachedToTheSourceAdmits is AttachedToTheSource's gate: true without the
+// flag; with it, a candidate attached to the live source object.
+func (s *TargetSpec) attachedToTheSourceAdmits(src TargetSource, c Card) bool {
+	if !s.AttachedToTheSource {
+		return true
+	}
+	return src.Object != nil && c.AttachedTo.Kind == TargetCard && c.AttachedTo.ID == src.Object.InstanceID
 }
 
 // sourceOwnerAdmits is OwnedBySourceOwner's gate: true without the

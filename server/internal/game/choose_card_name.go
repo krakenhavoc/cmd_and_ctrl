@@ -168,6 +168,25 @@ func (g *Game) QueueCardNameChoiceKeyedForEffect(chooser, source uuid.UUID, reas
 	return g.QueueChoiceForEffect(c)
 }
 
+// QueueCardNameChoiceKeyedNotBasicForEffect is QueueCardNameChoiceKeyedForEffect
+// for "choose a card name other than a basic land card name" (CR 201.4a):
+// the prompt refuses a basic land card's name and stays open for another
+// answer. Necromentia's at-resolution choice (#5458).
+//
+// Caller must hold g.mu.
+func (g *Game) QueueCardNameChoiceKeyedNotBasicForEffect(chooser, source uuid.UUID, reason string, then KeyedTail) uuid.UUID {
+	c := PendingChoice{
+		Kind:             PendingChoiceCardName,
+		Chooser:          chooser,
+		Count:            1,
+		Source:           source,
+		Reason:           reason,
+		NotBasicLandName: true,
+	}
+	g.keyValueThenLocked(&c, then)
+	return g.QueueChoiceForEffect(c)
+}
+
 // ResolveCardNameChoice processes a resolve_choice action for a
 // PendingChoiceCardName entry: the chooser names a card and it is
 // stamped onto the source permanent's ChosenName.
@@ -219,13 +238,17 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 	g.dequeueChoiceLocked(idx)
 
 	if !choice.nameThen.IsZero() {
-		// #4253 slice 10c: the keyed at-resolution form.
-		g.EmitEvent(Event{
-			Kind:   EventCardNameChosen,
-			Actor:  chooserID,
-			CardID: choice.Source,
-			Label:  chosen,
-		})
+		// #4253 slice 10c: the keyed at-resolution form. A hidden
+		// agenda's name is secret (CR 702.106a, ADR 0227), so it is
+		// not an event: the log is public.
+		if !g.isHiddenAgendaLocked(choice.Source) {
+			g.EmitEvent(Event{
+				Kind:   EventCardNameChosen,
+				Actor:  chooserID,
+				CardID: choice.Source,
+				Label:  chosen,
+			})
+		}
 		if err := g.runValueTail(choice.nameThen, carriedCauseOfChoice(choice), chosen); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,

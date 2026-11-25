@@ -271,6 +271,40 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 GAP batch 231 (#5948).
 	"Cloudkill": "-X/-X to every creature where X is the greatest mana value of a commander its caster owns on the battlefield or in the command zone: no fixed amount a sweep can declare, and zero with no commander",
+
+	// S82 GAP2 batch 2 (#5948).
+	"Orzhov Pontiff": "its -1/-1 to the creatures its controller doesn't control is one of two modes of an enters-or-haunted-dies trigger: a mode of a trigger, not a board wipe",
+
+	// S82 GAP2 batch 07 (#5948).
+	"Fires of Mount Doom": "2 damage to one target creature, the Equipment on it destroyed, and 2 damage to each PLAYER when a card is played: no creature but the target is touched",
+
+	// S82 old sets, batch 005 (own group).
+	"Nicol Bolas, the Ravager // Nicol Bolas, the Arisen": "its -12 exiles cards from one library, not permanents; the 10 damage hits one target",
+
+	// #5948 Q3, the secret choice cards.
+	"Call to the Void": "destroys only the creatures the players secretly chose, at most one of their own and one of someone else's each: a handful of chosen creatures, not a board",
+
+	// S82 OLD batch 023 (#5462).
+	"Leveler": "its enters trigger exiles the cards in its controller's own library, not permanents: not a board wipe",
+
+	// S82 older sets batch 35 (#5501).
+	"Sanctifier en-Vec": "its enters trigger exiles the black and red cards from graveyards, no permanents, and its replacement only redirects what would go to a graveyard",
+
+	// S82 OLD batch 073 (#5506), roll-up old-4.
+	"Arcane Artisan": "when it leaves, it exiles only the tokens it created itself, not anyone else's permanents: not a board wipe",
+
+	// S82 OLD batch 058 (#5504).
+	"Author of Shadows": "its enters trigger exiles the opponents' graveyards, no permanents: not a board wipe",
+
+	// S82 OLD batch 071 (#5505).
+	"Valki, God of Lies // Tibalt, Cosmic Impostor": "Tibalt's -8 exiles every graveyard, not permanents",
+	// S82 OLD batch 083 (#5507).
+	"Nevinyrral, Urborg Tyrant": "a 3/6 creature cast to be a creature: the destroy-all is the optional {1} reflexive trigger of its dies trigger, which nobody can plan a turn around",
+	"Szat's Will":               "one mode is an edict (each opponent sacrifices one creature, the one with the greatest power) and the other exiles graveyards: no board is swept",
+
+	// S82 OLD batch 109 (#5511).
+	"Discontinuity": "ends the turn: it exiles the stack and wears off effects, but sweeps no permanents",
+	"Turn to Slag":  "5 damage to one creature and a destroy of the Equipment attached to it: one target's gear, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -106,6 +106,15 @@ type EmblemDef struct {
 	// such an emblem, EmblemsForPlayer derives Text from the lines it
 	// has right now, because the emblem has no other text (CR 114.1).
 	Lines []EmblemLine
+	// Boon marks a one-time boon (ADR 0099 amendment 2026-11-24,
+	// #5948): an Alchemy object that works like an emblem — it is the
+	// player's, lives beside their emblems and has one triggered
+	// ability — but is used up the first time that ability triggers.
+	// The catalog makes every boon trigger "triggers only once"
+	// (TriggeredAbility.OnlyOnce), and the harvest removes the boon as
+	// soon as its trigger has been claimed (sweepSpentBoonsLocked), so
+	// a boon never triggers twice and never lingers on the board.
+	Boon bool
 }
 
 // EmblemLine is one line of an emblem whose abilities are gained in
@@ -205,8 +214,16 @@ func (g *Game) EmblemsForPlayer(playerID uuid.UUID) []EmblemView {
 	if p == nil || p.Emblems == nil || len(p.Emblems.Cards) == 0 {
 		return nil
 	}
+	if len(g.ConspiraciesOf(playerID)) == len(p.Emblems.Cards) {
+		return nil
+	}
 	out := make([]EmblemView, 0, len(p.Emblems.Cards))
 	for _, c := range p.Emblems.Cards {
+		// ADR 0227: a conspiracy shares the container and is not an
+		// emblem; ConspiraciesOf reads it.
+		if IsConspiracy(c) {
+			continue
+		}
 		v := EmblemView{InstanceID: c.InstanceID, Label: c.Name, Level: c.RingTemptations}
 		if def := catalogDef(CatalogKey(c)); def != nil && def.Emblem != nil {
 			v.Label = def.Emblem.Label
@@ -381,5 +398,47 @@ func (g *Game) harvestFromEmblemsLocked(pass *harvestPass) {
 			continue
 		}
 		g.harvestFromZone(pass, p.Emblems)
+		g.sweepSpentBoonsLocked(p)
 	}
+}
+
+// sweepSpentBoonsLocked removes each of p's boons whose triggered
+// ability has triggered (EmblemDef.Boon). It runs after the emblem walk,
+// never inside it, so the walk's slice is not changed under it. The
+// trigger already on the stack resolves without its source, as any
+// ability does (CR 113.7a).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) sweepSpentBoonsLocked(p *Player) {
+	if p == nil || p.Emblems == nil {
+		return
+	}
+	var spent []uuid.UUID
+	for _, c := range p.Emblems.Cards {
+		if g.boonSpentLocked(c) {
+			spent = append(spent, c.InstanceID)
+		}
+	}
+	if len(spent) == 0 {
+		return
+	}
+	for _, id := range spent {
+		_, _ = p.Emblems.Remove(id)
+	}
+	g.layerVersion.Add(1)
+}
+
+// boonSpentLocked reports whether c is a boon one of whose triggered
+// abilities has triggered.
+func (g *Game) boonSpentLocked(c Card) bool {
+	def := catalogDef(c.OracleID)
+	if def == nil || def.Emblem == nil || !def.Emblem.Boon {
+		return false
+	}
+	for _, t := range def.Triggered {
+		if t.Key != "" && g.OnlyOnceTriggered[ObjectTallyKey(c.InstanceID, c.ObjectEpoch, t.Key)] > 0 {
+			return true
+		}
+	}
+	return false
 }

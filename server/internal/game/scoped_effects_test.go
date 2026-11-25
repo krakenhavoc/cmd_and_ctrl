@@ -322,6 +322,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// pricer. Its cases are in scoped_cost_tax_test.go here and in
 		// cards/effects.
 		ModSpellsCostMoreForOpponents: true,
+		// #6093: the timed reduction, read by the cast pricer too. Its
+		// cases are in scoped_cost_reduction_test.go here and in
+		// cards/effects.
+		ModSpellsCostLessForPlayer: true, ModExiledSpellsCostLessForPlayer: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
@@ -365,6 +369,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5368: Kaya, Geist Hunter's token doubling, read by no layer. Its
 		// cases are in multiply_tokens_test.go and cards/effects.
 		ModMultiplyTokens: true,
+		// Crafty Cutpurse's token redirect, read by no layer. Its cases
+		// are in redirect_tokens_test.go and cards/effects.
+		ModRedirectTokens: true,
 		// #5251: Lumbering Laundry's look at face-down creatures, read by
 		// no layer. Its cases are in face_down_look_test.go, in
 		// protocol's face_down_look_view_test.go and in cards/effects.
@@ -391,6 +398,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// Don't Blink: the entering-from-exile replacement. Its cases are
 		// in the effects package's S82 GAP batch 94 tests.
 		ModShuffleInsteadOfEnteringFromExile: true,
+		// #6093: Cone of Cold's timed enters-tapped replacement. Its
+		// cases are in scoped_enters_tapped_test.go.
+		ModCreaturesEnterTappedForOpponents: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,

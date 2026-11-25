@@ -1712,6 +1712,15 @@ const (
 	// Added in S35 (#1032).
 	EventSpawned EventKind = "spawned"
 
+	// EventConjured — a card's effect conjured a card (conjure.go, ADR
+	// 0099 amendment 2026-11-24, #5948). One event per card, emitted
+	// before the card lands. Actor is the player who conjured it (its
+	// owner, also in Target), Source the object whose ability did it,
+	// NewZone where it went, Label the card's name and Amount 1. Public;
+	// the log names the zone but not the card for a conjure into a hand
+	// or a library, as it does for a spawn.
+	EventConjured EventKind = "conjured"
+
 	// EventIdleClose — the server closed the table, or warned that it
 	// will, because nobody used it (ADR 0211 §4, §6). Label is
 	// IdleCloseLobby, IdleCloseGame or IdleCloseBots for a close, and
@@ -2032,6 +2041,16 @@ type Event struct {
 	// the game log, which tells this move as the token's arrival where it
 	// skips a spawn's move from no zone. Additive within schema v9.
 	BecameToken bool `json:"became_token,omitempty"`
+
+	// Resolved marks the EventZoneMove that puts an instant or sorcery
+	// card into its owner's graveyard from the stack as the last step of
+	// its own resolution (CR 608.2n), and no other move: a spell
+	// countered, or removed for want of legal targets (CR 608.2b), goes
+	// to the same graveyard without it. Haunt on a spell triggers on it
+	// ("When this spell is put into a graveyard during its resolution",
+	// CR 702.55a, #6083). Additive within the schema version: an older
+	// log has no such moves to mark. Engine-internal.
+	Resolved bool `json:"resolved,omitempty"`
 
 	// ExiledWith and ExiledWithAbility are the CR 607.2a link a card
 	// PLAYED FROM EXILE had while it sat there (Card.ExiledWith and
@@ -2434,6 +2453,17 @@ type Event struct {
 	// "whenever a face-down creature you control dies". Engine-internal,
 	// like LastKnownTypes; additive (#4452).
 	LastKnownFaceDown bool `json:"last_known_face_down,omitempty"`
+
+	// AttackingAlone / BlockingAlone are whether the same permanent was
+	// attacking alone or blocking alone as it last existed, on EventLTB
+	// only (#6098, CR 506.5: "attacking but no other creatures are").
+	// Judged against the whole simultaneous event: a creature that dies
+	// together with the only other attacker was not attacking alone,
+	// even though the other one left first (exit_alone.go). Thijarian
+	// Witness's "if it was attacking or blocking alone". Engine-internal,
+	// like LastKnownTypes; additive.
+	AttackingAlone bool `json:"attacking_alone,omitempty"`
+	BlockingAlone  bool `json:"blocking_alone,omitempty"`
 
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as

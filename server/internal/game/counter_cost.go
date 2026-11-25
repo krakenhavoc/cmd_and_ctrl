@@ -179,6 +179,15 @@ type CounterRemovalCost struct {
 	// empty one is the all-of-them payment, which with none held is zero.
 	// The view floors the stepper at the held count. Additive.
 	All bool
+
+	// CountIsX is "{X}, …, Remove X <kind> counters from this permanent"
+	// (Talon of Pain, #6085): the count removed is the X announced for
+	// the {X} in the SAME activation cost, not a second number. CR
+	// 107.3a: "While an activated ability is on the stack, any X in its
+	// activation cost equals the announced value." See counter_cost_x.go.
+	// Only the self, printed-kind, Variable form with a floor of 0 beside
+	// an {X} mana symbol; effects.Register refuses it elsewhere. Additive.
+	CountIsX bool
 }
 
 // CounterAddCost is a cost that PUTS a counter on the source —

@@ -76,6 +76,20 @@ describe("chosenValueChips", () => {
     expect(chosenValueChips({ chosen_number: 0 })).toEqual([]);
   });
 
+  it("lists what was noted for the permanent (#6097, #5948), shortened on the chip", () => {
+    const chip = chosenValueChips({ notes: ["1", "4"] })[0];
+    expect(chip.kind).toBe("notes");
+    expect(chip.label).toBe("Noted: 1 · 4");
+    expect(chip.title).toBe("noted for this permanent: 1 · 4");
+    const long = chosenValueChips({
+      notes: ["Number 3141592653", "Crossed out the 3 in place 1", "Crossed out the 1 in place 2"],
+    })[0];
+    expect(long.label.length).toBeLessThanOrEqual("Noted: ".length + 48);
+    expect(long.label.endsWith("…")).toBe(true);
+    expect(long.title).toContain("Crossed out the 1 in place 2");
+    expect(chosenValueChips({ notes: [] })).toEqual([]);
+  });
+
   it("labels a chosen name (#1210, Pithing Needle) as named", () => {
     const chip = chosenValueChips({ chosen_name: "Sol Ring" })[0];
     expect(chip.kind).toBe("name");
@@ -102,6 +116,28 @@ describe("chosenValueChips", () => {
       chosen_name: "Sol Ring",
     });
     expect(all.map((c) => c.kind)).toEqual(["color", "tribe", "option", "name"]);
+  });
+});
+
+describe("a commander's colour chosen before the game (#5948, CR 903.4b)", () => {
+  it("names the colour and cites the rule", () => {
+    const chip = chosenValueChips({ commander_color: "R" })[0];
+    expect(chip.kind).toBe("commander-color");
+    expect(chip.label).toBe("Red");
+    expect(chip.title).toContain("CR 903.4b");
+  });
+
+  it("shows on the commander's tile in the command zone", () => {
+    const { container } = mountCard(
+      permanent({
+        name: "The Prismatic Piper",
+        type_line: "Legendary Creature — Shapeshifter",
+        zone: "command",
+        colors: ["R"],
+        commander_color: "R",
+      }),
+    );
+    expect(chips(container).map((c) => c.text)).toEqual(["Red"]);
   });
 });
 

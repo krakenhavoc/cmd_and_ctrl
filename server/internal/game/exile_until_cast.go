@@ -75,15 +75,29 @@ func (g *Game) ExileUntilCastFreeByForEffect(library, chooser, source uuid.UUID,
 	return g.exileUntilCastFreeByLocked(library, chooser, source, hit, false)
 }
 
+// ExileUntilCastFreeAlsoBottomingForEffect is ExileUntilCastFreeForEffect
+// for a card whose bottoming covers more than the walk's pile: Possibility
+// Storm's "then they put all cards exiled with this enchantment on the bottom
+// of their library in a random order" includes the spell it exiled first.
+// `also` are cards already in exile that join the pile, so they are bottomed
+// in the same random order with the cards the walk passed over (and so are
+// bottomed whether the hit is cast or not, and when the walk finds nothing).
+//
+// Caller must hold g.mu.
+func (g *Game) ExileUntilCastFreeAlsoBottomingForEffect(player, source uuid.UUID, hit func(Card) bool, also []uuid.UUID) error {
+	return g.exileUntilCastFreeByLocked(player, player, source, hit, false, also...)
+}
+
 func (g *Game) exileUntilCastFreeLocked(player, source uuid.UUID, hit func(Card) bool, keepUncast bool) error {
 	return g.exileUntilCastFreeByLocked(player, player, source, hit, keepUncast)
 }
 
-func (g *Game) exileUntilCastFreeByLocked(library, player, source uuid.UUID, hit func(Card) bool, keepUncast bool) error {
+func (g *Game) exileUntilCastFreeByLocked(library, player, source uuid.UUID, hit func(Card) bool, keepUncast bool, also ...uuid.UUID) error {
 	pile, found, err := g.exileUntilLocked(library, hit)
 	if err != nil {
 		return err
 	}
+	pile = append(append([]uuid.UUID(nil), also...), pile...)
 	if found == uuid.Nil {
 		return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
 	}

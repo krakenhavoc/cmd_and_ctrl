@@ -412,6 +412,13 @@ func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
 	// (Retriever Phoenix's "return this card to the battlefield
 	// instead") recorded a body. The rest of the sentence waits for it,
 	// as a replaced draw's does (runDrawInsteadLocked).
+	if run := ev.keywordInstead; run.bodyCount() != nil {
+		ev.keywordInstead = keywordInsteadRun{}
+		tail := *ev
+		return run.bodyCount()(g, ev.Actor, run.source, run.n, func(g *Game) error {
+			return g.runKeywordActionThenLocked(&tail)
+		})
+	}
 	if run := ev.keywordInstead; run.body() != nil {
 		ev.keywordInstead = keywordInsteadRun{}
 		// Captured by value, like a replaced draw's tail: the body may

@@ -198,8 +198,9 @@ func TestTableTargetingBarSurvivesARestore(t *testing.T) {
 // The kind keeps its persisted int, names itself, and refuses a stamp
 // on another kind or a record in the wrong shape.
 func TestThisTurnAndNextTurnKeepsItsPersistedIntAndShape(t *testing.T) {
-	if !ThisTurnAndNextTurn.Known() || ThisTurnAndNextTurn != UntilYourNextUpkeep+1 || (ThisTurnAndNextTurn + 1).Known() {
-		t.Error("ThisTurnAndNextTurn is not the last known duration kind, right after UntilYourNextUpkeep")
+	// #6093 appended UntilEndOfCombatOnYourNextTurn after it.
+	if !ThisTurnAndNextTurn.Known() || ThisTurnAndNextTurn != UntilYourNextUpkeep+1 || UntilEndOfCombatOnYourNextTurn != ThisTurnAndNextTurn+1 {
+		t.Error("ThisTurnAndNextTurn is not the known duration kind right after UntilYourNextUpkeep")
 	}
 	if int(ThisTurnAndNextTurn) != 13 {
 		t.Errorf("ThisTurnAndNextTurn persists as %d, want 13", ThisTurnAndNextTurn)

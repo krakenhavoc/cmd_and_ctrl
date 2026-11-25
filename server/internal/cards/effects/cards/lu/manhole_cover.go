@@ -53,15 +53,7 @@ func init() {
 			Cost:    effects.Plus(effects.ManaCost("{2}"), effects.SacrificeThis()),
 			Targets: effects.TargetPlayer("target player"),
 			Purpose: effects.ForTargets(game.TargetPurpose{Slot: 0, Draws: 1}),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetPlayer {
-						return effects.DrawCards{Player: t.ID, N: 1}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  effects.TheFirstLegalTargetPlayerDrawsACard,
 		}},
 	})
 }

@@ -945,7 +945,7 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 	// dredge offer, Underrealm Lich's pick) holds the rest of the
 	// instruction behind it (CR 121.6b) instead of the later draws
 	// racing ahead of the question.
-	if err := g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, n), DrawThen{}); err != nil {
+	if err := g.drawInstructionRunLocked(playerID, n, DrawThen{}); err != nil {
 		if err == ErrZoneEmpty {
 			// Flag set, stop drawing. SBA loop will handle the loss.
 			return nil
@@ -2409,6 +2409,13 @@ type SearchLibrarySpec struct {
 	// ordinary search. Ignored for any other Dest or Limit.
 	OntoBattlefieldIfSubtype string
 
+	// FirstEntersUnderControlOf, when set, is "put one of them onto the
+	// battlefield under <that player>'s control and the rest under your
+	// own" (Rootweaver Druid, #5507): of a battlefield search's takes, the
+	// first one the searcher picked enters under that player's control and
+	// the rest under the searcher's, as the searcher puts them.
+	FirstEntersUnderControlOf uuid.UUID
+
 	// ToTop puts the found cards on TOP of the library, after the
 	// shuffle, when Dest is ZoneLibrary. It is what the "search your
 	// library for a card, then shuffle and PUT THAT CARD ON TOP"
@@ -2757,6 +2764,19 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if !spec.Rule.IsZero() && !KnownSearchRule(spec.Rule.key) {
 		return fmt.Errorf("%w: search rule %q", ErrUnknownEffectKey, spec.Rule.key)
 	}
+	// "Players can't search libraries this turn" (Shadow of Doubt): the
+	// library cannot be searched, so a search of nothing else does not
+	// happen: no search event, nothing found. Whatever follows the search
+	// (the shuffle, the instruction after it) is its own instruction and
+	// still happens.
+	barred := g.TurnTally.LibrarySearchesBarred
+	if barred && !spec.searchesGraveyard() && !spec.searchesHand() {
+		if spec.Shuffle {
+			p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
+			clearKnownInZoneLocked(p.Library)
+		}
+		return g.runSearchThenLocked(spec, nil)
+	}
 	// #4033: "all cards" has no count.
 	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
 	if takeAllInGraveyard {
@@ -2768,11 +2788,22 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if _, err := g.searchDestZoneLocked(p, spec.Dest); err != nil {
 		return err
 	}
+	// Stranglehold (search_cant.go): a searcher who can't search libraries
+	// searches nothing; an and/or search still looks at the other zones.
+	if !spec.searchesGraveyard() && !spec.searchesHand() && g.searchCantLocked(spec.Player) {
+		return g.skipBlockedSearchLocked(spec, p)
+	}
 	// Collect every match, not just the first `limit` — the whole
 	// point of the chooser is that the searcher sees the full set.
 	matches := make([]uuid.UUID, 0, len(p.Library.Cards))
 	matched := make([]Card, 0, len(p.Library.Cards))
-	for _, c := range p.Library.Cards {
+	// #6090: an opponent's Aven Mindcensor narrows the look to the top
+	// cards of the library (search_top_n.go).
+	libraryCards := g.searchableLibraryCards(spec.Player, p.Library.Cards)
+	if barred {
+		libraryCards = nil // only the graveyard or hand half of an and/or search remains
+	}
+	for _, c := range libraryCards {
 		if spec.Pred == nil || spec.Pred(c) {
 			matches = append(matches, c.InstanceID)
 			matched = append(matched, c)
@@ -2855,6 +2886,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	}
 	g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
 	return nil
+}
+
+// BarLibrarySearchesThisTurnForEffect is "players can't search libraries this
+// turn": from now until the turn ends no library can be searched.
+//
+// Caller must hold g.mu.
+func (g *Game) BarLibrarySearchesThisTurnForEffect() {
+	g.TurnTally.LibrarySearchesBarred = true
 }
 
 // searchDestZoneLocked resolves a search's destination ZoneKind to
@@ -3151,11 +3190,20 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 		return g.finishSearchLocked(spec, p, found)
 	}
 	head, rest := ids[0], ids[1:]
+	headSpec := spec
+	if spec.FirstEntersUnderControlOf != uuid.Nil {
+		// The first take enters under the named player's control; the
+		// rest of the search goes on as the searcher's.
+		headSpec.Player = spec.FirstEntersUnderControlOf
+		headSpec.LibraryOwner = p.ID
+		headSpec.FirstEntersUnderControlOf = uuid.Nil
+		spec.FirstEntersUnderControlOf = uuid.Nil
+	}
 	// #4253 slice 3: the rest of the search is data, so the entry's
 	// prompt (a fetched shockland's "pay 2 life?") is a restore point.
 	// The step is runSearchEntryStepLocked. Since #4361 S4 a search has
 	// no closure continuation, so this is the only form.
-	return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{search: &searchEntryRun{
+	return g.searchEnterBattlefieldLocked(headSpec, p, head, &entryTail{search: &searchEntryRun{
 		Spec: searchTailSpecOf(spec), Rest: copyUUIDs(rest), Found: copyUUIDs(found),
 	}})
 }

@@ -249,6 +249,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		SpecialActionGrants:                 spec.SpecialActionGrants,
 		UntapStep:                           spec.UntapStep,
 		UntapStepRestrictions:               spec.UntapStepRestrictions,
+		ForetellOnAnyTurn:                   spec.ForetellOnAnyTurn,
 		CounterRemovalLocks:                 spec.CounterRemovalLocks,
 		UntapCaps:                           spec.UntapCaps,
 		UntapOptOuts:                        spec.UntapOptOuts,
@@ -271,9 +272,14 @@ func BuildDef(spec Spec) *game.CardDef {
 		DamageStaysThroughCleanup:           spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,
 		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
+		ActivateAsThoughHasteOthers:         spec.ActivateAsThoughHasteOthers,
 		ExtraVote:                           spec.ExtraVote,
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
 		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,
+		OpponentsSearchTopN:                 spec.OpponentsSearchTopN,
+		OpponentsCantSearchLibraries:        spec.OpponentsCantSearchLibraries,
+		AttackingPlayerChoosesBlocks:        spec.AttackingPlayerChoosesBlocks,
+		DrawsFromBottom:                     spec.DrawsFromBottom,
 		DamageCantBePrevented:               spec.DamageCantBePrevented,
 		CantGainLife:                        spec.CantGainLife,
 		DrawLimits:                          spec.DrawLimits,
@@ -286,6 +292,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		DamageLastLoyalty:                   spec.DamageLastLoyalty,
 		OpponentEffectProtections:           spec.OpponentEffectProtections,
 		GameEndGates:                        spec.GameEndGates,
+		GameActionReplacements:              spec.GameActionReplacements,
 		CoinFlipRules:                       spec.CoinFlipRules,
 		WantsDistinctColors:                 spec.WantsDistinctColors,
 		ReadsManaSpent:                      spec.ReadsManaSpent,
@@ -301,6 +308,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		CastTimings:                         spec.CastTimings,
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
+		ChoosesCommanderColor:               spec.ChoosesCommanderColor,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
 		LibraryTopVisibleWhen:               spec.LibraryTopVisibleWhen,
 		HandsRevealed:                       spec.HandsRevealed,
@@ -326,6 +334,7 @@ func BuildDef(spec Spec) *game.CardDef {
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense
 	}
+	d.HiddenAgenda = spec.HiddenAgenda
 	// #659 / CR 702.62b: suspend's two triggered abilities are the
 	// KEYWORD's, not the card's. Grown here from the declaration so
 	// three card files cannot spell them three ways and the fourth

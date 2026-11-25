@@ -438,6 +438,15 @@ type StackItem struct {
 	// the same fact on EventCast). Added in S22.
 	CastFromZone ZoneKind
 
+	// CastOrdinal is which spell this was among the spells its caster cast
+	// this turn (1 for the first), stamped as the spell became cast
+	// (CR 601.2i) from the per-turn tally, so a spell cast in response does
+	// not move it. Zero for an item that is not a cast spell. Carried onto
+	// the permanent's CastProvenance (CR 400.7d): Codespell Cleric's "if it
+	// was the second spell you cast this turn". Additive within the
+	// snapshot version.
+	CastOrdinal int
+
 	// AltCost is the Key of the alternative cost paid to cast this
 	// spell — "overload", "evoke", "cleave" — or empty when the
 	// caster paid the printed mana cost (CR 118.9). Read back at
@@ -584,6 +593,14 @@ type StackItem struct {
 	// only, like ExileWithCounter: a countered or fizzled spell goes to the
 	// graveyard. Set by MarkSpellExilesAndPlotsForEffect; never on a copy.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+
+	// ExileAndReturn is Feather, the Redeemed's "exile that card instead of
+	// putting it into your graveyard as it resolves. If you do, return it to
+	// your hand at the beginning of the next end step" as a fact about this
+	// stack object. Resolution only, like ExileAndPlot: a countered or
+	// fizzled spell goes to the graveyard. Set by
+	// MarkSpellExilesAndReturnsForEffect; never on a copy.
+	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
 
 	// ExileAndSuspend, when positive, is Gandalf of the Secret Fire's
 	// "exile that card with three time counters on it instead of putting

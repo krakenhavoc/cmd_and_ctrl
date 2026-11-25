@@ -230,6 +230,8 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0223 | [Mutate: merged permanents, over or under (CR 702.140, CR 730)](0223-mutate-merged-permanents.md) | Accepted |
 | 0224 | [Banding: attacking in a band, blocking a band, and who divides the damage (CR 702.22)](0224-banding.md) | Accepted |
 | 0225 | [Splitting the card catalog package: a core, card shards and test packages](0225-splitting-the-card-catalog-package.md) | Accepted |
+| 0226 | [Subgames (Shahrazad) and dexterity cards (Chaos Orb, Falling Star)](0226-subgames-and-dexterity-cards.md) | Proposed |
+| 0227 | [Conspiracies in the command zone, and hidden agenda](0227-conspiracies-in-the-command-zone-and-hidden-agenda.md) | Accepted |
 
 ## Picking a number
 

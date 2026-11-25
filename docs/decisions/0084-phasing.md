@@ -144,7 +144,7 @@ guarantee this gets for free, and every loop that was missed would still be wron
 
 ### 2. Three fields on `Card`, and each answers a question the rules ask
 
-*(2026-11-12: three more, `PhaseInBarredBy` / `PhaseInBarredEpoch` / `PhaseInBarredFor`, are in the amendment at the end of this file, #5664.)*
+*(2026-11-12: three more, `PhaseInBarredBy` / `PhaseInBarredEpoch` / `PhaseInBarredFor`, are in the amendment at the end of this file, #5664; 2026-11-24: and `PhaseInBarredWhileTapped`, #6095.)*
 
 ```go
 PhasedOutBy       uuid.UUID  // CR 702.26a — under whose control it phased out
@@ -432,3 +432,26 @@ and `PhaseInBarredFor` (the player who must control it).
   of the phasing status.
 
 **Card unlocked** (`full`): The Phasing of Zhalfir.
+
+## Amendment 2026-11-24 — "it can't phase in for as long as ~ remains tapped" (#6095)
+
+The Pandorica prints the #5664 prohibition with a different condition: "It can't
+phase in for as long as The Pandorica remains tapped." One more field on `Card`,
+`PhaseInBarredWhileTapped`, switches the bar's test from "the source is under
+`PhaseInBarredFor`'s control" to "the source is tapped", whoever controls it; the
+source must still be on the battlefield as the object `PhaseInBarredEpoch` names.
+`Game.CantPhaseInWhileTappedForEffect` writes it, and never starts the duration
+for a source that is not tapped (CR 611.2b). Everything else is the #5664 bar:
+the untap step's phase-in and `phaseInLocked` skip the permanent while it holds,
+the sweep clears it for good once it stops holding, and nothing phases in on the
+spot.
+
+The card's other sentence, "When The Pandorica becomes untapped or leaves the
+battlefield, that permanent phases in", is a delayed triggered ability the
+resolution creates (CR 603.7), not a clock: `Game.PhaseInForEffect` is the
+instruction it resolves to. It clears any bar that has stopped holding and phases
+the named permanents in with what phased out indirectly with them (CR 702.26g).
+The field is additive in the snapshot (`phaseInBarredWhileTapped`) and cleared
+with the rest of the phasing status.
+
+**Card unlocked** (`full`): The Pandorica.

@@ -103,6 +103,15 @@ const (
 	// that would go to a graveyard other than its owner's goes to its
 	// owner's instead, so no card is ever in another player's.
 	TargetShareOwner
+
+	// TargetShareToughness is the permanent's TOUGHNESS after the layers
+	// (CR 208.1, CR 613.4): "any number of target creatures with equal
+	// toughness" (V.A.T.S., #6100). Judged at announce (CR 601.2c) and
+	// again over the surviving picks on resolution (CR 608.2b), so a pick
+	// whose toughness no longer equals every other surviving pick's is
+	// illegal, and so is each pick it now disagrees with. Added after
+	// TargetShareOwner; the value is never renumbered.
+	TargetShareToughness
 )
 
 // TargetTotal is the third kind of set rule (#4616): the picks' TOTAL
@@ -206,6 +215,11 @@ func (s *TargetSameness) keyOf(c Card) (string, bool) {
 			return "", false
 		}
 		return c.Owner.String(), true
+	case TargetShareToughness:
+		if !c.IsCreature() {
+			return "", false
+		}
+		return strconv.Itoa(c.CurrentToughness()), true
 	}
 	return "", false
 }

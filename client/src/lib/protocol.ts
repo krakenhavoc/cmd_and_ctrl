@@ -1409,6 +1409,11 @@ export type LogKind =
   // zone it was. A spawn into a hidden zone names the zone and NOT
   // the card, so `label` is absent there for everyone.
   | "spawn"
+  // ADR 0099 amendment 2026-11-24 (#5948): a card's effect conjured a
+  // card, a real card that was in nobody's deck. `label` is its name,
+  // `new_zone` where it went and `seat` who conjured (and owns) it. A
+  // conjure into a hand or a library names the zone and NOT the card.
+  | "conjure"
   // ADR 0086 (#1238): a storm trigger settled on its count
   // (CR 702.40a). `card_id` is the storm spell and `amount` the
   // number of OTHER spells cast before it this turn, which is how
@@ -2756,12 +2761,18 @@ export interface CouncilVoteView {
   tally: number[];
   // In a secret vote, only the viewer's own ballots (option -2 is a vote
   // for nothing).
-  ballots?: { voter: string; option: number }[];
+  // In a secret choice round (#5948) option -3 is an answer that is a
+  // number, carried in `number`.
+  ballots?: { voter: string; option: number; number?: number }[];
   // ADR 0180: a secret vote. The tally is all zeros and `ballots` holds
   // the viewer's own; `voted` lists who has voted so far. The votes are
   // revealed together in the log (`votes_revealed`) when the last is in.
   secret?: boolean;
   voted?: string[];
+  // A secret CHOICE, not a vote (Prisoner's Dilemma and the #5948
+  // rounds: a number, a creature pick, a guess). A round's number is
+  // asked on a pay_amount prompt that carries this view.
+  choice?: boolean;
   // ADR 0180: the "vote for nothing" option of a vote for up to one.
   abstain?: string;
   // ADR 0180, a bot hint: a voter wants the option naming themselves.
@@ -3071,6 +3082,13 @@ export interface PlayerView {
   // (companion)", kind "companion") for the owner only, and the row
   // sends `special_action { card_id, kind: "companion" }`.
   companion?: CardView;
+  // ADR 0227: this seat's conspiracy cards in the command zone (CR 315).
+  // Absent for a seat with none. A face-up one is public; a face-down
+  // one (hidden agenda) is redacted for everyone but its owner, who sees
+  // the card and its `chosen_name`. Its `special_actions` carry the
+  // reveal row (kind "reveal_agenda") for the owner only, which sends
+  // `special_action { card_id, kind: "reveal_agenda" }`.
+  conspiracies?: CardView[];
   // ADR 0191 §7: the cards this seat owns outside the game, its deck's
   // sideboard. OWNER ONLY: present on your own seat and absent on every
   // other, for a spectator and for the controller of your turn. Only an
@@ -3358,6 +3376,8 @@ export interface AdditionalCostView {
   // Branches only: the branch's identity, its mana ("{5}", joins the
   // total the preview prices once `cost_branch` is sent), its fixed
   // life, its blight N and the creatures that could take the counters.
+  // A blight N may also be the mandatory cost itself (Lethal Sting,
+  // #5948).
   key?: string;
   mana_cost?: string;
   pay_life?: number;
@@ -5670,6 +5690,18 @@ export interface CardView extends CastSurfaceView {
   // Absent at zero. Same lifecycle, PUBLIC/redaction and rendering
   // module as chosen_color above.
   chosen_number?: number;
+  // #6097, #5948: what this permanent's abilities have noted for it, in
+  // order — Long List of the Ents' creature types, The Toymaker's Trap's
+  // numbers already chosen, the number Duelists' Convocation
+  // International wrote down and the digits it crossed out. Public;
+  // absent when none. Same lifecycle and redaction as chosen_color.
+  notes?: string[];
+  // #5948 (CR 903.4b): the colour this commander's owner chose for it
+  // before the game began — The Prismatic Piper, Faceless One, Clara
+  // Oswald. One uppercase letter. PUBLIC in every zone (the rule has it
+  // revealed as the commander goes to the command zone); it is already
+  // folded into `colors`. Rendered through `chosenValueChips`.
+  commander_color?: string;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

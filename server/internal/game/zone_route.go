@@ -252,6 +252,15 @@ type zoneRoute struct {
 	// with it.
 	Countered bool
 
+	// Resolved marks an instant or sorcery card put into its owner's
+	// graveyard from the stack as the last step of its own resolution
+	// (CR 608.2n), as opposed to one countered or removed by CR 608.2b.
+	// It rides onto the completed EventZoneMove (Event.Resolved), and
+	// only when the card really landed in a graveyard: haunt on a spell
+	// reads it (CR 702.55a, #6083). Set by routeStackCardToGraveyardLocked
+	// on its one resolving call.
+	Resolved bool
+
 	// Cause is what moved the card (#1320, move_cause.go): a cost, a
 	// special action, a rule or a manual move, named by the caller that
 	// knows it. Left zero, routeCardToZoneLocked fills it from the
@@ -906,6 +915,15 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			dstZone.InsertFromTop(c, r.Depth)
 		}
 	}
+	// A replacement's "put it on the bottom of that library instead"
+	// (ReplacementEvent.PutOnLibraryBottom, Wheel of Sun and Moon): once the
+	// card has really settled in a library, whatever depth the route
+	// itself carried.
+	if ev.PutOnLibraryBottom && dstZone.Kind == ZoneLibrary {
+		if c, err := dstZone.Remove(ev.CardID); err == nil {
+			dstZone.PushBottom(c)
+		}
+	}
 	// ADR 0013 §5ah: "shuffle it into its owner's library instead" is
 	// a genuine shuffle, not a placement — Blightsteel Colossus and
 	// the Eldrazi titans' graveyard clause both leak the card's
@@ -994,12 +1012,13 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			kind = EventMill
 		}
 		out := Event{
-			Kind:    kind,
-			Actor:   actor,
-			Source:  r.Source,
-			CardID:  ev.CardID,
-			OldZone: src.Kind,
-			NewZone: dstZone.Kind,
+			Kind:     kind,
+			Actor:    actor,
+			Source:   r.Source,
+			CardID:   ev.CardID,
+			OldZone:  src.Kind,
+			NewZone:  dstZone.Kind,
+			Resolved: r.Resolved && src.Kind == ZoneStack && dstZone.Kind == ZoneGraveyard,
 		}
 		r.Cause.stampCause(&out)
 		leave.stamp(&out)

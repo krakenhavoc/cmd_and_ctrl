@@ -88,6 +88,10 @@ func manaPoolRows(v reflect.Value) []string {
 			out = append(out, fmt.Sprintf("If %s lose unspent mana as steps and phases end, it becomes colorless instead.", would))
 			continue
 		}
+		if s.Kind == ManaPoolLosesLife {
+			out = append(out, "A player losing unspent mana causes that player to lose that much life.")
+			continue
+		}
 		if s.Kind == ManaPoolBecomesBlack {
 			out = append(out, fmt.Sprintf("If %s lose unspent mana, that mana becomes black instead.", would))
 			continue

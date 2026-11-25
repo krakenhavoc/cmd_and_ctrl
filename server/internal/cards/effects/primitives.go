@@ -1225,6 +1225,10 @@ type SearchLibrary struct {
 	// game.FaceDownHidden its controller may look at them. See
 	// game.SearchLibrarySpec.LinkTo.
 	LinkTo game.PermissionCardRef
+	// FirstEnters is game.SearchLibrarySpec.FirstEntersUnderControlOf
+	// (#5507): the first card taken enters under this player's control,
+	// the rest under the searcher's.
+	FirstEnters uuid.UUID
 }
 
 // thenTail is ThenTail with the effect's controller and source card filled
@@ -1286,6 +1290,8 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		LinkTo:               s.LinkTo,
 		// #5406
 		OntoBattlefieldIfSubtype: s.OntoBattlefieldIfSubtype,
+		// #5507
+		FirstEntersUnderControlOf: s.FirstEnters,
 	})
 }
 

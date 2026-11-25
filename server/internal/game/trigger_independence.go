@@ -1774,7 +1774,8 @@ const (
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
-	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
+	// HiddenAgenda (ADR 0227) is read once, as a conspiracy goes into the command zone.
+	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert, "HiddenAgenda": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,
@@ -1787,7 +1788,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
-	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,
+	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert, "ForetellOnAnyTurn": defFieldInert, "UntapCounterRemovals": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
 	"UntapOptOuts": defFieldInert, "DrawStep": defFieldInert,
 	"CastCondition": defFieldInert, "CastConditionLabel": defFieldInert,
@@ -1799,7 +1800,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"FlashWithCleanupSacrifice": defFieldInert, "FlashIf": defFieldInert, "CastTimeValues": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
-	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert,
+	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert, "ActivateAsThoughHasteOthers": defFieldInert,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,
@@ -1808,6 +1809,18 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// #3998: Opposition Agent controls an opponent's search and exiles
 	// what it finds while its permanent is there.
 	"ControlsOpponentsSearches": defFieldOwnRules,
+	// #6090: Aven Mindcensor narrows an opponent's search to the top of
+	// the library while its permanent is there.
+	"OpponentsSearchTopN": defFieldOwnRules,
+	// S82 older sets (#5462): Stranglehold stops an opponent's library
+	// searches while its permanent is there.
+	"OpponentsCantSearchLibraries": defFieldOwnRules,
+	// S82 older sets (#5462): Invasion Plans hands the block declaration
+	// to the attacking player while its permanent is there.
+	"AttackingPlayerChoosesBlocks": defFieldOwnRules,
+	// #6089: River Song changes which card its controller's draws take
+	// while its permanent is there.
+	"DrawsFromBottom": defFieldOwnRules,
 	// #5846: an Equipment's "can be attached only to …" (Konda's Banner)
 	// decides what another item's attach step does and when CR 704.5n
 	// unattaches it, while its permanent is there.
@@ -1818,7 +1831,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
-	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
+	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert, "ChoosesCommanderColor": defFieldInert,
 	"LibraryTopVisible": defFieldInert, "LibraryTopVisibleWhen": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
@@ -1834,6 +1847,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
 	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
+	"GameActionReplacements": defFieldRules,
 }
 
 // defBearsRules reports whether a definition has a rules slot set

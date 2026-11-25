@@ -119,3 +119,64 @@ func (g *Game) payUnattachCostLocked(ids []uuid.UUID) {
 		_ = g.UnattachForEffect(id)
 	}
 }
+
+// validateUnattachThisCostLocked checks "Unattach this Equipment"
+// (AbilityCost.UnattachThis, Sunforger) without unattaching anything: the
+// source must be a battlefield Equipment attached to something right now
+// (CR 701.3d), because a cost is not partially payable (CR 118.3). An
+// ability without the component asks nothing.
+//
+// Caller must hold g.mu.
+func (g *Game) validateUnattachThisCostLocked(sourceID uuid.UUID, srcZone ZoneKind, unattach bool) error {
+	if !unattach {
+		return nil
+	}
+	if srcZone != ZoneBattlefield {
+		return ErrInvalidParam
+	}
+	c := findBattlefieldCard(g, sourceID)
+	if c == nil || !c.IsAttached() {
+		return ErrIllegalTarget
+	}
+	return nil
+}
+
+// payUnattachThisCostLocked unattaches the source (UnattachForEffect, the
+// one primitive every unattach goes through). The Equipment stays on the
+// battlefield. A no-op without the component.
+//
+// Caller must hold g.mu.
+func (g *Game) payUnattachThisCostLocked(sourceID uuid.UUID, unattach bool) {
+	if unattach {
+		_ = g.UnattachForEffect(sourceID)
+	}
+}
+
+// unattachGrantorOfLocked is the permanent an UnattachGrantor cost
+// unattaches: the row's grantor, which must still be on the battlefield and
+// attached to something (CR 701.3d, CR 118.3). Nil and no error when the
+// cost has no such component. Caller must hold g.mu.
+func (g *Game) unattachGrantorOfLocked(cost AbilityCost, origin AbilityOrigin) (uuid.UUID, error) {
+	if !cost.UnattachGrantor {
+		return uuid.Nil, nil
+	}
+	if !origin.Granted() || origin.GrantedBy == uuid.Nil || g.Battlefield == nil {
+		return uuid.Nil, ErrInvalidParam
+	}
+	c := findBattlefieldCard(g, origin.GrantedBy)
+	if c == nil || !c.IsAttached() {
+		return uuid.Nil, ErrInvalidParam
+	}
+	return origin.GrantedBy, nil
+}
+
+// payUnattachGrantorCostLocked unattaches the grantor (UnattachForEffect,
+// the one primitive every unattach goes through); it stays on the
+// battlefield. A no-op without the component.
+//
+// Caller must hold g.mu.
+func (g *Game) payUnattachGrantorCostLocked(grantor uuid.UUID) {
+	if grantor != uuid.Nil {
+		_ = g.UnattachForEffect(grantor)
+	}
+}

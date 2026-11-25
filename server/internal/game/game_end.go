@@ -157,6 +157,10 @@ func (g *Game) loseGameLocked(p *Player, cause LossCause, source uuid.UUID) bool
 	if cause != LossConcede && !g.canLoseLocked(p, cause) {
 		return false
 	}
+	// #6096: "If you would lose the game, instead …" (CR 614.6).
+	if g.replaceLossLocked(p, cause) {
+		return false
+	}
 	return g.leaveGameLocked(p, cause, source)
 }
 
@@ -221,6 +225,8 @@ func (g *Game) endGameLocked(o GameOutcome) {
 	// the game ends. Before the state flips, so the reveal listeners
 	// still see an active game.
 	g.revealForetoldAtGameEndLocked()
+	// CR 702.106e (ADR 0227): and every face-down conspiracy.
+	g.revealHiddenAgendasLocked(uuid.Nil, "hidden agenda revealed as the game ends")
 	g.State = StateEnded
 	// ADR 0121 §1: a departure during the opening roll can end the
 	// game; the window ends with it.

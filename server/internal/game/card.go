@@ -227,6 +227,22 @@ type Card struct {
 	// becomes a new object.
 	LostKeywords []string
 
+	// PerpetualKeywords are keyword abilities an effect gave this CARD
+	// "perpetually" (ADR 0099 amendment 2026-11-24, #5948: Pearl
+	// Collector's "another target creature perpetually gains
+	// lifelink"). A perpetual change belongs to the card, not to the
+	// object: it follows the card into every zone and through every zone
+	// change, so CR 400.7's resets (MoveCard) leave it alone. It is read
+	// into the card's printed baseline (printedInputsOf), so the layer
+	// pass starts from it on the battlefield, the view shows it in a hand
+	// or a graveyard, and a later effect can still remove it the way it
+	// removes a printed keyword. Not a copiable value: a copy effect
+	// copies what the copied card prints and what other copy effects
+	// changed (CR 707.2), and a copy effect applied to THIS card leaves
+	// its own perpetual change in place, because the change is the
+	// card's. Carried by the snapshot.
+	PerpetualKeywords []string
+
 	// TextBox is the text box this permanent has when it is not its own
 	// (CR 612.5, ADR 0160): the result of the textBox records, written
 	// by materialiseTextBoxesLocked and read by catalogKeyOf and the
@@ -424,6 +440,8 @@ type Card struct {
 	PhaseInBarredBy    uuid.UUID
 	PhaseInBarredEpoch int
 	PhaseInBarredFor   uuid.UUID
+	// PhaseInBarredWhileTapped lives in the bool block at the end of
+	// Card, for alignment.
 
 	// DamageMarked is the damage currently noted on the creature this
 	// turn, used by the lethal-damage state-based action (CR 704.5g).
@@ -551,6 +569,18 @@ type Card struct {
 	// written before the field existed, and so on every item stamped
 	// then: the two still agree.
 	TurnOvers int
+
+	// HauntedID and HauntedEpoch are haunt's link (CR 702.55b, #6083): set
+	// on a card a haunt ability exiled, they name the OBJECT it haunts —
+	// the creature the ability targeted, at the epoch it had then (an
+	// instance ID survives a zone change; CR 400.7). HauntingEpoch is this
+	// card's own ObjectEpoch as it arrived in exile, so the link holds only
+	// for that object: a card that leaves exile and comes back haunts
+	// nothing. Written once by HauntForEffect, never in place; uuid.Nil is
+	// no link. See haunt.go.
+	HauntedID     uuid.UUID
+	HauntedEpoch  int
+	HauntingEpoch int
 
 	// ControlledSinceUpkeep is the value of the controller's
 	// Player.UpkeepsBegun when this permanent last came under that
@@ -809,6 +839,16 @@ type Card struct {
 	// color_choice.go.
 	ChosenColor string
 
+	// CommanderColor is the colour its owner chose for this commander
+	// before the game began, for a card that prints "If <this> is your
+	// commander, choose a color before the game begins. <This> is the
+	// chosen color." (CR 903.4b, commander_color.go). One uppercase
+	// letter, or empty when no choice was made (not a commander, or no
+	// such ability). Like IsCommander it is an attribute of the card and
+	// survives every zone change; it is never copied (CR 707.2), so a
+	// copy of the card is not that colour.
+	CommanderColor string
+
 	// ChosenPlayer is the player chosen for this permanent by an "as
 	// this enters, choose a player" instruction (CR 614.12) —
 	// True-Name Nemesis. uuid.Nil when none has been chosen, which is
@@ -1000,6 +1040,22 @@ type Card struct {
 	// (CR 707.2). Written by Game.SetChosenCardForEffect and read with
 	// Game.ChosenExiledCardOf (chosen_card.go).
 	ChosenCard ObjectRef
+
+	// Notes are the words this object's abilities have noted or chosen
+	// for it, in order, each once: Long List of the Ents' and Volo's
+	// Journal's "a creature type that hasn't been noted for this <object>",
+	// Day of the Moon's "a name chosen for this enchantment" (#6097). A
+	// per-object list a later ability of the same object reads back, so
+	// "hasn't been noted" spans chapters, turns and abilities. Nil is
+	// "nothing noted".
+	//
+	// ChosenCard's lifecycle: per INSTANCE, carried by the snapshot and by
+	// clone, cleared when this permanent leaves the battlefield (CR 400.7:
+	// a Saga that returns is a new object nothing was noted for), and NOT a
+	// copiable value (CR 707.2). Always replaced, never appended in place
+	// (clone shares the backing array). Written by Game.AddNoteForEffect and
+	// read with Game.NotesForEffect (notes.go).
+	Notes []string
 
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
@@ -1456,6 +1512,20 @@ type Card struct {
 	// object (CR 400.7).
 	stackGranted []string
 
+	// stackColors is the layer-5 answer the stack step gave this SPELL
+	// (CR 613.1e, #6088): "target spell becomes the color of your choice
+	// until end of turn" (Illusion, Eight-and-a-Half-Tails). Written by
+	// stackKeywordPassLocked from the setColors records pinned to the
+	// spell (spell_colors.go), read by EffectiveColors and Effective()
+	// in place of the printed colours while stackColored is set. A derived
+	// cache like stackGranted: never snapshotted, replaced and never
+	// written in place, and cleared by MoveCard on every zone change (CR
+	// 400.7); a permanent spell's pinned record is handed to the
+	// permanent it becomes (CR 400.7a) and applies there in layer 5.
+	stackColors []string
+	// stackColored lives in the bool block at the end of Card, for
+	// alignment.
+
 	// zoneGranted is the ability bundles the zone grant step of the
 	// layer pass gave this CARD while it sits in a hand, a graveyard or
 	// exile (CR 113.10, 613.1f, ADR 0093's amendment 2026-10-13, #3233):
@@ -1631,6 +1701,9 @@ type Card struct {
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
 	IsCommander bool
+
+	// CommanderColor (CR 903.4b) sits beside ChosenColor, with the
+	// other strings, to keep Card free of padding.
 
 	// IsCompanion marks the card a deck revealed as its companion (CR
 	// 702.139a, ADR 0172 §3). It routes the card into Player.Companion
@@ -2142,6 +2215,28 @@ type Card struct {
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
 	// for every card host. Cleared wherever AttachedTo is.
 	AttachedPinned bool
+
+	// Conjured marks a card that a conjure made (conjure.go, ADR 0099
+	// amendment 2026-11-24): a real card with a printed card's
+	// characteristics that was in nobody's deck. Nothing in the rules
+	// reads it ("treat conjured cards like cards"); it is for the
+	// readers that would otherwise assume every card came from a
+	// decklist, and for the view. Kept through zone changes, because the
+	// card is still the card that was conjured. Carried by the snapshot.
+	Conjured bool
+
+	// PhaseInBarredWhileTapped changes the PhaseInBarredBy bar's condition
+	// from "you control ~" to "~ remains tapped" (The Pandorica, #6095):
+	// the source must be on the battlefield as the object
+	// PhaseInBarredEpoch names and tapped, whoever controls it, and
+	// PhaseInBarredFor is unused. The rest is the same bar: a prohibition,
+	// cleared for good once it stops holding (CR 611.2b).
+	PhaseInBarredWhileTapped bool
+
+	// stackColored says stackColors is the spell's colour (#6088,
+	// spell_colors.go; documented beside stackColors, kept here for
+	// alignment). A derived cache: never snapshotted.
+	stackColored bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -2806,6 +2901,10 @@ func (c Card) EffectiveColors() []string {
 	if c.effective != nil {
 		return c.effective.Colors
 	}
+	// #6088, CR 613.1e: a colour an effect set on a SPELL (spell_colors.go).
+	if c.stackColored {
+		return c.stackColors
+	}
 	// #3862: off the battlefield, a static's layer-5 answer for the
 	// object (zone_layers.go) — Mycosynth Lattice's colourless card.
 	if z := c.zoneLayered; z != nil {
@@ -2817,6 +2916,11 @@ func (c Card) EffectiveColors() []string {
 	// projection through printedCharacteristic.
 	if c.FaceDownIsPermanent() {
 		return nil
+	}
+	// CR 903.4b: the chosen colour of a commander that prints it
+	// (commander_color.go), the baseline printedInputsOf builds too.
+	if cda := c.commanderColorCDA(); cda != "" {
+		return []string{cda}
 	}
 	if len(c.Colors) > 0 {
 		return c.Colors

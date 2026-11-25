@@ -380,6 +380,9 @@ func registeredReplacementResumeKeys() []string {
 	for k := range keywordInsteadBodies {
 		out = append(out, "keywordinstead "+k)
 	}
+	for k := range keywordInsteadCountBodies {
+		out = append(out, "keywordinstead "+k)
+	}
 	keywordInsteadMu.RUnlock()
 	out = append(out, registeredTailKeys()...)
 	out = append(out, registeredMillUntilKeys()...)
@@ -407,7 +410,8 @@ func KnownKeywordInstead(key string) bool {
 	keywordInsteadMu.RLock()
 	defer keywordInsteadMu.RUnlock()
 	_, ok := keywordInsteadBodies[key]
-	return ok
+	_, okCount := keywordInsteadCountBodies[key]
+	return ok || okCount
 }
 
 // --- the event's fields -----------------------------------------------
@@ -468,6 +472,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"NewZone":                   repFieldCarried,
 	"NewZoneOwner":              repFieldCarried,
 	"ShuffleDestinationLibrary": repFieldCarried,
+	"PutOnLibraryBottom":        repFieldCarried,
 	"ExiledWith":                repFieldCarried,
 	"ExileCounter":              repFieldCarried,
 	"Destruction":               repFieldCarried,
@@ -478,6 +483,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
+	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
 	"entryRefused":              repFieldCarried,
 	"EntersUnlocked":            repFieldCarried,
@@ -803,6 +809,7 @@ type replacementEventSnapshot struct {
 	NewZone                   ZoneKind            `json:"newZone,omitempty"`
 	NewZoneOwner              *uuid.UUID          `json:"newZoneOwner,omitempty"`
 	ShuffleDestinationLibrary bool                `json:"shuffleDestinationLibrary,omitempty"`
+	PutOnLibraryBottom        bool                `json:"putOnLibraryBottom,omitempty"`
 	ExiledWith                *PermissionCardRef  `json:"exiledWith,omitempty"`
 	ExileCounter              string              `json:"exileCounter,omitempty"`
 	Destruction               bool                `json:"destruction,omitempty"`
@@ -813,6 +820,7 @@ type replacementEventSnapshot struct {
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
+	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
 	EntersUnlocked            DoorMask            `json:"entersUnlocked,omitempty"`
 	EntersAttacking           *uuid.UUID          `json:"entersAttacking,omitempty"`
@@ -838,6 +846,7 @@ type replacementEventSnapshot struct {
 	LandGainsKeywords         []string            `json:"landGainsKeywords,omitempty"`
 	LandGainsAbilities        []string            `json:"landGainsAbilities,omitempty"`
 	LandGainsLabel            string              `json:"landGainsLabel,omitempty"`
+	LandGainsExileInsteadOf   bool                `json:"landGainsExileInsteadOf,omitempty"`
 	EntryControllerSet        bool                `json:"entryControllerSet,omitempty"`
 	EntryControllerPrior      *uuid.UUID          `json:"entryControllerPrior,omitempty"`
 	ZoneRoute                 *zoneRouteSnapshot  `json:"zoneRoute,omitempty"`
@@ -1084,6 +1093,8 @@ type pendingDrawSnapshot struct {
 type insteadRunSnapshot struct {
 	Key    string     `json:"key"`
 	Source *uuid.UUID `json:"source,omitempty"`
+	// N is a keyword-instead body's count (RegisterKeywordInsteadCount).
+	N int `json:"n,omitempty"`
 }
 
 // drawThenSnapshot is a DrawThen.
@@ -1130,6 +1141,7 @@ type zoneRouteSnapshot struct {
 	Source              *uuid.UUID          `json:"source,omitempty"`
 	MustSettleNow       bool                `json:"mustSettleNow,omitempty"`
 	Countered           bool                `json:"countered,omitempty"`
+	Resolved            bool                `json:"resolved,omitempty"`
 	CauseKind           MoveCauseKind       `json:"causeKind,omitempty"`
 	CauseController     *uuid.UUID          `json:"causeController,omitempty"`
 	CauseItem           *uuid.UUID          `json:"causeItem,omitempty"`
@@ -1140,6 +1152,11 @@ type zoneRouteSnapshot struct {
 	StateBased          bool                `json:"stateBased,omitempty"`
 	AsCommander         bool                `json:"asCommander,omitempty"`
 	CommanderAnswer     commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+	// Resolved above is zoneRoute.Resolved (haunt on a spell, #6083).
+	// Additive: a frame without it restores false, so a spell whose
+	// graveyard move paused before it existed does not haunt, the weaker
+	// direction.
+	//
 	// #4253 slice 3: one leg of a face-down exile batch.
 	FaceDownLegs *faceDownExileRun `json:"faceDownLegs,omitempty"`
 	// #4253 slice 9: one leg of a keyed route batch with the batch's
@@ -1225,11 +1242,11 @@ func permissionRefValue(r *PermissionCardRef) PermissionCardRef {
 	return *r
 }
 
-func insteadRunOrNil(key string, source uuid.UUID) *insteadRunSnapshot {
+func insteadRunOrNil(key string, source uuid.UUID, n int) *insteadRunSnapshot {
 	if key == "" {
 		return nil
 	}
-	return &insteadRunSnapshot{Key: key, Source: uuidPtrOrNil(source)}
+	return &insteadRunSnapshot{Key: key, Source: uuidPtrOrNil(source), N: n}
 }
 
 // snapshotReplacementResume writes a keyable frame. Caller has checked
@@ -1261,9 +1278,9 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		MustSettleNow:             ev.mustSettleNow,
 		DrawPlayer:                uuidPtrOrNil(ev.DrawPlayer),
 		DrawCount:                 ev.DrawCount,
-		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source),
+		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source, 0),
 		DrawTail:                  ev.drawTail,
-		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source),
+		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source, ev.keywordInstead.n),
 		KeywordAction:             ev.KeywordAction,
 		KeywordActionCount:        ev.KeywordActionCount,
 		ConniveExtraDraws:         ev.ConniveExtraDraws,
@@ -1272,6 +1289,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		NewZone:                   ev.NewZone,
 		NewZoneOwner:              uuidPtrOrNil(ev.NewZoneOwner),
 		ShuffleDestinationLibrary: ev.ShuffleDestinationLibrary,
+		PutOnLibraryBottom:        ev.PutOnLibraryBottom,
 		ExiledWith:                permissionRefPtr(ev.ExiledWith),
 		ExileCounter:              ev.ExileCounter,
 		Destruction:               ev.Destruction,
@@ -1282,6 +1300,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
 		EntersWithHaste:           ev.EntersWithHaste,
+		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
 		EntersUnlocked:            ev.EntersUnlocked,
 		EntersAttacking:           uuidPtrOrNil(ev.EntersAttacking),
@@ -1303,6 +1322,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LandGainsKeywords:         append([]string(nil), ev.landGains.keywords...),
 		LandGainsAbilities:        append([]string(nil), ev.landGains.abilities...),
 		LandGainsLabel:            ev.landGains.label,
+		LandGainsExileInsteadOf:   ev.landGains.exileInsteadOfLeaving,
 		EntryControllerSet:        ev.entryControllerSet,
 		EntryControllerPrior:      uuidPtrOrNil(ev.entryControllerPrior),
 		AsCommanderMove:           ev.asCommanderMove,
@@ -1396,7 +1416,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 			Actor: uuidPtrOrNil(r.Actor), ToBottom: r.ToBottom, Depth: r.Depth, FaceDown: r.FaceDown,
 			HiddenBy: permissionRefPtr(r.HiddenBy), ExiledWith: permissionRefPtr(r.ExiledWith),
 			Mill: r.Mill, Discard: r.Discard, DiscardCause: r.DiscardCause,
-			Source: uuidPtrOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered,
+			Source: uuidPtrOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered, Resolved: r.Resolved,
 			CauseKind: r.Cause.Kind, CauseController: uuidPtrOrNil(r.Cause.Controller), CauseItem: uuidPtrOrNil(r.Cause.Item),
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
@@ -1451,6 +1471,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		NewZone:                   s.NewZone,
 		NewZoneOwner:              uuidOrNil(s.NewZoneOwner),
 		ShuffleDestinationLibrary: s.ShuffleDestinationLibrary,
+		PutOnLibraryBottom:        s.PutOnLibraryBottom,
 		ExiledWith:                permissionRefValue(s.ExiledWith),
 		ExileCounter:              s.ExileCounter,
 		Destruction:               s.Destruction,
@@ -1461,6 +1482,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
 		EntersWithHaste:           s.EntersWithHaste,
+		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,
 		EntersUnlocked:            s.EntersUnlocked,
 		EntersAttacking:           uuidOrNil(s.EntersAttacking),
@@ -1479,7 +1501,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		entryResumable:            s.EntryResumable,
 		landPlay:                  s.LandPlay,
 		landPlayer:                uuidOrNil(s.LandPlayer),
-		landGains:                 permissionCastGains{keywords: s.LandGainsKeywords, abilities: s.LandGainsAbilities, label: s.LandGainsLabel},
+		landGains:                 permissionCastGains{keywords: s.LandGainsKeywords, abilities: s.LandGainsAbilities, label: s.LandGainsLabel, exileInsteadOfLeaving: s.LandGainsExileInsteadOf},
 		entryControllerSet:        s.EntryControllerSet,
 		entryControllerPrior:      uuidOrNil(s.EntryControllerPrior),
 		asCommanderMove:           s.AsCommanderMove,
@@ -1540,7 +1562,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.drawInstead = drawInsteadRun{ref: DrawInsteadRef{key: r.Key}, source: uuidOrNil(r.Source)}
 	}
 	if r := s.KeywordInstead; r != nil {
-		ev.keywordInstead = keywordInsteadRun{ref: KeywordInsteadRef{key: r.Key}, source: uuidOrNil(r.Source)}
+		ev.keywordInstead = keywordInsteadRun{ref: KeywordInsteadRef{key: r.Key}, source: uuidOrNil(r.Source), n: r.N}
 	}
 	if d := s.DrawThen; d != nil {
 		ev.drawThen = DrawThen{Ref: DrawThenRef{key: d.Key}, Player: uuidOrNil(d.Player), Source: uuidOrNil(d.Source), N: d.N}
@@ -1569,7 +1591,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 			Actor: uuidOrNil(r.Actor), ToBottom: r.ToBottom, Depth: r.Depth, FaceDown: r.FaceDown,
 			HiddenBy: permissionRefValue(r.HiddenBy), ExiledWith: permissionRefValue(r.ExiledWith),
 			Mill: r.Mill, Discard: r.Discard, DiscardCause: r.DiscardCause,
-			Source: uuidOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered,
+			Source: uuidOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered, Resolved: r.Resolved,
 			Cause:     MoveCause{Kind: r.CauseKind, Controller: uuidOrNil(r.CauseController), Item: uuidOrNil(r.CauseItem)},
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,

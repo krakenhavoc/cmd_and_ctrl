@@ -119,6 +119,12 @@ type CastProvenance struct {
 	// from a cast.
 	FromZone ZoneKind `json:"fromZone,omitempty"`
 
+	// CastOrdinal is which spell the spell that became this permanent was
+	// among those its caster cast that turn (1 for the first; StackItem.
+	// CastOrdinal): "if it was the second spell you cast this turn". Zero
+	// for a permanent that was not cast.
+	CastOrdinal int `json:"castOrdinal,omitempty"`
+
 	// OptionalCosts are the optional additional costs paid for the
 	// spell (CR 601.2b, ADR 0073 §5), as positions in the card's
 	// OptionalCosts slice, one entry per payment — so multikicker's
@@ -272,7 +278,7 @@ func (p CastProvenance) Spent() ManaSpent {
 
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
-	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
+	return p.AltCost != "" || p.FromZone != "" || p.CastOrdinal != 0 || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.PaperMana != 0 || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
 		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.Convoked) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
 }
@@ -426,8 +432,9 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		return
 	}
 	prov := CastProvenance{
-		AltCost:  item.AltCost,
-		FromZone: item.CastFromZone,
+		AltCost:     item.AltCost,
+		FromZone:    item.CastFromZone,
+		CastOrdinal: item.CastOrdinal,
 		// Its own backing array: the item's slice outlives this call
 		// on the undo stack, and a permanent that shared it would see
 		// a rewind edit its own record.

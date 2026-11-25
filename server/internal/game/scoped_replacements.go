@@ -178,6 +178,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil || m.Amount < 2 {
 			return "a multiplyTokens replacement names no player or a factor below 2"
 		}
+	case ModRedirectTokens:
+		// Crafty Cutpurse names who the tokens are redirected to.
+		if m.Player == uuid.Nil {
+			return "a redirectTokens replacement names no player"
+		}
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
@@ -219,11 +224,14 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchDraw
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		return watchCounterPlaced
-	case ModMultiplyTokens:
+	case ModMultiplyTokens, ModRedirectTokens:
 		return []EventKind{EventTokenCreated}
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
 	case ModShuffleInsteadOfEnteringFromExile:
+		return watchZoneMove
+	case ModCreaturesEnterTappedForOpponents:
+		// #6093: Cone of Cold's timed enters-tapped replacement.
 		return watchZoneMove
 	case ModLandManaIsColor:
 		return watchManaAdded
@@ -785,6 +793,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return dest == m.Player
 	case ModShuffleInsteadOfEnteringFromExile:
 		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
+	case ModCreaturesEnterTappedForOpponents:
+		return creaturesEnterTappedForOpponentsAppliesLocked(g, e, ev)
 	case ModGainNoLife:
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
@@ -799,6 +809,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return oneMorePlusOneCounterAppliesLocked(g, m, ev)
 	case ModMultiplyTokens:
 		return multiplyTokensAppliesLocked(m, ev)
+	case ModRedirectTokens:
+		return redirectTokensAppliesLocked(m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
@@ -881,6 +893,10 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.NewZone = ZoneLibrary
 		ev.NewZoneOwner = uuid.Nil
 		ev.ShuffleDestinationLibrary = true
+	case ModCreaturesEnterTappedForOpponents:
+		// "Enter tapped" (CR 614.1c): the permanent is tapped as it
+		// enters, so nothing sees it untapped.
+		ev.EntersTapped = true
 	case ModGainNoLife:
 		// "That player gains no life instead": CR 614.10's null
 		// replacement. No EventChangeLife, so "whenever you gain life"
@@ -896,6 +912,10 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	case ModMultiplyTokens:
 		// "Twice that many of those tokens": ×Amount, one window per record.
 		ev.MultiplyTokens(m.Amount)
+	case ModRedirectTokens:
+		// "Created under your control instead".
+		ev.TokenController = m.Player
+		ev.Actor = m.Player
 	case ModLandManaIsColor:
 		// #1997: every coloured mana becomes the chosen colour.
 		applyLandManaColorLocked(m, ev)

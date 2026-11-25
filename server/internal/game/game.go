@@ -182,6 +182,14 @@ type Game struct {
 	// snapshot.
 	OpeningRoll *OpeningRoll
 
+	// PendingDealSeat is the starting seat of a deal that waits for a
+	// hidden agenda's name (CR 702.106a, #6102, ADR 0227): the
+	// conspiracies are in the command zone and at least one agenda
+	// prompt is unanswered, so no hand has been dealt. Nil at every
+	// other time. dealIfAgendasChosenLocked deals once the last name is
+	// chosen. Carried by Clone, RestoreFrom and the snapshot.
+	PendingDealSeat *int
+
 	// Planechase is the Planechase option's planar controller and die
 	// count (CR 901, ADR 0216), nil when the table is not playing
 	// Planechase. Every Planechase code path is behind a nil check, so
@@ -368,6 +376,16 @@ type Game struct {
 	// than a player's planeswalkers. Keyed by instance ID, flushed at the
 	// turn boundary and forgotten when the object leaves the battlefield.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool
+
+	// LoyaltyPermanentExtraThisTurn and LoyaltyPermanentExtraUsedThisTurn
+	// are "you may activate [this permanent]'s loyalty ability two more
+	// times this turn" (Comet, Stellar Pup, #6100): per permanent, the
+	// extra activations granted this turn beyond CR 606.3's limit, and how
+	// many of them it has spent. Keyed by instance ID, flushed at the turn
+	// boundary and forgotten when the object leaves the battlefield.
+	// loyalty_limit_more.go.
+	LoyaltyPermanentExtraThisTurn     map[uuid.UUID]int
+	LoyaltyPermanentExtraUsedThisTurn map[uuid.UUID]int
 
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
@@ -853,6 +871,14 @@ type Game struct {
 	// inside it, and a record that was dropped there would let a
 	// first-striker hit twice.
 	firstStrikeStepParticipants map[uuid.UUID]bool
+
+	// hadToAttack is THIS combat's CR 508.1d record (#6098,
+	// had_to_attack.go): the active player's creatures that carried an
+	// attack requirement as the attack declaration passed its
+	// checkpoint. Firkraag, Cunning Instigator's "if that creature had
+	// to attack this combat" reads it. Cleared with the rest of combat
+	// and carried by Clone / RestoreFrom and the persisted snapshot.
+	hadToAttack map[uuid.UUID]bool
 
 	// heldCombatDamage is a combat damage step's damage waiting on its
 	// damage-assignment prompts (#3665, CR 510.2): nothing of the step
@@ -1763,6 +1789,8 @@ func (g *Game) End() {
 		// runs, on the other door out of an active game — an admin
 		// ending the table, and every caller that ends it outright.
 		g.revealForetoldAtGameEndLocked()
+		// CR 702.106e (ADR 0227): and every face-down conspiracy.
+		g.revealHiddenAgendasLocked(uuid.Nil, "hidden agenda revealed as the game ends")
 	}
 	if g.State == StateBetweenGames {
 		// ADR 0222 §3: a match closed between two games has no result.

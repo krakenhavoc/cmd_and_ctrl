@@ -604,7 +604,7 @@ func sameCounterRemoval(a, b *CounterRemovalCost) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.N != b.N || a.Counter != b.Counter || a.Among != b.Among || len(a.Kinds) != len(b.Kinds) || a.Variable != b.Variable || a.All != b.All || (a.From == nil) != (b.From == nil) {
+	if a.N != b.N || a.Counter != b.Counter || a.Among != b.Among || len(a.Kinds) != len(b.Kinds) || a.Variable != b.Variable || a.All != b.All || a.CountIsX != b.CountIsX || (a.From == nil) != (b.From == nil) {
 		return false
 	}
 	return a.From == nil || a.From.Label == b.From.Label

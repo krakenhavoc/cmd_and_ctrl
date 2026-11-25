@@ -64,6 +64,7 @@ var xMattersAllowlist = map[string]string{
 	"chandra_chill_of_compliance.go Chandra, Chill of Compliance": "a planeswalker with no X cost of its own: her −X at X=0 still taps the target, and her other abilities never read X",
 	"tezzeret_the_seeker.go Tezzeret the Seeker":                  "a planeswalker with no X cost of its own: his −X at X=0 still finds an artifact card with mana value 0",
 	"ugin_the_spirit_dragon.go Ugin, the Spirit Dragon":           "a planeswalker with no X cost of its own: his −X at X=0 still exiles every coloured permanent with mana value 0, tokens included",
+	"kasmina_enigma_sage.go Kasmina, Enigma Sage":                 "a planeswalker with no X cost of its own: her −X at X=0 still pays no loyalty and makes a 0/0 Fractal that dies, and her +2 and −8 never read X",
 	"domesticated_hydra.go Domesticated Hydra":                    "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":                              "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",
 	"fractalize.go Fractalize":                                    "the creature becomes a 1/1 Fractal at X=0: base power and toughness are X plus 1, so the effect still lands and is a real move",
@@ -82,6 +83,7 @@ var xMattersAllowlist = map[string]string{
 	"the_scarlet_witch.go The Scarlet Witch":                      "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X she was cast for",
 	"the_goose_mother.go The Goose Mother":                        "2/2 flying body and an attack trigger that never reads X",
 	"thryx_the_sudden_storm.go Thryx, the Sudden Storm":           "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X Thryx was cast for",
+	"spectacle_mage.go Spectacle Mage":                            "no {X} of its own: SpellManaValueAtLeast reads the X of the OTHER spell being priced (CR 202.3e), never an X the Mage was cast for",
 	"triceraton_commander.go Triceraton Commander":                "2/2 flying body and an attack trigger that never reads X",
 	"tyvars_stand.go Tyvar's Stand":                               "the hexproof and indestructible half never reads X: at X=0 the target gets +0/+0 and still gains both until end of turn",
 	"venarian_glimmer.go Venarian Glimmer":                        "the reveal never reads X: at X=0 the whole hand is still revealed to the table, and a nonland card with mana value 0 can still be chosen",
@@ -97,6 +99,8 @@ var xMattersAllowlist = map[string]string{
 	"crime_punishment.go Punishment":                              "at X=0 it still destroys every artifact, creature and enchantment with mana value 0 (tokens included): the X picks which permanents die, it is not a quantity that can be zero",
 	"monastery_raid.go Monastery Raid":                            "X is read only when the freerunning cost was paid: cast for its mana cost it exiles the top two cards whatever X is, a real play at X=0, and the freerunning cast at X=0 exiles nothing",
 	"molder.go Molder":                                            "at X=0 it still destroys an artifact or enchantment with mana value 0 (a Treasure or Food token): the X picks the target, it is not a quantity that can be zero (#5596)",
+	"reidane_god_of_the_worthy.go Reidane, God of the Worthy":     "not an X card: its cost tax reads the spell's mana value with {X} counted at the chosen value (SpellManaValueAtLeast), which is a property of the opposing spell, never of Reidane",
+	"kianne_dean_of_substance.go Imbraham, Dean of Theory":        "at X=0 nothing is exiled but the ability still offers the pick of a card you own in exile with a study counter on it, a real play (Soothsaying-style X reads only the exile count)",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

@@ -15,15 +15,25 @@
   // 1000px the sidebar becomes a sheet behind a Filters button. The
   // search box is rendered exactly once (in the sidebar, or in the bar
   // at tablet width) so its contract label names one control.
+  //
+  // Paging (#6120): the catalogue holds tens of thousands of cards, and
+  // drawing every match as a tile was what made the page slow to open.
+  // The filters, the search and the facet counts still run over the
+  // whole list; only the current page's tiles are drawn, so only their
+  // art loads. The search, the page and the page size live in the URL
+  // (#/catalog?q=…&page=3&size=100): the pager's links and the size
+  // selector push a history entry, so back and forward step through
+  // pages, and typing or ticking a filter rewrites the entry in place
+  // (back to page 1) rather than leaving one per keystroke.
 
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
   import ShopLinks from "../lib/components/ShopLinks.svelte";
   import ShopNote from "../lib/components/ShopNote.svelte";
   import SetPicker from "../lib/components/SetPicker.svelte";
   import { cardArt } from "../lib/cardArt";
-  import { route } from "../lib/router";
+  import { navigate, route } from "../lib/router";
   import { L } from "../lib/labels";
   import {
     fetchCatalog,
@@ -35,6 +45,15 @@
     findSet,
     setSummary,
     catalogImageURL,
+    catalogHash,
+    clampPage,
+    pageCount,
+    pageRange,
+    pageSlice,
+    pagerItems,
+    parsePageSize,
+    DEFAULT_PAGE_SIZE,
+    PAGE_SIZES,
     COLOR_FILTERS,
     COLOR_LABELS,
     TYPE_FILTERS,
@@ -45,6 +64,7 @@
     type CatalogSet,
     type Completeness,
     type ColorFilter,
+    type PageSize,
     type TypeFilter,
   } from "../lib/catalog";
 
@@ -57,16 +77,6 @@
   let error = $state("");
 
   let query = $state("");
-
-  // #/catalog?q=<text> pre-fills the search (the roadmap links its
-  // example card names here). Re-applied when the hash changes while
-  // the page is open, so a second link lands on its own card.
-  $effect(() => {
-    const r = $route;
-    if (r.name === "catalog" && r.query !== undefined) {
-      query = r.query;
-    }
-  });
   let colors = $state<ColorFilter[]>([]);
   let types = $state<TypeFilter[]>([]);
   let completeness = $state<Completeness[]>([]);
@@ -79,6 +89,83 @@
   const facets = $derived(facetCounts(cards, filter));
   const chips = $derived(activeChips(filter, sets));
   const pickedSet = $derived(setCode ? findSet(sets, setCode) : undefined);
+
+  // --- paging (#6120) ----------------------------------------------
+  let pageSize = $state<PageSize>(DEFAULT_PAGE_SIZE);
+  // The page asked for, and the filter it was asked under: a page only
+  // means something for the filter that made it, so a changed filter,
+  // search or page size is page 1.
+  let pageAt = $state({ page: 1, key: "" });
+  const filterKey = $derived(JSON.stringify(filter));
+  const page = $derived(
+    pageAt.key === filterKey ? clampPage(pageAt.page, shown.length, pageSize) : 1,
+  );
+  const pages = $derived(pageCount(shown.length, pageSize));
+  const visible = $derived(pageSlice(shown, page, pageSize));
+  const range = $derived(pageRange(page, shown.length, pageSize));
+  const pager = $derived(pagerItems(page, pages));
+  const fmt = new Intl.NumberFormat("en");
+
+  const hrefFor = (p: number, size: number = pageSize) => catalogHash({ query, page: p, size });
+
+  // The URL is the record. #/catalog?q=<text> pre-fills the search (the
+  // roadmap links its example card names here), and ?page= and ?size=
+  // pick the page. Re-applied whenever the hash changes while the page
+  // is open: a second roadmap link, a pager link, back and forward.
+  $effect(() => {
+    const r = $route;
+    if (r.name !== "catalog") return;
+    untrack(() => {
+      query = r.query ?? "";
+      pageSize = parsePageSize(r.size === undefined ? null : String(r.size));
+      pageAt = { page: r.page ?? 1, key: JSON.stringify(filter) };
+    });
+  });
+
+  // Keep the URL in step with what is on screen without adding history:
+  // a filter change drops back to page 1, and a link past the last page
+  // lands on the last page, so the address says so too. Not while the
+  // data is loading, when every page clamps to 1.
+  $effect(() => {
+    if (loading) return;
+    if (pageAt.key !== filterKey || pageAt.page !== page) {
+      pageAt = { page, key: filterKey };
+    }
+    const want = hrefFor(page);
+    if (!location.hash.startsWith("#/catalog")) return;
+    if (decodeURIComponent(location.hash) !== decodeURIComponent(want)) {
+      history.replaceState(history.state, "", want);
+    }
+  });
+
+  function pickSize(ev: Event) {
+    const size = parsePageSize((ev.currentTarget as HTMLSelectElement).value);
+    navigate(hrefFor(1, size));
+  }
+
+  // After a pager link: put the top of the results back in view, and if
+  // the link that had focus is gone (Next on the last page), hand focus
+  // to the current page's number so the keyboard is not dropped.
+  let barEl = $state<HTMLElement | null>(null);
+  let pagerEl = $state<HTMLElement | null>(null);
+  let fromPager = false;
+  function pagerClick() {
+    fromPager = true;
+  }
+  $effect(() => {
+    void page;
+    if (!fromPager) return;
+    fromPager = false;
+    // The page can change inside another effect's run (the route's), before
+    // the pager has re-rendered; wait for it, or the old page's number is
+    // the one still marked current.
+    void tick().then(() => {
+      if (barEl && barEl.getBoundingClientRect().top < 0) barEl.scrollIntoView({ block: "start" });
+      if (pagerEl && !pagerEl.contains(document.activeElement)) {
+        pagerEl.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
+      }
+    });
+  });
 
   function reset() {
     query = "";
@@ -267,7 +354,7 @@
       {/if}
 
       <div class="main">
-        <div class="bar">
+        <div class="bar" bind:this={barEl}>
           {#if narrow}
             {#if !loading}
               <button
@@ -285,11 +372,25 @@
           {/if}
           {#if !loading}
             <p class="count" aria-live="polite">
-              <strong>{shown.length}</strong>
-              {shown.length === 1 ? "card" : "cards"}
-              {#if chips.length > 0 && counts}<span class="dim">of {counts.total}</span>{/if}
+              {#if pages > 1}
+                Showing <strong>{fmt.format(range.from)}–{fmt.format(range.to)}</strong> of
+                <strong>{fmt.format(shown.length)}</strong> cards
+              {:else}
+                <strong>{fmt.format(shown.length)}</strong>
+                {shown.length === 1 ? "card" : "cards"}
+              {/if}
+              {#if chips.length > 0 && counts}<span class="dim">of {fmt.format(counts.total)}</span
+                >{/if}
             </p>
             <p class="sort">Sorted by name</p>
+            <label class="size">
+              <span>Per page</span>
+              <select aria-label={L.cataloguePageSize} value={pageSize} onchange={pickSize}>
+                {#each PAGE_SIZES as n (n)}
+                  <option value={n}>{n}</option>
+                {/each}
+              </select>
+            </label>
           {/if}
         </div>
 
@@ -351,7 +452,7 @@
                Renders nothing with no shop configured or links hidden. -->
           <ShopNote />
           <ul class="grid">
-            {#each shown as c (c.oracle_id)}
+            {#each visible as c (c.oracle_id)}
               {@const img = catalogImageURL(c, "normal")}
               {@const cav = c.caveats ?? []}
               <!-- A card with caveats is focusable so the note shows on
@@ -392,6 +493,54 @@
               </li>
             {/each}
           </ul>
+          {#if pages > 1}
+            <nav class="pager" aria-label={L.cataloguePager} bind:this={pagerEl}>
+              {#if page > 1}
+                <a
+                  class="pg step"
+                  href={hrefFor(page - 1)}
+                  rel="prev"
+                  aria-label={L.cataloguePrevPage}
+                  onclick={pagerClick}
+                  ><span aria-hidden="true">‹</span><span class="word"> Previous</span></a
+                >
+              {:else}
+                <span class="pg step off" aria-hidden="true"
+                  >‹<span class="word"> Previous</span></span
+                >
+              {/if}
+              <ul class="pages">
+                {#each pager as item, i (item === "gap" ? `gap${i}` : item)}
+                  <li>
+                    {#if item === "gap"}
+                      <span class="gap" aria-hidden="true">…</span>
+                    {:else}
+                      <a
+                        class="pg"
+                        class:on={item === page}
+                        href={hrefFor(item)}
+                        aria-label={L.cataloguePage(item)}
+                        aria-current={item === page ? "page" : undefined}
+                        onclick={pagerClick}>{fmt.format(item)}</a
+                      >
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+              {#if page < pages}
+                <a
+                  class="pg step"
+                  href={hrefFor(page + 1)}
+                  rel="next"
+                  aria-label={L.catalogueNextPage}
+                  onclick={pagerClick}
+                  ><span class="word">Next </span><span aria-hidden="true">›</span></a
+                >
+              {:else}
+                <span class="pg step off" aria-hidden="true"><span class="word">Next </span>›</span>
+              {/if}
+            </nav>
+          {/if}
         {/if}
       </div>
     </div>
@@ -755,10 +904,84 @@
     font-size: 11.5px;
   }
 
+  .size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  /* --- pager (#6120) --------------------------------------------- */
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 40px;
+  }
+  .pages {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+  .pg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-decoration: none;
+  }
+  a.pg:hover {
+    background: var(--surface-hover);
+    color: var(--fg);
+  }
+  a.pg:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+  .pg.on {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+  .pg.step {
+    font-family: inherit;
+    font-size: 12.5px;
+    padding: 0 12px;
+  }
+  .pg.off {
+    opacity: 0.45;
+  }
+  .gap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 32px;
+    color: var(--fg-dim);
+  }
+
   /* --- grid ------------------------------------------------------ */
   .grid {
     list-style: none;
-    margin: 0 0 40px;
+    margin: 0 0 20px;
     padding: 0;
     display: grid;
     /* six across at the 1200px page width */
@@ -929,6 +1152,14 @@
   @media (max-width: 600px) {
     .grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    /* The pager keeps to one row on a phone: Previous and Next drop to
+       their arrows (their accessible names are unchanged). */
+    .pg.step {
+      padding: 0 8px;
+    }
+    .pg.step .word {
+      display: none;
     }
   }
 </style>

@@ -421,6 +421,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedGapB190RobotToken,
 	// Kibo, Uktabi Prince's Banana (Jumpstart 2022, #5948).
 	printedGapB154BananaToken,
+	// Svella, Ice Shaper's Icy Manalith: a colorless snow artifact (Kaldheim, S82 OLD batch 071, #5505).
+	printedOldB071IcyManalithToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
@@ -430,6 +432,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Thousand Moons Smithy's Gnome Soldier: a */* artifact creature whose
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
+
+	// Ajani Goldmane's Avatar: a white */* whose size is its controller's life
+	// total (Secret Lair Drop, #5462).
+	printedOldB007AvatarToken,
 
 	// Saproling Burst's Saproling (Nemesis, #5802): a */* whose size is
 	// the fade counters on the Saproling Burst that made it.
@@ -469,6 +475,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Kaito, Dancing Shadow's Drone (Phyrexia: All Will Be One, #5479).
 	printedS82OneB20DroneToken,
+
+	// Vraska, Swarm's Eminence's Assassin: deathtouch, and it destroys a
+	// planeswalker it damages (Secret Lair Drop, #5462).
+	printedOldB007AAssassinToken,
 
 	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
 	// legendary Equipment token, +1/+1, vigilance, trample and haste,
@@ -549,6 +559,7 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// S82 GAP batch 43: Disa the Restless' Tarmogoyf (Modern Horizons 3
 	// Commander), a */1+* Lhurgoyf with the card's characteristic-defining ability.
 	printedGapB43TarmogoyfToken,
+	printedOldB10VoiceElementalToken,
 
 	// Anax, Hardened in the Forge's Satyr: a 1/1 red Satyr that can't block
 	// (Commander Masters, S82 GAP batch 104, #5948).
@@ -574,6 +585,18 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Wolf's Quarry's Boar (S82 GAP batch 176, #5948).
 	printedBoarFoodToken,
+
+	// Dwarven Confluencer's Mana Confluence (GAP2 batch 1, #5948).
+	printedManaConfluenceToken,
+	// The Rani's Mark of the Rani (S82 GAP2 batch 10, #5948).
+	printedMarkOfTheRaniToken,
+	// Volo, Itinerant Scholar's Volo's Journal (S82 GAP2 batch 10, #5948).
+	printedVolosJournalToken,
+
+	// Toggo, Goblin Weaponsmith's Rock (S82 OLD batch 77, #5507).
+	printedS82OldB077RockToken,
+	// Relic Robber's Goblin Construct (Zendikar Rising, S82 OLD batch 097, #5508).
+	printedS82OldB097GoblinConstructToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

@@ -59,6 +59,8 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	//    A reveal is not a zone change, so this does not disturb the
 	//    no-zone-move posture the sweep below deliberately takes.
 	g.revealFaceDownOwnedByLocked(playerID)
+	// CR 702.106e (ADR 0227): and their face-down conspiracies.
+	g.revealHiddenAgendasLocked(playerID, "hidden agenda revealed as its owner leaves the game")
 
 	// CR 901.6 (ADR 0216 §8): a departing planar controller hands the
 	// designation on FIRST, which re-stamps every planar card's owner
@@ -108,6 +110,9 @@ func (g *Game) leaveGameObjectsLocked(playerID uuid.UUID) {
 	// stop naming them. The prompts this seat itself owed were settled
 	// one step earlier, by dropChoicesForPlayerLocked.
 	g.pruneDepartedSeatOptionsLocked()
+	// ADR 0227: a deal that waited on this seat's hidden agenda goes on
+	// without it.
+	g.dealIfAgendasChosenLocked()
 
 	if removed == 0 {
 		return
@@ -256,6 +261,8 @@ func (g *Game) forgetObjectLocked(cardID uuid.UUID) {
 	}
 	delete(g.LoyaltyActivatedTwiceThisTurn, cardID)
 	delete(g.LoyaltyPermanentTwiceThisTurn, cardID)
+	delete(g.LoyaltyPermanentExtraThisTurn, cardID)
+	delete(g.LoyaltyPermanentExtraUsedThisTurn, cardID)
 	delete(g.LoyaltyExtraActivationsUsedThisTurn, cardID)
 	if g.lastKnownBattlefield != nil {
 		delete(g.lastKnownBattlefield, cardID)
@@ -300,7 +307,7 @@ func (g *Game) exileStillControlledLocked(playerID uuid.UUID) {
 		}
 	}
 	for _, id := range stuck {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "leaving the game: exile of a still-controlled permanent failed: " + err.Error(),
@@ -344,7 +351,7 @@ func (g *Game) exileGhostControlledLocked() int {
 		ghosts = append(ghosts, c.InstanceID)
 	}
 	for _, id := range ghosts {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "CR 800.4c: exile of a permanent left to a departed controller failed: " + err.Error(),

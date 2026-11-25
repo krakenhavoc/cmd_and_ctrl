@@ -91,10 +91,12 @@ func ModeClauseTarget(ctx *Context, occ, slot int) (game.TargetRef, bool) {
 // Each shape it refuses compiles and then behaves as something the
 // card does not print:
 //
-//   - either component in the MANDATORY slot. Teamwork is optional by
-//     definition (CR 702.194a); a mandatory blight exists in print only
-//     as "blight N or pay {M}" and "blight X", neither of which this
-//     component is.
+//   - teamwork in the MANDATORY slot: it is optional by definition (CR
+//     702.194a). A mandatory blight N is allowed: Lethal Sting's "As an
+//     additional cost to cast this spell, put a -1/-1 counter on a
+//     creature you control" is CR 701.68a's blight 1 under another name
+//     (MinusOneCounterOnACreatureYouControlCost, #5948). It shares the
+//     one blight_ids list, so it may not sit beside an optional blight.
 //   - either one under the wrong key, or hand-rolled with a count below
 //     one: "cast using teamwork" reads the key.
 //   - either one repeating, or sharing a cost with another component:
@@ -102,8 +104,18 @@ func ModeClauseTarget(ctx *Context, occ, slot int) (game.TargetRef, bool) {
 //   - two of the same on one card: the plan sums them, and no card
 //     prints that.
 func checkTeamworkBlight(spec Spec) {
-	if ac := spec.AdditionalCost; ac != nil && (ac.Teamwork != 0 || ac.Blight != 0) {
-		panic(fmt.Sprintf("effects.Register: %q puts teamwork or blight in the mandatory AdditionalCost slot — declare Teamwork(n) / OptionalBlight(n) in OptionalCosts (#1703)", spec.Name))
+	if ac := spec.AdditionalCost; ac != nil && ac.Teamwork != 0 {
+		panic(fmt.Sprintf("effects.Register: %q puts teamwork in the mandatory AdditionalCost slot — declare Teamwork(n) in OptionalCosts (#1703)", spec.Name))
+	}
+	if ac := spec.AdditionalCost; ac != nil && ac.Blight != 0 {
+		if ac.Blight < 0 {
+			panic(fmt.Sprintf("effects.Register: %q declares a mandatory blight below one", spec.Name))
+		}
+		for _, oc := range spec.OptionalCosts {
+			if oc.Blight != 0 || oc.BlightX {
+				panic(fmt.Sprintf("effects.Register: %q pairs a mandatory blight with optional blight %q — both would name the one creature on blight_ids (#5948)", spec.Name, oc.Key))
+			}
+		}
 	}
 	// #2174: "blight X" is the mandatory slot's own component. It
 	// shares ONE announced X with pay-X-life, and ONE blight_ids list

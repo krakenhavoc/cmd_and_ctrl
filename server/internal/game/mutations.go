@@ -125,7 +125,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, 1), DrawThen{})
+	return g.drawInstructionRunLocked(playerID, 1, DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
@@ -175,7 +175,8 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	c, err := p.Library.PopTop()
+	// #6089: River Song draws from the bottom (draw_from_bottom.go).
+	c, err := g.popDrawnCardLocked(p)
 	if err != nil {
 		if err == ErrZoneEmpty {
 			p.AttemptedEmptyDraw = true
@@ -2775,6 +2776,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.ManaSpent += spent
 	tally.ManaSpentLast = spent
 	g.SpellsCastThisTurn[playerID] = tally
+	// CR 601.2i: which spell this was this turn, kept on the item so the
+	// permanent it becomes remembers it (CastProvenance.CastOrdinal).
+	if item := g.StackMeta[cardID]; item != nil {
+		item.CastOrdinal = tally.Total
+	}
 	// #3174: a once-each-turn granted offer (Warped Space, Access Maze)
 	// is spent by the cast it paid for, here where the cast is made.
 	g.noteGrantedOfferClaimedLocked(alt)
@@ -4107,6 +4113,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 		// and its "costs {N} more" (Zero, Incorporeal Sensate).
 		GrantIncrease: g.grantIncreaseLocked(p.ID, card, fromZone, params),
+		// and its "{R}{R} in addition" (Ogre Battlecaster, #6091).
+		GrantIncreaseMana: g.grantIncreaseManaLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -5243,6 +5251,9 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// flashed-back or adventure card below goes to exile by a
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
+		// CR 702.55a (#6083): "when this spell is put into a graveyard
+		// during its resolution" — the move says which it was.
+		Resolved: resolved,
 	}
 	// What follows the move, as a registered tail (#4361 S11b): the
 	// paradigm trigger, rebound's, the counter, the Adventure's grant.
@@ -5839,6 +5850,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 		drew := p.AttemptedEmptyDraw
 		p.AttemptedEmptyDraw = false
 		if cause, ok := g.sbaLossCauseLocked(p, drew); ok {
+			// #6096, CR 704.7: one "if you would lose the game"
+			// replacement replaces every loss this pass would deal p.
+			if g.replaceLossLocked(p, cause) {
+				fired = true
+				continue
+			}
 			losers = append(losers, lossEntry{p: p, cause: cause})
 		}
 	}
@@ -6980,7 +6997,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 			mark.controller = cause.Controller
 		}
 	}
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.PutOnLibraryBottom, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
 	if moveErr == nil {
 		// #5876: whose ability exiled the permanent, once it is there.
 		g.stampExiledByAbilityLocked(g.Exile, ev.CardID, ev.moveCause())
@@ -7030,7 +7047,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // no verb of its own passes leaveMark{cause: LeaveCauseOther}.
 //
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith exileLink, exileCounter string, mark leaveMark) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter, bottom bool, exiledWith exileLink, exileCounter string, mark leaveMark) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -7117,6 +7134,13 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// than a card that keeps the knowledge a battlefield death gave it.
 	if shuffleAfter && dest == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
+	}
+	// ReplacementEvent.PutOnLibraryBottom: "put it on the bottom of that
+	// library instead" (Wheel of Sun and Moon), once the card has landed.
+	if bottom && dest == ZoneLibrary {
+		if c, err := destZone.Remove(cardID); err == nil {
+			destZone.PushBottom(c)
+		}
 	}
 	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability, g.Turn.Seq)
 	stampExileCounterLocked(destZone, cardID, exileCounter)
@@ -9945,6 +9969,12 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 	if len(colors) == 0 {
 		colors = distinctColorsInManaCost(cost)
 	}
+	// CR 903.4b: a commander's colour chosen before the game is part of
+	// its colour identity (commander_color.go). It is the card's own
+	// attribute, so a copy effect on the commander does not remove it.
+	if col := c.CommanderColor; col != "" && !containsColor(colors, col) {
+		colors = append(append([]string(nil), colors...), col)
+	}
 	if len(colors) > 0 {
 		return colors, true
 	}
@@ -10481,7 +10511,7 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.canAttackTargetWithLocked(card, targetPlayerID); err != nil {
 				return err
 			}
-			if HasSummoningSickness(card) {
+			if HasSummoningSickness(card) && !hasAttackHasteWaiver(card) {
 				return ErrSummoningSick
 			}
 			// CR 508.1c: a creature under a "can't attack"
@@ -11877,6 +11907,10 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 		// ADR 0121 §1: no hand has been dealt yet.
 		return ErrOpeningRollOpen
 	}
+	if g.PendingDealSeat != nil {
+		// ADR 0227: nor while the deal waits for a hidden agenda.
+		return ErrDealPending
+	}
 	if newHandSize < 0 {
 		return ErrInvalidParam
 	}
@@ -11945,6 +11979,10 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	if g.OpeningRoll != nil {
 		// ADR 0121 §1: no hand has been dealt yet.
 		return ErrOpeningRollOpen
+	}
+	if g.PendingDealSeat != nil {
+		// ADR 0227: nor while the deal waits for a hidden agenda.
+		return ErrDealPending
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {

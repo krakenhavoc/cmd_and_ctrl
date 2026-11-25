@@ -209,6 +209,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// pinned grants are handed to the permanent separately (CR
 	// 400.7a, inheritSpellControlLocked).
 	c.stackGranted = nil
+	c.stackColors, c.stackColored = nil, false
 	// ADR 0160's 2026-10-15 amendment / CR 400.7: a changed word belongs
 	// to the object. A permanent spell's record is handed to the
 	// permanent it becomes (CR 400.7a) and rebuilt from there by the
@@ -349,6 +350,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.ChosenPermanent = ObjectRef{}
 		c.LinkedPermanent = ObjectRef{}
 		c.ChosenCard = ObjectRef{}
+		c.Notes = nil
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
@@ -452,6 +454,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.PhasedOutBy = uuid.Nil
 		c.PhaseInLockedBy = uuid.Nil
 		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
+		c.PhaseInBarredWhileTapped = false
 		c.PhasedOutIndirect = false
 		c.TapOnPhaseIn = false
 	}

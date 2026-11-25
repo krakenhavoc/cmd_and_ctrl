@@ -43,6 +43,12 @@ type ExcessDamageRecord struct {
 	// permanent that is both can set both.
 	Creature     bool `json:"creature,omitempty"`
 	Planeswalker bool `json:"planeswalker,omitempty"`
+	// Object is the permanent object that was dealt the excess damage, with
+	// its CR 400.7 epoch, so "if that creature was dealt excess damage this
+	// turn" (Maarika, Brutal Gladiator) can ask about one creature and not a
+	// controller. The zero ref on a record written before it existed.
+	// Additive within the snapshot schema.
+	Object ObjectRef `json:"object,omitempty"`
 }
 
 // creatureExcessDamage is how much of `amount` damage is excess for the
@@ -89,6 +95,7 @@ func (g *Game) recordExcessDamageLocked(c *Card, amount int, deathtouch bool) in
 		Controller:   c.Controller,
 		Creature:     creatureExcess > 0,
 		Planeswalker: walkerExcess > 0,
+		Object:       ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch},
 	}
 	if !rec.Creature && !rec.Planeswalker {
 		return 0
@@ -113,4 +120,38 @@ func (g *Game) OpponentPermanentDealtExcessDamageThisTurn(you uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+// ObjectDealtExcessDamageThisTurn reports whether the permanent object `ref`
+// was dealt excess damage this turn (CR 120.10), and who controlled it as it
+// was dealt that damage: "if that creature was dealt excess damage this turn"
+// (Maarika, Brutal Gladiator). The fact outlives the permanent. A zero or
+// unknown ref was dealt none. Caller must hold g.mu.
+func (g *Game) ObjectDealtExcessDamageThisTurn(ref ObjectRef) (controller uuid.UUID, ok bool) {
+	if ref.ID == uuid.Nil {
+		return uuid.Nil, false
+	}
+	for _, r := range g.TurnTally.ExcessDamaged {
+		if r.Object == ref {
+			return r.Controller, true
+		}
+	}
+	return uuid.Nil, false
+}
+
+// ObjectIDDealtExcessDamageThisTurn is ObjectDealtExcessDamageThisTurn for a
+// caller that no longer holds the epoch: a creature that was dealt excess
+// damage and has since died is a new object in the graveyard (CR 400.7), but
+// the record still names the permanent it was. The latest record of the card
+// wins. Caller must hold g.mu.
+func (g *Game) ObjectIDDealtExcessDamageThisTurn(id uuid.UUID) (controller uuid.UUID, ok bool) {
+	if id == uuid.Nil {
+		return uuid.Nil, false
+	}
+	for i := len(g.TurnTally.ExcessDamaged) - 1; i >= 0; i-- {
+		if r := g.TurnTally.ExcessDamaged[i]; r.Object.ID == id {
+			return r.Controller, true
+		}
+	}
+	return uuid.Nil, false
 }

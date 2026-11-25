@@ -53,6 +53,7 @@
   import CommandStrip from "./CommandStrip.svelte";
   import Tombstone from "./Tombstone.svelte";
   import CompanionSlot from "./CompanionSlot.svelte";
+  import ConspiracySlot from "./ConspiracySlot.svelte";
   import { seatColor } from "../../colors";
   import { L } from "../../labels";
 
@@ -451,6 +452,7 @@
       <CommandStrip {seat} compact />
       <!-- ADR 0172: the seat's revealed companion, public, view only. -->
       <CompanionSlot {seat} compact />
+      <ConspiracySlot {seat} compact />
       {@render expandControl()}
     </div>
 

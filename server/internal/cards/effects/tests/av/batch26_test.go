@@ -85,7 +85,9 @@ func TestBatch26CardsAreRegistered(t *testing.T) {
 		// bullets are a reflexive modal trigger (caesar_legions_emperor.go).
 		// Great Divide Guide came off this list with ADR 0093 and ships
 		// in great_divide_guide.go.
-		"8d35cef8-a52d-45fb-8f5f-cccea26826d0", // Wyll's Reversal — a die roll and target redirection
+		// Wyll's Reversal came off this list with S82 GAP2 batch 5
+		// (#5948): the retarget and the copy ride the CR 115.7 and
+		// CR 707.10 seams (wylls_reversal.go).
 	} {
 		if _, ok := effects.Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)

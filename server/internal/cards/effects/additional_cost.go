@@ -242,6 +242,15 @@ func BlightCost(n int) *game.AdditionalCost {
 	return &game.AdditionalCost{Blight: n, Label: fmt.Sprintf("Blight %d", n)}
 }
 
+// MinusOneCounterOnACreatureYouControlCost is Lethal Sting's mandatory
+// "As an additional cost to cast this spell, put a -1/-1 counter on a
+// creature you control" (#5948). It is the action CR 701.68a calls blight
+// 1, paid by the same component and named on cast_spell as blight_ids; the
+// label is the printed clause, since the card does not say "blight".
+func MinusOneCounterOnACreatureYouControlCost() *game.AdditionalCost {
+	return &game.AdditionalCost{Blight: 1, Label: "Put a -1/-1 counter on a creature you control"}
+}
+
 // RevealCardCost is a branch that reveals a card — Wren's Run
 // Vanquisher's "reveal an Elf card from your hand" (CR 701.20). The
 // caster names the card on cast_spell as reveal_ids; paying shows it to
@@ -827,6 +836,9 @@ func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
 			panic(fmt.Sprintf("effects.Register: %q %s is a malformed target-sized collect evidence clause — build it with CollectEvidenceFromTargetsCost (#5240)", name, where))
 		}
 		return
+	}
+	if ec.CountOpponents {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles cards equal to the number of opponents — a CR 602 ability's cost only", name, where))
 	}
 	if ec.AnyNumber {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))

@@ -65,6 +65,11 @@ type CardDef struct {
 
 	StartingLoyalty int
 	BattleDefense   int
+	// HiddenAgenda is how many card names a conspiracy's hidden agenda
+	// secretly chooses as it goes into the command zone: 1 for hidden
+	// agenda, 2 for double agenda (CR 702.106a, 702.106f), 0 for every
+	// other card. #6102, ADR 0227.
+	HiddenAgenda int
 
 	// TargetMode is the client hint: the structured clause's Mode
 	// when there is one, else the legacy free-form string.
@@ -287,9 +292,21 @@ type CardDef struct {
 
 	UntapStep             []UntapStepPermission
 	UntapStepRestrictions []UntapStepRestriction
-	CounterRemovalLocks   []CounterRemovalLock
-	UntapCaps             []UntapCap
-	UntapOptOuts          []UntapOptOut
+
+	// ForetellOnAnyTurn is "foretelling cards from your hand ... can be done on
+	// any player's turn" (Cosmos Charger): while the permanent is on the
+	// battlefield its controller may take the foretell special action during
+	// any player's turn. Plain data; the timing table reads it.
+	ForetellOnAnyTurn bool
+	// UntapCounterRemovals are "if this would untap during your untap
+	// step, remove a <counter> counter from it instead. If you do, untap
+	// it." (#6095, untap_counter_removal.go), read off the permanent's
+	// own CatalogAbilityKey, so a grant bundle's are merged in
+	// (copy_grants.go) and the recipient has them while it has the grant.
+	UntapCounterRemovals []UntapCounterRemoval
+	CounterRemovalLocks  []CounterRemovalLock
+	UntapCaps            []UntapCap
+	UntapOptOuts         []UntapOptOut
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -451,6 +468,13 @@ type CardDef struct {
 	// Read from the battlefield through CatalogAbilityKey; see
 	// activate_as_though_haste.go.
 	ActivateAsThoughHaste bool
+	// ActivateAsThoughHasteOthers is the same static over OTHER creatures
+	// only: "You may activate abilities of other creatures you control as
+	// though those creatures had haste" (Dynaheir, Invoker Adept, #6094).
+	// The permanent's own abilities are not reached. Read from the
+	// battlefield through CatalogAbilityKey; see
+	// activate_as_though_haste.go.
+	ActivateAsThoughHasteOthers bool
 	// ExtraVote is this permanent's printed "While voting, you get an
 	// additional vote" or "you may vote an additional time" (CR
 	// 701.38d, ADR 0146). Read from the battlefield through
@@ -470,6 +494,28 @@ type CardDef struct {
 	// CatalogControlsOpponentsSearches, keyed by CatalogAbilityKey; see
 	// search_control.go.
 	ControlsOpponentsSearches bool
+	// OpponentsSearchTopN is this permanent's printed "If an opponent
+	// would search a library, that player searches the top N cards of
+	// that library instead" (Aven Mindcensor, #6090). Zero is none. Read
+	// from the battlefield through CatalogOpponentsSearchTopN, keyed by
+	// CatalogAbilityKey; see search_top_n.go.
+	OpponentsSearchTopN int
+	// OpponentsCantSearchLibraries is this permanent's printed "Your
+	// opponents can't search libraries" (Stranglehold). Read from the
+	// battlefield through CatalogOpponentsCantSearch, keyed by
+	// CatalogAbilityKey; see search_cant.go.
+	OpponentsCantSearchLibraries bool
+	// AttackingPlayerChoosesBlocks is this permanent's printed "The
+	// attacking player chooses how each creature blocks each combat"
+	// (Invasion Plans). Read from the battlefield through
+	// CatalogAttackingPlayerChoosesBlocks, keyed by CatalogAbilityKey; see
+	// declaration_control.go.
+	AttackingPlayerChoosesBlocks bool
+	// DrawsFromBottom is this permanent's printed "You draw cards from
+	// the bottom of your library rather than the top" (River Song,
+	// #6089). Read from the battlefield through CatalogDrawsFromBottom,
+	// keyed by CatalogAbilityKey; see draw_from_bottom.go.
+	DrawsFromBottom bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -533,6 +579,11 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogGameEndGates and
 	// ADR 0057 Decision 4 (#749).
 	GameEndGates []GameEndGate
+	// GameActionReplacements are this permanent's printed "If you would
+	// lose the game / planeswalk, instead …" statics (#6096), read from
+	// the battlefield through CatalogGameActionReplacements; see
+	// game_action_replacements.go.
+	GameActionReplacements []GameActionReplacement
 	// CoinFlipRules are this permanent's printed rules over the coins its
 	// controller flips (Edgar, King of Figaro's Two-Headed Coin), read from
 	// the battlefield through CatalogAbilityKey; see coin_flip_rules.go.
@@ -682,6 +733,12 @@ type CardDef struct {
 	// riders. Read through CatalogOpeningHand when the mulligan window
 	// closes; see opening_hand.go. Nil for every other card.
 	OpeningHand *OpeningHandAction
+
+	// ChoosesCommanderColor is CR 903.4b's "If <this> is your
+	// commander, choose a color before the game begins. <This> is the
+	// chosen color." Read through CatalogChoosesCommanderColor; see
+	// commander_color.go.
+	ChoosesCommanderColor bool
 
 	// LibraryTopVisible is how far this permanent makes its
 	// controller's top library card visible (CR 401.5) — "you may look
@@ -1116,6 +1173,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogForetellOnAnyTurn = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.ForetellOnAnyTurn
+		}
+		return false
+	}
 	CatalogUntapStepRestrictions = func(key string) []UntapStepRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.UntapStepRestrictions
@@ -1222,7 +1285,11 @@ func init() {
 	}
 	CatalogActivateAsThoughHaste = func(key string) bool {
 		d := catalogDef(key)
-		return d != nil && d.ActivateAsThoughHaste
+		return d != nil && (d.ActivateAsThoughHaste || d.ActivateAsThoughHasteOthers)
+	}
+	CatalogActivateAsThoughHasteOthersOnly = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ActivateAsThoughHasteOthers && !d.ActivateAsThoughHaste
 	}
 	CatalogExtraVote = func(key string) ExtraVote {
 		if d := catalogDef(key); d != nil {
@@ -1237,6 +1304,24 @@ func init() {
 	CatalogControlsOpponentsSearches = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.ControlsOpponentsSearches
+	}
+	CatalogOpponentsSearchTopN = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.OpponentsSearchTopN
+		}
+		return 0
+	}
+	CatalogOpponentsCantSearch = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.OpponentsCantSearchLibraries
+	}
+	CatalogAttackingPlayerChoosesBlocks = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.AttackingPlayerChoosesBlocks
+	}
+	CatalogDrawsFromBottom = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.DrawsFromBottom
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
@@ -1395,6 +1480,12 @@ func init() {
 			return d.GrantedAlternativeCosts
 		}
 		return nil
+	}
+	CatalogChoosesCommanderColor = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.ChoosesCommanderColor
+		}
+		return false
 	}
 	CatalogOpeningHand = func(key string) *OpeningHandAction {
 		if d := catalogDef(key); d != nil {

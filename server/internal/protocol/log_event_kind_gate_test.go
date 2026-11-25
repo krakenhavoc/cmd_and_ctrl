@@ -187,6 +187,10 @@ var silentEventKinds = map[string]string{
 	"EventBattleDefeated":  silentBoardStateIsVisible,
 	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line
 
+	// #6096: a loss replaced (The Golden Throne). The exile and the
+	// life-change lines already say what happened instead.
+	"EventGameLossReplaced": silentImpliedByAnotherLine,
+
 	// --- waiting on the PR that writes the line ------------------------
 	// The same posture as EventSettingsChanged above, and the same
 	// shape of promise: the kind lands with the engine seam, the line

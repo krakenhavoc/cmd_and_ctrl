@@ -84,6 +84,12 @@ func printedTextKeyOf(c *Card) string {
 	if c.faceDownPermanent() {
 		return ""
 	}
+	// CR 315.5b (#6102, ADR 0227): a face-down conspiracy card has no
+	// characteristics, so a hidden agenda does nothing until it is
+	// turned face up.
+	if c.FaceDown && c.FaceDownKind == FaceDownConspiracy {
+		return ""
+	}
 	return underlyingTextKeyOf(c)
 }
 

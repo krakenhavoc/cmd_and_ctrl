@@ -70,6 +70,9 @@ func (g *Game) anyPlayerActivationBanLocked() bool {
 		if _, _, ok := g.playerActivationBanLocked(p.ID); ok {
 			return true
 		}
+		if _, _, ok := g.playerLoyaltyBanLocked(p.ID); ok {
+			return true
+		}
 	}
 	return false
 }
@@ -80,4 +83,45 @@ func (g *Game) anyPlayerActivationBanLocked() bool {
 func (g *Game) playerActivationBanned(player uuid.UUID) bool {
 	_, _, ok := g.playerActivationBanLocked(player)
 	return ok
+}
+
+// GrantCantActivateLoyaltyAbilitiesForEffect makes `player` unable to
+// activate planeswalkers' loyalty abilities for duration d (Revel in
+// Silence: "Your opponents can't cast spells or activate planeswalkers'
+// loyalty abilities this turn"). The zero Duration is "until end of
+// turn". Other abilities, mana abilities included, stay available.
+//
+// The *ForEffect surface: caller must hold g.mu (write).
+func (g *Game) GrantCantActivateLoyaltyAbilitiesForEffect(player uuid.UUID, label string, source uuid.UUID, d Duration) {
+	p := g.playerByIDLocked(player)
+	if p == nil || p.Eliminated {
+		return
+	}
+	if d.IsZero() {
+		d = g.UntilEndOfTurnDuration()
+	}
+	p.Statics = append(p.Statics, PlayerStatic{
+		CantActivateLoyaltyAbilities: true,
+		Source:                       source,
+		Label:                        label,
+		Duration:                     d,
+	})
+}
+
+// playerLoyaltyBanLocked reports whether a live grant stops `player`
+// from activating planeswalkers' loyalty abilities.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) playerLoyaltyBanLocked(player uuid.UUID) (label string, source uuid.UUID, banned bool) {
+	p := g.playerByIDLocked(player)
+	if p == nil {
+		return "", uuid.Nil, false
+	}
+	for _, s := range p.Statics {
+		if !s.CantActivateLoyaltyAbilities || g.durationExpiredLocked(s.Duration, false) {
+			continue
+		}
+		return s.Label, s.Source, true
+	}
+	return "", uuid.Nil, false
 }

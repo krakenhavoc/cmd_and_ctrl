@@ -224,6 +224,11 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	if co := CompanionOffer(c); co != nil {
 		out = append(out, *co)
 	}
+	// ADR 0227: a face-down conspiracy's reveal (CR 702.106c). Asked
+	// only in the command zone (specialActionZone).
+	if ra := RevealAgendaOffer(c); ra != nil {
+		out = append(out, *ra)
+	}
 	// ADR 0103: the unlock offers are derived from the card too — a
 	// face-up Room with a locked door (CR 709.5e).
 	out = append(out, UnlockOffers(c)...)
@@ -290,6 +295,8 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 		return ZoneBattlefield
 	case SpecialActionCompanion:
 		return ZoneOutside
+	case SpecialActionRevealAgenda:
+		return ZoneCommand
 	}
 	return ""
 }
@@ -365,7 +372,10 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// Deliberately NOT gated on SplitSecondActive: CR 702.61b
 		// stops casts and activations, and a special action is
 		// neither.
-		return g.activeSeatIDLocked() == playerID
+		//
+		// Cosmos Charger: "can be done on any player's turn" opens the other
+		// players' turns to its controller.
+		return g.activeSeatIDLocked() == playerID || g.foretellOnAnyTurnLocked(playerID)
 
 	case SpecialActionSuspend:
 		// CR 702.62c: "any time you could begin to cast this card".
@@ -454,6 +464,14 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// — the plot row exactly, on a Planechase table only. The
 		// card is ignored: the action is taken on none.
 		return g.Planechase != nil && g.SorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionRevealAgenda:
+		// CR 116.2j / 702.106c: "any time you have priority". Asked here
+		// as well as by the dispatcher, whose check lets an action
+		// through while nobody holds priority (the pregame, the untap
+		// step): a hidden agenda is not revealed then. Like
+		// turn_face_up it is legal under split second.
+		return g.holdsPriorityLocked(playerID)
 
 	case SpecialActionCompanion:
 		// CR 116.2g: "any time they have priority and the stack is
@@ -648,6 +666,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).unlockLocked
 	case SpecialActionCompanion:
 		return (*Game).companionLocked
+	case SpecialActionRevealAgenda:
+		return (*Game).revealAgendaLocked
 	}
 	return nil
 }
@@ -703,6 +723,15 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 			}
 		}
 		return Card{}, "", ErrCardNotFound
+	case ZoneCommand:
+		// ADR 0227: a conspiracy the actor controls, which is one they
+		// own (CR 315.6), so their own container is the check.
+		for _, c := range g.ConspiraciesOf(p.ID) {
+			if c.InstanceID == cardID {
+				return c, zone, nil
+			}
+		}
+		return Card{}, "", ErrCardNotFound
 	}
 	for _, zone := range g.specialActionGrantZonesLocked(p.ID, kind) {
 		if c, ok := grantedZoneCard(p, zone); ok && c.InstanceID == cardID {
@@ -724,15 +753,18 @@ func SpecialActionKindBuilt(kind SpecialActionKind) bool {
 // is spent ON. The zero context — matching no restricted mana — for
 // every kind but unlock, whose cost is "an unlock cost" (CR 709.5e):
 // mana restricted to "unlock doors" pays it (Smoky Lounge, Creeping
-// Peeper), and mana restricted to casting does not (ADR 0103); and turn
+// Peeper), and mana restricted to casting does not (ADR 0103); turn
 // face up, which mana restricted to "turn a permanent face up" pays
-// (Creeping Peeper, #3172).
+// (Creeping Peeper, #3172); and foretell, which mana restricted to "foretell
+// a card from your hand" pays (Karfell Harbinger).
 func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 	switch kind {
 	case SpecialActionUnlock:
 		return ManaSpendContext{Purpose: SpendPurposeUnlock}
 	case SpecialActionTurnFaceUp:
 		return ManaSpendContext{Purpose: SpendPurposeTurnFaceUp}
+	case SpecialActionForetell:
+		return ManaSpendContext{Purpose: SpendPurposeForetell}
 	}
 	return ManaSpendContext{}
 }

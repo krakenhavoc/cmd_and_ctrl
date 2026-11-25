@@ -113,6 +113,9 @@ var gameFields = plan(
 	// ADR 0121 §1: the open opening roll. Plain data; a restored game
 	// mid-roll continues where it stopped.
 	"OpeningRoll", carried, "",
+	// ADR 0227: a deal waiting for a hidden agenda's name. Plain data; a
+	// restored game mid-agenda deals once the name is chosen.
+	"PendingDealSeat", carried, "",
 	// ADR 0216 §3: the Planechase option's planar controller and die
 	// count, and the two planar containers, in the snapshot's
 	// `planechase` object.
@@ -149,6 +152,8 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"LoyaltyTwiceThisTurn", carried, "",
 	"LoyaltyPermanentTwiceThisTurn", carried, "",
+	"LoyaltyPermanentExtraThisTurn", carried, "",
+	"LoyaltyPermanentExtraUsedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973
@@ -308,6 +313,7 @@ var gameFields = plan(
 	// record would let every first-striker deal its damage again in
 	// the regular step.
 	"firstStrikeStepParticipants", carried, "",
+	"hadToAttack", carried, "#6098: the creatures that carried a CR 508.1d requirement as this combat's attack declaration passed its checkpoint (GameSnapshot.HadToAttack); Clone copies it for undo",
 	"followUpParks", carried, "#2040: the rest of a damage instruction parked behind a prompt its prevention follow-up asked, as data (GameSnapshot.FollowUpParks, #4253; the closure park went in #4361 S8); Clone shares it (copy on write) for undo",
 	"heldCombatDamage", carried, "#3665: a combat damage step's damage held behind its damage_assignment prompts, as data (GameSnapshot.HeldCombatDamage, #4362); Clone shares it (copy on write) for undo",
 	"lastKnownBattlefield", carried, "",
@@ -442,6 +448,7 @@ var cardFields = plan(
 	"Counters", carried, "",
 	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
+	"CommanderColor", carried, "",
 	// ADR 0172 §4: the companion stamp; the badge reads it.
 	"IsCompanion", carried, "",
 	// ADR 0191 §3: the sideboard stamp; it routes seating only.
@@ -528,6 +535,11 @@ var cardFields = plan(
 	// #4455: carried — a restore that dropped it would leave a card Kang
 	// Prime gave suspend counting down with no upkeep trigger and no free cast.
 	"SuspendGranted", carried, "",
+	// #6083: carried — a restore that dropped it would leave a haunting
+	// card in exile that no longer triggers when the creature it haunts dies.
+	"HauntedID", carried, "",
+	"HauntedEpoch", carried, "",
+	"HauntingEpoch", carried, "",
 	// ADR 0219: carried — no battlefield source rebuilds it, so a restore
 	// that dropped it would take Q, Stacking the Deck's ability away.
 	"ExileGrants", carried, "",
@@ -586,6 +598,8 @@ var cardFields = plan(
 	// copied devoid. Carried: nothing else on the card says so.
 	"ColorCDADropped", carried, "",
 	"LostKeywords", carried, "",
+	"PerpetualKeywords", carried, "",
+	"Conjured", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
@@ -624,6 +638,10 @@ var cardFields = plan(
 	// ADR 0155's 2026-11-05 amendment: Koh's last chosen card. A
 	// player's choice, so nothing can rebuild it.
 	"ChosenCard", carried, "",
+	// #6097: the words noted for this permanent (Long List of the Ents'
+	// creature types, Day of the Moon's names). Player choices nothing
+	// can re-derive.
+	"Notes", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
@@ -741,6 +759,8 @@ var cardFields = plan(
 	"PhaseInBarredBy", carried, "",
 	"PhaseInBarredEpoch", carried, "",
 	"PhaseInBarredFor", carried, "",
+	// #6095: The Pandorica's "remains tapped" form of the bar.
+	"PhaseInBarredWhileTapped", carried, "",
 	"PhasedOutIndirect", carried, "",
 	"TapOnPhaseIn", carried, "",
 	// S27 battles. Both are printed / chosen state with no other
@@ -766,6 +786,8 @@ var cardFields = plan(
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
 	"baseToughness", rebuilt, "the layer pass's toughness after layer 7b (CR 208.4b, Card.BaseToughness); derived, rebuilt by the recompute restore forces",
+	"stackColors", rebuilt, "the colour the stack step set on a spell (#6088, spell_colors.go); rebuilt from the ScopedEffect records by the recompute restore forces",
+	"stackColored", rebuilt, "whether stackColors is set (#6088); rebuilt with it",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
 	"zoneLayered", rebuilt, "the types and colours a battlefield static gave this object off the battlefield (#3862, zone_layers.go); rebuilt from the battlefield statics by the recompute restore forces",
@@ -996,6 +1018,8 @@ var stackItemFields = plan(
 	"ModeChooser", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
+	// CR 601.2i: which spell this was this turn (Codespell Cleric).
+	"CastOrdinal", carried, "",
 	"AltCost", carried, "",
 	"MutateUnder", carried, "",
 	// CR 702.143c (#658). Carried: a restore that lost it would make
@@ -1024,6 +1048,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileAndPlot", carried, "",
+	"ExileAndReturn", carried, "",
 	"ExileAndSuspend", carried, "",
 	"ExileLinkedTo", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",

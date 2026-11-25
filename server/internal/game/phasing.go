@@ -312,6 +312,7 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 		c.PhasedOutIndirect = false
 		c.PhaseInLockedBy = uuid.Nil
 		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
+		c.PhaseInBarredWhileTapped = false
 		if c.TapOnPhaseIn {
 			// Oubliette. Written directly rather than through
 			// untapPermanentLocked's twin: this is not the CR 701.21a
@@ -586,7 +587,14 @@ func (g *Game) phaseInBarredLocked(c *Card) bool {
 		return false
 	}
 	src, ok := g.battlefieldCardLocked(c.PhaseInBarredBy)
-	return ok && src.ObjectEpoch == c.PhaseInBarredEpoch && src.Controller == c.PhaseInBarredFor
+	if !ok || src.ObjectEpoch != c.PhaseInBarredEpoch {
+		return false
+	}
+	if c.PhaseInBarredWhileTapped {
+		// #6095: "for as long as The Pandorica remains tapped".
+		return src.Tapped
+	}
+	return src.Controller == c.PhaseInBarredFor
 }
 
 // sweepPhaseInBarsLocked ends every "can't phase in for as long as you
@@ -610,6 +618,7 @@ func (g *Game) sweepPhaseInBarsLocked() {
 		c := &g.PhasedOut.Cards[i]
 		if c.PhaseInBarredBy != uuid.Nil && !g.phaseInBarredLocked(c) {
 			c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
+			c.PhaseInBarredWhileTapped = false
 		}
 	}
 }
@@ -697,4 +706,48 @@ func (g *Game) CantPhaseInWhileControlledForEffect(source, player uuid.UUID, ids
 			}
 		}
 	}
+}
+
+// CantPhaseInWhileTappedForEffect is "It can't phase in for as long as ~
+// remains tapped" (The Pandorica, #6095), said of permanents that have
+// just phased out: CantPhaseInWhileControlledForEffect with the source's
+// being tapped as the condition in place of its controller. The duration
+// never starts when `source` is not a tapped permanent on the battlefield
+// as this is called (CR 611.2b). An id that is not phased out is skipped.
+// When it ends nothing phases in on the spot: the permanent is back on the
+// ordinary clock (CR 502.1), which is why The Pandorica also prints the
+// trigger that phases it in (PhaseInForEffect).
+//
+// Caller must hold g.mu.
+func (g *Game) CantPhaseInWhileTappedForEffect(source uuid.UUID, ids ...uuid.UUID) {
+	src, ok := g.battlefieldCardLocked(source)
+	if !ok || !src.Tapped || g.PhasedOut == nil {
+		return
+	}
+	for i := range g.PhasedOut.Cards {
+		c := &g.PhasedOut.Cards[i]
+		for _, id := range ids {
+			if c.InstanceID == id {
+				c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = source, src.ObjectEpoch, uuid.Nil
+				c.PhaseInBarredWhileTapped = true
+			}
+		}
+	}
+}
+
+// PhaseInForEffect is "that permanent phases in" as an instruction (The
+// Pandorica's trigger, #6095): each named phased-out permanent phases in,
+// with whatever phased out indirectly with it (CR 702.26g). A bar whose
+// condition has stopped holding is cleared first, so a bar that ended
+// since the last settled board stops nothing; one that still holds, and
+// the "permanents can't phase in" rule, still do (CR 101.2). An id that is
+// not phased out is skipped. Returns the permanents that phased in.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) PhaseInForEffect(ids ...uuid.UUID) []uuid.UUID {
+	if g.PhasedOut == nil || len(ids) == 0 {
+		return nil
+	}
+	g.sweepPhaseInBarsLocked()
+	return g.phaseInLocked(g.withIndirectlyPhasedAttachmentsLocked(ids))
 }

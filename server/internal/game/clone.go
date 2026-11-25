@@ -42,6 +42,7 @@ func (g *Game) cloneLocked() *Game {
 		Turn:              g.Turn,
 		MulligansOpen:     g.MulligansOpen,
 		OpeningRoll:       cloneOpeningRoll(g.OpeningRoll),
+		PendingDealSeat:   cloneIntPtr(g.PendingDealSeat),
 		Planechase:        clonePlanechase(g.Planechase),
 		PlanarDeck:        cloneZone(g.PlanarDeck),
 		PlanarFaceUp:      cloneZone(g.PlanarFaceUp),
@@ -144,6 +145,8 @@ func (g *Game) cloneLocked() *Game {
 	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	out.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	out.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
+	out.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
+	out.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -477,6 +480,8 @@ func (g *Game) cloneLocked() *Game {
 	// window between the two steps that dropped it would let every
 	// first-striker deal its damage a second time in the regular step.
 	out.firstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	// #6098: and the record of what had to attack.
+	out.hadToAttack = copyBoolMap(g.hadToAttack)
 	// #3665: the step's damage held behind its prompts rewinds with
 	// them. Copy on write, so it is shared.
 	out.heldCombatDamage = g.heldCombatDamage
@@ -662,6 +667,9 @@ func deepenCard(out *Card) {
 	}
 	if len(out.LostKeywords) > 0 {
 		out.LostKeywords = append([]string(nil), out.LostKeywords...)
+	}
+	if len(out.PerpetualKeywords) > 0 {
+		out.PerpetualKeywords = append([]string(nil), out.PerpetualKeywords...)
 	}
 	if len(out.ExileGrants) > 0 {
 		out.ExileGrants = append([]GrantedAbility(nil), out.ExileGrants...)
@@ -977,10 +985,12 @@ func cloneStackItem(s *StackItem) *StackItem {
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,
+		CastOrdinal:      s.CastOrdinal,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileAndReturn:   s.ExileAndReturn,
 		ExileAndSuspend:  s.ExileAndSuspend,
 		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
@@ -1318,6 +1328,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Turn = src.Turn
 	g.MulligansOpen = src.MulligansOpen
 	g.OpeningRoll = src.OpeningRoll
+	g.PendingDealSeat = src.PendingDealSeat
 	g.Planechase = src.Planechase
 	g.PlanarDeck = src.PlanarDeck
 	g.PlanarFaceUp = src.PlanarFaceUp
@@ -1353,6 +1364,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.LoyaltyTwiceThisTurn = src.LoyaltyTwiceThisTurn
 	g.LoyaltyPermanentTwiceThisTurn = src.LoyaltyPermanentTwiceThisTurn
+	g.LoyaltyPermanentExtraThisTurn = src.LoyaltyPermanentExtraThisTurn
+	g.LoyaltyPermanentExtraUsedThisTurn = src.LoyaltyPermanentExtraUsedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
@@ -1432,6 +1445,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.attacksDeclared = src.attacksDeclared
 	g.combatHadAttackers = src.combatHadAttackers
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
+	g.hadToAttack = src.hadToAttack
 	g.heldCombatDamage = src.heldCombatDamage
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices

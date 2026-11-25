@@ -287,6 +287,34 @@ const (
 	// (CR 800.4m, ADR 0059 Decision 6), the way UntilEndOfTurn has one.
 	ThisTurnAndNextTurn
 
+	// UntilEndOfCombatOnYourNextTurn is "until end of combat on your next
+	// turn" (#6093, Brazen Cannonade): the effect lasts through the rest of
+	// this turn and into the player's next turn, and ends as that turn's
+	// first combat phase ends (CR 511.3: effects that last "until end of
+	// combat" expire at the end of the combat phase). It is not "until
+	// your next turn" (that ends as the turn begins) nor "until the end of
+	// your next turn" (that ends at its cleanup step).
+	//
+	// The fifteenth kind, appended after ThisTurnAndNextTurn so every
+	// persisted int keeps its meaning; a binary from before it refuses a
+	// file carrying it through Known.
+	//
+	// The stamp is ExpiresAtTurnsBegun, the player's Player.TurnsBegun
+	// that names their next turn (TurnsBegun + 1 as it is made), as for
+	// UntilYourNextTurn. In that turn the effect is over once a combat
+	// phase has ended: the cursor has left the first combat phase it
+	// entered, or the turn has reached a second main phase or its ending
+	// phase with no combat behind it (a skipped combat phase never ends,
+	// so the end of combat it names never comes and the window closes as
+	// the turn moves past where it would have been, the reading CR 506.8e
+	// gives a skipped combat). It is read off the turn's phase tally,
+	// already carried by the snapshot (BeforeAttackersWindowClosedForEffect
+	// reads the same tally). Any later turn of the player's ends it too:
+	// the backstop for a next turn that ended early without reaching its
+	// combat (CR 800.4m, ADR 0059 Decision 6), and the turn in which a
+	// player who left the game would have taken it.
+	UntilEndOfCombatOnYourNextTurn
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -835,6 +863,70 @@ func (g *Game) ThisTurnAndNextTurnDuration() Duration {
 	return Duration{Kind: ThisTurnAndNextTurn, AfterTurn: g.Turn.Seq}
 }
 
+// UntilEndOfCombatOnYourNextTurnDuration is "until end of combat on
+// <player>'s next turn" (#6093), stamped with that player's next
+// seat-turn: see the UntilEndOfCombatOnYourNextTurn kind. Caller must
+// hold g.mu.
+func (g *Game) UntilEndOfCombatOnYourNextTurnDuration(player uuid.UUID) Duration {
+	return Duration{
+		Kind:                UntilEndOfCombatOnYourNextTurn,
+		Player:              player,
+		ExpiresAtTurnsBegun: g.turnsBegunForLocked(player) + 1,
+	}
+}
+
+// endOfCombatOnNextTurnPassedLocked is the UntilEndOfCombatOnYourNextTurn
+// test: a later turn of the player's has begun, or this is the stamped
+// turn and its first combat phase is over. Caller must hold g.mu.
+func (g *Game) endOfCombatOnNextTurnPassedLocked(d Duration) bool {
+	p := g.playerByIDLocked(d.Player)
+	if p == nil {
+		// No such player: there is no turn for it to wait on.
+		return true
+	}
+	switch {
+	case p.TurnsBegun > d.ExpiresAtTurnsBegun:
+		return true
+	case p.TurnsBegun < d.ExpiresAtTurnsBegun:
+		return false
+	case g.activePlayerIDLocked() != d.Player:
+		// The stamped turn has begun and another player's turn is in
+		// progress (an extra turn taken after it): it is over.
+		return true
+	}
+	return g.aCombatPhaseEndedThisTurnLocked()
+}
+
+// aCombatPhaseEndedThisTurnLocked reports whether the turn in progress
+// is past the end of its first combat phase (CR 511.3): a combat phase
+// has begun and the cursor has left it, a second one has begun, or the
+// turn has reached a second main phase or its ending phase (a combat
+// that was skipped is behind it). Read off the turn's phase tally and
+// the cursor, like BeforeAttackersWindowClosedForEffect. Caller must
+// hold g.mu.
+func (g *Game) aCombatPhaseEndedThisTurnLocked() bool {
+	// The turn's first beginning phase comes before any of its combats,
+	// and it is where the turn-start sweeps run, before the tally is
+	// emptied for the new turn: the tally may still be the last turn's.
+	if PhaseOf(g.Turn.Step) == PhaseBeginning && g.Turn.PhaseOrdinal <= 1 {
+		return false
+	}
+	begun := g.TurnTally.PhasesBegun
+	inCombat := PhaseOf(g.Turn.Step) == PhaseCombat
+	switch {
+	case begun[PhaseKindCombat] >= 2,
+		begun[PhaseKindCombat] >= 1 && !inCombat,
+		begun[PhaseKindMain] >= 2,
+		begun[PhaseKindEnding] > 0:
+		return true
+	}
+	switch PhaseOf(g.Turn.Step) {
+	case PhasePostcombatMain, PhaseEnding:
+		return true
+	}
+	return false
+}
+
 // UntilNextEndStepDuration is "until the next end step" (any player's),
 // stamped with the end steps that have begun so far. Caller must hold
 // g.mu.
@@ -1353,6 +1445,8 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// (#5718), or any turn after that one as it begins: the backstop
 		// for a next turn that ended without a cleanup step.
 		return (endOfTurn && g.Turn.Seq > d.AfterTurn) || g.Turn.Seq > d.AfterTurn+1
+	case UntilEndOfCombatOnYourNextTurn:
+		return g.endOfCombatOnNextTurnPassedLocked(d)
 	case Indefinite, WhileInZone:
 		// Neither ends on a turn boundary. WhileInZone ends on a ZONE
 		// change, which CR 400.7 answers on the permission itself —
@@ -1579,6 +1673,8 @@ func (k DurationKind) String() string {
 		return "until your next upkeep"
 	case ThisTurnAndNextTurn:
 		return "this turn and next turn"
+	case UntilEndOfCombatOnYourNextTurn:
+		return "until end of combat on your next turn"
 	}
 	return "unknown duration"
 }

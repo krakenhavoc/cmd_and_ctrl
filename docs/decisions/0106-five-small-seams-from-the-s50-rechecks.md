@@ -589,3 +589,11 @@ Chaos Dragon prints "At the beginning of combat on your turn, each player rolls 
 Snapshot impact: one additive optional field on `AttackTargetRestriction` (`NotAnAbility`), recorded with `-update-shape` under the current version. A file written before it reads false, which is the old behaviour. A binary before it reads `Amount` 2 as a plain `ModCantAttackPlayer`, so the restriction still applies and only a later "loses all abilities" would wrongly remove it. The new tail key is ledgered.
 
 Cards: Chaos Dragon (Full).
+
+## Amendment (2026-11-24): "with equal toughness" (#6100)
+
+V.A.T.S. prints "Choose any number of target creatures with equal toughness". It is §5's sameness rule with a second key: `game.TargetShareToughness`, the creature's toughness after the layers (CR 208.1, CR 613.4), built with `effects.WithEqualToughness()`. Nothing else changes: the announce gate refuses a set with two toughnesses (CR 601.2c), the CR 608.2b re-check judges the surviving picks together, so a creature whose toughness changed in response is illegal and so is every pick it now disagrees with, while a pick that left the battlefield is skipped and the rest stay legal; `fillableCountLocked`, the retarget offer, the enumerator and the view's `same` keys read the new key through the same `keyOf`. A non-creature has no key, as a card with no owner has none.
+
+Snapshot impact: none. The key is a new value of an existing enum, appended after `TargetShareOwner` and never renumbered.
+
+Cards: V.A.T.S. (Full).

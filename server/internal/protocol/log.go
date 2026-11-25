@@ -489,6 +489,12 @@ const (
 	// earned, which is the condition the feature ships under; a
 	// spawn into a hidden zone names the zone and not the card.
 	LogSpawn LogKind = "spawn"
+	// LogConjure — a card's effect conjured a card (ADR 0099 amendment
+	// 2026-11-24, #5948): a new card that was in nobody's deck. `Label`
+	// is the card's name, `NewZone` where it went and `Seat` who
+	// conjured (and owns) it. A conjure into a hand or a library names
+	// the zone and not the card, as a spawn does.
+	LogConjure LogKind = "conjure"
 	// LogTransform — a permanent was turned over to its other face
 	// (CR 701.27a). `Label` is the name of the face it turned FROM,
 	// which is the only place that name survives: the card's own name
@@ -2119,6 +2125,10 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// and neither does the line.
 		base.Kind = LogVoteSecret
 		base.CardID = uuidStringOrEmpty(ev.Source)
+		if ev.Label == game.SecretChoiceLabel {
+			// #5948: a secret choice, not a vote.
+			base.Cause = game.SecretChoiceLabel
+		}
 		return base, true
 
 	case game.EventVotesRevealed:
@@ -2126,6 +2136,9 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// ballot is in. Option -1 is a vote for nothing.
 		base.Kind = LogVotesRevealed
 		base.CardID = uuidStringOrEmpty(ev.Source)
+		if ev.Label == game.SecretChoiceLabel {
+			base.Cause = game.SecretChoiceLabel
+		}
 		for _, b := range ev.Ballots {
 			base.Seats = append(base.Seats, seatOf(b.Voter))
 			label := "nothing"
@@ -2228,6 +2241,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		base.Amount = ev.Amount
 		base.setTarget(ev.Target, seatOf)
+		return base, true
+
+	case game.EventConjured:
+		base.Kind = LogConjure
+		base.Amount = ev.Amount
+		base.NewZone = string(ev.NewZone)
+		// The name of a card conjured into a hidden zone is hidden
+		// information, dropped here for everyone, as for a spawn.
+		if !hiddenZone(ev.NewZone) {
+			base.Label = ev.Label
+		}
 		return base, true
 
 	case game.EventSpawned:
@@ -3207,6 +3231,9 @@ func shortCardName(name string) string {
 // revealed (Mob Verdict): Alice for Bob, Bob for Carol". A vote nobody
 // cast a ballot in says so.
 func votesRevealedText(e *LogEvent, card string) string {
+	if e.Cause == game.SecretChoiceLabel {
+		return choicesRevealedText(e, card)
+	}
 	if len(e.Votes) == 0 {
 		return fmt.Sprintf("Votes revealed (%s): nobody voted", card)
 	}
@@ -3219,6 +3246,23 @@ func votesRevealedText(e *LogEvent, card string) string {
 		parts[i] = who + " for " + choice
 	}
 	return fmt.Sprintf("Votes revealed (%s): %s", card, strings.Join(parts, ", "))
+}
+
+// choicesRevealedText is a secret choice's reveal (#5948): "Choices
+// revealed (Call to the Void): Alice chose Grizzly Bears, Bob chose 3".
+func choicesRevealedText(e *LogEvent, card string) string {
+	if len(e.Votes) == 0 {
+		return fmt.Sprintf("Choices revealed (%s): nobody chose", card)
+	}
+	parts := make([]string, len(e.Votes))
+	for i, choice := range e.Votes {
+		who := "someone"
+		if i < len(e.seatNames) {
+			who = nameOr(e.seatNames[i], who)
+		}
+		parts[i] = who + " chose " + choice
+	}
+	return fmt.Sprintf("Choices revealed (%s): %s", card, strings.Join(parts, ", "))
 }
 
 // renderLogText writes the human-readable line. cardName / targetName
@@ -3432,6 +3476,9 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
 	case LogVoteSecret:
+		if e.Cause == game.SecretChoiceLabel {
+			return fmt.Sprintf("%s chose in secret (%s)", actor, card)
+		}
 		return fmt.Sprintf("%s cast a secret vote (%s)", actor, card)
 	case LogVotesRevealed:
 		return votesRevealedText(e, card)
@@ -3560,6 +3607,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return renderIdleCloseText(*e)
 	case LogSpawn:
 		return renderSpawnText(*e, target)
+	case LogConjure:
+		return renderConjureText(*e, actor)
 	case LogStorm:
 		// "Grapeshot — storm count 3". The em dash is the separator
 		// every storm-shaped stack label in the catalog already uses,
@@ -3908,6 +3957,20 @@ func renderSpawnText(e LogEvent, target string) string {
 	default:
 		return fmt.Sprintf("%s spawned %s into %s's %s", who, what, target, spawnZoneWord(e.NewZone))
 	}
+}
+
+// renderConjureText is a LogConjure line: "Ana conjured Mox Jet into
+// their hand", "Ana conjured a card into their library", "Ana conjured
+// Blood Artist onto the battlefield".
+func renderConjureText(e LogEvent, actor string) string {
+	what := "a card"
+	if e.Label != "" {
+		what = e.Label
+	}
+	if game.ZoneKind(e.NewZone) == game.ZoneBattlefield {
+		return fmt.Sprintf("%s conjured %s onto the battlefield", actor, what)
+	}
+	return fmt.Sprintf("%s conjured %s into their %s", actor, what, spawnZoneWord(e.NewZone))
 }
 
 // spawnZoneWord is prettyZone without the article, because a spawn

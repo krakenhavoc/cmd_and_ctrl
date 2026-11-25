@@ -97,3 +97,48 @@ func TestProtectedFromAttachmentHonoursTheExemptionPerInstance(t *testing.T) {
 		t.Error("the sparing instance does not protect from a white source")
 	}
 }
+
+// CR 702.16p, Benevolent Blessing: "This effect doesn't remove Auras and
+// Equipment you control that are already attached to it." The instance
+// spares an Aura or Equipment its named player controls, and nothing else.
+func TestProtectionSparingAttachedOfSparesOnlyThatPlayersAurasAndEquipment(t *testing.T) {
+	me, them := uuid.New(), uuid.New()
+	mineAura := &Card{InstanceID: uuid.New(), TypeLine: "Enchantment — Aura", Colors: []string{"W"}, Controller: me}
+	mineEquip := &Card{InstanceID: uuid.New(), TypeLine: "Artifact — Equipment", Colors: []string{"W"}, Controller: me}
+	theirsAura := &Card{InstanceID: uuid.New(), TypeLine: "Enchantment — Aura", Colors: []string{"W"}, Controller: them}
+	theirsEquip := &Card{InstanceID: uuid.New(), TypeLine: "Artifact — Equipment", Colors: []string{"W"}, Controller: them}
+	tok := ProtectionSparingAttachedOf(ProtectionFromColor("W"), me)
+
+	q, ok := ParseProtectionQuality(tok)
+	if !ok || q.SparesAttachedOf != me || q.SparesAura != uuid.Nil || q.SparesAuras || q.Value != "W" || q.Token() != tok {
+		t.Fatalf("%q parsed as %+v (%v)", tok, q, ok)
+	}
+	host := &Card{InstanceID: uuid.New(), TypeLine: "Creature — Bear", Keywords: []string{tok}}
+	if ProtectedFromAttachment(host, mineAura) || ProtectedFromAttachment(host, mineEquip) {
+		t.Error("the exemption removed an Aura or Equipment its player controls")
+	}
+	if !ProtectedFromAttachment(host, theirsAura) || !ProtectedFromAttachment(host, theirsEquip) {
+		t.Error("the exemption spared another player's Aura or Equipment")
+	}
+	twice := &Card{InstanceID: uuid.New(), TypeLine: "Creature — Bear", Keywords: []string{tok, ProtectionFromColor("W")}}
+	if !ProtectedFromAttachment(twice, mineAura) {
+		t.Error("a second instance of protection from white did not remove the Aura")
+	}
+	if !ProtectedFrom(host, SourceCharacteristics(mineAura)) {
+		t.Error("the sparing instance does not protect from a white source")
+	}
+	if got := ProtectionSparingAttachedOf(ProtectionFromColor("W"), uuid.Nil); got != "" {
+		t.Errorf("a nil player minted %q", got)
+	}
+	if got := ProtectionSparingAttachedOf(tok, me); got != "" {
+		t.Errorf("a doubled exemption minted %q", got)
+	}
+	for _, bad := range []string{
+		"protection from white (doesn't remove Auras and Equipment controlled by nobody)",
+		"protection from white (doesn't remove Auras and Equipment controlled by " + uuid.Nil.String() + ")",
+	} {
+		if _, ok := ParseProtectionQuality(bad); ok {
+			t.Errorf("%q parsed; a malformed exemption must mint no protection", bad)
+		}
+	}
+}

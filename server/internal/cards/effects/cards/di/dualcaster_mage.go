@@ -44,16 +44,7 @@ func init() {
 			},
 			Targets: effects.TargetInstantOrSorcerySpell("target instant or sorcery spell"),
 			Key:     "Dualcaster Mage — copy target instant or sorcery spell",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return effects.CopySpell{
-					StackID:          item.Targets[0].ID,
-					Controller:       item.Controller,
-					ChooseNewTargets: true,
-				}.Apply(effects.NewContext(g, item))
-			},
+			Effect:  effects.CopyTargetedSpellWithNewTargets,
 		}},
 	})
 }

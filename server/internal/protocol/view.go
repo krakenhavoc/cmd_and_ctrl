@@ -1111,6 +1111,12 @@ type CouncilVoteView struct {
 	// log says anyway.
 	Secret bool     `json:"secret,omitempty"`
 	Voted  []string `json:"voted,omitempty"`
+	// Choice marks a secret CHOICE rather than a vote (Prisoner's
+	// Dilemma, and the #5948 secret choice rounds: a number, a creature
+	// pick, a guess): the same hiding, worded as choosing. A round's
+	// number is asked on a pay_amount prompt that carries this view, and
+	// its ballot is Option -3 with the number in Number.
+	Choice bool `json:"choice,omitempty"`
 	// secretBallots are a secret vote's ballots, kept off the wire:
 	// FilterViewFor copies the viewer's own into Ballots, and nothing
 	// else reads them.
@@ -1142,10 +1148,13 @@ type CouncilVoteView struct {
 	ForOpponents  []int `json:"for_opponents,omitempty"`
 }
 
-// CouncilBallotView is one vote cast.
+// CouncilBallotView is one vote cast. In a secret choice round
+// (#5948) Option is -3 for an answer that is a number, which Number
+// carries.
 type CouncilBallotView struct {
 	Voter  string `json:"voter"`
 	Option int    `json:"option"`
+	Number int    `json:"number,omitempty"`
 }
 
 // PickOptionView is one branch of an "option_pick" prompt (#568):
@@ -3054,6 +3063,18 @@ type PlayerView struct {
 	// owner's `special_action {kind: "companion"}` names.
 	Companion *CardView `json:"companion,omitempty"`
 
+	// Conspiracies are this seat's conspiracy cards in the command zone
+	// (CR 315, #6102, ADR 0227), in the order they were put there. Absent
+	// for a seat with none.
+	//
+	// A face-up one is public. A face-down one (hidden agenda, CR
+	// 702.106a) is its owner's alone to look at (CR 315.7): every other
+	// viewer gets the redacted card, `face_down` with no name and no
+	// `chosen_name`. Once revealed, or at the end of the game (CR
+	// 702.106e), everyone sees the card and its `chosen_name`. Its
+	// `special_actions` (reveal_agenda) are the owner's.
+	Conspiracies []CardView `json:"conspiracies,omitempty"`
+
 	// Sideboard is the cards this seat owns outside the game (ADR 0191
 	// §7): the deck's sideboard, which only an effect that brings a card
 	// in from outside the game can reach. OWNER-ONLY: FilterViewFor
@@ -4138,6 +4159,22 @@ type CardView struct {
 	// Absent at zero, and cleared by the non-knower redaction for the
 	// reasons above.
 	ChosenNumber int `json:"chosen_number,omitempty"`
+	// Notes are what this permanent's abilities have noted for it, in
+	// order (game.Card.Notes, #6097): Long List of the Ents' creature
+	// types, The Toymaker's Trap's numbers already chosen, the number
+	// Duelists' Convocation International wrote down and the digits it
+	// crossed out (#5948). Every one is public. Absent when none, and
+	// cleared by the non-knower redaction with the chosen values above.
+	Notes []string `json:"notes,omitempty"`
+	// CommanderColor is the colour this commander's owner chose for it
+	// before the game began (CR 903.4b, #5948): one uppercase letter, on
+	// The Prismatic Piper, Faceless One and Clara Oswald when they are
+	// the commander. PUBLIC: the rule has the choice revealed as the
+	// commander goes to the command zone, and it is the card's colour
+	// and part of its colour identity in every zone. Absent otherwise,
+	// and cleared by the non-knower redaction with the other chosen
+	// values (a face-down commander has no such ability, CR 708.2).
+	CommanderColor string `json:"commander_color,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -7868,7 +7905,15 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		flashIf = g.FlashIfReliedOnLocked(caster, live, kind, grant.ForClaim(nil), nil, false)
 	}
-	if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key)); ok {
+	ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key))
+	// #6085, CR 202.3e: and a ban on mana value (Lavinia, Azorius
+	// Renegade), which CastSpell's gate reads with the announced X.
+	if haveLive {
+		if c, gated := g.CastGateXCeilingForEffect(caster, live, kind); gated && (!ok || c < ceiling) {
+			ceiling, ok = c, true
+		}
+	}
+	if ok {
 		out.XMax = &ceiling
 	}
 	// S22: convoke / waterbend. Stamped before the target clause
@@ -9675,6 +9720,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 		}
 		stampLibraryTopSpecialActions(g, &seat.Library, owner)
 		stampCompanionSpecialActions(g, seat, owner)
+		stampConspiracySpecialActions(g, seat, owner)
 		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
 		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner, restricted)
 	}
@@ -9840,6 +9886,24 @@ func stampCompanionSpecialActions(g *game.Game, seat *PlayerView, owner uuid.UUI
 			seat.Companion.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneOutside)
 		}
 		return
+	}
+}
+
+// stampConspiracySpecialActions puts the reveal_agenda row on each of
+// the seat's face-down conspiracies (ADR 0227, CR 702.106c). They are in
+// the command zone's emblem container, which no other stamper walks.
+// FilterViewFor keeps the rows for the owner alone.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampConspiracySpecialActions(g *game.Game, seat *PlayerView, owner uuid.UUID) {
+	if len(seat.Conspiracies) == 0 {
+		return
+	}
+	cards := g.ConspiraciesOf(owner)
+	for i := range seat.Conspiracies {
+		if i < len(cards) {
+			seat.Conspiracies[i].SpecialActions = viewOfSpecialActions(g, cards[i], owner, game.ZoneCommand)
+		}
 	}
 }
 
@@ -10469,8 +10533,8 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(controller, card.InstanceID, dc))
 		}
 		// #1283: the exile-a-card sibling, off its own walk.
-		if ec := raw[i].ExileCards; ec != nil && ec.N > 0 {
-			views[i].ExileCostN = ec.N
+		if ec := raw[i].ExileCards; ec != nil && (ec.N > 0 || ec.CountOpponents) {
+			views[i].ExileCostN = g.ExileCostCountForEffect(controller, ec)
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
@@ -11523,6 +11587,12 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		cv := viewOfCard(c)
 		companion = &cv
 	}
+	// ADR 0227: the conspiracies in the command zone. FilterViewFor
+	// redacts a face-down one for every viewer but its owner.
+	var conspiracies []CardView
+	for _, c := range g.ConspiraciesOf(p.ID) {
+		conspiracies = append(conspiracies, viewOfCard(c))
+	}
 	// ADR 0191 §7: the sideboard. FilterViewFor keeps the cards for the
 	// owner alone; the count is public.
 	var sideboard []CardView
@@ -11585,6 +11655,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		ManaAbilities:       viewOfPlayerManaAbilities(g, p.ID),
 		Emblems:             emblems,
 		Companion:           companion,
+		Conspiracies:        conspiracies,
 		Sideboard:           sideboard,
 		SideboardCount:      len(sideboard),
 		AttractionDeckCount: len(p.AttractionDeckCards()),
@@ -11805,6 +11876,7 @@ func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *Counci
 		ForController: append([]int(nil), v.ForController...),
 		ForOpponents:  append([]int(nil), v.ForOpponents...),
 		Secret:        v.Secret,
+		Choice:        v.Choice,
 		Abstain:       v.Abstain,
 		SelfBest:      v.SelfBest,
 	}
@@ -11825,7 +11897,7 @@ func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *Counci
 		}
 		for _, b := range v.Ballots {
 			note(b.Voter)
-			out.secretBallots = append(out.secretBallots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+			out.secretBallots = append(out.secretBallots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option, Number: b.Number})
 		}
 		for _, voter := range v.Abstained {
 			note(voter)
@@ -12072,6 +12144,19 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			}
 			c.knowers = nil
 			out.Companion = &c
+		}
+		// ADR 0227: a face-down conspiracy is its owner's to look at
+		// (CR 315.7); its reveal row is the owner's (or the controller's
+		// of the owner's whole turn) to take.
+		if len(p.Conspiracies) > 0 {
+			cs := make([]CardView, len(p.Conspiracies))
+			for i, c := range p.Conspiracies {
+				cs[i] = redactCardForViewer(c, isKnower(c))
+				if p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+					cs[i].SpecialActions = nil
+				}
+			}
+			out.Conspiracies = cs
 		}
 		// ADR 0191 §7: the sideboard is its owner's to read and nobody
 		// else's: not an opponent, not a spectator, not the admin view,
@@ -12378,6 +12463,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.PrivateText && c.Chooser != viewerID {
 			out[i].Source = ""
 			out[i].Reason = "Deciding on an opening-hand action"
+			// ADR 0227: a hidden agenda's name is the other private
+			// prompt before the game begins.
+			if c.Kind == string(game.PendingChoiceCardName) {
+				out[i].Reason = "Secretly choosing a hidden agenda name"
+				out[i].NameOptions = nil
+			}
 			// #3801: a may_cast over a card only the chooser has looked
 			// at (the top of a library). The card's id is a handle on a
 			// hidden-zone card, so it goes too.
@@ -13058,6 +13149,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.ChosenName = ""
 	out.ChosenOption = ""
 	out.ChosenNumber = 0
+	out.Notes = nil
+	out.CommanderColor = ""
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
 	// (mintTokenLocked adds every seat as a knower), so in practice
@@ -13387,13 +13480,16 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		ChosenName:   c.ChosenName,
 		ChosenOption: c.ChosenOption,
 		ChosenNumber: c.ChosenNumber,
-		knowers:      knowers,
-		Layout:       c.Layout,
-		Faces:        viewOfFaces(c),
-		MeldedFrom:   viewOfMeldedFrom(c),
-		MergedFrom:   viewOfMergedFrom(c),
-		MeldsInto:    viewOfMeldsInto(c),
-		ActiveFace:   c.ActiveFace,
+		Notes:        append([]string(nil), c.Notes...),
+		// CR 903.4b: an attribute of the card, kept in every zone.
+		CommanderColor: c.CommanderColor,
+		knowers:        knowers,
+		Layout:         c.Layout,
+		Faces:          viewOfFaces(c),
+		MeldedFrom:     viewOfMeldedFrom(c),
+		MergedFrom:     viewOfMergedFrom(c),
+		MeldsInto:      viewOfMeldsInto(c),
+		ActiveFace:     c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
 		// oracle text for the client to fetch by scryfall_id and a
 		// token that prints an ability would otherwise reach the board
@@ -14250,8 +14346,8 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// #1297: the exile-N-cards component, off the walk the engine
 		// validates against — the mana view's four fields, one ability
 		// kind over.
-		if ec := a.Cost.ExileCards; ec != nil && ec.N > 0 {
-			v.ExileCostN = ec.N
+		if ec := a.Cost.ExileCards; ec != nil && (ec.N > 0 || ec.CountOpponents) {
+			v.ExileCostN = g.ExileCostCountForEffect(caster, ec)
 			v.ExileCostLabel = ec.Label
 			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
 			v.ExileCostZone = string(ec.Zone())
@@ -14420,7 +14516,9 @@ func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) 
 // about what the client may offer. Caller must hold g.mu.
 func counterCostView(g *game.Game, caster, sourceID uuid.UUID, rc *game.CounterRemovalCost, ac *game.CounterAddCost) CounterCostView {
 	var v CounterCostView
-	if rc != nil && (rc.N > 0 || rc.Variable) {
+	// #6085: a removal whose count is the announced X has no picker of
+	// its own; the X picker is the payment (game.CounterCountIsX).
+	if rc != nil && !game.CounterCountIsX(rc) && (rc.N > 0 || rc.Variable) {
 		v.CounterCostN = rc.N
 		v.CounterCostKind = rc.Counter
 		v.CounterCostSelf = rc.From == nil
