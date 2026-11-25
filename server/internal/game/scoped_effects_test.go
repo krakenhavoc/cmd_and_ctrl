@@ -403,6 +403,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// #6147: its "this turn" sibling over any permanents. Its cases
+		// are in scoped_permanents_enter_tapped_test.go.
+		ModPermanentsEnterTapped: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
@@ -473,6 +476,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5838 (Blinding Angel): a player's next combat phase skipped.
 		// Its cases are in skip_next_combat_phase_test.go.
 		ModSkipNextCombatPhase: true,
+		// #6144 (Avizoa, Ivory Gargoyle): a player's next untap or draw
+		// step skipped. Its cases are in skip_next_step_test.go.
+		ModSkipNextStep: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

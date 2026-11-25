@@ -57,7 +57,7 @@ func checkGrantorOnlyIsGranted(name string, i int, ab ActivatedAbility) {
 // ControllerLosesLife only here, on an any-player row.
 func CheckAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	named := 0
-	for _, b := range []bool{ab.AnyPlayer, ab.OpponentsOnly, ab.OwnerOnly, ab.GrantorOnly} {
+	for _, b := range []bool{ab.AnyPlayer, ab.OpponentsOnly, ab.OwnerOnly, ab.GrantorOnly, ab.DefendingPlayerOnly} {
 		if b {
 			named++
 		}
@@ -67,8 +67,8 @@ func CheckAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	}
 	switch {
 	case named > 1:
-		panic(fmt.Sprintf("effects.Register: %q %s names more than one of AnyPlayer, OpponentsOnly, OwnerOnly and GrantorOnly (ADR 0106 §1)", name, where))
-	case (ab.OpponentsOnly || ab.GrantorOnly) && ab.Purpose != (game.Purpose{Answers: ab.Purpose.Answers}):
+		panic(fmt.Sprintf("effects.Register: %q %s names more than one of AnyPlayer, OpponentsOnly, OwnerOnly, GrantorOnly and DefendingPlayerOnly (ADR 0106 §1)", name, where))
+	case (ab.OpponentsOnly || ab.GrantorOnly || ab.DefendingPlayerOnly) && ab.Purpose != (game.Purpose{Answers: ab.Purpose.Answers}):
 		// ADR 0142: Answers alone is allowed — smart autopass reads it
 		// for whoever may activate the row.
 		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose on an opponents-only or grantor-only row; the bot never reads one there (ADR 0106 §1 amendments 2026-10-07 and 2026-10-09)", name, where))

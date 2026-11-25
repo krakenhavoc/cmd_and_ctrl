@@ -823,8 +823,9 @@ type Mod struct {
 	// mutated in place (see ScopedEffect's contract).
 	Amount int `json:"amount,omitempty"`
 	// Step and ExtraTurn are ModSkipExtraTurnStep's (ADR 0188 Decision
-	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Refused
-	// on every other kind (skipExtraTurnStepModProblem).
+	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Step is
+	// also ModSkipNextStep's (#6144). Refused on every other kind
+	// (skipExtraTurnStepModProblem).
 	Step      Step `json:"step,omitempty"`
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
@@ -1253,6 +1254,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6147: Due Respect's and Nahiri's Lithoforming's "<permanents>
+	// enter tapped this turn" (scoped_permanents_enter_tapped.go).
+	ModPermanentsEnterTapped: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1388,6 +1392,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipCombatPhases: {reader: readerRule},
 	// #5838: "skips their next combat phase" (Blinding Angel).
 	ModSkipNextCombatPhase: {reader: readerRule},
+	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
+	ModSkipNextStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1970,6 +1976,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextCombatPhaseModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipNextStepModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {

@@ -55,6 +55,10 @@ type ReturnFromGraveyardTogether struct {
 	// its enchant clause admits, and one with none stays in the graveyard
 	// (CR 303.4g). Ignored with AttachedTo.
 	AuraHostsCreaturesOnly bool
+	// AuraHostsYouControlOnly is "attached to creatures you control" (Storm
+	// Herald): each returning Aura chooses its host among the permanents its
+	// enchant clause admits that you control. Ignored with AttachedTo.
+	AuraHostsYouControlOnly bool
 	// EntersAs is "they are <types> with <ability>" (Supper for
 	// Spiders, ADR 0210): every card enters as that type and is it for
 	// as long as it is that permanent. Nil for every other return.
@@ -68,7 +72,7 @@ type ReturnFromGraveyardTogether struct {
 
 func (r ReturnFromGraveyardTogether) Apply(ctx *Context) error {
 	return PutCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
-		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo, AuraHostsCreaturesOnly: r.AuraHostsCreaturesOnly, EntersAs: r.EntersAs}, r.ThenTail, r.ThenN)
+		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo, AuraHostsCreaturesOnly: r.AuraHostsCreaturesOnly, AuraHostsYouControlOnly: r.AuraHostsYouControlOnly, EntersAs: r.EntersAs}, r.ThenTail, r.ThenN)
 }
 
 // TogetherTail registers the rest of a ReturnFromGraveyardTogether or

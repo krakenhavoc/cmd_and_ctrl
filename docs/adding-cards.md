@@ -1809,7 +1809,13 @@ owner may activate this ability" (Personal Incarnation) is
 `OwnerOnly: true`. Same predicate (`game.MayActivate`), same "you is the
 activator" reading, same registration limits as `AnyPlayer`; set at most
 one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
-activator is the granting spell's controller (Martyrdom) has no shape yet.
+activator is the granting spell's controller (Martyrdom) is `GrantorOnly`.
+"Only the player this creature is attacking may activate this ability"
+(Capricopian, #6170) is `DefendingPlayerOnly: true`: the activator is the
+seat in the source's `AttackingTarget`, so the row has none while the
+creature is not attacking a player. Pair it with a `Condition` for any
+step restriction (`effects.DuringStep(game.StepDeclareAttackers)`), and
+reselect a player with `game.ReselectAttackPrompt{PlayersOnly: true}`.
 
 **An any-player MANA ability (ADR 0106 §1 amendment 2026-10-16, #1864).**
 The same bit on a `ManaAbility` row, Mana Cache's:

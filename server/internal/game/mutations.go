@@ -1599,8 +1599,27 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	for _, l := range targetTaxLines {
 		targetTax += l.Life
 	}
+	// #6151, CR 903.8 / 119.4: a commander tax paid in life is checked
+	// against the life total with every other life cost of this cast, and
+	// paid with them below.
+	_, commanderLife := commanderTaxLocked(p, card, params.FromZone)
+	if commanderLife > 0 {
+		owed := commanderLife + targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
+		if alt != nil {
+			owed += alt.Life
+		}
+		if !g.CanPayLifeToCastOrActivateLocked(p, owed) {
+			slog.Warn("cast_spell rejected: can't pay the commander tax in life",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"tax_life", commanderLife,
+				"owed", owed,
+			)
+			return ErrInvalidParam
+		}
+	}
 	if targetTax > 0 {
-		owed := targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
+		owed := commanderLife + targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
 		if alt != nil {
 			owed += alt.Life
 		}
@@ -2418,7 +2437,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// The life the whole plan pays — a "pay X life" at the announced X,
 	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
 	// sum the validator checked against CR 119.4.
-	payLife := planLife(costPlan, params.XValue) + targetTax
+	payLife := planLife(costPlan, params.XValue) + targetTax + commanderLife
 	// #5390: the alternative cost's counters, first of the board costs.
 	// CR 601.2h lets the caster pay the costs in any order, so a creature
 	// that is also sacrificed to the cast pays its counters before it
@@ -2713,6 +2732,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
+				if src.Kind == ZoneGraveyard {
+					tally.InstantSorceryFromGraveyard++
+				}
 				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
 					tally.InstantSorceryMaxManaValue = mv
 				}
@@ -4239,10 +4261,10 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
-	if params.FromZone == "command" {
-		tax := p.CommanderCasts[card.InstanceID]
-		cost.Generic += tax * 2
-	}
+	// #6151: a commander whose tax is paid in life adds no mana here
+	// (commanderTaxLocked); CastSpell charges the life.
+	taxMana, _ := commanderTaxLocked(p, card, params.FromZone)
+	cost.Generic += taxMana
 	// ADR 0073 §3, CR 601.2f: the mana half of the optional additional
 	// costs the caster announced. Added AFTER the alternative-cost
 	// swap and the commander tax and BEFORE the cost modifiers, which
