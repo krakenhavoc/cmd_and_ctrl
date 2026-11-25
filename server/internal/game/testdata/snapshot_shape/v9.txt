@@ -77698,6 +77698,8 @@ phasedOut.cards[].variableToughness	bool
 phasedOut.cards[].warpText	number:uint8
 phasedOut.kind	string
 phasedOut.owner	custom(uuid.UUID)
+pilesOrGuessesThisTurn	array
+pilesOrGuessesThisTurn[]	custom(uuid.UUID)
 planechase	object
 planechase.controller	custom(uuid.UUID)
 planechase.deck	object

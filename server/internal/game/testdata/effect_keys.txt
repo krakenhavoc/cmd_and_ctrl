@@ -788,6 +788,7 @@ choose choose-cards/cataclysmic-gearhulk-keep-planeswalker
 choose choose-cards/cauldrons-gift-return
 choose choose-cards/cecily-haunted-mage-cast
 choose choose-cards/celestial-judgment-pick
+choose choose-cards/celestial-toymaker-split
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-desecrator-exile
 choose choose-cards/cemetery-gatekeeper-exile
@@ -2379,6 +2380,7 @@ option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bribe-taker-counter
 option option-pick/bucolic-ranch-top-card
 option option-pick/cabaretti-ascendancy-top-card
+option option-pick/celestial-toymaker-pile
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
 option option-pick/choose-a-door
@@ -4869,6 +4871,8 @@ tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
+tail then/celestial-toymaker-face-down-exiled
+tail then/celestial-toymaker-piles-exiled
 tail then/cerebral-download-draw
 tail then/chain-assassination-draw
 tail then/chain-lightning-offer-red-payment

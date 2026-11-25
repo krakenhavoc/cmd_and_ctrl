@@ -211,6 +211,10 @@ func (p PileSplit) Apply(ctx *Context) error {
 	if p.ThenTail.IsZero() {
 		return fmt.Errorf("%w: PileSplit with no registered tail (PileTail)", game.ErrInvalidParam)
 	}
+	// #6175: the splitter groups these cards into piles, so the spell or
+	// ability that asked is one The Celestial Toymaker counts. A pile can
+	// hold zero objects (CR 700.3d), so an empty split counts too.
+	NotePileOrGuess(ctx)
 	ctx.Game.QueuePileSplitForEffect(game.PileSplitPrompt{
 		Splitter:      p.Splitter,
 		Chooser:       chooser,
