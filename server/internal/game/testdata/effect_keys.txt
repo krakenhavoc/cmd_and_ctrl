@@ -636,6 +636,7 @@ body villainous-syndication/return
 body vivien-monsters-advocate/search-lesser-creature
 body vronos/phase-out-the-objects
 body vulturous-aven/draw-and-lose
+body wall-of-stolen-identity/tap-and-hold
 body warp/exile
 body warren-torchmaster/haste
 body weapons-vendor/attach
@@ -2124,6 +2125,7 @@ confirm confirm/sword-of-light-and-shadow-return
 confirm confirm/sword-of-the-paruns-tap-or-untap
 confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
+confirm confirm/tahngarth-first-mate-give
 confirm confirm/tainted-pact-take
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-bunnies
@@ -2581,6 +2583,7 @@ option option-pick/step-between-worlds-shuffle
 option option-pick/strefan-maurer-progenitor-attacks
 option option-pick/sylvan-offering-elves
 option option-pick/sylvan-offering-treefolk
+option option-pick/tahngarth-first-mate-defender
 option option-pick/tap-or-untap-that-permanent
 option option-pick/tasigur-the-golden-fang-opponent
 option option-pick/teferis-realm-phase-out
@@ -3128,6 +3131,7 @@ run prompt-run/dire-blunderbuss-sacrificed
 run prompt-run/disciple-of-bolas-payout
 run prompt-run/disciple-of-caelus-nin-phase-out
 run prompt-run/disciple-of-freyalise-payout
+run prompt-run/divine-reckoning-destroy
 run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
 run prompt-run/dreamshaper-shaman-sacrifice
