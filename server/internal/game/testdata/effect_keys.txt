@@ -1862,6 +1862,7 @@ condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
 condition cast/any-player-casts
+condition cast/opening-hand-reveal-that-players-first-spell
 condition cast/the-named-spell-first-time-this-turn
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
