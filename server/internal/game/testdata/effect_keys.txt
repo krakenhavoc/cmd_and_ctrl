@@ -1457,6 +1457,7 @@ choose choose-cards/queen-kayla-bin-kroog-mana-value
 choose choose-cards/quintorius-history-chaser-draw-two-mill-one
 choose choose-cards/raff-weatherlight-stalwart-tap-two
 choose choose-cards/rakdos-patron-of-chaos-sacrifice
+choose choose-cards/rals-outburst-take
 choose choose-cards/rambling-possum-return-saddlers
 choose choose-cards/rampant-frogantua-lands
 choose choose-cards/read-the-runes-discarded
