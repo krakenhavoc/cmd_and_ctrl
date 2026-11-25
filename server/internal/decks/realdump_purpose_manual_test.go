@@ -350,6 +350,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 310 (#5547).
 	"Roilmage's Trick": "a one-turn -X/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
+
+	// S82 OLD batch 312 (#5547).
+	"Dampening Pulse": "a standing -1/-0 on the opponents' creatures that destroys nothing: it weakens their attacks, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
