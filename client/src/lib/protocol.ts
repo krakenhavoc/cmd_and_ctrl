@@ -785,8 +785,9 @@ export interface OutcomeView {
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
   // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
   // of only mandatory actions repeated with no way to stop, CR 732.4 —
-  // a draw).
-  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // a draw) or "draw_effect" (an effect stated that the game is a draw,
+  // CR 104.4c — Divine Intervention; `source` is its card).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop" | "draw_effect";
   // The object whose effect won, for an effect win; the loop's card,
   // for a mandatory loop's draw.
   source?: string;
@@ -2405,6 +2406,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -4335,6 +4339,12 @@ export interface ActivatedAbilityView {
   // count), so the picker greys a repeat and opens even when the options
   // number exactly `discard_cost_n`. The engine refuses a repeat.
   discard_cost_different_names?: boolean;
+  // #6264: "Discard two nonland cards with the same name" (Sphinx of the
+  // Chimes). The picks must share a name (either half of a split card), so
+  // the picker greys a card that shares none with those already picked and
+  // opens even at exactly `discard_cost_n` options. The engine refuses a
+  // set that doesn't share one.
+  discard_cost_same_name?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.

@@ -40,6 +40,15 @@ func CheckDiscardClause(name, where string, dc *game.DiscardCost) {
 	// picks. A random draw, the whole hand, an announced X and the board
 	// clause either name no cards or count them some other way, and one
 	// card has no set to differ from.
+	// #6264: "with the same name" is the mirror rule, held to the same
+	// shape, and never beside "with different names".
+	if dc.SameName {
+		if dc.DifferentNames || dc.Random || dc.Hand || dc.CountFromX || dc.ManaValueX || dc.SameNameAsLegendaryPermanent || dc.N < 2 {
+			panic(fmt.Sprintf("effects.Register: %q %s discards cards with the same name beside \"at random\", your hand, X, a name rule or a count below two — build it with DiscardNWithTheSameName",
+				name, where))
+		}
+		return
+	}
 	if dc.DifferentNames {
 		if dc.Random || dc.Hand || dc.CountFromX || dc.ManaValueX || dc.SameNameAsLegendaryPermanent || dc.N < 2 {
 			panic(fmt.Sprintf("effects.Register: %q %s discards cards with different names beside \"at random\", your hand, X, the legendary-name clause or a count below two — build it with DiscardNDifferentNames",

@@ -394,6 +394,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3275: a rules gate read by every sacrifice route. Its cases
 		// are in cant_be_sacrificed_test.go.
 		ModCantBeSacrificed: true,
+		// #6239: a one-shot rules gate read by the adapt. Its cases are
+		// in the effects package's adapt test.
+		ModAdaptIgnoresCounters: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
@@ -403,6 +406,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// #6260: Gather Specimens' entry-controller replacement. Its cases
+		// are in scoped_enters_under_control_test.go.
+		ModCreaturesEnterUnderYourControl: true,
 		// #6160: Mystic Reflection's one-shot entry copy. Its cases are in
 		// scoped_enter_as_copies_test.go.
 		ModNextEntersAsCopies: true,
@@ -482,6 +488,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6144 (Avizoa, Ivory Gargoyle): a player's next untap or draw
 		// step skipped. Its cases are in skip_next_step_test.go.
 		ModSkipNextStep: true,
+		// #6244 (Stunning Reversal): the next loss this turn replaced.
+		// Its cases are in next_loss_replacement_test.go.
+		ModNextLossInstead: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

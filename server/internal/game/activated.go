@@ -177,6 +177,18 @@ type AbilityCost struct {
 	// bundle itself.
 	ManaValueFromSource bool
 
+	// ManaValueOfExiledWith is "{X} … X is the mana value of the exiled
+	// card" (Soul Foundry, Prototype Portal, #6240): the mana component is
+	// generic mana equal to the mana value (CR 202.3) of the card exiled
+	// with the permanent that has the row (its imprint, CR 607.2a), the
+	// last one when there are several, and {0} when there is none. X is
+	// defined by the text, so the activator doesn't choose it (CR 107.3c):
+	// Mana stays empty on the declaration, nothing asks for an X, and the
+	// one pricer (AbilityManaCostAtXForEffect) writes "{N}" in, so the
+	// activation, the menu row, the enumerator and the auto-tap preview all
+	// charge it.
+	ManaValueOfExiledWith bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'
@@ -2915,6 +2927,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// board by then, so nothing downstream could recompute it.
 		Paid:       paid,
 		Uncopyable: ab.Uncopyable,
+		Cycling:    ab.Cycling,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,
