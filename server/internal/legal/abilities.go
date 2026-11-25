@@ -268,6 +268,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// could blight, since that creature is the activation's price.
 	for _, er := range e.expandBlightPicks(e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities))) {
 		row, ab, costBranch, unattach, blight := er.row, er.ab, er.branch, er.unattach, er.blight
+		// #6148, CR 606.5: the loyalty cost as the engine charges it,
+		// combined with every addition on the board (Carth the Lion).
+		ab.Cost = g.LoyaltyAdjustedCostForEffect(e.seat, ab.Cost)
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -295,7 +298,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// #3275, CR 118.3: "Sacrifice this" can't be paid by a
 		// permanent that can't be sacrificed (validateSacrificeCostLocked
 		// refuses it, #544).
-		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.SacrificeCostBarredForEffect(source.InstanceID) {
 			continue
 		}
 		// #1208: ONE identity for both reads below, built the way
@@ -2557,7 +2560,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// #3275, CR 118.3: a Treasure that can't be sacrificed can't
 		// pay its own sacrifice (validateSacrificeCostLocked).
-		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.SacrificeCostBarredForEffect(source.InstanceID) {
 			continue
 		}
 		// ADR 0155 Decision 7: the lent once-each-turn row, as
@@ -2599,7 +2602,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// CR 119.4 and CR 119.8, the same predicate one path
 		// over (#544, #1200).
-		if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
+		if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost) {
 			continue
 		}
 		// ADR 0129 §5, CR 118.3: the energy component, through the
@@ -2656,7 +2659,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				found := false
 				for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
 					reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, manaSpend, n)
-					if !g.CanPayLifeLocked(e.p, ab.LifeCost+life) {
+					if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost+life) {
 						break
 					}
 					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, 0, manaSpend, sourceOnly) {
