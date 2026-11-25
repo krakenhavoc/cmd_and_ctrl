@@ -2325,6 +2325,15 @@ type CastTally struct {
 	// EventCast. A copy of a spell is not cast (CR 707.10). Additive within
 	// the snapshot version.
 	FromExile int `json:"fromExile,omitempty"`
+	// InstantSorceryFromGraveyard counts the instant and sorcery spells the
+	// player cast this turn from their graveyard, read like FromExile off
+	// the zone the card was in as the cast was proposed and off the spell as
+	// it is on the stack (CR 601.2i): Sevinne, the Chronoclasm's "your first
+	// instant or sorcery spell from your graveyard each turn" is
+	// InstantSorceryFromGraveyard == 1 once the tally is bumped, which is
+	// before EventCast. A copy is not cast (CR 707.10). Additive within the
+	// snapshot version.
+	InstantSorceryFromGraveyard int `json:"instantSorceryFromGraveyard,omitempty"`
 }
 
 // FromHand is how many of the player's spells this turn were cast from

@@ -500,6 +500,13 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 	}
 	// CR 202.3e: a spell on the stack counts its announced X.
 	ch := SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
+	// A source on the battlefield is a permanent even when the copy read
+	// above carries no layered cache (#6149): "protection from permanents
+	// with corruption counters on them" and "from noncreature permanents"
+	// read it.
+	if ch != nil && findCardOnBattlefield(g, sourceID) >= 0 {
+		ch.SourceIsPermanent = true
+	}
 	if ch != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
 		if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind == StackItemSpell {
 			ch.SourceIsSpell = true

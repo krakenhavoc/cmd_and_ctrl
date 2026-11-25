@@ -132,6 +132,25 @@ describe("the protection badge", () => {
     expect(badges(container).map((b) => b.text)).toEqual(["MV odd", "MV even", "2+T", "NCP"]);
   });
 
+  // #6149: an exact mana value (Rebbec) and a counter kind (Geyadrone).
+  it("renders protection from mana value N and from permanents with counters", () => {
+    const { container } = mount({
+      abilities: [
+        "protection from mana value 3",
+        "protection from permanents with corruption counters on them",
+      ],
+      protection: [
+        { printed: "mana value 3", kind: "mana_value", value: "3" },
+        {
+          printed: "permanents with corruption counters on them",
+          kind: "permanents_with_counter",
+          value: "corruption",
+        },
+      ],
+    });
+    expect(badges(container).map((b) => b.text)).toEqual(["MV=3", "COR"]);
+  });
+
   it("renders protection from Ring-bearers as RNG", () => {
     const { container } = mount({
       abilities: ["protection from Ring-bearers"],

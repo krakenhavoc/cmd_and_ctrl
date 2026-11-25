@@ -4707,6 +4707,7 @@
     min={sacrificeBounds.min}
     eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
     different={sacrificePrompt?.ability.sacrifice_options?.different}
+    all={sacrificesAll(sacrificePrompt?.ability.sacrifice_options)}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -5199,7 +5200,7 @@
     options={manaTapOptions}
     count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
     min={manaTapPrompt?.ability.tap_others_options?.min}
-    verb="Tap"
+    verb={manaTapPrompt?.ability.tap_others_untap ? "Untap" : "Tap"}
     onConfirm={confirmManaTapCost}
     onCancel={() => {
       manaTapPrompt = null;

@@ -224,13 +224,15 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		// ADR 0109 §2: a copy of a granted ability copies its text, and
 		// the text is the grantor's — a copied Teferi's Talent −12 still
 		// makes the Talent's emblem (CR 707.10, CR 114.2).
-		GrantedBy:    item.GrantedBy,
-		Label:        item.Label,
-		Targets:      append([]TargetRef(nil), targets...),
-		Payload:      append([]TargetRef(nil), item.Payload...),
-		Trigger:      cloneTriggerContext(item.Trigger),
-		Modes:        append([]int(nil), item.Modes...),
-		XValue:       item.XValue,
+		GrantedBy: item.GrantedBy,
+		Label:     item.Label,
+		Targets:   append([]TargetRef(nil), targets...),
+		Payload:   append([]TargetRef(nil), item.Payload...),
+		Trigger:   cloneTriggerContext(item.Trigger),
+		Modes:     append([]int(nil), item.Modes...),
+		XValue:    item.XValue,
+		// CR 707.10: a copy of a cycling ability is one too (#6169).
+		Cycling:      item.Cycling,
 		Distribution: cloneDistributionLocked(item.Distribution),
 		Paid:         copiedPaidCost(item.Paid),
 		// #2055, CR 707.10: the opponents named are a choice made as
