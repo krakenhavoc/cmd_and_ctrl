@@ -1074,6 +1074,8 @@ type Card struct {
 	// (CR 400.7). Not a copiable value (CR 707.2). Read with DevouredBy.
 	Devoured int
 
+	// TributePaid (#6251) is in the bool block at the end of Card.
+
 	// ModesChosen is "choose one that hasn't been chosen" with no
 	// duration (ADR 0097, #1749 — Silent Hallcreeper, Demonic Pact):
 	// the option indexes each modal ability of THIS OBJECT has chosen,
@@ -2241,6 +2243,14 @@ type Card struct {
 	// PhaseInBarredFor is unused. The rest is the same bar: a prohibition,
 	// cleared for good once it stops holding (CR 611.2b).
 	PhaseInBarredWhileTapped bool
+
+	// TributePaid records that the opponent chosen for this permanent's
+	// tribute put the +1/+1 counters on it as it entered (CR 702.104a);
+	// "if tribute wasn't paid" (CR 702.104b) is its negation. Stamped at
+	// entry from ReplacementEvent.EntersTributePaid. Per instance,
+	// carried by the snapshot, cleared when the permanent leaves the
+	// battlefield (CR 400.7). Not a copiable value (CR 707.2).
+	TributePaid bool
 
 	// stackColored says stackColors is the spell's colour (#6088,
 	// spell_colors.go; documented beside stackColors, kept here for

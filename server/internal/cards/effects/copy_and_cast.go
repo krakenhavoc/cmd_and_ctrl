@@ -77,6 +77,16 @@ type CopyAndCast struct {
 	// casts (game.CastPermission.CastsLeft); the copies not cast cease to
 	// exist. Zero is no limit. The copies of one call sit in one zone.
 	AtMostCasts int
+
+	// CostLess is "that copy costs {N} less to cast" (God-Eternal Kefnet,
+	// #6231): a CR 601.2f reduction of each copy's price, never below {0}
+	// (game.CardCopyOffer.CostLess).
+	CostLess int
+
+	// InHand copies a card in Player's hand in that hand (CR 707.12, the
+	// copy is made in the zone the object is in): Kefnet's revealed draw
+	// (game.CardCopyOffer.InHand).
+	InHand bool
 }
 
 // Apply makes the copies and the offers.
@@ -97,6 +107,8 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 		FollowUpObject: c.FollowUpObject,
 		LastKnown:      c.LastKnown,
 		MaxCasts:       c.AtMostCasts,
+		CostLess:       c.CostLess,
+		InHand:         c.InHand,
 	}
 	if c.TotalManaValueAtMost != nil {
 		n := *c.TotalManaValueAtMost
