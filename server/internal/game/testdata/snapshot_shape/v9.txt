@@ -48495,6 +48495,7 @@ pendingChoices[].assist.announce.opponent[].slot	number:int
 pendingChoices[].assist.announce.params	object
 pendingChoices[].assist.announce.params.AltCostIDs	array
 pendingChoices[].assist.announce.params.AltCostIDs[]	custom(uuid.UUID)
+pendingChoices[].assist.announce.params.AltCostOpponent	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.AlternativeCost	string
 pendingChoices[].assist.announce.params.AssistPlayer	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.AutoTap	bool
@@ -56870,6 +56871,7 @@ pendingChoices[].parked.cast.opponent[].slot	number:int
 pendingChoices[].parked.cast.params	object
 pendingChoices[].parked.cast.params.AltCostIDs	array
 pendingChoices[].parked.cast.params.AltCostIDs[]	custom(uuid.UUID)
+pendingChoices[].parked.cast.params.AltCostOpponent	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.AlternativeCost	string
 pendingChoices[].parked.cast.params.AssistPlayer	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.AutoTap	bool
@@ -91268,6 +91270,7 @@ turn.Step	string
 turn.StepOrdinal	number:int
 turnChangePending	bool
 turnEndPending	bool
+turnOrderReversed	bool
 turnPlan	array
 turnPlan[]	object
 turnPlan[].phaseId	number:int

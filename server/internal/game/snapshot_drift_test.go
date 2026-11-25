@@ -129,6 +129,7 @@ var gameFields = plan(
 	"DayNight", carried, "",
 	"Settings", carried, "",
 	"StartingSeat", carried, "",
+	"TurnOrderReversed", carried, "",
 	"StackMeta", carried, "",
 	"PendingTriggers", carried, "",
 	"DelayedTriggers", carried, "",

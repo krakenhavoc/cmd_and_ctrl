@@ -140,7 +140,7 @@ func Cmdr2S52GrothamaDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	n := len(g.Seats)
 	for i := 0; i < n; i++ {
-		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]
 		if p == nil || p.Eliminated {
 			continue
 		}
