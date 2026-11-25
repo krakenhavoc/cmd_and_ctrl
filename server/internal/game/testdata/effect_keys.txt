@@ -2377,6 +2377,7 @@ option option-pick/coin-of-fate-opponent
 option option-pick/comet-stellar-pup-damage-player
 option option-pick/contractual-safeguard-kind
 option option-pick/contractual-safeguard-shield
+option option-pick/copy-for-each-could-target-order
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/craig-boone-damage
