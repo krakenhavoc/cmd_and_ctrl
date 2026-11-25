@@ -412,6 +412,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// Mistcaller's timed exile-uncast replacement. Its cases are in
+		// scoped_exile_uncast_test.go.
+		ModExileUncastCreatures: true,
 		// #6260: Gather Specimens' entry-controller replacement. Its cases
 		// are in scoped_enters_under_control_test.go.
 		ModCreaturesEnterUnderYourControl: true,
