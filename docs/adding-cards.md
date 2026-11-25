@@ -15200,8 +15200,16 @@ Three things to know:
   RevealFromOpeningHandForYourFirstUpkeep(label, body)`, `body` a registered
   delayed-trigger body (ADR 0133 amendment 2026-11-24). The card stays in
   hand, revealed; the trigger fires in its owner's first upkeep, the
-  starting player's included. "The first upkeep" of any player (the
-  Chancellors) has no constructor yet.
+  starting player's included. The other moments are
+  `RevealFromOpeningHand(at, label, body)` (ADR 0133 amendment
+  2026-11-25): `game.RevealAtTheFirstUpkeep`, "at the beginning of the
+  first upkeep" (Chancellor of the Dross, the starting player's upkeep
+  whoever revealed); `game.RevealAtYourFirstMainPhase`, "at the beginning
+  of your first main phase of the game" (Chancellor of the Tangle); and
+  `game.RevealAtEachOpponentsFirstSpell`, "when each opponent casts their
+  first spell of the game" (Chancellor of the Annex), one trigger per
+  opponent, with the spell that opponent cast as the item's payload
+  (`ctx.PayloadCards()`).
 - **The question is private.** It names a card in a hidden zone, so the
   view strips its words from every viewer but the chooser
   (`PendingChoice.private`, wire `private_text`). The table sees who the

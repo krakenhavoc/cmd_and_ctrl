@@ -31,18 +31,63 @@ import (
 // stack exactly where a trigger at the beginning of that upkeep would
 // (CR 603.3). Every other seat's first upkeep is still to come, and an
 // ordinary "at the beginning of your next upkeep" delayed trigger is it.
+//
+// # The other moments (OpeningHandReveal.At)
+//
+// The Chancellors of New Phyrexia name three more (#6101):
+//
+//   - RevealAtTheFirstUpkeep, "at the beginning of the first upkeep"
+//     (Chancellor of the Dross, of the Forge, of the Spires): the game's
+//     first upkeep, the starting player's, whoever revealed. It has begun
+//     by the time any seat answers, so the trigger goes straight onto
+//     PendingTriggers for every seat, as the starting player's does above.
+//   - RevealAtYourFirstMainPhase, "at the beginning of your first main
+//     phase of the game" (Chancellor of the Tangle): a delayed trigger at
+//     the beginning of the revealing player's next precombat main phase,
+//     which is still to come for every seat, the starting player's
+//     included (the table is in turn one's upkeep).
+//   - RevealAtEachOpponentsFirstSpell, "when each opponent casts their
+//     first spell of the game" (Chancellor of the Annex): one delayed
+//     trigger per opponent, waiting with no duration for that opponent's
+//     next cast (CR 603.7b: it triggers only once). No player can cast a
+//     spell before the reveal (nobody has had priority yet), so that next
+//     cast is their first spell of the game. The cast spell rides as the
+//     fired item's Payload, which is "that spell".
 
 // OpeningHandReveal is what a revealed card arms: a delayed trigger at the
 // beginning of its owner's first upkeep. Plain data, like the rest of
 // OpeningHandAction: the body is a registered key, so the catalog entry
 // gains no closure route and the armed trigger is a restore point.
 type OpeningHandReveal struct {
+	// At is the moment the trigger is for. The zero value is "at the
+	// beginning of your first upkeep".
+	At OpeningHandRevealAt
 	// Label is the delayed trigger's stack copy, "<card> — <what
 	// happens>".
 	Label string
 	// Body is what the trigger does when it resolves.
 	Body BodyRef
 }
+
+// OpeningHandRevealAt names the moment an opening-hand reveal's trigger is
+// for (see the file comment). Catalog data, never persisted: what is armed
+// is an ordinary DelayedTrigger.
+type OpeningHandRevealAt string
+
+const (
+	// RevealAtYourFirstUpkeep is "at the beginning of your first upkeep"
+	// (Devourer of Destiny).
+	RevealAtYourFirstUpkeep OpeningHandRevealAt = ""
+	// RevealAtTheFirstUpkeep is "at the beginning of the first upkeep"
+	// (Chancellor of the Dross).
+	RevealAtTheFirstUpkeep OpeningHandRevealAt = "the-first-upkeep"
+	// RevealAtYourFirstMainPhase is "at the beginning of your first main
+	// phase of the game" (Chancellor of the Tangle).
+	RevealAtYourFirstMainPhase OpeningHandRevealAt = "your-first-main-phase"
+	// RevealAtEachOpponentsFirstSpell is "when each opponent casts their
+	// first spell of the game" (Chancellor of the Annex).
+	RevealAtEachOpponentsFirstSpell OpeningHandRevealAt = "each-opponents-first-spell"
+)
 
 // openingHandRevealQuestion is the reveal prompt's header.
 func openingHandRevealQuestion(name string) string {
@@ -101,28 +146,73 @@ var openingHandRevealAnswer = RegisterConfirmThen("confirm/opening-hand-reveal",
 	return nil
 })
 
-// armOpeningHandRevealLocked schedules the revealed card's "at the
-// beginning of your first upkeep" trigger, or, when that upkeep has
-// already begun (the starting player, see the file comment), puts it on
-// PendingTriggers now.
+// armOpeningHandRevealLocked arms the revealed card's trigger for the
+// moment its reveal names (see the file comment). A first upkeep that has
+// already begun gets the trigger on PendingTriggers now.
 //
 // Caller must hold g.mu.
 func (g *Game) armOpeningHandRevealLocked(seat, cardID uuid.UUID, rv *OpeningHandReveal) {
 	dt := DelayedTrigger{
-		Controller:         seat,
-		SourceCardID:       cardID,
-		Label:              rv.Label,
-		At:                 StepUpkeep,
-		ControllerTurnOnly: true,
-		Body:               rv.Body,
+		Controller:   seat,
+		SourceCardID: cardID,
+		Label:        rv.Label,
+		Body:         rv.Body,
 	}
-	if g.Turn.Seq <= 1 && g.activePlayerIDLocked() == seat && g.Turn.Step != StepUntap {
-		dt.ID = uuid.New()
-		dt.CreatedSeq = g.Turn.Seq
-		dt.SourceObject = g.delayedSourceObjectLocked(cardID)
-		dt.SourceTurnOvers = g.TurnOversForEffect(cardID)
-		g.queueHarvestedTriggerLocked(dt.stackItem())
+	firstUpkeepBegun := g.Turn.Seq <= 1 && g.Turn.Step != StepUntap
+	switch rv.At {
+	case RevealAtTheFirstUpkeep:
+		if g.Turn.Seq > 1 {
+			return
+		}
+		dt.At = StepUpkeep
+		if firstUpkeepBegun {
+			g.queueOpeningHandRevealNowLocked(dt)
+			return
+		}
+	case RevealAtYourFirstMainPhase:
+		dt.At = StepPrecombatMain
+		dt.ControllerTurnOnly = true
+	case RevealAtEachOpponentsFirstSpell:
+		dt.On = []EventKind{EventCast}
+		dt.Condition = openingHandRevealThatPlayersNextSpell
+		forever := IndefiniteDuration()
+		dt.Duration = &forever
+		for _, opp := range g.Seats {
+			if opp == nil || opp.ID == seat || opp.Eliminated {
+				continue
+			}
+			each := dt
+			each.CondParams = EffectParams{Player: opp.ID}
+			g.ScheduleDelayedTriggerForEffect(each)
+		}
 		return
+	default:
+		dt.At = StepUpkeep
+		dt.ControllerTurnOnly = true
+		if firstUpkeepBegun && g.activePlayerIDLocked() == seat {
+			g.queueOpeningHandRevealNowLocked(dt)
+			return
+		}
 	}
 	g.ScheduleDelayedTriggerForEffect(dt)
 }
+
+// queueOpeningHandRevealNowLocked puts a reveal's upkeep trigger straight
+// onto PendingTriggers: the upkeep it is for began before the answer came.
+//
+// Caller must hold g.mu.
+func (g *Game) queueOpeningHandRevealNowLocked(dt DelayedTrigger) {
+	dt.ID = uuid.New()
+	dt.CreatedSeq = g.Turn.Seq
+	dt.SourceObject = g.delayedSourceObjectLocked(dt.SourceCardID)
+	dt.SourceTurnOvers = g.TurnOversForEffect(dt.SourceCardID)
+	g.queueHarvestedTriggerLocked(dt.stackItem())
+}
+
+// openingHandRevealThatPlayersNextSpell is the event condition of "when
+// each opponent casts their first spell of the game": a cast by the player
+// CondParams names. An on-disk key: never renamed, never reused.
+var openingHandRevealThatPlayersNextSpell = DelayedCondition("cast/opening-hand-reveal-that-players-first-spell",
+	func(ev Event, _ *DelayedTrigger, _ *Game, p EffectParams) bool {
+		return ev.Kind == EventCast && p.Player != uuid.Nil && ev.Actor == p.Player
+	})
