@@ -263,13 +263,41 @@ func (g *Game) opponentChoosersForStepLocked(src TargetSource, steps []Announced
 	if idx < 0 || idx >= len(steps) {
 		return nil
 	}
+	only := uuid.Nil
+	if steps[idx].Clause.ChosenByFirstTargetsController {
+		// #6171: "that opponent" is whoever controls the first clause's
+		// pick, and nobody else may choose.
+		if only = g.firstTargetsControllerLocked(steps[idx].Mode, picked); only == uuid.Nil {
+			return nil
+		}
+	}
 	var out []uuid.UUID
 	for _, opp := range g.GiftOpponentsLocked(src.Controller) {
+		if only != uuid.Nil && opp != only {
+			continue
+		}
 		if _, ok := g.opponentStepLegalLocked(src, steps, idx, picked, opp); ok {
 			out = append(out, opp)
 		}
 	}
 	return g.eligibleChosenPlayersLocked(out)
+}
+
+// firstTargetsControllerLocked is the controller of the permanent picked
+// for clause 0 of `mode` among `picked`, or uuid.Nil when no permanent on
+// the battlefield was picked there (#6171).
+//
+// Caller must hold g.mu.
+func (g *Game) firstTargetsControllerLocked(mode int, picked []TargetRef) uuid.UUID {
+	for _, t := range picked {
+		if t.Kind != TargetCard || t.Mode != mode || t.Slot != 0 {
+			continue
+		}
+		if c := findBattlefieldCard(g, t.ID); c != nil {
+			return c.Controller
+		}
+	}
+	return uuid.Nil
 }
 
 // opponentStepLegalLocked is step `idx`'s legal set with `opp` as its

@@ -141,3 +141,46 @@ describe("owner-only rows", () => {
     expect(abilityRowBlocked(c.activated_abilities![0], "activated", ctx(c, ALICE))).toBe("");
   });
 });
+
+// #6170: "Only the player this creature is attacking may activate this
+// ability" (Capricopian).
+const goat = (attacking?: string, kind?: CardView["attacking_target_kind"]): CardView => ({
+  instance_id: "goat",
+  name: "Capricopian",
+  owner: ALICE,
+  controller: ALICE,
+  type_line: "Creature — Goat Hydra",
+  attacking_target: attacking,
+  attacking_target_kind: kind,
+  activated_abilities: [row({ defending_player_only: true })],
+});
+
+describe("defending-player-only rows (Capricopian)", () => {
+  it("are open to the attacked player alone", () => {
+    const c = goat(BOB, "player");
+    expect(rowOpenToViewer(c.activated_abilities![0], c, BOB)).toBe(true);
+    expect(rowOpenToViewer(c.activated_abilities![0], c, ALICE)).toBe(false);
+    expect(rowOpenToViewer(c.activated_abilities![0], c, CARA)).toBe(false);
+    expect(mayActivateAcross(c, BOB)).toBe(true);
+    expect(mayActivateAcross(c, CARA)).toBe(false);
+    expect(menuAbilityRows(c, BOB).map((a) => a.index)).toEqual([0]);
+  });
+
+  it("are open to nobody while the creature is not attacking a player", () => {
+    for (const c of [goat(), goat("walker", "planeswalker")]) {
+      for (const v of [ALICE, BOB, CARA]) {
+        expect(rowOpenToViewer(c.activated_abilities![0], c, v)).toBe(false);
+      }
+    }
+  });
+
+  it("grey on the controller's own permanent, with a reason", () => {
+    const c = goat(BOB, "player");
+    expect(abilityRowBlocked(c.activated_abilities![0], "activated", ctx(c, ALICE))).toBe(
+      ROW_NOT_OPEN_TO_YOU,
+    );
+    expect(abilityRowBlocked(c.activated_abilities![0], "activated", ctx(c, BOB))).not.toBe(
+      ROW_NOT_OPEN_TO_YOU,
+    );
+  });
+});

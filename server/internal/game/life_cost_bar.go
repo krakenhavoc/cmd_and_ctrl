@@ -52,7 +52,8 @@ func (g *Game) cantPayLifeToCastOrActivateLocked() bool {
 			return true
 		}
 	}
-	return false
+	// #6167: Yasharn's wider rule names casts and activations too.
+	return g.cantPayLifeOrSacrificeNonlandLocked()
 }
 
 // CantPayLifeToCastOrActivateForEffect is the exported reader, for the
@@ -75,6 +76,25 @@ func (g *Game) CanPayLifeToCastOrActivateLocked(p *Player, amount int) bool {
 		return true
 	}
 	if g.cantPayLifeToCastOrActivateLocked() {
+		return false
+	}
+	return g.CanPayLifeLocked(p, amount)
+}
+
+// CanPayLifeForManaAbilityLocked is CanPayLifeLocked for a life
+// component of a mana ability's cost (CR 605.1a): CR 119.4 and CR
+// 119.8, and not at all while "players can't pay life or sacrifice
+// nonland permanents to cast spells or activate abilities" (Yasharn,
+// #6167) is live, whose "activate abilities" names mana abilities too.
+// Karn's Sylex's narrower rule leaves them alone. A non-positive amount
+// is payable by anybody.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CanPayLifeForManaAbilityLocked(p *Player, amount int) bool {
+	if amount <= 0 {
+		return true
+	}
+	if g.cantPayLifeOrSacrificeNonlandLocked() {
 		return false
 	}
 	return g.CanPayLifeLocked(p, amount)

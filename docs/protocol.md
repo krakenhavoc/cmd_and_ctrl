@@ -1060,6 +1060,10 @@ asked as the permanent would enter.
 - **`control_purpose`** is `"harm"` (the permanent hurts whoever
   controls it) or `"benefit"` (it helps them). It is a reading of the
   card's own text, and the client uses it only for wording.
+- **`"tribute"`** (CR 702.104a, #6251) is the same prompt for tribute's
+  "choose an opponent": the permanent enters under its controller as
+  usual, and the chosen opponent is then asked, as an
+  `optional_replacement`, whether to put the N +1/+1 counters on it.
 
 The permanent has not entered while the prompt is open: the CR 614
 pipeline is suspended on the answer, nothing is on the battlefield and
@@ -3974,6 +3978,15 @@ Feral Hydra, Excavation) says everyone.
   `game: caller does not control this card`. The row rides the per-seat
   copy as an `any_player` row does; the client opens it to the viewer
   whose ID is `activator` and greys it for everyone else.
+- **`defending_player_only: true` on the row** (2026-11-25, #6170). "Only
+  the player this creature is attacking may activate this ability"
+  (Capricopian). Additive, absent on every other row. The server refuses
+  everyone but the seat the card's `attacking_target` names (a player,
+  not a planeswalker or battle), the controller included, with `game:
+  caller does not control this card`, and so everyone while the creature
+  is not attacking a player. The row rides the per-seat copy as an
+  `any_player` row does; the client opens it to that seat and greys it
+  for everyone else.
 - **Each seat's copy is stamped for that seat.** For a seat that does
   not control the permanent, every `any_player` row is computed with that
   seat as the activator: `charged_mana_cost`, `life_cost`,
