@@ -74,27 +74,12 @@ var ryanSinclairExiled = effects.CardTail("gap-b88/ryan-sinclair-exiled", func(c
 			}
 		}
 	}
-	return gapB88BottomExiled(g, controller, o.IDs)
+	return effects.S82OldB162BottomExiled(g, controller, o.IDs)
 })
 
 // ryanSinclairRest is "put the exiled cards not cast this way on the bottom", once the
 // cast is answered: Carry is every card exiled. An on-disk key.
 var ryanSinclairRest = game.RegisterChooseCardsThen("resolution-cast/ryan-sinclair-rest",
 	func(g *game.Game, r game.CardsChosen) error {
-		return gapB88BottomExiled(g, r.Chooser, r.Carry)
+		return effects.S82OldB162BottomExiled(g, r.Chooser, r.Carry)
 	})
-
-// gapB88BottomExiled puts the cards that are still in exile on the bottom of the
-// player's library in a random order; one that was cast has left exile and stays put.
-func gapB88BottomExiled(g *game.Game, player uuid.UUID, ids []uuid.UUID) error {
-	var rest []uuid.UUID
-	for _, id := range ids {
-		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
-			rest = append(rest, id)
-		}
-	}
-	if len(rest) == 0 {
-		return nil
-	}
-	return g.PutOnBottomInRandomOrderForEffect(player, game.ZoneExile, rest)
-}
