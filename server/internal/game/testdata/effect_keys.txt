@@ -681,6 +681,7 @@ choose choose-cards/aggressive-sabotage-burn
 choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/aisha-of-sparks-and-smoke-cast
 choose choose-cards/all-good-things-exile-from-hand
+choose choose-cards/allure-of-the-unknown-exile
 choose choose-cards/alpharael-discard-two-unless-artifact
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
@@ -2312,6 +2313,7 @@ option option-pick/abundance-kind
 option option-pick/abundant-harvest-kind
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
 option option-pick/agents-toolkit-move
+option option-pick/allure-of-the-unknown-opponent
 option option-pick/aminatou-the-fateshifter-rotate
 option option-pick/amy-pond-suspended
 option option-pick/animal-magnetism-opponent
@@ -3909,6 +3911,7 @@ tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/lazotep-quarry
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/allure-of-the-unknown-rest
 tail exile-then/masked-vandal-target
 tail exile-then/mysterious-limousine-return-others
 tail exile-then/old-b071-tibalt-add-rrr
