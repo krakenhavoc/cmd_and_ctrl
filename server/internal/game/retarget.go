@@ -95,6 +95,16 @@ const (
 	// and one left unchanged may stay illegal. Deflecting Swat prints
 	// it; so does CR 707.10c for a copy.
 	RetargetChooseNew
+
+	// RetargetChangeAll is "change the target or targets" (CR 115.7a,
+	// #6228): each target may be changed only to another legal target,
+	// and unless every one of them is, none of them is. Over an item
+	// with one target it is RetargetChangeOne. Over several the chooser
+	// is walked through every slot with the picks staged
+	// (PendingChoice.RetargetNext) and the change is made only once the
+	// last slot is answered; a slot with nowhere else to go ends the
+	// walk with nothing changed. See retarget_change_all.go.
+	RetargetChangeAll
 )
 
 // RetargetOffer is one CR 115.7 offer: whose targets are being
@@ -227,6 +237,15 @@ func (g *Game) retargetSourceLocked(item *StackItem) TargetSource {
 //
 // Caller must hold g.mu.
 func (g *Game) RetargetStackItemForEffect(itemID, chooser uuid.UUID, policy RetargetPolicy, next []TargetRef) error {
+	return g.retargetStackItemLocked(itemID, chooser, uuid.Nil, policy, next)
+}
+
+// retargetStackItemLocked is RetargetStackItemForEffect naming the
+// object whose effect makes the change (`cause`, uuid.Nil when unknown),
+// which the EventTargetsChosen it emits carries by name (#6228).
+//
+// Caller must hold g.mu.
+func (g *Game) retargetStackItemLocked(itemID, chooser, cause uuid.UUID, policy RetargetPolicy, next []TargetRef) error {
 	item := g.StackMeta[itemID]
 	if item == nil {
 		return ErrCardNotFound
@@ -257,6 +276,8 @@ func (g *Game) RetargetStackItemForEffect(itemID, chooser uuid.UUID, policy Reta
 	// an opponent controls"). The objects that were already targeted
 	// and stayed do not become targets a second time.
 	g.emitBecameTargetLocked(item.Controller, item.SourceCardID, item.ID, changed)
+	// #6228: and the chooser has chosen targets for it.
+	g.emitTargetsChosenLocked(chooser, item.SourceCardID, item.ID, changed, g.objectNameLocked(cause))
 	return nil
 }
 
@@ -285,6 +306,10 @@ func (g *Game) retargetCheckLocked(src TargetSource, steps []AnnouncedClause, ol
 		}
 	}
 	if policy == RetargetChangeOne && changed > 1 {
+		return ErrInvalidParam
+	}
+	if policy == RetargetChangeAll && changed != len(pairs) {
+		// CR 115.7a: all of them changed, or none.
 		return ErrInvalidParam
 	}
 	// The announce gate, with the unchanged slots' predicate waived:
@@ -447,6 +472,13 @@ func (g *Game) OfferRetargetForEffect(offer RetargetOffer) error {
 			return ErrInvalidParam
 		}
 		return g.offerPinnedRetargetLocked(offer, item)
+	}
+	if offer.Policy == RetargetChangeAll {
+		if n > 1 {
+			return g.queueChangeAllRetargetLocked(offer, 0, append([]TargetRef(nil), item.Targets...))
+		}
+		// One target: "change the target" is CR 115.7b's walk.
+		offer.Policy = RetargetChangeOne
 	}
 	if offer.Policy == RetargetChangeOne && n > 1 {
 		// See RetargetChangeOne's doc comment: no printed card gets
@@ -974,6 +1006,9 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 	if slot < 0 || slot >= len(item.Targets) {
 		return ErrInvalidParam
 	}
+	if choice.RetargetPolicy == RetargetChangeAll {
+		return g.resolveChangeAllRetargetLocked(idx, choice, offer, item, targets)
+	}
 	if choice.RetargetNext != nil {
 		next := append([]TargetRef(nil), choice.RetargetNext...)
 		if len(targets) > 1 || (len(targets) == 0 && choice.PickTargetMin > 0) {
@@ -1013,7 +1048,7 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 		next := append([]TargetRef(nil), item.Targets...)
 		t.Mode, t.Slot = next[slot].Mode, next[slot].Slot
 		next[slot] = t
-		if err := g.RetargetStackItemForEffect(offer.ItemID, chooserID, offer.Policy, next); err != nil {
+		if err := g.retargetStackItemLocked(offer.ItemID, chooserID, offer.Source, offer.Policy, next); err != nil {
 			return err
 		}
 		g.dequeueChoiceLocked(idx)

@@ -800,6 +800,26 @@ const (
 	// event log it had before the kind existed.
 	EventTriggerPlaced EventKind = "trigger_placed"
 
+	// EventTargetsChosen — a player chose one or more targets for a
+	// spell or ability (#6228, Psychic Battle's "whenever a player
+	// chooses one or more targets"). Once per choosing, not per target:
+	// emitted beside the EventBecomesTarget fan-out when a cast, an
+	// activation or a triggered ability's placement announces targets
+	// (CR 601.2c, CR 602.2b, CR 603.3d), and when an effect changes the
+	// targets of a spell or ability (CR 115.7), each slot changed being
+	// one choosing. Actor is the player who chose (the item's controller
+	// for an announcement, the retargeting effect's chooser for a
+	// change), Source the item's source object, StackItemID the item.
+	// On a change, SourceName is the name of the object whose effect
+	// changed the targets, as it was then ("Changing targets this way
+	// doesn't trigger abilities of permanents named Psychic Battle");
+	// empty on an announcement and on a change no named object made.
+	//
+	// Emitted only while a permanent on the battlefield watches it
+	// (battlefieldWatchesLocked), like EventTriggerPlaced, so a table
+	// without one keeps the event log it had before the kind existed.
+	EventTargetsChosen EventKind = "targets_chosen"
+
 	// EventAbilityCopied — a copy of an activated or triggered ability
 	// was put onto the stack (CR 707.10, createAbilityCopyLocked). Actor
 	// is the copy's controller, Source the object the ability came from
@@ -2252,7 +2272,9 @@ type Event struct {
 	// has the copied name, CR 707.2), captured at emit time because the
 	// source may since have left the game or been changed. "Each opponent
 	// dealt combat damage this game by a creature named Gollum, Obsessed
-	// Stalker" reads it off the append-only log. Empty on every other event.
+	// Stalker" reads it off the append-only log. On an EventTargetsChosen
+	// that a change of targets emitted, it is the name of the object whose
+	// effect changed them (#6228). Empty on every other event.
 	// Additive within schema v9.
 	SourceName string `json:"source_name,omitempty"`
 
