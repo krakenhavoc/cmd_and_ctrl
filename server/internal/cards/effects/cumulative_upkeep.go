@@ -153,8 +153,8 @@ func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string)
 			prompt.Else = CumulativeUpkeepFlipCoins
 		} else {
 			// #4264: keyed, so a table waiting on the payer is a
-			// restore point.
-			prompt.Else = UpkeepSacrificeSource
+			// restore point. #6188: each answer announces itself.
+			prompt.Else = CumulativeUpkeepPaidOrSacrificed
 		}
 		return prompt.Apply(ctx)
 	})
@@ -171,7 +171,9 @@ func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string)
 // trigger's label.
 var CumulativeUpkeepFlipCoins = PayUnlessBranches("pay-unless/cumulative-upkeep-flip-coins",
 	func(ctx *Context, r game.PayUnlessAnswer) error {
-		owed := FlipCoinsPayment(1).times(CounterCountOn(ctx.Game, r.Source, game.CounterAge), "", "")
+		age := CounterCountOn(ctx.Game, r.Source, game.CounterAge)
+		ctx.Game.AnnounceCumulativeUpkeepPaidForEffect(r.Source, r.Chooser, age, nil)
+		owed := FlipCoinsPayment(1).times(age, "", "")
 		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
 			Flipper:  ctx.Controller(),
 			Source:   r.Source,
@@ -181,8 +183,50 @@ var CumulativeUpkeepFlipCoins = PayUnlessBranches("pay-unless/cumulative-upkeep-
 		return nil
 	},
 	func(ctx *Context, r game.PayUnlessAnswer) error {
+		ctx.Game.AnnounceCumulativeUpkeepNotPaidForEffect(r.Source, r.Chooser, CounterCountOn(ctx.Game, r.Source, game.CounterAge))
 		return SacrificePermanent{Target: r.Source}.Apply(ctx)
 	})
+
+// CumulativeUpkeepPaidOrSacrificed is the two answers of every other
+// cumulative upkeep (#6188), keyed: a payment announces that the
+// permanent's cumulative upkeep was paid, with the age counters it was
+// paid for and the mana it spent (Balduvian Fallen, Hibernation's End);
+// a decline announces that it was not paid (Heart of Bogardan, Thought
+// Lash) and then sacrifices the permanent, as UpkeepSacrificeSource does
+// (CR 702.24a: "If you don't, sacrifice it"). The announcement comes
+// first, so a "when a player doesn't pay" trigger sees its source still
+// on the battlefield.
+var CumulativeUpkeepPaidOrSacrificed = PayUnlessBranches("pay-unless/cumulative-upkeep-paid-or-sacrificed",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		ctx.Game.AnnounceCumulativeUpkeepPaidForEffect(r.Source, r.Chooser, CounterCountOn(ctx.Game, r.Source, game.CounterAge), r.ManaSpent)
+		return nil
+	},
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		ctx.Game.AnnounceCumulativeUpkeepNotPaidForEffect(r.Source, r.Chooser, CounterCountOn(ctx.Game, r.Source, game.CounterAge))
+		return SacrificePermanent{Target: r.Source}.Apply(ctx)
+	})
+
+// WhenCumulativeUpkeepIsPaid is "Whenever this permanent's cumulative
+// upkeep is paid" (Balduvian Fallen; "Whenever you pay this
+// enchantment's cumulative upkeep", Hibernation's End, reads the same:
+// only its controller is asked). The trigger's event carries the age
+// counters (Amount) and the mana spent (game.SpentSymbolsOf).
+func WhenCumulativeUpkeepIsPaid(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventCumulativeUpkeepPaid, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return ev.CardID == source.InstanceID
+	}, label, effect)
+}
+
+// WhenCumulativeUpkeepIsNotPaid is "When a player doesn't pay this
+// permanent's cumulative upkeep" (Heart of Bogardan, Thought Lash). It
+// triggers before the sacrifice, so the trigger's event names the player
+// (Actor) and the age counters (Amount) the source had; the effect reads
+// the source by last-known information once it has gone (CR 608.2h).
+func WhenCumulativeUpkeepIsNotPaid(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventCumulativeUpkeepNotPaid, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return ev.CardID == source.InstanceID
+	}, label, effect)
+}
 
 // CumulativeUpkeepGrant is the ADR 0093 bundle for a QUOTED cumulative
 // upkeep that another effect gives a permanent (#3869): Mana Chains'
