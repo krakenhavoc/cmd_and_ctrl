@@ -403,6 +403,8 @@ func (g *Game) onTurnBeganLocked() {
 	// active player's alone — Banon reads a card an opponent's effect
 	// put into YOUR graveyard just as well.
 	g.clearGraveyardArrivalsLocked()
+	// #6098: and so does "cast this turn".
+	g.clearCastThisTurnLocked()
 	// S38 (ADR 0063 Decision 2): "until your next turn" ends as that
 	// player's turn BEGINS. This hook runs from beginNextTurnLocked
 	// after the cursor is stamped on the new seat's untap step and

@@ -92,6 +92,12 @@ type Characteristic struct {
 	// a copy of one) rather than an ability or a permanent: "protection from
 	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
 	SourceIsSpell bool
+	// SourceCastThisTurn says the source is a permanent whose spell was
+	// cast this turn (CastProvenance.CastThisTurn, PermanentInfo.
+	// CastThisTurn for a departed one): "protection from permanents that
+	// were cast this turn" reads it (Emrakul, the World Anew, #6098).
+	// Written only by the source-snapshot builders, like the facts above.
+	SourceCastThisTurn bool `json:"-"`
 	// SourceCounters are the counters on a permanent source (#6149):
 	// "protection from permanents with corruption counters on them" reads
 	// it. Written only by the source-snapshot builders, like the facts
@@ -389,6 +395,17 @@ type Characteristic struct {
 	// once every layer has run (CR 613.11). power_floor.go.
 	AttackBlockNeedsOtherPower int `json:",omitempty"`
 
+	// PowerGatedGoads are "creatures your opponents control with power
+	// less than ~'s power are goaded" (Baeloth Barrityl, Entertainer,
+	// #6098): one entry per such static that reaches this creature,
+	// written in layer 6 by the static and turned into goad's CR 701.15b
+	// requirements by foldPowerGatedGoadsLocked once every layer has run.
+	// The comparison is between two FINISHED powers, which no layer-6
+	// effect can see, and CR 613.11 applies an effect that says a
+	// creature must attack after every other continuous effect, so the
+	// fold is the rules' own order. power_gated_goad.go.
+	PowerGatedGoads []PowerGatedGoad `json:",omitempty"`
+
 	// CantAttackWithoutAnyOf is "creatures without flying or islandwalk
 	// can't attack" (Stormtide Leviathan; Moat's shape): the keyword tokens
 	// of which this creature needs at least one to attack. Written by a
@@ -657,6 +674,7 @@ func (c Characteristic) clone() Characteristic {
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.BorrowedAbilities = append([]BorrowedAbility(nil), c.BorrowedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
+	out.PowerGatedGoads = append([]PowerGatedGoad(nil), c.PowerGatedGoads...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.DefenderWaivers = append([]DefenderWaiver(nil), c.DefenderWaivers...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
