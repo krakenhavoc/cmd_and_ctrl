@@ -2464,6 +2464,27 @@ holds every catalog card whose printed text says "pile" or "guess" to one
 of those two: it fails on a new one until it either notes itself or is
 listed with the reason it does not.
 
+### Each player separates their permanents into piles (#6248, CR 700.3)
+
+"Starting with you, each player separates all permanents they control into
+three piles. Then each player chooses one of their piles at random and
+sacrifices those permanents." (Whims of the Fates) is
+`effects.SeparateIntoPiles{Piles: 3, Then: effects.SacrificeARandomPileEach}.Apply(ctx)`
+([separate_into_piles.go](../server/internal/cards/effects/separate_into_piles.go)).
+Each player, from the controller in turn order (CR 101.4), is asked for
+`Piles - 1` piles of their own permanents, each a keyed `reveal_pick` over
+what is left that may take none (CR 700.3d); the last pile is the rest. A
+player with nothing left is asked nothing. Every split is made before
+anything happens to any pile, and the split notes the spell for the pile
+and guess tally. A different "then" is a `RegisterPilesThen(key, body)`,
+handed each player's piles in order. `SacrificeARandomPileEach` draws
+each player's pile from the seeded pick stream
+(`Game.ChooseIndexAtRandomForEffect`, which an undo rewinds) and
+sacrifices the chosen piles together, one event (CR 701.21a). No prompt
+holds a closure, so a table waiting on a split is a restore point. A bot
+answers each pile pick from the enumerator's legal answers, as it answers
+any `reveal_pick`.
+
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
 "Players can't pay life to cast spells or to activate abilities that
