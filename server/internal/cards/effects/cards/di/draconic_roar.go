@@ -32,17 +32,8 @@ func init() {
 		Completeness:  effects.CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{effects.OptionalBehold("a", "Dragon")},
 		CastTimeValues: []game.CastTimeValue{{
-			Key: dragonKey,
-			Value: func(g *game.Game, item *game.StackItem) int {
-				ctx := effects.NewContext(g, item)
-				dragon := ctx.TextSubtype("Dragon")
-				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(dragon) {
-						return 1
-					}
-				}
-				return 0
-			},
+			Key:   dragonKey,
+			Value: effects.ControlsADragonAsCast,
 		}},
 		Targets: effects.TargetCreature("target creature"),
 		Purpose: effects.ForTargets(effects.DamageToTarget(0, 3)),

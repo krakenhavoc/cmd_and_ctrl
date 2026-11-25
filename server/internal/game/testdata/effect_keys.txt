@@ -1625,6 +1625,7 @@ choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spear-of-leonidas-draw
 choose choose-cards/specter-of-mortality-exile
 choose choose-cards/specters-shriek-exile-from-hand
+choose choose-cards/spellbound-dragon-pump
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
 choose choose-cards/spirit-of-resilience-copy
@@ -2338,6 +2339,7 @@ drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
+drawthen spellbound-dragon/discard
 drawthen steamcore-scholar-discard
 drawthen tainted-indulgence/discard-unless-five-mana-values
 drawthen talions-messenger/discard
@@ -3054,6 +3056,7 @@ payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
 payunless pay-unless/symmetry-matrix-draw
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/tainted-adversary-times
+payunless pay-unless/taj-nar-swordsmith-paid
 payunless pay-unless/teneb-the-harvester-reanimate
 payunless pay-unless/terra-herald-of-hope-return
 payunless pay-unless/terror-of-towashi-return
@@ -4472,6 +4475,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nightmare-shepherd/copy
 tail nine-fingers-keene/rest
+tail nissas-pilgrimage/forests-to-hand
 tail nissas-revelation/reveal
 tail nita-forum-conciliator/after-exile
 tail noctis/entered-unblockable
