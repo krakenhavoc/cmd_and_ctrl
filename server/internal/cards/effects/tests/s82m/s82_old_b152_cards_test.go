@@ -308,6 +308,11 @@ func TestC19B152GhastlyConscriptionManifestsEveryCreatureCardFromAGraveyard(t *t
 	if !opp.Graveyard.Contains(spell) {
 		t.Error("the noncreature card left the graveyard")
 	}
+	n := 0
+	g.WithWriteLock(func() { n = g.PilesOrGuessesThisTurnForEffect() })
+	if n != 1 {
+		t.Errorf("pile-or-guess tally %d after the face-down pile, want 1 (#6175)", n)
+	}
 }
 
 func TestC19B152BoneyardParleySplitsExiledCreaturesIntoTwoPiles(t *testing.T) {

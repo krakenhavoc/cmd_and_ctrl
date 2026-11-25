@@ -20,7 +20,8 @@ import (
 // enter together face down (CR 701.40a): the controller becomes the only
 // knower of each (CR 708.5), so the printed shuffle of the pile cannot change
 // what anyone can tell and the entry order is not one. A card a replacement kept
-// out stays in exile.
+// out stays in exile. The face-down pile groups cards into a pile (CR 700.3),
+// so the spell notes the turn's pile-or-guess tally as it resolves (#6175).
 //
 // No simplification.
 func init() {
@@ -35,6 +36,7 @@ func init() {
 			if !ok || t.Kind != game.TargetPlayer {
 				return nil
 			}
+			effects.NotePileOrGuess(ctx)
 			ids := effects.GraveyardIDs(ctx.Game, t.ID, func(c game.Card) bool { return c.IsCreature() })
 			if len(ids) == 0 {
 				return nil
