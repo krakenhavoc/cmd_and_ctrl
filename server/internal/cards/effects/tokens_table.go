@@ -739,4 +739,6 @@ var TokenTable = map[string]game.Card{
 	"5/5 black Zombie Giant": {Name: "Zombie Giant", TypeLine: "Token Creature — Zombie Giant", Power: 5, Toughness: 5, Colors: []string{"B"}},
 	// S82 OLD batch 249 (#5535): Trial of Strength's Beast.
 	"4/2 green Beast": {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 2, Colors: []string{"G"}},
+	// S82 OLD batch 252 (#5536): Release the Gremlins and Gremlin Infestation's Gremlin.
+	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
 }
