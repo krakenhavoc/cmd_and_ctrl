@@ -313,6 +313,9 @@ func (g *Game) commitBlockDeclarationLocked() {
 		g.announcedBlocks[b] = atks
 	}
 	for _, p := range fresh {
+		g.noteCombatBlockLocked(p.blocker, p.attacker)
+	}
+	for _, p := range fresh {
 		g.EmitEvent(Event{
 			Kind:   EventBlock,
 			Actor:  p.actor,
