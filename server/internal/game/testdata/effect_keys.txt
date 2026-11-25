@@ -2724,6 +2724,7 @@ payunless pay-unless/carefree-swinemaster-boar
 payunless pay-unless/casal-lurkwood-pathfinder-transform
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
+payunless pay-unless/chandras-regulator-copy-ability
 payunless pay-unless/chant-3-damage-to-that-player
 payunless pay-unless/chaos-spewer-blight
 payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
@@ -4943,6 +4944,7 @@ tail then/dire-tactics-lose-life
 tail then/discard-at-random
 tail then/distant-melody-type-chosen
 tail then/disturbing-mirth-draw-two
+tail then/diviners-lockbox-named
 tail then/do-or-die-destroy-pile
 tail then/doomsday-excruciator-next-exile
 tail then/doomsday-lose-half-your-life
