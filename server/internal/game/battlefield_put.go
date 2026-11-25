@@ -154,6 +154,13 @@ type ZoneEntryOptions struct {
 	// Ignored with AttachedTo, which names the host.
 	AuraHostsCreaturesOnly bool
 
+	// AuraHostsYouControlOnly is the putting effect's "attached to creatures
+	// you control" (Storm Herald): an Aura that chooses its host as it enters
+	// (CR 303.4f) chooses among the permanents its enchant clause admits that
+	// the player it enters under controls, and one with no such permanent
+	// stays where it was (CR 303.4g). Ignored with AttachedTo.
+	AuraHostsYouControlOnly bool
+
 	// EntersAs is the putting effect's "they are <types> with
 	// <ability>" (Supper for Spiders' Food artifacts, Tom, Bert, and
 	// William's artifact; ADR 0210). Seeded onto every card's entry

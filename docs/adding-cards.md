@@ -362,7 +362,10 @@ rewrite any old name it brought.
    anything is paid; legality is still judged for the controller, and the
    chosen opponent rides the item for the resolution re-check and a
    retarget. Read the pick at resolution with `ctx.ClauseTarget(slot)` like
-   any other clause. Not on a mode, and never divided or "up to"
+   any other clause. "… an opponent controls, and that opponent chooses
+   target …" (Mogg Assassin, #6171) is `OfTheFirstTargetsController(spec)`
+   on the later clause: the chooser is the controller of the first
+   clause's pick, named by the engine, never asked of the controller. Not on a mode, and never divided or "up to"
    (`effects.Register` refuses them). #2055, ADR 0019 amendment 2026-10-16.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
@@ -3905,7 +3908,11 @@ below) and the printed-colour rule `printedColorsOf` (devoid — see
 (`game/block_legality.go`, `game/landwalk.go`) against the defending
 player's lands, by effective characteristics on both sides; the rarer
 variants (snow swampwalk, legendary landwalk, desertwalk) join the
-table with their first card.
+table with their first card. "Creatures with swampwalk can be blocked as
+though they didn't have swampwalk" (Quagmire) is a block rule,
+`effects.BlockableAsThoughNoLandwalk("swampwalk")` in `Spec.BlockRules`;
+Staff of the Ages' every-landwalk waiver is
+`effects.BlockableAsThoughNoLandwalkAtAll()` (#6195).
 
 The five evasion keywords in #825 use that same pair function. Read colors,
 types and power from effective characteristics; shadow restricts both

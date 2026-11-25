@@ -419,6 +419,8 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		// #4973: a restarted game is a new game, so no spell has been
 		// cast in it yet (First Contact).
 		"FirstSpellCast": true,
+		// #6164: the new game records its own turns' life totals.
+		"LifeAsTurnBegan": true, "LifeAsTurnBeganSeq": true,
 	}
 	typ := reflect.TypeOf(Player{})
 	for i := 0; i < typ.NumField(); i++ {
