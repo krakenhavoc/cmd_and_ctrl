@@ -30,13 +30,15 @@ func init() {
 			effects.Targeting(effects.WhenThisEnters("Dire Fleet Poisoner — target attacking Pirate you control gets +1/+1 and gains deathtouch until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := effects.NewContext(g, item)
-					for _, id := range effects.LegalTargetCardIDs(ctx) {
-						if err := (effects.BoostUntilEOT{Target: id, Power: 1, Toughness: 1, Label: "Dire Fleet Poisoner — +1/+1"}).Apply(ctx); err != nil {
-							return err
-						}
-						return effects.GrantKeywordUntilEOT{Target: id, Keywords: []string{"deathtouch"}, Label: "Dire Fleet Poisoner — deathtouch"}.Apply(ctx)
+					ids := effects.LegalTargetCardIDs(ctx)
+					if len(ids) == 0 {
+						return nil
 					}
-					return nil
+					id := ids[0]
+					if err := (effects.BoostUntilEOT{Target: id, Power: 1, Toughness: 1, Label: "Dire Fleet Poisoner — +1/+1"}).Apply(ctx); err != nil {
+						return err
+					}
+					return effects.GrantKeywordUntilEOT{Target: id, Keywords: []string{"deathtouch"}, Label: "Dire Fleet Poisoner — deathtouch"}.Apply(ctx)
 				}),
 				effects.TargetCreature("target attacking Pirate you control", effects.AttackingCreature(), effects.YouControl(), effects.Subtype("Pirate"))),
 		},

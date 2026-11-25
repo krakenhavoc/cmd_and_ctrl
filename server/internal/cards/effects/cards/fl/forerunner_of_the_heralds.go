@@ -25,7 +25,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.LrwB1Harbinger("Forerunner of the Heralds", "a Merfolk card", effects.LrwB1CardOfType("Merfolk")),
-			effects.On(game.EventETB, effects.S82OldB219TribeEnters("Merfolk", true),
+			effects.On(game.EventETB, effects.S82OldB216TribeEnters("Merfolk", true),
 				"Forerunner of the Heralds — put a +1/+1 counter on this creature",
 				effects.Do(effects.CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},

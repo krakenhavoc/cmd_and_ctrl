@@ -87535,6 +87535,8 @@ seats[].departedPermanents[].source.attachedTo.splice	number:int
 seats[].departedPermanents[].source.attackingTarget	custom(uuid.UUID)
 seats[].departedPermanents[].source.attractionLights	array
 seats[].departedPermanents[].source.attractionLights[]	number:int
+seats[].departedPermanents[].source.auraFormEndBy	custom(uuid.UUID)
+seats[].departedPermanents[].source.auraFormEndCost	string
 seats[].departedPermanents[].source.baseController	custom(uuid.UUID)
 seats[].departedPermanents[].source.battleX	number:float64
 seats[].departedPermanents[].source.battleY	number:float64
@@ -87921,6 +87923,8 @@ seats[].departedPermanents[].source.provenance.altCostObjects[].epoch	number:int
 seats[].departedPermanents[].source.provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].departedPermanents[].source.provenance.castOrdinal	number:int
 seats[].departedPermanents[].source.provenance.castThisTurn	bool
+seats[].departedPermanents[].source.provenance.castValues	map:string
+seats[].departedPermanents[].source.provenance.castValues{}	number:int
 seats[].departedPermanents[].source.provenance.caster	custom(uuid.UUID)
 seats[].departedPermanents[].source.provenance.convoked	array
 seats[].departedPermanents[].source.provenance.convoked[]	custom(uuid.UUID)

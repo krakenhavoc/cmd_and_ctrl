@@ -64,26 +64,28 @@ func init() {
 // player controls, as one damage event.
 func angrathPlusTwo(g *game.Game, item *game.StackItem) error {
 	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		owner := t.ID
-		if t.Kind == game.TargetCard {
-			c, ok := g.LookupCardForEffect(t.ID)
-			if !ok {
-				return nil
-			}
-			owner = c.Controller
-		}
-		target := t.ID
-		return g.DamageInstanceForEffect(func() error {
-			if err := (effects.DealDamage{Source: ctx.Source(), Target: target, Amount: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return effects.DamageEachMatching(ctx, effects.And(effects.Creature(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-				return c.Controller == owner
-			}), 1)
-		})
+	targets := ctx.LegalTargets()
+	if len(targets) == 0 {
+		return nil
 	}
-	return nil
+	t := targets[0]
+	owner := t.ID
+	if t.Kind == game.TargetCard {
+		c, ok := g.LookupCardForEffect(t.ID)
+		if !ok {
+			return nil
+		}
+		owner = c.Controller
+	}
+	target := t.ID
+	return g.DamageInstanceForEffect(func() error {
+		if err := (effects.DealDamage{Source: ctx.Source(), Target: target, Amount: 1}).Apply(ctx); err != nil {
+			return err
+		}
+		return effects.DamageEachMatching(ctx, effects.And(effects.Creature(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+			return c.Controller == owner
+		}), 1)
+	})
 }
 
 // angrathUltimate destroys every creature the target opponent controls and
