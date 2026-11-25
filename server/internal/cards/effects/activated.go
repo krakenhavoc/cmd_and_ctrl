@@ -1170,6 +1170,23 @@ func ExileFromGraveyard(n int, label string, match func(game.Card) bool) game.Ab
 	return game.AbilityCost{ExileCards: ExileCardsFromGraveyard(n, label, match)}
 }
 
+// PutFromGraveyardOnLibraryBottom is "Put N <kind> cards from your
+// graveyard on the bottom of your library" as a CR 602 activated
+// ability's cost (#6121): Battlefield Scrounger's threshold ability is
+//
+//	PutFromGraveyardOnLibraryBottom(3, "three cards", nil)
+//
+// The activator names the cards at announce (CR 602.2b), on `exile_ids`
+// like every graveyard pick, in the order they go to the bottom (CR
+// 401.4). It is the graveyard exile's pick with a different destination
+// (game.ExileCost.ToLibraryBottom): nothing is exiled, and a graveyard
+// smaller than N can't pay it (CR 118.3).
+func PutFromGraveyardOnLibraryBottom(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	ec := ExileCardsFromGraveyard(n, label, match)
+	ec.ToLibraryBottom = true
+	return game.AbilityCost{ExileCards: ec}
+}
+
 // ExileAnyNumberFromGraveyardWithSymbols is "Exile any number of <kind>
 // cards from your graveyard with <N> or more <colour> mana symbols among
 // their mana costs" as a CR 602 activated ability's cost (Baron Helmut

@@ -15,6 +15,8 @@ import { manaValueOf } from "./targetPrices";
 interface ExileCostFields {
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // #6121: the graveyard pick goes to the library bottom, not to exile.
+  exile_cost_to_library_bottom?: boolean;
 }
 
 // The pile a clause reads. An older server that sent no zone only ever
@@ -47,6 +49,9 @@ export function exileCostOptionCards(
 // The modal's small print: where the cards come from, and that this is
 // not a discard (nothing that watches discards sees it).
 export function exileCostNote(ability: ExileCostFields): string {
+  if (ability.exile_cost_to_library_bottom) {
+    return "from your graveyard · to the bottom of your library in the order picked";
+  }
   switch (exileCostZone(ability)) {
     case "exile":
       return "an opponent's card in exile · it goes to its owner's graveyard";
@@ -74,8 +79,10 @@ export function exileCostWhere(ability: ExileCostFields): string {
 }
 
 // The picker's button: every pile but exile is exiled from; a card
-// already in exile is put into its owner's graveyard (#5457).
+// already in exile is put into its owner's graveyard (#5457); a
+// library-bottom clause says where its cards go (#6121).
 export function exileCostVerb(ability: ExileCostFields): string {
+  if (ability.exile_cost_to_library_bottom) return "Put on library bottom";
   return exileCostZone(ability) === "exile" ? "Put into graveyard" : "Exile";
 }
 

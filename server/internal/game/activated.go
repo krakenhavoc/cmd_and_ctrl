@@ -2852,6 +2852,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return err
 		}
 		exiles = nil
+	} else if ab.Cost.ExileCards != nil && ab.Cost.ExileCards.ToLibraryBottom {
+		// #6121: "Put three cards from your graveyard on the bottom of
+		// your library" (Battlefield Scrounger). Not an exile.
+		if err := g.payGraveyardToBottomCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
+			return err
+		}
+		exiles = nil
 	} else if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
 		return err
 	}

@@ -247,6 +247,7 @@
   import {
     autoCounterChoice,
     counterCostNeedsPrompt,
+    additionalCostAsksCounters,
     counterPaymentParams,
     hasCounterCost,
     type CounterChoice,
@@ -1473,10 +1474,14 @@
   // counter block — and the payment rides the cast as counter_source_ids
   // / counter_counts / counter_kind(s). Always asked: which creatures
   // shrink is the player's choice even when only one split exists.
+  // #6121: a cast's ADDITIONAL cost that removes counters (Hierophant
+  // Bio-Titan) opens the same picker, marked `additional`; its count is
+  // never the spell's X, and the chain goes on to the other costs.
   let castCounterPrompt = $state<{
     card: CardView;
     offer: AlternativeCostView;
     choices: CastChoices;
+    additional?: boolean;
   } | null>(null);
 
   function confirmCastCounterCost(picks: CounterChoice[]): void {
@@ -1484,6 +1489,10 @@
     castCounterPrompt = null;
     if (!p) return;
     const counter = counterPaymentParams(p.offer, picks);
+    if (p.additional) {
+      afterAltCostPayment(p.card, { ...p.choices, counter });
+      return;
+    }
     // #5679: "Remove X loyalty counters" — the counters removed are the
     // spell's X, so the total is announced with them and the X prompt is
     // skipped (afterCastCosts).
@@ -1544,6 +1553,19 @@
   }
 
   function afterAltCostPayment(card: CardView, choices: CastChoices): void {
+    // #6121: the additional cost's "remove any number of counters" is
+    // asked first, before the card costs, the order the server pays them.
+    const addCounters = card.additional_cost;
+    if (choices.counter === undefined && addCounters && additionalCostAsksCounters(addCounters)) {
+      // The counter block has the offer's wire names; the picker reads only those.
+      castCounterPrompt = {
+        card,
+        offer: addCounters as unknown as AlternativeCostView,
+        choices,
+        additional: true,
+      };
+      return;
+    }
     // ADR 0100: an either/or cost's discard is the chosen branch's.
     if (discardCostOf(card, choices) > 0) {
       discardPromptCost = castAdditionalCost(card, choices);
@@ -5002,7 +5024,7 @@
     card={castCounterPrompt?.card ?? null}
     ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
     board={view.battlefield.cards}
-    payFor={altCostCountersDefineX(castCounterPrompt?.offer)
+    payFor={!castCounterPrompt?.additional && altCostCountersDefineX(castCounterPrompt?.offer)
       ? "cast this spell. The number you remove is X"
       : "cast this spell"}
     onConfirm={confirmCastCounterCost}

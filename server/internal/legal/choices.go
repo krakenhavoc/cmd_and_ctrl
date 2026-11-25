@@ -444,14 +444,20 @@ func (e *enumerator) choiceMoves() bool {
 				// whose effect it stops, as a mana link does.
 				payVerb, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
 				sets := [][]uuid.UUID(nil)
-				if action.Kind == game.PayActionSacrificeTotalPower {
+				switch action.Kind {
+				case game.PayActionSacrificeTotalPower:
 					// #6187: any number adding up to the total. The
 					// payments offered are the ones that stop as soon as
 					// the total is reached: in the payment order (the
 					// permanents the seat would miss least first), and
 					// biggest first (the fewest permanents).
 					sets = totalPowerPayments(g, pool, action.TotalPower)
-				} else {
+				case game.PayActionGraveyardToLibraryBottom:
+					// #6121: whole groups from single graveyards, the
+					// opponents' first (their recursion is the bot's
+					// problem, its own graveyard is its resource).
+					sets = graveyardGroupPayments(g, e.seat, pool, action.Count, action.GroupSize)
+				default:
 					sets = e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource)
 				}
 				if action.Repeats {
