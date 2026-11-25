@@ -785,8 +785,9 @@ export interface OutcomeView {
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
   // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
   // of only mandatory actions repeated with no way to stop, CR 732.4 —
-  // a draw).
-  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // a draw) or "draw_effect" (an effect stated that the game is a draw,
+  // CR 104.4c — Divine Intervention; `source` is its card).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop" | "draw_effect";
   // The object whose effect won, for an effect win; the loop's card,
   // for a mandatory loop's draw.
   source?: string;
@@ -2250,6 +2251,9 @@ export interface PendingChoiceView {
   pay_life?: number;
   pay_damage?: number;
   pay_nothing?: boolean;
+  // #6187: "discard N cards at random" (CR 701.9b). A yes or no; the
+  // server picks the cards. "Yes" pays only with N cards in hand.
+  pay_random_discard?: number;
   // #6189: a payment that names nothing and is not mana — "put three
   // -1/-1 counters on this permanent", "draw a card", "exile the top
   // card of your library". pay_cost holds its printed words, and
@@ -3853,27 +3857,34 @@ export interface PayCardsView {
   // "minus_one_counter" (#5746): the permanents of the clause's kind the
   // chooser controls that can have a counter put on them; each one named
   // gets a -1/-1 counter.
-  // #6189, the cumulative-upkeep payments: "counter_opponent_creature"
-  // (a counter on a creature an opponent controls),
-  // "counters_on_source", "opponent_gains_life",
-  // "opponent_creates_token", "gain_control_land", "draw" and
-  // "exile_library_top". `picks: "players"` means the options are SEAT
-  // ids, not cards; `repeats` means one option may pay more than once
-  // (CR 702.24a: each choice is made separately for each age counter).
+  // "hand_to_library_top" (#6187): the chooser's hand, as a discard's;
+  // each one named goes on top of their library. "sacrifice_total_power"
+  // (#6187, Phyrexian Dreadnought): any number of options, at least one,
+  // whose `powers` add up to `total_power` or more; `count` is then 0.
   action:
     | "discard"
     | "sacrifice"
     | "exile_graveyard"
     | "tap"
     | "minus_one_counter"
+    | "hand_to_library_top"
+    | "sacrifice_total_power"
+    // #6189, the cumulative-upkeep payments: a counter on a creature an
+    // opponent controls, an opponent gaining life, an opponent creating
+    // a token, and gaining control of a land you don't control.
     | "counter_opponent_creature"
     | "opponent_gains_life"
     | "opponent_creates_token"
     | "gain_control_land";
   count: number;
   options: string[];
+  // #6189: `picks: "players"` means the options are SEAT ids, not
+  // cards; `repeats` means one option may pay more than once (CR
+  // 702.24a: each choice is made separately for each age counter).
   picks?: "players";
   repeats?: boolean;
+  total_power?: number;
+  powers?: Record<string, number>;
 }
 
 // A pay-unless payment that names nothing and is not mana (#6189).
@@ -4368,6 +4379,12 @@ export interface ActivatedAbilityView {
   // count), so the picker greys a repeat and opens even when the options
   // number exactly `discard_cost_n`. The engine refuses a repeat.
   discard_cost_different_names?: boolean;
+  // #6264: "Discard two nonland cards with the same name" (Sphinx of the
+  // Chimes). The picks must share a name (either half of a split card), so
+  // the picker greys a card that shares none with those already picked and
+  // opens even at exactly `discard_cost_n` options. The engine refuses a
+  // set that doesn't share one.
+  discard_cost_same_name?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.
@@ -4986,6 +5003,12 @@ export interface CastSurfaceView {
   // structured TargetSpec — the players and card instance IDs its
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
+  // #6245: a spell that names a creature type as it is cast (Selective
+  // Snare's "of the creature type of your choice", CR 601.2c). One option
+  // per type with the target clause's legal cards under it; the client
+  // asks for the type before the targets, narrows the picker to that
+  // type's cards and sends the type as `chosen_creature_type`.
+  cast_creature_types?: BeholdTypeOption[];
   legal_targets?: LegalTargetsView;
   // #764: every clause of a MULTI-clause target statement, in
   // printed order, each with its own legal set, count and printed

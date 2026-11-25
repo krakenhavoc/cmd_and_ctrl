@@ -80,7 +80,7 @@ func TestBecomeNamedModProblems(t *testing.T) {
 		{SetTypesMod(nil, nil), "no card type"},
 		{SetTypesMod([]string{"Artifact"}, []string{"Goblin"}), "not one of its card types"},
 		{SetTypesMod([]string{"Artifact"}, nil, "Mythic"), "not a supertype"},
-		{Mod{Kind: ModAddTypes, Types: []string{"Artifact"}, Supertypes: []string{"Legendary"}}, "only a setTypes or addSupertypes mod reads"},
+		{Mod{Kind: ModAddTypes, Types: []string{"Artifact"}, Supertypes: []string{"Legendary"}}, "only a setTypes, addSupertypes or removeSupertypes mod reads"},
 		{AddSupertypesMod(), "names no supertype"},
 		{AddSupertypesMod("Mythic"), "not a supertype"},
 	}

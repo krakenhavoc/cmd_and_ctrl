@@ -162,6 +162,28 @@ const (
 	// card of your library". It names nothing, and is a payment only
 	// while the library holds that many cards (CR 118.3).
 	PayActionExileLibraryTop PayActionKind = "exile_library_top"
+	// PayActionDiscardRandom discards Count cards from the payer's hand
+	// at random (#6187, CR 701.9b: the engine picks, not the payer):
+	// Balduvian Horde's "sacrifice it unless you discard a card at
+	// random". It names nothing, so the answer is yes or no, and "yes"
+	// is a payment only with at least Count cards in hand (CR 118.3).
+	// The cards are drawn as the payment is made, through the one discard
+	// path as a cost's.
+	PayActionDiscardRandom PayActionKind = "discard_random"
+	// PayActionHandToLibraryTop puts Count cards the payer names from
+	// their hand on top of their library (#6187): Tainted Specter's
+	// "unless they put a card from their hand on top of their library".
+	// A card pick from the hand, like a discard, but not a discard: no
+	// EventDiscardCard, nothing for madness to see.
+	PayActionHandToLibraryTop PayActionKind = "hand_to_library_top"
+	// PayActionSacrificeTotalPower sacrifices any number of permanents
+	// the payer controls matching Of whose total power is TotalPower or
+	// greater (#6187): Phyrexian Dreadnought's "sacrifice it unless you
+	// sacrifice any number of creatures with total power 12 or greater".
+	// A card pick of no fixed size: Count is unused, and a payment is
+	// one or more distinct options whose powers (as they are now, a
+	// negative one counting as itself) add up to TotalPower.
+	PayActionSacrificeTotalPower PayActionKind = "sacrifice_total_power"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -173,7 +195,7 @@ func (a *PayAction) NamesNothing() bool {
 	}
 	switch a.Kind {
 	case PayActionEnergy, PayActionLife, PayActionDamage, PayActionNothing, PayActionMana,
-		PayActionCountersOnSource, PayActionDraw, PayActionExileLibraryTop:
+		PayActionDiscardRandom, PayActionCountersOnSource, PayActionDraw, PayActionExileLibraryTop:
 		return true
 	}
 	return false
@@ -200,8 +222,18 @@ func PayActionWords(a PayAction) string {
 		return strconv.Itoa(a.Count) + " damage"
 	case PayActionEnergy:
 		return EnergyPaymentWords(a.Count)
+	case PayActionDiscardRandom:
+		return discardRandomWords(a.Count)
 	}
 	return ""
+}
+
+// discardRandomWords is "a card at random" or "N cards at random".
+func discardRandomWords(n int) string {
+	if n == 1 {
+		return "a card at random"
+	}
+	return strconv.Itoa(n) + " cards at random"
 }
 
 // payActionPayableLocked reports whether `chooser` can make a payment
@@ -229,6 +261,9 @@ func (g *Game) payActionPayableLocked(chooser uuid.UUID, a *PayAction) bool {
 	case PayActionExileLibraryTop:
 		// #6189, CR 118.3: the library must hold that many cards.
 		return a.Count > 0 && g.LibraryExileCostPayableForEffect(chooser, a.Count)
+	case PayActionDiscardRandom:
+		// #6187, CR 118.3: N cards in hand to draw from.
+		return a.Count > 0 && len(g.RandomDiscardPoolForEffect(chooser, uuid.Nil, nil)) >= a.Count
 	case PayActionMana:
 		// #4566: what payCostLocked would pay now, asked of a clone so
 		// the answer is the payer's own (canPayCostLocked).
@@ -265,6 +300,17 @@ func (g *Game) payActionCanPayLocked(chooser uuid.UUID, a *PayAction) bool {
 		return false
 	case a.NamesNothing():
 		return g.payActionPayableLocked(chooser, a)
+	case a.Kind == PayActionSacrificeTotalPower:
+		// #6187: every option together reaches the total, so some set
+		// of them does (CR 118.3). A negative power only lowers a sum,
+		// so it is left out of the best one.
+		total := 0
+		for _, id := range g.payActionOptionsLocked(chooser, a) {
+			if p := paymentPowerLocked(g, id); p > 0 {
+				total += p
+			}
+		}
+		return total >= a.TotalPower
 	case a.Repeats:
 		// #6189: one option can pay every pick, so any option will do.
 		return a.Count > 0 && len(g.payActionOptionsLocked(chooser, a)) > 0
@@ -361,6 +407,10 @@ type PayAction struct {
 	// two counters and naming one opponent twice is two lots of life.
 	// Additive (#522).
 	Repeats bool `json:",omitempty"`
+	// TotalPower is the power a PayActionSacrificeTotalPower's
+	// sacrificed permanents must add up to at least (#6187). Unused by
+	// every other kind. Additive (#522).
+	TotalPower int `json:",omitempty"`
 }
 
 // payActionOpponentLocked reports whether `other` is an opponent of
@@ -384,6 +434,17 @@ func (g *Game) createPayActionTokenLocked(controller uuid.UUID, key string) erro
 		return fmt.Errorf("%w: pay-action token %q", ErrUnknownEffectKey, key)
 	}
 	return g.CreateTokenForEffect(controller, tmpl, 1)
+}
+
+// paymentPowerLocked is the power a battlefield permanent has now, for
+// a total-power payment: the layered value with its counters
+// (Card.CurrentPower). Zero for a card that is not on the battlefield.
+func paymentPowerLocked(g *Game, id uuid.UUID) int {
+	c := findBattlefieldCard(g, id)
+	if c == nil {
+		return 0
+	}
+	return c.CurrentPower()
 }
 
 // PayActionPhrase is the verb phrase for one payment when its card gives
@@ -452,6 +513,15 @@ func PayActionPhrase(a PayAction) string {
 			return "exile the top card of your library"
 		}
 		return "exile the top " + n + " cards of your library"
+	case PayActionDiscardRandom:
+		return "discard " + discardRandomWords(a.Count)
+	case PayActionHandToLibraryTop:
+		if a.Count == 1 {
+			return "put a card from your hand on top of your library"
+		}
+		return "put " + n + " cards from your hand on top of your library"
+	case PayActionSacrificeTotalPower:
+		return "sacrifice permanents with total power " + strconv.Itoa(a.TotalPower) + " or greater"
 	case PayActionNothing:
 		return "say yes"
 	}
@@ -514,6 +584,17 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 			}
 			out = append(out, c.InstanceID)
 		}
+	case PayActionHandToLibraryTop:
+		// #6187: any card in the payer's hand, in hand order, except one
+		// whose exit an effect has already paused (#1445).
+		if p.Hand == nil {
+			return nil
+		}
+		for _, c := range p.Hand.Cards {
+			if !g.zoneChangePausedLocked(c.InstanceID) {
+				out = append(out, c.InstanceID)
+			}
+		}
 	case PayActionExileFromGraveyard:
 		// ADR 0187 §3: only the payer's own graveyard, in zone order.
 		if p.Graveyard == nil {
@@ -529,7 +610,7 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 		if a.TopOnly {
 			out = topOfPileOrder(out, a.Count)
 		}
-	case PayActionSacrifice:
+	case PayActionSacrifice, PayActionSacrificeTotalPower:
 		if g.Battlefield == nil {
 			return nil
 		}
@@ -620,7 +701,15 @@ func (g *Game) PayActionOptionsForEffect(chooser uuid.UUID, a *PayAction) []uuid
 func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked []uuid.UUID) error {
 	// An Either is never validated whole: the answer names a branch
 	// (resolvePayUnless), and the branch is validated as its own payment.
-	if a == nil || a.Kind == PayActionEither || len(picked) != a.Count {
+	if a == nil || a.Kind == PayActionEither {
+		return ErrInvalidParam
+	}
+	if a.Kind == PayActionSacrificeTotalPower {
+		// #6187: any number, at least one, adding up to the total.
+		if len(picked) == 0 {
+			return ErrInvalidParam
+		}
+	} else if len(picked) != a.Count {
 		return ErrInvalidParam
 	}
 	legal := make(map[uuid.UUID]bool)
@@ -638,6 +727,15 @@ func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked [
 			return ErrInvalidParam
 		}
 		seen[id] = true
+	}
+	if a.Kind == PayActionSacrificeTotalPower {
+		total := 0
+		for _, id := range picked {
+			total += paymentPowerLocked(g, id)
+		}
+		if total < a.TotalPower {
+			return ErrInvalidParam
+		}
 	}
 	return nil
 }
@@ -681,10 +779,50 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 			Source: source,
 			Cause:  MoveCause{Kind: MoveCauseCost, Controller: chooser},
 		}, picked, then)
-	case PayActionSacrifice:
+	case PayActionSacrifice, PayActionSacrificeTotalPower:
 		if err := g.payCostSacrificesLocked(picked, nil); err != nil {
 			return err
 		}
+	case PayActionDiscardRandom:
+		// #6187, CR 701.9b: the engine draws the cards as the payment is
+		// made, from the hand as it is now, and discards them as a cost's
+		// through the one discard path.
+		pool := g.RandomDiscardPoolForEffect(chooser, uuid.Nil, nil)
+		if len(pool) < a.Count {
+			return ErrInvalidParam
+		}
+		ids := g.ChooseAtRandomForEffect(RandomDraw{Player: chooser, Source: source}, pool, a.Count)
+		return g.discardCardsLocked(chooser, ids, discardOptions{
+			cause:  DiscardCauseCost,
+			source: source,
+			keyed:  then,
+		})
+	case PayActionHandToLibraryTop:
+		// #6187: each named card to the top of its owner's library, in
+		// the order named, through the exit primitive one batch at a
+		// time as a graveyard exile's are, so a commander's CR 903.9b
+		// offer resumes into the rest.
+		// The payer still knows the cards they put there, as
+		// payPutOnTopCostLocked's do (ADR 0088 Decision 3).
+		knowers := make(map[uuid.UUID]map[uuid.UUID]bool, len(picked))
+		for _, id := range picked {
+			card, _ := g.cardInZoneLocked(g.findCardZoneLocked(id), id)
+			knowers[id] = libraryOrderKnowers(card, nil, chooser, 1)
+		}
+		err := g.routeAllKeyedLocked(zoneRoute{
+			Dst:    ZoneLibrary,
+			Actor:  chooser,
+			Source: source,
+			Cause:  MoveCause{Kind: MoveCauseCost, Controller: chooser},
+		}, picked, then)
+		for _, id := range picked {
+			if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneLibrary {
+				if c := g.findCardByIDLocked(id); c != nil {
+					c.KnownBy = knowers[id]
+				}
+			}
+		}
+		return err
 	case PayActionTap:
 		// #1997: the taps are the payment, each announced as a tap
 		// (EventTapCard) through the path a tap cost pays with.

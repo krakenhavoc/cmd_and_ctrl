@@ -314,6 +314,14 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
           hintWarn: !c.pay_state.payable,
         };
       }
+      if (c.pay_random_discard) {
+        // #6187, CR 701.9b: the server picks the cards.
+        return {
+          title: reason || `${ctx.sourceName} — ${payPhrase(c)}?`,
+          tag: "pay unless",
+          hint: `${randomDiscardHint(c.pay_random_discard)}, or don't and let ${ctx.sourceName} do its thing.`,
+        };
+      }
       return {
         title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
         tag: "pay unless",
@@ -915,6 +923,7 @@ export function payPhrase(
     | "pay_cost"
     | "pay_damage"
     | "pay_nothing"
+    | "pay_random_discard"
     | "pay_state"
     | "pay_cards"
     | "pay_either"
@@ -932,19 +941,12 @@ export function payPhrase(
     return `take ${cost || `${c.pay_damage} damage`}`;
   }
   if (c.pay_nothing) return c.accept_label ? lowerFirst(c.accept_label) : "say yes";
+  if (c.pay_random_discard) return lowerFirst(cost) || randomDiscardWords(c.pay_random_discard);
   // #6189: the card's own words ("Draw a card", "Exile the top card of
   // your library"), which pay_cost carries.
   if (c.pay_state) return lowerFirst(cost) || payStateWords(c.pay_state);
   if (c.pay_cards) return lowerFirst(cost) || "pay the cost";
   return `pay ${cost || "the cost"}${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}`;
-}
-
-// payStateHint says what a pay_state payment does, or why it cannot be
-// made (#6189, CR 118.3).
-function payStateHint(s: PayStateView): string {
-  const words = payStateWords(s);
-  if (!s.payable) return `You can't ${words}, so you can't pay this.`;
-  return `${words[0].toUpperCase()}${words.slice(1)}, or don't.`;
 }
 
 // payStateWords is a pay_state payment as a verb phrase when the card
@@ -958,6 +960,26 @@ export function payStateWords(s: PayStateView): string {
       : `exile the top ${n} cards of your library`;
   }
   return n === 1 ? "put a counter on this permanent" : `put ${n} counters on this permanent`;
+}
+
+// payStateHint says what a pay_state payment does, or why it cannot be
+// made (#6189, CR 118.3).
+function payStateHint(s: PayStateView): string {
+  const words = payStateWords(s);
+  if (!s.payable) return `You can't ${words}, so you can't pay this.`;
+  return `${words[0].toUpperCase()}${words.slice(1)}, or don't.`;
+}
+
+// randomDiscardHint says who picks a random discard's cards.
+function randomDiscardHint(n: number): string {
+  return n === 1
+    ? "Discard a card at random from your hand (you don't choose which)"
+    : `Discard ${n} cards at random from your hand (you don't choose which)`;
+}
+
+// randomDiscardWords is "discard a card at random" (#6187).
+function randomDiscardWords(n: number): string {
+  return n === 1 ? "discard a card at random" : `discard ${n} cards at random`;
 }
 
 // payButtonLabel is a pay_unless's "Pay" button when the card names no
@@ -992,6 +1014,7 @@ function anyPlayerHowToPay(c: PendingChoiceView, ctx: ChoiceDockContext): string
     return `${ctx.sourceName} deals ${c.pay_damage} damage to you if you take it.`;
   }
   if (c.pay_nothing) return "It costs you nothing.";
+  if (c.pay_random_discard) return `${randomDiscardHint(c.pay_random_discard)}, or don't.`;
   if (c.pay_state) return payStateHint(c.pay_state);
   return `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't.`;
 }

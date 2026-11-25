@@ -145,6 +145,7 @@
     payCardPicksOf,
     payCardsFull,
     payCardsOptions,
+    payCardsProgress,
     payCardsReady,
     payCardsVerb,
     togglePayCard,
@@ -2947,7 +2948,7 @@
               </li>
             {/each}
           </ul>
-          <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
+          <p class="prompt-hint sub">{payCardsProgress(payCards, payCardPicks)}</p>
         {:else}
           <p class="prompt-hint sub">{payCardsVerb(payCards)}</p>
           <ul class="prompt-options">
@@ -2972,7 +2973,7 @@
               </li>
             {/each}
           </ul>
-          <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
+          <p class="prompt-hint sub">{payCardsProgress(payCards, payCardPicks)}</p>
         {/if}
       {:else if payEither}
         <!-- ADR 0187 §5: an either payment with no card branch open

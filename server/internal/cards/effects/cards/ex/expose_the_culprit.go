@@ -99,6 +99,9 @@ var exposeTheCulpritExile = effects.AskedPick("choose-cards/expose-the-culprit-e
 	if len(r.Picked) == 0 {
 		return nil
 	}
+	// #6175: the chosen creatures are exiled in a face-down pile. Nothing
+	// chosen is no pile.
+	effects.NotePileOrGuess(ctx)
 	return ctx.Game.ExileCardsKeyedForEffect(r.Picked, ctx.ItemTail(exposeTheCulpritCloak))
 })
 

@@ -934,6 +934,15 @@ describe("the color or colors of your choice (#6146)", () => {
   });
 });
 
+describe("#6187 random discard payment", () => {
+  it("says the server picks the card", () => {
+    expect(payPhrase({ pay_random_discard: 1 })).toBe("discard a card at random");
+    expect(payPhrase({ pay_random_discard: 2, pay_cost: "Discard two cards at random" })).toBe(
+      "discard two cards at random",
+    );
+  });
+});
+
 describe("#6189 a payment that names nothing and is not mana", () => {
   it("reads as the card's own words, and says when it can't be paid", () => {
     const draw = { pay_state: { action: "draw" as const, count: 1, payable: true } };

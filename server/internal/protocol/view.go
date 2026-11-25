@@ -743,6 +743,11 @@ type PendingChoiceView struct {
 	PayLife    *int `json:"pay_life,omitempty"`
 	PayDamage  *int `json:"pay_damage,omitempty"`
 	PayNothing bool `json:"pay_nothing,omitempty"`
+	// PayRandomDiscard is a payment that discards that many cards at
+	// random from the chooser's hand (#6187, CR 701.9b): the answer is
+	// yes or no, and the engine picks the cards. "Yes" is a payment only
+	// with that many cards in hand.
+	PayRandomDiscard *int `json:"pay_random_discard,omitempty"`
 
 	// PayState is a payment that names nothing and is not mana (#6189):
 	// "put three -1/-1 counters on this permanent", "draw a card",
@@ -2403,6 +2408,14 @@ type PayCardsView struct {
 	// separately for each age counter, so one creature may take two
 	// counters). Absent for every other payment.
 	Repeats bool `json:"repeats,omitempty"`
+	// TotalPower is set for a "sacrifice_total_power" payment (#6187,
+	// Phyrexian Dreadnought): the answer names any number of Options,
+	// at least one, whose Powers add up to TotalPower or more. Count is
+	// then 0 and unused.
+	TotalPower int `json:"total_power,omitempty"`
+	// Powers is each option's power now, keyed by instance ID, for a
+	// "sacrifice_total_power" payment. Absent for every other.
+	Powers map[string]int `json:"powers,omitempty"`
 }
 
 // PayStateView is a pay-unless payment that names nothing and is not
@@ -4538,7 +4551,15 @@ type CastSurfaceView struct {
 	// keyed off target_mode alone. An empty-but-present entry means
 	// "no legal target right now", which the client treats as
 	// uncastable. Added in S20 sub-PR 1.
-	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// CastCreatureTypes marks a spell that names a creature type as it is
+	// cast (#6245, CR 601.2c: Selective Snare's "of the creature type of
+	// your choice"): one option per type a creature on the battlefield
+	// has and that its target clause can find, with that clause's legal
+	// cards under it. The client asks for the type before the targets,
+	// narrows the picker to that type's cards and sends the type as
+	// `chosen_creature_type`. Absent on every other spell.
+	CastCreatureTypes []BeholdTypeOption `json:"cast_creature_types,omitempty"`
+	LegalTargets      *LegalTargetsView  `json:"legal_targets,omitempty"`
 	// Clauses is every clause of a MULTI-clause target statement, in
 	// printed order, each with its own legal set, count and printed
 	// wording — Bite Down's "target creature you control" then
@@ -5431,6 +5452,10 @@ type ActivatedAbilityView struct {
 	// because they may not differ. The engine refuses a `discard_ids` set
 	// whose names repeat. Public: it is the printed rule.
 	DiscardCostDifferentNames bool `json:"discard_cost_different_names,omitempty"`
+	// DiscardCostSameName marks the "with the same name" set rule (#6264,
+	// Sphinx of the Chimes): the picked cards must share a name. The
+	// server refuses a set that doesn't.
+	DiscardCostSameName bool `json:"discard_cost_same_name,omitempty"`
 	// RevealCostN / Label / Options describe a "Reveal N <quality> cards
 	// from your hand" cost component (#2598, ADR 0020's 2026-10-08
 	// amendment) — Martyr of Bones' "Reveal X black cards". RevealCostN
@@ -7268,6 +7293,7 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	// answer about their own budget.
 	s.PermissionTypes = nil
 	s.LegalTargets = nil
+	s.CastCreatureTypes = nil
 	s.Clauses = nil
 	// #1389: a price is one seat's answer — a cost modifier may be
 	// scoped to one player.
@@ -7819,7 +7845,11 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// board where something charges for it. Asked of the engine's own
 	// accessor and only when a tax exists at all, so no board without
 	// one pays for the walk.
-	if g.TargetTaxesExistForEffect() {
+	// #6206: or because the SPELL charges itself for each target
+	// (Phyrexian Purge's "costs 3 life more to cast for each target").
+	// Asked by the face's catalog key, so the cheap check still comes
+	// before the live-card lookup.
+	if g.TargetTaxesExistForEffect() || !game.LifePerTargetForKey(f.key).Empty() {
 		if live, ok := liveCardForView(g, c); ok {
 			live.SetFace(f.index)
 			stampCastTargetTaxes(g, caster, live, &out)
@@ -8253,6 +8283,31 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	spec = flashIf.TargetSpecUnder(spec)
 	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
+	out.CastCreatureTypes = viewOfCastCreatureTypes(g, src, spec)
+	return out
+}
+
+// viewOfCastCreatureTypes is CastSurfaceView.CastCreatureTypes (#6245):
+// for a spell that names a creature type as it is cast, each candidate
+// type with the clause's legal cards when the spell has that type
+// stamped, as CastSpell stamps it. Nil for every other spell. Caller must
+// hold g.mu.
+func viewOfCastCreatureTypes(g *game.Game, src game.TargetSource, spec *game.TargetSpec) []BeholdTypeOption {
+	if src.Object == nil || spec == nil || !game.ChoosesCreatureTypeAsCast(*src.Object) {
+		return nil
+	}
+	var out []BeholdTypeOption
+	for _, t := range g.CastCreatureTypeCandidatesForEffect() {
+		typed := *src.Object
+		typed.NamedTribe = t
+		tsrc := src
+		tsrc.Object = &typed
+		lt := g.LegalTargetsForEffect(tsrc, spec)
+		if len(lt.Cards) == 0 {
+			continue
+		}
+		out = append(out, BeholdTypeOption{Type: t, Cards: cardIDStrings(lt.Cards)})
+	}
 	return out
 }
 
@@ -10783,6 +10838,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					Count:   a.Count,
 					Payable: g.PayActionPayableForEffect(c.Chooser, a),
 				}
+			case game.PayActionDiscardRandom:
+				v.PayRandomDiscard = &n
 			}
 		} else if a != nil {
 			v.PayCards = &PayCardsView{
@@ -10798,6 +10855,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PayCards.Picks = "players"
 			}
 			v.PayCards.Repeats = a.Repeats
+			if a.Kind == game.PayActionSacrificeTotalPower {
+				// #6187: the total and what each option adds to it.
+				v.PayCards.TotalPower = a.TotalPower
+				v.PayCards.Powers = make(map[string]int, len(v.PayCards.Options))
+				for _, id := range g.PayActionOptionsForEffect(c.Chooser, a) {
+					v.PayCards.Powers[id.String()] = g.AltTappedPowerForEffect(id)
+				}
+			}
 		}
 		if pa := c.PayAmount; pa != nil {
 			v.PayAmount = &PayAmountView{
@@ -12638,7 +12703,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		// about. Only the chooser gets them; every seat still sees what
 		// the payment is and how many cards it takes. A sacrifice's
 		// options are public permanents and go to everyone.
-		if c.PayCards != nil && c.PayCards.Action == string(game.PayActionDiscard) && c.Chooser != viewerID {
+		// #6187: so is a hand-to-library payment's.
+		if c.PayCards != nil && (c.PayCards.Action == string(game.PayActionDiscard) || c.PayCards.Action == string(game.PayActionHandToLibraryTop)) && c.Chooser != viewerID {
 			pc := *c.PayCards
 			pc.Options = []string{}
 			out[i].PayCards = &pc
@@ -13090,6 +13156,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Modes = nil
 	out.AdditionalCost = nil
 	out.LegalTargets = nil
+	out.CastCreatureTypes = nil
 	out.Clauses = nil
 	out.CantCast = ""
 	out.TapCost = nil
@@ -13202,6 +13269,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// player who can read the card, and each one quotes it: a mode
 	// prompt, an additional-cost label, a target clause's bounds.
 	out.LegalTargets = nil
+	out.CastCreatureTypes = nil
 	// #764: the per-clause legal sets name the card as loudly as the
 	// single one does — "target creature you control, then target
 	// creature or planeswalker you don't control" is the card.
@@ -14434,6 +14502,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.DiscardCostCountFromX = dc.CountFromX
 			v.DiscardCostManaValueX = dc.ManaValueX
 			v.DiscardCostDifferentNames = dc.DifferentNames
+			v.DiscardCostSameName = dc.SameName
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.
