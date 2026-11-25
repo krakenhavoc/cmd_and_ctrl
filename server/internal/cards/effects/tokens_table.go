@@ -710,4 +710,7 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 110 (#5511): Experimental Overload's X/X blue and red Weird (printed */*; a 0/0
 	// placeholder, set to the instants and sorceries in your graveyard as it is created).
 	"0/0 blue and red Weird": {Name: "Weird", TypeLine: "Token Creature — Weird", Colors: []string{"U", "R"}, PrintedPTKnown: true},
+
+	// S82 OLD batch 136 (#5514): Alirios, Enraptured's Reflection.
+	"3/2 blue Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 3, Toughness: 2, Colors: []string{"U"}},
 }
