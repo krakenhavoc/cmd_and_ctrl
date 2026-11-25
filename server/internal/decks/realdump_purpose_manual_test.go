@@ -344,6 +344,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 296 (#5545).
 	"Inverter of Truth": "exiles the cards of its controller's own library, face down, and shuffles their graveyard in: it touches no permanent, so there is no board to wipe",
+
+	// S82 OLD batch 304 (#5546).
+	"Necromancer's Covenant": "exiles the creature cards in one graveyard, which holds cards and no permanents, and makes a Zombie for each: graveyard hate, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
