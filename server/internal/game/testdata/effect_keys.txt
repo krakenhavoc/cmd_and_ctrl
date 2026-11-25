@@ -1579,6 +1579,7 @@ choose choose-cards/s82-old-b209-aim-counters
 choose choose-cards/s82-old-b212-board-the-weatherlight-take
 choose choose-cards/s82-old-b212-urzas-tome-exile
 choose choose-cards/s82-old-b247-benefaction-of-rhonas-take
+choose choose-cards/s82-old-b292-brain-in-a-jar-cast
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
