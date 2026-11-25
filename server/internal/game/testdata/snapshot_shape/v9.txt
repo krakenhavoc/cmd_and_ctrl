@@ -3003,6 +3003,7 @@ followUpParks[].then.permission.cost	string
 followUpParks[].then.permission.costLess	number:int
 followUpParks[].then.permission.costMore	number:int
 followUpParks[].then.permission.costMoreMana	string
+followUpParks[].then.permission.costMoreUnlessTargetsYourCreature	number:int
 followUpParks[].then.permission.discardCard	bool
 followUpParks[].then.permission.discardCardInAddition	bool
 followUpParks[].then.permission.discardLandCard	bool
@@ -3717,6 +3718,7 @@ frozenEntries[].event.counterTail.then.permission.cost	string
 frozenEntries[].event.counterTail.then.permission.costLess	number:int
 frozenEntries[].event.counterTail.then.permission.costMore	number:int
 frozenEntries[].event.counterTail.then.permission.costMoreMana	string
+frozenEntries[].event.counterTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.counterTail.then.permission.discardCard	bool
 frozenEntries[].event.counterTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.counterTail.then.permission.discardLandCard	bool
@@ -4409,6 +4411,7 @@ frozenEntries[].event.damageTail.each.each.permission.cost	string
 frozenEntries[].event.damageTail.each.each.permission.costLess	number:int
 frozenEntries[].event.damageTail.each.each.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.each.permission.costMoreMana	string
+frozenEntries[].event.damageTail.each.each.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.damageTail.each.each.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.each.permission.discardCardInAddition	bool
 frozenEntries[].event.damageTail.each.each.permission.discardLandCard	bool
@@ -5092,6 +5095,7 @@ frozenEntries[].event.damageTail.each.then.permission.cost	string
 frozenEntries[].event.damageTail.each.then.permission.costLess	number:int
 frozenEntries[].event.damageTail.each.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.each.then.permission.costMoreMana	string
+frozenEntries[].event.damageTail.each.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.damageTail.each.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.each.then.permission.discardCardInAddition	bool
 frozenEntries[].event.damageTail.each.then.permission.discardLandCard	bool
@@ -6001,6 +6005,7 @@ frozenEntries[].event.damageTail.then.permission.cost	string
 frozenEntries[].event.damageTail.then.permission.costLess	number:int
 frozenEntries[].event.damageTail.then.permission.costMore	number:int
 frozenEntries[].event.damageTail.then.permission.costMoreMana	string
+frozenEntries[].event.damageTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.damageTail.then.permission.discardCard	bool
 frozenEntries[].event.damageTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.damageTail.then.permission.discardLandCard	bool
@@ -6809,6 +6814,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costLess	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMoreMana	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
@@ -7568,6 +7574,7 @@ frozenEntries[].event.entryTail.batch.then.permission.cost	string
 frozenEntries[].event.entryTail.batch.then.permission.costLess	number:int
 frozenEntries[].event.entryTail.batch.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.batch.then.permission.costMoreMana	string
+frozenEntries[].event.entryTail.batch.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.entryTail.batch.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.batch.then.permission.discardLandCard	bool
@@ -8251,6 +8258,7 @@ frozenEntries[].event.entryTail.keyed.permission.cost	string
 frozenEntries[].event.entryTail.keyed.permission.costLess	number:int
 frozenEntries[].event.entryTail.keyed.permission.costMore	number:int
 frozenEntries[].event.entryTail.keyed.permission.costMoreMana	string
+frozenEntries[].event.entryTail.keyed.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.entryTail.keyed.permission.discardCard	bool
 frozenEntries[].event.entryTail.keyed.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.keyed.permission.discardLandCard	bool
@@ -8968,6 +8976,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.cost	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costLess	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMore	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMoreMana	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
@@ -9673,6 +9682,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.cost	string
 frozenEntries[].event.entryTail.tokens.then.permission.costLess	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.costMore	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.costMoreMana	string
+frozenEntries[].event.entryTail.tokens.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.discardCard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardCardInAddition	bool
 frozenEntries[].event.entryTail.tokens.then.permission.discardLandCard	bool
@@ -10822,6 +10832,7 @@ frozenEntries[].event.keywordActionTail.then.permission.cost	string
 frozenEntries[].event.keywordActionTail.then.permission.costLess	number:int
 frozenEntries[].event.keywordActionTail.then.permission.costMore	number:int
 frozenEntries[].event.keywordActionTail.then.permission.costMoreMana	string
+frozenEntries[].event.keywordActionTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.keywordActionTail.then.permission.discardCard	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.keywordActionTail.then.permission.discardLandCard	bool
@@ -11531,6 +11542,7 @@ frozenEntries[].event.lifeTail.each.then.permission.cost	string
 frozenEntries[].event.lifeTail.each.then.permission.costLess	number:int
 frozenEntries[].event.lifeTail.each.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.each.then.permission.costMoreMana	string
+frozenEntries[].event.lifeTail.each.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.lifeTail.each.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardCardInAddition	bool
 frozenEntries[].event.lifeTail.each.then.permission.discardLandCard	bool
@@ -12217,6 +12229,7 @@ frozenEntries[].event.lifeTail.then.permission.cost	string
 frozenEntries[].event.lifeTail.then.permission.costLess	number:int
 frozenEntries[].event.lifeTail.then.permission.costMore	number:int
 frozenEntries[].event.lifeTail.then.permission.costMoreMana	string
+frozenEntries[].event.lifeTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.lifeTail.then.permission.discardCard	bool
 frozenEntries[].event.lifeTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.lifeTail.then.permission.discardLandCard	bool
@@ -13791,6 +13804,7 @@ frozenEntries[].event.millTail.run.then.permission.cost	string
 frozenEntries[].event.millTail.run.then.permission.costLess	number:int
 frozenEntries[].event.millTail.run.then.permission.costMore	number:int
 frozenEntries[].event.millTail.run.then.permission.costMoreMana	string
+frozenEntries[].event.millTail.run.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.millTail.run.then.permission.discardCard	bool
 frozenEntries[].event.millTail.run.then.permission.discardCardInAddition	bool
 frozenEntries[].event.millTail.run.then.permission.discardLandCard	bool
@@ -14472,6 +14486,7 @@ frozenEntries[].event.millTail.then.permission.cost	string
 frozenEntries[].event.millTail.then.permission.costLess	number:int
 frozenEntries[].event.millTail.then.permission.costMore	number:int
 frozenEntries[].event.millTail.then.permission.costMoreMana	string
+frozenEntries[].event.millTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.millTail.then.permission.discardCard	bool
 frozenEntries[].event.millTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.millTail.then.permission.discardLandCard	bool
@@ -16247,6 +16262,7 @@ frozenEntries[].event.tokenTail.then.permission.cost	string
 frozenEntries[].event.tokenTail.then.permission.costLess	number:int
 frozenEntries[].event.tokenTail.then.permission.costMore	number:int
 frozenEntries[].event.tokenTail.then.permission.costMoreMana	string
+frozenEntries[].event.tokenTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.tokenTail.then.permission.discardCard	bool
 frozenEntries[].event.tokenTail.then.permission.discardCardInAddition	bool
 frozenEntries[].event.tokenTail.then.permission.discardLandCard	bool
@@ -18291,6 +18307,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMoreMana	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
@@ -19008,6 +19025,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMoreMana	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
@@ -19689,6 +19707,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMoreMana	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
@@ -20390,6 +20409,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMoreMana	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
@@ -21160,6 +21180,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.cost	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMoreMana	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardCardInAddition	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
@@ -25394,6 +25415,7 @@ movesAwaitingTokens[].counterTail.then.permission.cost	string
 movesAwaitingTokens[].counterTail.then.permission.costLess	number:int
 movesAwaitingTokens[].counterTail.then.permission.costMore	number:int
 movesAwaitingTokens[].counterTail.then.permission.costMoreMana	string
+movesAwaitingTokens[].counterTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].counterTail.then.permission.discardCard	bool
 movesAwaitingTokens[].counterTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].counterTail.then.permission.discardLandCard	bool
@@ -26086,6 +26108,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.cost	string
 movesAwaitingTokens[].damageTail.each.each.permission.costLess	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.costMore	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.costMoreMana	string
+movesAwaitingTokens[].damageTail.each.each.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.discardCard	bool
 movesAwaitingTokens[].damageTail.each.each.permission.discardCardInAddition	bool
 movesAwaitingTokens[].damageTail.each.each.permission.discardLandCard	bool
@@ -26769,6 +26792,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.cost	string
 movesAwaitingTokens[].damageTail.each.then.permission.costLess	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.costMore	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.costMoreMana	string
+movesAwaitingTokens[].damageTail.each.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.discardCard	bool
 movesAwaitingTokens[].damageTail.each.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].damageTail.each.then.permission.discardLandCard	bool
@@ -27678,6 +27702,7 @@ movesAwaitingTokens[].damageTail.then.permission.cost	string
 movesAwaitingTokens[].damageTail.then.permission.costLess	number:int
 movesAwaitingTokens[].damageTail.then.permission.costMore	number:int
 movesAwaitingTokens[].damageTail.then.permission.costMoreMana	string
+movesAwaitingTokens[].damageTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].damageTail.then.permission.discardCard	bool
 movesAwaitingTokens[].damageTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].damageTail.then.permission.discardLandCard	bool
@@ -28486,6 +28511,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.cost	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costMore	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costMoreMana	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.discardLandCard	bool
@@ -29245,6 +29271,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.cost	string
 movesAwaitingTokens[].entryTail.batch.then.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.costMore	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.costMoreMana	string
+movesAwaitingTokens[].entryTail.batch.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.discardLandCard	bool
@@ -29928,6 +29955,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.cost	string
 movesAwaitingTokens[].entryTail.keyed.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.costMore	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.costMoreMana	string
+movesAwaitingTokens[].entryTail.keyed.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.keyed.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.keyed.permission.discardLandCard	bool
@@ -30645,6 +30673,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.cost	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costMore	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costMoreMana	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.discardLandCard	bool
@@ -31350,6 +31379,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.cost	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.costLess	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.costMore	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.costMoreMana	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.discardCard	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.discardLandCard	bool
@@ -32499,6 +32529,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.cost	string
 movesAwaitingTokens[].keywordActionTail.then.permission.costLess	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.costMore	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.costMoreMana	string
+movesAwaitingTokens[].keywordActionTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.discardCard	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.discardLandCard	bool
@@ -33208,6 +33239,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.cost	string
 movesAwaitingTokens[].lifeTail.each.then.permission.costLess	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.costMore	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.costMoreMana	string
+movesAwaitingTokens[].lifeTail.each.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.discardCard	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.discardLandCard	bool
@@ -33894,6 +33926,7 @@ movesAwaitingTokens[].lifeTail.then.permission.cost	string
 movesAwaitingTokens[].lifeTail.then.permission.costLess	number:int
 movesAwaitingTokens[].lifeTail.then.permission.costMore	number:int
 movesAwaitingTokens[].lifeTail.then.permission.costMoreMana	string
+movesAwaitingTokens[].lifeTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].lifeTail.then.permission.discardCard	bool
 movesAwaitingTokens[].lifeTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].lifeTail.then.permission.discardLandCard	bool
@@ -35468,6 +35501,7 @@ movesAwaitingTokens[].millTail.run.then.permission.cost	string
 movesAwaitingTokens[].millTail.run.then.permission.costLess	number:int
 movesAwaitingTokens[].millTail.run.then.permission.costMore	number:int
 movesAwaitingTokens[].millTail.run.then.permission.costMoreMana	string
+movesAwaitingTokens[].millTail.run.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].millTail.run.then.permission.discardCard	bool
 movesAwaitingTokens[].millTail.run.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].millTail.run.then.permission.discardLandCard	bool
@@ -36149,6 +36183,7 @@ movesAwaitingTokens[].millTail.then.permission.cost	string
 movesAwaitingTokens[].millTail.then.permission.costLess	number:int
 movesAwaitingTokens[].millTail.then.permission.costMore	number:int
 movesAwaitingTokens[].millTail.then.permission.costMoreMana	string
+movesAwaitingTokens[].millTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].millTail.then.permission.discardCard	bool
 movesAwaitingTokens[].millTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].millTail.then.permission.discardLandCard	bool
@@ -37924,6 +37959,7 @@ movesAwaitingTokens[].tokenTail.then.permission.cost	string
 movesAwaitingTokens[].tokenTail.then.permission.costLess	number:int
 movesAwaitingTokens[].tokenTail.then.permission.costMore	number:int
 movesAwaitingTokens[].tokenTail.then.permission.costMoreMana	string
+movesAwaitingTokens[].tokenTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].tokenTail.then.permission.discardCard	bool
 movesAwaitingTokens[].tokenTail.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].tokenTail.then.permission.discardLandCard	bool
@@ -39968,6 +40004,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costMoreMana	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
@@ -40685,6 +40722,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.cost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costMoreMana	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
@@ -41366,6 +41404,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costMore	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costMoreMana	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.discardLandCard	bool
@@ -42067,6 +42106,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costMore	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costMoreMana	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.discardLandCard	bool
@@ -42837,6 +42877,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.cost	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costLess	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costMore	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costMoreMana	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.discardCard	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.discardCardInAddition	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
@@ -46477,6 +46518,7 @@ pendingChoices[].attackSplit.tail.permission.cost	string
 pendingChoices[].attackSplit.tail.permission.costLess	number:int
 pendingChoices[].attackSplit.tail.permission.costMore	number:int
 pendingChoices[].attackSplit.tail.permission.costMoreMana	string
+pendingChoices[].attackSplit.tail.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].attackSplit.tail.permission.discardCard	bool
 pendingChoices[].attackSplit.tail.permission.discardCardInAddition	bool
 pendingChoices[].attackSplit.tail.permission.discardLandCard	bool
@@ -48796,6 +48838,7 @@ pendingChoices[].diceRoll.then.permission.cost	string
 pendingChoices[].diceRoll.then.permission.costLess	number:int
 pendingChoices[].diceRoll.then.permission.costMore	number:int
 pendingChoices[].diceRoll.then.permission.costMoreMana	string
+pendingChoices[].diceRoll.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].diceRoll.then.permission.discardCard	bool
 pendingChoices[].diceRoll.then.permission.discardCardInAddition	bool
 pendingChoices[].diceRoll.then.permission.discardLandCard	bool
@@ -49966,6 +50009,7 @@ pendingChoices[].divideShield.walk.each.permission.cost	string
 pendingChoices[].divideShield.walk.each.permission.costLess	number:int
 pendingChoices[].divideShield.walk.each.permission.costMore	number:int
 pendingChoices[].divideShield.walk.each.permission.costMoreMana	string
+pendingChoices[].divideShield.walk.each.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].divideShield.walk.each.permission.discardCard	bool
 pendingChoices[].divideShield.walk.each.permission.discardCardInAddition	bool
 pendingChoices[].divideShield.walk.each.permission.discardLandCard	bool
@@ -50649,6 +50693,7 @@ pendingChoices[].divideShield.walk.then.permission.cost	string
 pendingChoices[].divideShield.walk.then.permission.costLess	number:int
 pendingChoices[].divideShield.walk.then.permission.costMore	number:int
 pendingChoices[].divideShield.walk.then.permission.costMoreMana	string
+pendingChoices[].divideShield.walk.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].divideShield.walk.then.permission.discardCard	bool
 pendingChoices[].divideShield.walk.then.permission.discardCardInAddition	bool
 pendingChoices[].divideShield.walk.then.permission.discardLandCard	bool
@@ -51338,6 +51383,7 @@ pendingChoices[].libraryOrder.then.permission.cost	string
 pendingChoices[].libraryOrder.then.permission.costLess	number:int
 pendingChoices[].libraryOrder.then.permission.costMore	number:int
 pendingChoices[].libraryOrder.then.permission.costMoreMana	string
+pendingChoices[].libraryOrder.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].libraryOrder.then.permission.discardCard	bool
 pendingChoices[].libraryOrder.then.permission.discardCardInAddition	bool
 pendingChoices[].libraryOrder.then.permission.discardLandCard	bool
@@ -52082,6 +52128,7 @@ pendingChoices[].nameThen.permission.cost	string
 pendingChoices[].nameThen.permission.costLess	number:int
 pendingChoices[].nameThen.permission.costMore	number:int
 pendingChoices[].nameThen.permission.costMoreMana	string
+pendingChoices[].nameThen.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].nameThen.permission.discardCard	bool
 pendingChoices[].nameThen.permission.discardCardInAddition	bool
 pendingChoices[].nameThen.permission.discardLandCard	bool
@@ -53278,6 +53325,7 @@ pendingChoices[].pickTail.permission.cost	string
 pendingChoices[].pickTail.permission.costLess	number:int
 pendingChoices[].pickTail.permission.costMore	number:int
 pendingChoices[].pickTail.permission.costMoreMana	string
+pendingChoices[].pickTail.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].pickTail.permission.discardCard	bool
 pendingChoices[].pickTail.permission.discardCardInAddition	bool
 pendingChoices[].pickTail.permission.discardLandCard	bool
@@ -54006,6 +54054,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.discardLandCard	bool
@@ -54698,6 +54747,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.cost	st
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costLess	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.discardLandCard	bool
@@ -55381,6 +55431,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.cost	st
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.discardLandCard	bool
@@ -56290,6 +56341,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.discardLandCard	bool
@@ -57098,6 +57150,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.discardLandCard	bool
@@ -57857,6 +57910,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.cost	st
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.discardLandCard	bool
@@ -58540,6 +58594,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.cost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.discardLandCard	bool
@@ -59257,6 +59312,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.discardLandCard	bool
@@ -59962,6 +60018,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.cost	s
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.discardLandCard	bool
@@ -61111,6 +61168,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.cost	
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.discardLandCard	bool
@@ -61820,6 +61878,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.cost	stri
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.discardLandCard	bool
@@ -62506,6 +62565,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.discardLandCard	bool
@@ -64080,6 +64140,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.cost	strin
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.discardLandCard	bool
@@ -64761,6 +64822,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.millTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.millTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.discardLandCard	bool
@@ -66536,6 +66598,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.cost	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.discardLandCard	bool
@@ -68580,6 +68643,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.discardLandCard	bool
@@ -69297,6 +69361,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.discardLandCard	bool
@@ -69978,6 +70043,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.cos
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.discardLandCard	bool
@@ -70679,6 +70745,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.c
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.discardLandCard	bool
@@ -71449,6 +71516,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costLess	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMore	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMoreMana	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardCardInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.discardLandCard	bool
@@ -72605,6 +72673,7 @@ pendingChoices[].scryThen.permission.cost	string
 pendingChoices[].scryThen.permission.costLess	number:int
 pendingChoices[].scryThen.permission.costMore	number:int
 pendingChoices[].scryThen.permission.costMoreMana	string
+pendingChoices[].scryThen.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].scryThen.permission.discardCard	bool
 pendingChoices[].scryThen.permission.discardCardInAddition	bool
 pendingChoices[].scryThen.permission.discardLandCard	bool
@@ -73335,6 +73404,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.cost	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.costLess	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.costMore	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.costMoreMana	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.costMoreUnlessTargetsYourCreature	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardCardInAddition	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.discardLandCard	bool
@@ -79541,6 +79611,7 @@ seats[].castPermissions[].cost	string
 seats[].castPermissions[].costLess	number:int
 seats[].castPermissions[].costMore	number:int
 seats[].castPermissions[].costMoreMana	string
+seats[].castPermissions[].costMoreUnlessTargetsYourCreature	number:int
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardCardInAddition	bool
 seats[].castPermissions[].discardLandCard	bool

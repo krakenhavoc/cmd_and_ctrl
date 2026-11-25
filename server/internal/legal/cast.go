@@ -940,7 +940,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// targets too, so each set is solved against the life it leaves the
 	// seat -- the same rule, and the same reason, as a mana price that
 	// reads targets.
-	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect()
+	// #6157: a permission whose surcharge reads the targets prices per set
+	// too (game.TargetSurchargeFor).
+	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect() ||
+		(perm != nil && perm.CostMoreUnlessTargetsYourCreature > 0)
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
 	// whole of its X, and the mana cost it prints has no {X} slot at
@@ -1548,7 +1551,7 @@ modeLoop:
 					AltBlitz:              offer != nil && offer.Blitz,
 					AltFlashback:          offer != nil && offer.Key == "flashback",
 					GrantReduction:        grantLess,
-					GrantIncrease:         grantMore,
+					GrantIncrease:         grantMore + e.g.TargetSurchargeFor(perm, e.seat, targets),
 					GrantIncreaseMana:     grantMoreMana,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
@@ -1634,7 +1637,7 @@ modeLoop:
 							AltBlitz:              offer != nil && offer.Blitz,
 							AltFlashback:          offer != nil && offer.Key == "flashback",
 							GrantReduction:        grantLess,
-							GrantIncrease:         grantMore,
+							GrantIncrease:         grantMore + e.g.TargetSurchargeFor(perm, e.seat, targets),
 							GrantIncreaseMana:     grantMoreMana,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
