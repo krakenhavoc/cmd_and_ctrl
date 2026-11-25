@@ -186,6 +186,10 @@ func replacementModProblem(m Mod) string {
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
+	case ModLandManaOfChosenColor:
+		if m.Player == uuid.Nil {
+			return "a landManaOfChosenColor replacement names no player"
+		}
 	case ModExileInsteadOfYourGraveyard:
 		if m.Player == uuid.Nil {
 			return "an exileInsteadOfYourGraveyard replacement names no player"
@@ -196,6 +200,9 @@ func replacementModProblem(m Mod) string {
 	case ModPermanentsEnterTapped:
 		// #6147: a card-type filter naming a non-permanent type.
 		return permanentsEnterTappedModProblem(m)
+	case ModCreaturesEnterWithPlusOneCounter:
+		// #5521: Combine Guildmage names the player whose creatures grow.
+		return creaturesEnterWithPlusOneCounterModProblem(m)
 	}
 	return ""
 }
@@ -220,7 +227,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage,
 		ModPreventFromSource, ModRedirectDamage, ModAddDamage:
 		return watchDamage
-	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
+	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie, ModExileUncastCreatures:
 		return watchZoneMove
 	case ModGainNoLife:
 		return watchLife
@@ -236,7 +243,9 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchMoveOrDiscard
 	case ModShuffleInsteadOfEnteringFromExile:
 		return watchZoneMove
-	case ModCreaturesEnterTappedForOpponents, ModPermanentsEnterTapped, ModCreaturesEnterUnderYourControl:
+	case ModCreaturesEnterTappedForOpponents, ModPermanentsEnterTapped, ModCreaturesEnterUnderYourControl,
+		ModCreaturesEnterWithPlusOneCounter:
+		// #5521 (Combine Guildmage) watches an entry too.
 		// #6260 (Gather Specimens) watches an entry too.
 		// #6093: Cone of Cold's timed enters-tapped replacement; #6147,
 		// its "this turn" sibling.
@@ -244,7 +253,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModNextEntersAsCopies:
 		// #6160: Mystic Reflection's one-shot entry copy.
 		return watchZoneMove
-	case ModLandManaIsColor:
+	case ModLandManaIsColor, ModLandManaOfChosenColor:
 		return watchManaAdded
 	}
 	return nil
@@ -809,12 +818,16 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
 	case ModCreaturesEnterTappedForOpponents:
 		return creaturesEnterTappedForOpponentsAppliesLocked(g, e, ev)
+	case ModExileUncastCreatures:
+		return exileUncastCreaturesAppliesLocked(g, ev)
 	case ModCreaturesEnterUnderYourControl:
 		return creaturesEnterUnderYourControlAppliesLocked(g, e, ev)
 	case ModNextEntersAsCopies:
 		return nextEntersAsCopiesAppliesLocked(g, m, ev)
 	case ModPermanentsEnterTapped:
 		return permanentsEnterTappedAppliesLocked(g, m, ev)
+	case ModCreaturesEnterWithPlusOneCounter:
+		return creaturesEnterWithPlusOneCounterAppliesLocked(g, m, ev)
 	case ModGainNoLife:
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
@@ -833,6 +846,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return redirectTokensAppliesLocked(m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
+	case ModLandManaOfChosenColor:
+		return landManaOfChosenColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, m, ev)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
@@ -898,7 +913,7 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.queuePreventionFollowUpLocked(e, m, ev, prevented, damage)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
-	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard:
+	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard, ModExileUncastCreatures:
 		// "Exile it instead". For exileIfWouldDie the move still leaves
 		// the battlefield, so leaves-the-battlefield triggers see it, but
 		// it is not a death (CR 700.4), so no "dies" trigger does. A
@@ -921,6 +936,13 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// "Enter tapped" (CR 614.1c): the permanent is tapped as it
 		// enters, so nothing sees it untapped.
 		ev.EntersTapped = true
+	case ModCreaturesEnterWithPlusOneCounter:
+		// #5521: "enters with an additional +1/+1 counter" (CR 614.1c).
+		n := m.Amount
+		if n < 1 {
+			n = 1
+		}
+		ev.AddCounterAtETB(CounterPlusOne, n)
 	case ModNextEntersAsCopies:
 		// #6160: "they enter as copies of the chosen creature" (CR 707.2,
 		// 614.1c), landed by the entry path before any event.
@@ -947,6 +969,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	case ModLandManaIsColor:
 		// #1997: every coloured mana becomes the chosen colour.
 		applyLandManaColorLocked(m, ev)
+	case ModLandManaOfChosenColor:
+		// #6210: one mana of the colour chosen at the tap.
+		ev.ManaColors = []string{ManaOfChosenColor}
 	case ModExileInsteadOfGraveyard:
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil

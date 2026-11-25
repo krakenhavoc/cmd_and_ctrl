@@ -373,11 +373,12 @@ type DelayedTrigger struct {
 	// a new object the trigger can never name again, so the trigger is
 	// dropped. Zero for every other trigger.
 	WhileExiled ObjectRef
-	// Stop is CR 116.2c's escape: a player who may pay to stop this
-	// trigger before it triggers (Quenchable Fire's "unless that player
-	// … pays {U} before that step", #6247, delayed_stop.go). Nil for
-	// every other delayed trigger.
-	Stop *DelayedTriggerStop
+	// PayToCancel is "… unless they pay {N} before that step" (#6220):
+	// the named player may pay the cost any time they have priority
+	// while the trigger waits (the pay_to_cancel special action,
+	// pay_to_cancel.go), and paying removes it. Nil for every other
+	// trigger. Data, carried in the snapshot.
+	PayToCancel *PayToCancel
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -642,7 +643,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
 		WhileExiled:           dt.WhileExiled,
-		Stop:                  cloneDelayedTriggerStop(dt.Stop),
+		PayToCancel:           clonePayToCancel(dt.PayToCancel),
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
@@ -1059,12 +1060,4 @@ func cloneEffectParams(p EffectParams) EffectParams {
 		p.Ability = &a
 	}
 	return p
-}
-
-func cloneDelayedTriggerStop(s *DelayedTriggerStop) *DelayedTriggerStop {
-	if s == nil {
-		return nil
-	}
-	c := *s
-	return &c
 }

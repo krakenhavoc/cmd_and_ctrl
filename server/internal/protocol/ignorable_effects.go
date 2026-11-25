@@ -33,38 +33,6 @@ type IgnorableEffectView struct {
 	ManaCost string `json:"mana_cost,omitempty"`
 }
 
-// StoppableTriggerView is one CR 116.2c special action a seat may take
-// (#6247): pay mana to stop a delayed trigger before it triggers
-// (Quenchable Fire's "unless that player pays {U} before that step";
-// game/delayed_stop.go). Fired as `special_action {kind:
-// "stop_delayed_trigger", card_id: id, strict: true, auto_tap: true}`.
-type StoppableTriggerView struct {
-	// ID is the delayed trigger's; the action's card_id.
-	ID string `json:"id"`
-	// SourceName is the card that made it.
-	SourceName string `json:"source_name"`
-	// Label is the row ("Pay {U}: Quenchable Fire deals no additional
-	// damage to you").
-	Label string `json:"label"`
-	// Cost is the mana, in brace notation.
-	Cost string `json:"cost"`
-}
-
-// viewOfStoppableTriggers projects the seat's CR 116.2c offers from the
-// engine's own accessor. Nil for nearly every seat.
-func viewOfStoppableTriggers(g *game.Game, seat uuid.UUID) []StoppableTriggerView {
-	var out []StoppableTriggerView
-	for _, offer := range g.StopDelayedTriggerOffersLocked(seat) {
-		out = append(out, StoppableTriggerView{
-			ID:         offer.ID.String(),
-			SourceName: offer.SourceName,
-			Label:      offer.Label,
-			Cost:       offer.Cost,
-		})
-	}
-	return out
-}
-
 // viewOfIgnorableEffects projects the seat's CR 116.2d offers from the
 // engine's own accessor, so a row the client shows is a row the engine
 // would accept and the bot's move names the same permanent. Nil for every

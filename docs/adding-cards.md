@@ -50,6 +50,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
   - [Special actions paid with mana (ADR 0109 amendment 2026-11-25, #6247)](#special-actions-paid-with-mana-adr-0109-amendment-2026-11-25-6247)
+  - ["Produces mana of a color of your choice instead" (ADR 0013 amendment 2026-11-25, #6210)](#produces-mana-of-a-color-of-your-choice-instead-adr-0013-amendment-2026-11-25-6210)
   - ["As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)](#as-long-as-this-is-on-the-stack-adr-0048-amendment-2026-11-25-6222)
   - ["Counter target spell if it would destroy a land you control" (ADR 0228, #6225)](#counter-target-spell-if-it-would-destroy-a-land-you-control-adr-0228-6225)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
@@ -5135,10 +5136,24 @@ right, and the replacement knows who is countering. Declare
   `PlayersCantSearchLibraries: true` and
   `IgnorableEffect: effects.AnyPlayerMayPayToIgnore(name, "{2}")`.
 - **"… unless that player pays {U} before that step."** (Quenchable
-  Fire, CR 116.2c): schedule the delayed trigger with
-  `Stop: &game.DelayedTriggerStop{Player: <who pays>, Cost: "{U}", Label: …}`.
-  The player gets a button on their panel; paying takes the trigger out
-  of the queue.
+  Fire, CR 116.2c): #6220's pay-to-cancel. Schedule the delayed trigger
+  with `PayToCancel: &game.PayToCancel{Player: <who pays>, Cost: "{U}"}`.
+
+### "Produces mana of a color of your choice instead" (ADR 0013 amendment 2026-11-25, #6210)
+
+Pulse of Llanowar, Harvest Mage. The colour is chosen as part of the
+tap (a mana ability can't pause, CR 605.3b), so the card only declares
+the replacement:
+
+- **A static** ("if a basic land you control is tapped for mana"):
+  `Spec.Replacements` gets
+  `effects.TappedForManaProducesAColorOfYourChoice(label, oneMana, applies)`.
+  `oneMana` is "one mana … instead of any other type and amount", and
+  `effects.BasicLandYouControl` is Pulse's `applies`.
+- **Until end of turn** (Harvest Mage's activated ability):
+  `ctx.Game.LandsYouTapProduceOneManaOfAColorOfYourChoiceThisTurnForEffect(source, you, label)`.
+- Nothing else: a hand tap asks the five-colour pick, and the auto-tapper
+  picks the colour the cost needs.
 
 ### "As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)
 
@@ -5587,6 +5602,12 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Lose all abilities except mana abilities (#6246, CR 613.1f).** Blood Sun's
+"All lands lose all abilities except mana abilities" is
+`Static: []game.StaticAbility{LandsLoseAllAbilitiesExceptMana()}`: a
+`RemovesAbilities` static with `KeepsManaAbilities`, so the lands keep their
+declared mana rows, a granted mana ability and their basic land types' mana
+ability, and lose everything else.
 **Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
 cast your commander from the command zone without paying its mana cost" is
 `OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a
@@ -9609,6 +9630,16 @@ on the stack when the step begins, so every player gets a response
 window. The body reads its payload off the item it is handed
 (`item.Targets`, `item.Controller`) and its data off its params, and
 captures nothing — it cannot.
+
+**"… unless they pay {N} before that step" (#6220, ADR 0026 amendment
+2026-11-25).** Nafs Asp's "that player loses 1 life at the beginning of
+their next draw step unless they pay {1} before that draw step" is the
+delayed trigger with the payment on it:
+`ScheduleDelayedTrigger{Label, At: game.StepDraw, TurnOf: player, Body,
+Params, PayToCancel: &game.PayToCancel{Player: player, Cost: "{1}"}}`.
+The player may pay any time they have priority until the step begins (the
+`pay_to_cancel` special action, a button on their panel); paying removes
+the trigger, so the body runs only when nobody paid and need not check.
 
 **Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
 next cast an instant or sorcery spell this turn, copy that spell"

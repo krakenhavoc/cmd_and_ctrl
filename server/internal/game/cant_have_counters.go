@@ -55,7 +55,8 @@ func (g *Game) cantHaveCountersLocked(c *Card) bool {
 	if c == nil || g.Battlefield == nil || !g.Battlefield.Contains(c.InstanceID) {
 		return false
 	}
-	return c.Effective().CantHaveCounters
+	e := c.Effective()
+	return e.CantHaveCounters || e.ExtraRestrictions.Has(ObjectCantHaveCounters)
 }
 
 // cantHaveCounterKindLocked is cantHaveCountersLocked for one kind of counter:

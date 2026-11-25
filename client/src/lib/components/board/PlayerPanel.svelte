@@ -91,6 +91,7 @@
   import CompanionSlot from "./CompanionSlot.svelte";
   import ConspiracySlot from "./ConspiracySlot.svelte";
   import IgnoreEffects from "./IgnoreEffects.svelte";
+  import PayToCancel from "./PayToCancel.svelte";
   import PlayerManaAbilities from "./PlayerManaAbilities.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
@@ -1344,13 +1345,10 @@
            the price of a permanent of your choice (Damping Engine).
            Renders nothing unless an effect bears on you. -->
       {#if !spectator}
-        <IgnoreEffects
-          seatID={seat.id}
-          effects={seat.ignorable_effects}
-          stops={seat.stoppable_triggers}
-          {view}
-          {sendAction}
-        />
+        <IgnoreEffects seatID={seat.id} effects={seat.ignorable_effects} {view} {sendAction} />
+        <!-- #6220: "… unless they pay {N} before that step" (Nafs Asp).
+             Renders nothing unless a payment waits on you. -->
+        <PayToCancel seatID={seat.id} rows={seat.pay_to_cancel} {view} {sendAction} />
         <!-- #4885: the mana abilities you have as a player (Channel's
              "pay 1 life: add {C}" until end of turn). Renders nothing
              unless you have one. -->

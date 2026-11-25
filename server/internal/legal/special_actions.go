@@ -59,7 +59,7 @@ func (e *enumerator) specialActionMoves() {
 	}
 	e.outsidePlayMove()
 	e.ignoreEffectMoves()
-	e.stopDelayedTriggerMoves()
+	e.payToCancelMoves()
 	e.planarDieMove()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
@@ -255,31 +255,6 @@ func (e *enumerator) ignoreEffectMoves() {
 	}
 }
 
-// stopDelayedTriggerMoves offers CR 116.2c's stop (#6247, Quenchable
-// Fire's "unless that player pays {U} before that step") for each
-// delayed trigger the seat may pay to stop, when it can pay. The action
-// is taken on the trigger, named by its ID in card_id.
-func (e *enumerator) stopDelayedTriggerMoves() {
-	for _, offer := range e.g.StopDelayedTriggerOffersLocked(e.seat) {
-		cost, err := game.ParseCost(offer.Cost)
-		if err != nil || !e.canPay(cost, 0, game.SpecialActionSpendContext(game.SpecialActionStopDelayedTrigger)) {
-			continue
-		}
-		e.add(Move{
-			Type:   TypeSpecialAction,
-			Player: e.seat,
-			Kind:   KindSpecialAction,
-			Label:  offer.Label,
-			Params: mustJSON(specialActionParams{
-				CardID:  offer.ID.String(),
-				Kind:    string(game.SpecialActionStopDelayedTrigger),
-				Strict:  true,
-				AutoTap: true,
-			}),
-		})
-	}
-}
-
 // planarDieMove offers CR 901.9's planar die (ADR 0216 §4) to the active
 // player in their main phase with an empty stack, when they can pay its
 // {N}, priced by the same CR 601.2f pass and spend context the engine
@@ -343,4 +318,35 @@ func turnFaceUpOffers(offers []game.SpecialAction) int {
 		}
 	}
 	return n
+}
+
+// payToCancelMoves offers each "… unless they pay {N} before that step"
+// payment waiting on the seat (#6220, game/pay_to_cancel.go) that it can
+// afford, priced with the zero spend context the engine pays it with. Any
+// time the seat has priority, split second or not: paying is neither a
+// cast nor an activation.
+func (e *enumerator) payToCancelMoves() {
+	g := e.g
+	for _, o := range g.PayToCancelOffersLocked(e.seat) {
+		cost, ok := g.PayToCancelCostForEffect(e.seat, o.ID)
+		if !ok || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+			continue
+		}
+		label := "Pay " + o.Cost
+		if o.Label != "" {
+			label += ": " + o.Label
+		}
+		e.add(Move{
+			Type:   TypeSpecialAction,
+			Player: e.seat,
+			Kind:   KindSpecialAction,
+			Label:  label,
+			Params: mustJSON(specialActionParams{
+				CardID:  o.ID.String(),
+				Kind:    string(game.SpecialActionPayToCancel),
+				Strict:  true,
+				AutoTap: true,
+			}),
+		})
+	}
 }

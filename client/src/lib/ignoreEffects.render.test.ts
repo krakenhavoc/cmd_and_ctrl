@@ -9,7 +9,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 
 import IgnoreEffects from "./components/board/IgnoreEffects.svelte";
-import type { ActionType, CardView, IgnorableEffectView, StoppableTriggerView } from "./protocol";
+import type { ActionType, CardView, IgnorableEffectView } from "./protocol";
 import { render, click, cleanup } from "./test/render.svelte";
 import DockHarness from "./test/DockHarness.svelte";
 import { barPrimary, barSecondaries, dockTestView } from "./test/dockView";
@@ -39,7 +39,7 @@ const row: IgnorableEffectView = {
   sacrifice_ids: ["token", "bear", "engine"],
 };
 
-function mount(effects: IgnorableEffectView[] | undefined, stops?: StoppableTriggerView[]) {
+function mount(effects: IgnorableEffectView[] | undefined) {
   const sent: { type: string; params: unknown; player?: string }[] = [];
   const base = dockTestView();
   const view = {
@@ -53,7 +53,6 @@ function mount(effects: IgnorableEffectView[] | undefined, stops?: StoppableTrig
       props: {
         seatID: ME,
         effects,
-        stops,
         view,
         sendAction: (type: ActionType, params?: unknown, player?: string) =>
           sent.push({ type, params, player }),
@@ -115,9 +114,8 @@ describe("IgnoreEffects", () => {
     expect(sent).toEqual([]);
   });
 
-  // #6247: an ignore paid with mana (CR 116.2d, Leonin Arbiter) and a
-  // delayed trigger paid off with mana (CR 116.2c, Quenchable Fire) send
-  // their action at once, auto-tapped; no picker opens.
+  // #6247: an ignore paid with mana (CR 116.2d, Leonin Arbiter) sends its
+  // action at once, auto-tapped; no picker opens.
   it("sends a mana ignore at once, auto-tapped", () => {
     const arbiter: IgnorableEffectView = {
       source_id: "arbiter",
@@ -137,34 +135,6 @@ describe("IgnoreEffects", () => {
       {
         type: "special_action",
         params: { card_id: "arbiter", kind: "ignore_effect", strict: true, auto_tap: true },
-        player: ME,
-      },
-    ]);
-  });
-
-  it("sends a stop for a delayed trigger it may pay off", () => {
-    const fire: StoppableTriggerView = {
-      id: "trigger-1",
-      source_name: "Quenchable Fire",
-      label: "Pay {U}: Quenchable Fire deals no additional damage to you",
-      cost: "{U}",
-    };
-    const { container, sent } = mount(undefined, [fire]);
-    const btn = container.querySelector<HTMLButtonElement>(
-      "button[aria-label='Pay {U} to stop Quenchable Fire']",
-    );
-    expect(btn).not.toBeNull();
-    expect(btn!.title).toBe(fire.label);
-    click(btn!);
-    expect(sent).toEqual([
-      {
-        type: "special_action",
-        params: {
-          card_id: "trigger-1",
-          kind: "stop_delayed_trigger",
-          strict: true,
-          auto_tap: true,
-        },
         player: ME,
       },
     ]);

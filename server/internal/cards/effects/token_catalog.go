@@ -605,6 +605,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Mesmerizing Benthid's Illusion: freezes the creature it blocks (S82 OLD b181).
 	printedOldB181IllusionToken,
+	// S82 OLD batch 207: Rite of Belzenlok's 6/6 Demon.
+	printedOldB207BelzenlokDemonToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

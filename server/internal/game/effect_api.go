@@ -179,6 +179,10 @@ type DiscardPrompt struct {
 	// "discards half the cards in their hand"). N is ignored. Plain data,
 	// so a run over several seats gives each its own count.
 	HalfHand bool
+	// HalfHandUp is HalfHand rounded UP (Fraying Omnipotence's "discards
+	// half the cards in their hand ... Round up each time"). N is ignored.
+	// Plain data, like HalfHand.
+	HalfHandUp bool
 	// ThirdHandUp makes the count a third of the cards in the discarding
 	// player's hand, rounded up, read as that player is asked (Pox's
 	// "discards a third of the cards in their hand"). N is ignored. Plain
@@ -311,6 +315,10 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 		// "half the cards in their hand, rounded down" (Pox Plague), read as
 		// this seat is asked, so a run asks each seat for its own count.
 		n = player.Hand.Size() / 2
+	}
+	if p.HalfHandUp {
+		// "half the cards in their hand, round up" (Fraying Omnipotence).
+		n = (player.Hand.Size() + 1) / 2
 	}
 	if p.ThirdHandUp {
 		// "a third of the cards in their hand, round up" (Pox).

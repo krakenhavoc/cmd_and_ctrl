@@ -546,6 +546,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := permanentsEnterTappedModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #5521: an enters-with-a-counter replacement naming no player.
+			if problem := creaturesEnterWithPlusOneCounterModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #5718: the table-wide targeting bar is a game record that
 			// names nothing.
 			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {

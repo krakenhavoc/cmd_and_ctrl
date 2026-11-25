@@ -14,15 +14,11 @@
   // timing and no strict flag to send; the server refuses a pick that is
   // not on its list, so the picker cannot offer a wrong one.
   //
-  // #6247: two more rows paid with MANA rather than a sacrifice, each a
-  // button that sends its action at once, auto-tapped:
-  //   - an ignore whose row carries `mana_cost` (Leonin Arbiter's {2},
-  //     CR 116.2d): special_action { card_id, kind: "ignore_effect",
-  //     strict, auto_tap };
-  //   - `seat.stoppable_triggers` (Quenchable Fire's {U}, CR 116.2c):
-  //     special_action { card_id: <the trigger>, kind:
-  //     "stop_delayed_trigger", strict, auto_tap }.
-  // The server refuses one the pool and lands can't pay.
+  // #6247: an ignore whose row carries `mana_cost` is paid with MANA
+  // rather than a sacrifice (Leonin Arbiter's {2}, CR 116.2d): its button
+  // sends special_action { card_id, kind: "ignore_effect", strict,
+  // auto_tap } at once. The server refuses one the pool and lands can't
+  // pay.
   //
   // Renders nothing when no effect bears on the seat, which is almost
   // always.
@@ -32,7 +28,6 @@
     CardView,
     GameView,
     IgnorableEffectView,
-    StoppableTriggerView,
   } from "../../protocol";
   import { orderSacrificeOptions } from "../../sacrificeCost";
   import { L } from "../../labels";
@@ -43,12 +38,11 @@
   interface Props {
     seatID: string;
     effects: IgnorableEffectView[] | undefined;
-    stops?: StoppableTriggerView[] | undefined;
     view: GameView;
     sendAction: ActionSender;
   }
 
-  const { seatID, effects, stops, view, sendAction }: Props = $props();
+  const { seatID, effects, view, sendAction }: Props = $props();
 
   let picking = $state<IgnorableEffectView | null>(null);
 
@@ -73,14 +67,6 @@
     picking = row;
   }
 
-  function stop(row: StoppableTriggerView): void {
-    sendAction(
-      "special_action",
-      { card_id: row.id, kind: "stop_delayed_trigger", strict: true, auto_tap: true },
-      seatID,
-    );
-  }
-
   function confirm(ids: string[]): void {
     const row = picking;
     picking = null;
@@ -93,7 +79,7 @@
   }
 </script>
 
-{#if (effects && effects.length > 0) || (stops && stops.length > 0)}
+{#if effects && effects.length > 0}
   <div class="ignore-effects" role="group" aria-label="Effects you may ignore">
     {#each effects ?? [] as row (row.source_id)}
       {#if row.mana_cost}
@@ -117,17 +103,6 @@
           Ignore {row.source_name}
         </button>
       {/if}
-    {/each}
-    {#each stops ?? [] as row (row.id)}
-      <button
-        type="button"
-        class="ignore"
-        title={row.label}
-        aria-label={L.stopDelayedTrigger(row.source_name, row.cost)}
-        onclick={() => stop(row)}
-      >
-        Stop {row.source_name} · {row.cost}
-      </button>
     {/each}
   </div>
 {/if}

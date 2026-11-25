@@ -25,14 +25,7 @@ func init() {
 		Targets:      effects.TargetPlayer("target opponent", effects.Opponent()),
 		Activated:    []effects.ActivatedAbility{effects.Cycling("{1}")},
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			return effects.ChooseFromRevealedHand{
-				Player:          effects.TargetedPlayer(ctx),
-				Filter:          effects.Nonland(),
-				Label:           "nonland card",
-				Exile:           true,
-				FromGraveyard:   true,
-				GraveyardFilter: effects.Nonland(),
-			}.Apply(ctx)
+			return effects.ExileNonlandFromHandOrGraveyard(ctx)
 		},
 	})
 }

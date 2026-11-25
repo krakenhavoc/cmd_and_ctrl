@@ -42,6 +42,9 @@ type AnyPlayerPays struct {
 	// Opponents is "any opponent may" (Innocent Traveler, Distant
 	// Memories): the controller is not asked.
 	Opponents bool
+	// Only is "target opponent may" (Risk Factor): the offer goes to this one
+	// player, and the controller is not asked unless it is them.
+	Only uuid.UUID
 	// GuardsSource holds the source spell on the stack while the offer
 	// is open: a cast trigger whose "if a player does" counters the
 	// spell (Dash Hopes, Brain Gorgers).
@@ -205,6 +208,7 @@ func (a AnyPlayerPays) Apply(ctx *Context) error {
 		Action:       action,
 		Question:     a.Question,
 		Opponents:    a.Opponents,
+		Only:         a.Only,
 		Guards:       guards,
 		AcceptLabel:  a.AcceptLabel,
 		DeclineLabel: a.DeclineLabel,

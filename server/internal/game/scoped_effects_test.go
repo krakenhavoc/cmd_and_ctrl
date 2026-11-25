@@ -328,6 +328,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// cases are in scoped_cost_reduction_test.go here and in
 		// cards/effects.
 		ModSpellsCostLessForPlayer: true, ModExiledSpellsCostLessForPlayer: true,
+		// S82 batch 206: Cheering Fanatic's named reduction; cases in
+		// scoped_cost_reduction_test.go and cards/effects.
+		ModNamedSpellsCostLess: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
@@ -415,6 +418,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// Mistcaller's timed exile-uncast replacement. Its cases are in
+		// scoped_exile_uncast_test.go.
+		ModExileUncastCreatures: true,
 		// #6260: Gather Specimens' entry-controller replacement. Its cases
 		// are in scoped_enters_under_control_test.go.
 		ModCreaturesEnterUnderYourControl: true,
@@ -424,6 +430,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6147: its "this turn" sibling over any permanents. Its cases
 		// are in scoped_permanents_enter_tapped_test.go.
 		ModPermanentsEnterTapped: true,
+		// #5521: Combine Guildmage's replacement. Its cases are in
+		// scoped_creatures_enter_with_counter_test.go.
+		ModCreaturesEnterWithPlusOneCounter: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
@@ -512,6 +521,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,
+		// #6210: Harvest Mage's chosen colour; cases in
+		// cards/effects/tests/m/mana_color_of_choice_test.go.
+		ModLandManaOfChosenColor: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,

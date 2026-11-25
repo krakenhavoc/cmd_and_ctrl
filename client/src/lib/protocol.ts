@@ -2912,16 +2912,17 @@ export interface IgnorableEffectView {
   mana_cost?: string;
 }
 
-// StoppableTriggerView is one CR 116.2c special action a seat may take
-// (#6247): pay mana to stop a delayed trigger before it triggers
-// (Quenchable Fire's "unless that player pays {U} before that step").
-// The button sends `special_action { kind: "stop_delayed_trigger",
-// card_id: id, strict: true, auto_tap: true }`. Its own frame only.
-export interface StoppableTriggerView {
+// PayToCancelView is a "… unless they pay {N} before that step" payment
+// waiting on the seat (#6220; Nafs Asp, Sabertooth Cobra): a button on the
+// seat's own panel that sends `special_action { kind: "pay_to_cancel",
+// card_id: id, strict: true, auto_tap: true }` while the seat has priority.
+// `label` is what happens if it isn't paid, `at` the step it happens at.
+export interface PayToCancelView {
   id: string;
-  source_name: string;
-  label: string;
   cost: string;
+  label: string;
+  source_name?: string;
+  at: string;
 }
 
 // PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
@@ -3240,8 +3241,11 @@ export interface PlayerView {
   // which permanent to give up, then sends `special_action
   // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
   ignorable_effects?: IgnorableEffectView[];
-  // #6247 (CR 116.2c): delayed triggers this seat may pay to stop.
-  stoppable_triggers?: StoppableTriggerView[];
+  // #6220: the "… unless they pay {N} before that step" payments waiting on
+  // this seat. Its own frame only. Each row is a button that sends
+  // `special_action { kind: "pay_to_cancel", card_id: id, strict: true,
+  // auto_tap: true }`; live while the seat's legal_moves carry that move.
+  pay_to_cancel?: PayToCancelView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.

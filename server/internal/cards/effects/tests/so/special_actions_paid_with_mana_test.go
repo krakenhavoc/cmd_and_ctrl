@@ -13,7 +13,7 @@ import (
 
 // special_actions_paid_with_mana_test.go — #6247: special actions paid
 // with mana. Leonin Arbiter and Quenchable Fire are their batches'; the
-// shapes are registered here.
+// shapes are registered here. Quenchable Fire rides #6220's pay-to-cancel.
 //
 // CR 116.2d: "Some effects from static abilities allow a player to take
 // an action to ignore the effect from that ability for a duration."
@@ -121,7 +121,8 @@ var quenchTestBody = game.SimpleDelayedBody("test-6247/quench", func(*game.Game,
 })
 
 // quenchTable schedules seat 0's "at the beginning of your next upkeep"
-// trigger that seat 1 may pay {U} to stop.
+// trigger that seat 1 may pay {U} to stop: Quenchable Fire's shape on
+// #6220's pay-to-cancel, with a coloured cost.
 func quenchTable(t *testing.T) (*game.Game, *game.Player, *game.Player, uuid.UUID) {
 	t.Helper()
 	quenchFired = 0
@@ -137,11 +138,8 @@ func quenchTable(t *testing.T) (*game.Game, *game.Player, *game.Player, uuid.UUI
 			ControllerTurnOnly: true,
 			AfterThisTurn:      true,
 			Body:               quenchTestBody,
-			Stop: &game.DelayedTriggerStop{
-				Player: opp.ID,
-				Cost:   "{U}",
-				Label:  "Pay {U}: Quench Test deals no additional damage to you",
-			},
+			// #6220's pay-to-cancel carries the {U}.
+			PayToCancel: &game.PayToCancel{Player: opp.ID, Cost: "{U}"},
 		})
 	})
 	if id == uuid.Nil {
@@ -154,12 +152,12 @@ func quenchTable(t *testing.T) (*game.Game, *game.Player, *game.Player, uuid.UUI
 // takes no damage at the next upkeep.
 func TestQuenchableFirePaidStopsTheTrigger(t *testing.T) {
 	g, me, opp, id := quenchTable(t)
-	var offers []game.StopDelayedTriggerOffer
-	g.WithWriteLock(func() { offers = g.StopDelayedTriggerOffersLocked(opp.ID) })
+	var offers []game.PayToCancelOffer
+	g.WithWriteLock(func() { offers = g.PayToCancelOffersLocked(opp.ID) })
 	if len(offers) != 1 || offers[0].ID != id || offers[0].Cost != "{U}" {
 		t.Fatalf("offers to the target = %+v, want the {U} stop", offers)
 	}
-	g.WithWriteLock(func() { offers = g.StopDelayedTriggerOffersLocked(me.ID) })
+	g.WithWriteLock(func() { offers = g.PayToCancelOffersLocked(me.ID) })
 	if len(offers) != 0 {
 		t.Fatal("only the player it names may pay to stop it")
 	}
@@ -167,7 +165,7 @@ func TestQuenchableFirePaidStopsTheTrigger(t *testing.T) {
 		t.Fatalf("PassPriority: %v", err)
 	}
 	effectstest.FloatForTest(g, opp, "U")
-	if err := g.PerformSpecialAction(opp.ID, id, game.SpecialActionStopDelayedTrigger, game.SpecialActionParams{Strict: true}); err != nil {
+	if err := g.PerformSpecialAction(opp.ID, id, game.SpecialActionPayToCancel, game.SpecialActionParams{Strict: true}); err != nil {
 		t.Fatalf("paying {U} to stop it: %v", err)
 	}
 	for _, dt := range g.DelayedTriggers {
