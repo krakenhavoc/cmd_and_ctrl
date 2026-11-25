@@ -3332,6 +3332,7 @@ run prompt-run/grab-the-reins-damage
 run prompt-run/greven-predator-captain-sacrifice
 run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
+run prompt-run/harvester-troll-sacrifice-counters
 run prompt-run/heart-piercer-manticore-sacrifice
 run prompt-run/hei-bai-two-counters
 run prompt-run/hew-the-entwood-sacrifice
@@ -4716,6 +4717,7 @@ tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/greven-predator-captain-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
+tail sacrificed-one/prompt-run/harvester-troll-sacrifice-counters
 tail sacrificed-one/prompt-run/heart-piercer-manticore-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
