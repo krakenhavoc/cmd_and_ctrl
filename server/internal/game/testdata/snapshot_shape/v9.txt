@@ -7841,6 +7841,7 @@ frozenEntries[].event.entryTail.search.spec	object
 frozenEntries[].event.entryTail.search.spec.alsoGraveyard	bool
 frozenEntries[].event.entryTail.search.spec.alsoGraveyardAndHand	bool
 frozenEntries[].event.entryTail.search.spec.alsoHand	bool
+frozenEntries[].event.entryTail.search.spec.bothZones	bool
 frozenEntries[].event.entryTail.search.spec.depth	number:int
 frozenEntries[].event.entryTail.search.spec.dest	string
 frozenEntries[].event.entryTail.search.spec.entersAttachedTo	object
@@ -7855,6 +7856,7 @@ frozenEntries[].event.entryTail.search.spec.entersWithCounters{}	number:int
 frozenEntries[].event.entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.faceDown	string
 frozenEntries[].event.entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.holdFound	bool
 frozenEntries[].event.entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.libraryUntouched	bool
 frozenEntries[].event.entryTail.search.spec.limit	number:int
@@ -17880,6 +17882,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search	object
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoHand	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.bothZones	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.depth	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.dest	string
 frozenEntries[].event.zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -17894,6 +17897,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.faceDown	string
 frozenEntries[].event.zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.holdFound	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.libraryUntouched	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.limit	number:int
@@ -29513,6 +29517,7 @@ movesAwaitingTokens[].entryTail.search.spec	object
 movesAwaitingTokens[].entryTail.search.spec.alsoGraveyard	bool
 movesAwaitingTokens[].entryTail.search.spec.alsoGraveyardAndHand	bool
 movesAwaitingTokens[].entryTail.search.spec.alsoHand	bool
+movesAwaitingTokens[].entryTail.search.spec.bothZones	bool
 movesAwaitingTokens[].entryTail.search.spec.depth	number:int
 movesAwaitingTokens[].entryTail.search.spec.dest	string
 movesAwaitingTokens[].entryTail.search.spec.entersAttachedTo	object
@@ -29527,6 +29532,7 @@ movesAwaitingTokens[].entryTail.search.spec.entersWithCounters{}	number:int
 movesAwaitingTokens[].entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.faceDown	string
 movesAwaitingTokens[].entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.holdFound	bool
 movesAwaitingTokens[].entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.libraryUntouched	bool
 movesAwaitingTokens[].entryTail.search.spec.limit	number:int
@@ -39552,6 +39558,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.alsoGraveyard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.alsoHand	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.bothZones	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.depth	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.dest	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -39566,6 +39573,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.entersWithCounters{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.faceDown	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.holdFound	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.libraryUntouched	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.limit	number:int
@@ -58119,6 +58127,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoGraveyardAndHand	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoHand	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.bothZones	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.depth	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.dest	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.entersAttachedTo	object
@@ -58133,6 +58142,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.entersWithCounter
 pendingChoices[].replacementResume.event.entryTail.search.spec.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.faceDown	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.firstEntersUnderControlOf	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.holdFound	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.libraryOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.libraryUntouched	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.limit	number:int
@@ -68158,6 +68168,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoHand	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.bothZones	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.depth	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.dest	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -68172,6 +68183,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersWithCo
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.faceDown	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.firstEntersUnderControlOf	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.holdFound	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.libraryOwner	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.libraryUntouched	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.limit	number:int
@@ -72196,6 +72208,7 @@ pendingChoices[].searchPrompt.spec	object
 pendingChoices[].searchPrompt.spec.alsoGraveyard	bool
 pendingChoices[].searchPrompt.spec.alsoGraveyardAndHand	bool
 pendingChoices[].searchPrompt.spec.alsoHand	bool
+pendingChoices[].searchPrompt.spec.bothZones	bool
 pendingChoices[].searchPrompt.spec.depth	number:int
 pendingChoices[].searchPrompt.spec.dest	string
 pendingChoices[].searchPrompt.spec.entersAttachedTo	object
@@ -72210,6 +72223,7 @@ pendingChoices[].searchPrompt.spec.entersWithCounters{}	number:int
 pendingChoices[].searchPrompt.spec.exileFoundFor	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.faceDown	string
 pendingChoices[].searchPrompt.spec.firstEntersUnderControlOf	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.holdFound	bool
 pendingChoices[].searchPrompt.spec.libraryOwner	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.libraryUntouched	bool
 pendingChoices[].searchPrompt.spec.limit	number:int
