@@ -1528,6 +1528,7 @@ choose choose-cards/s82-old-b117-return-to-hand
 choose choose-cards/s82-old-b161-shuffle-graveyard-into-library
 choose choose-cards/s82-old-b166-rank-officer-zombie
 choose choose-cards/s82-old-b170-deliver-unto-evil-return
+choose choose-cards/s82-old-b172-viviens-grizzly-take
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
