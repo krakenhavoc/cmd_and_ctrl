@@ -1364,6 +1364,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6239: "adapts as though it had no +1/+1 counters", read by the
 	// adapt (adapt_ignores_counters.go).
 	ModAdaptIgnoresCounters: {reader: readerRule},
+	// #6200: Camouflage's "instead of declaring blockers", read by the
+	// declare-blockers step and the block verbs (blocks_by_piles.go).
+	ModBlocksByPiles: {reader: readerRule},
 	// #5251: Lumbering Laundry's look at face-down creatures, read by
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
@@ -1704,7 +1707,7 @@ func blockRequirementModProblem(m Mod) string {
 		// (returnAtNextUntapModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
-			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
+			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject && m.Kind != ModCantBeBlockedExceptBy &&
 			m.Kind != ModAddRestrictions && m.Kind != ModNextEntersAsCopies && m.Kind != ModReturnAtNextUntap {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}

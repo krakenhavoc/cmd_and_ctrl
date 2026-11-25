@@ -745,6 +745,7 @@ choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bitter-revelation-take
 choose choose-cards/black-suns-twilight-return
+choose choose-cards/blocks-by-piles
 choose choose-cards/blood-for-bones-first
 choose choose-cards/blood-for-bones-second
 choose choose-cards/blossom-prancer-take
@@ -1076,6 +1077,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/left-right-piles
 choose choose-cards/legion-angel-take
 choose choose-cards/leonardo-da-vinci-discarded
 choose choose-cards/leyline-dowser-milled
@@ -2505,6 +2507,7 @@ option option-pick/land-mana-each
 option option-pick/lantern-of-revealing-bottom
 option option-pick/lavabrink-floodgates-doom
 option option-pick/leatherhead-remove-a-counter
+option option-pick/left-right-piles-label
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
