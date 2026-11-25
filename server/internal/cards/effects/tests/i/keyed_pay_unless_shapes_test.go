@@ -130,7 +130,10 @@ func TestCumulativeUpkeepPromptIsARestorePoint(t *testing.T) {
 	g = effectstest.RestoreRoundTrip(t, g, true)
 	owner = g.Seats[1]
 	choice := effectstest.RemoraUpkeepPrompt(t, g, owner.ID)
-	if choice.PickThen != effects.UpkeepSacrificeSource.Key() || choice.PayCost != cost {
+	// #6188: a cumulative upkeep's two answers are their own key now
+	// (the paid one announces the payment), and the restored prompt
+	// carries it.
+	if choice.PickThen != effects.CumulativeUpkeepPaidOrSacrificed.Key() || choice.PayCost != cost {
 		t.Fatalf("restored prompt: key %q cost %q, want %q", choice.PickThen, choice.PayCost, cost)
 	}
 	if err := g.ResolvePayUnless(choice.ID, owner.ID, false); err != nil {
