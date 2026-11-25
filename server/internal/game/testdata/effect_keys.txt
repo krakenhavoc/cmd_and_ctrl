@@ -3075,6 +3075,7 @@ payunless pay-unless/ultron-artificial-malevolence-copy
 payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/umbilicus-decline
 payunless pay-unless/unassuming-sage-sorcerer-role
+payunless pay-unless/underhanded-designs-drain
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
 payunless pay-unless/urzas-sylex-search
