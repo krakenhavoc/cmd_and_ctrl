@@ -1,0 +1,6 @@
+---
+title: "Spend mana as a specific colour, only as colourless, or as any type for one spell"
+date: 2026-11-25
+issues: [6202]
+---
+**Spend mana as a specific colour, only as colourless, or as any type for one spell** (#6202, CR 609.4b, 106.1b) — Sunglasses of Urza's "You may spend white mana as though it were red mana", Celestial Dawn's "You may spend white mana as though it were mana of any color. You may spend other mana only as though it were colorless mana", and North Star's "For one spell this turn, you may spend mana as though it were mana of any type to pay that spell's mana cost". `AnyColorSpendStatic` gains `To`, which narrows a `From` grant to symbols of one colour, and `OthersOnlyColorless`, a restriction under which other mana pays only generic and `{C}`. Both are read at every payment through `costAsPaidByLocked`. `NextSpellPromise.ManaCostAnyType` widens only the spell's mana cost, in the cast pricer before additional costs join it. It is spent by the first spell cast for its mana cost that prints a coloured or `{C}` symbol. Card shapes: `effects.YouMaySpendColorAsColor`, `YouMaySpendColorAsAnyOthersOnlyColorless` and `GrantNextSpellPromise{Promise: game.NextSpellPromise{ManaCostAnyType: true}}`. **Cards:** built by their OLD batches (b906, b865, b813).
