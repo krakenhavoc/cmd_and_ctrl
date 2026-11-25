@@ -1325,6 +1325,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6201: "can't phase out", read by phaseOutSetLocked
+	// (phasing_extras.go).
+	ModCantPhaseOut: {reader: readerRule},
 	// #6239: "adapts as though it had no +1/+1 counters", read by the
 	// adapt (adapt_ignores_counters.go).
 	ModAdaptIgnoresCounters: {reader: readerRule},

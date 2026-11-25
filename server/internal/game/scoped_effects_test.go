@@ -394,6 +394,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3275: a rules gate read by every sacrifice route. Its cases
 		// are in cant_be_sacrificed_test.go.
 		ModCantBeSacrificed: true,
+		// #6201: a rules gate read by every phase-out. Its cases are in
+		// phasing_extras_test.go.
+		ModCantPhaseOut: true,
 		// #6239: a one-shot rules gate read by the adapt. Its cases are
 		// in the effects package's adapt test.
 		ModAdaptIgnoresCounters: true,

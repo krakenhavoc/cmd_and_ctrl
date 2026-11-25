@@ -961,6 +961,14 @@ type Game struct {
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
 
+	// phasingOut holds the battlefield characteristics of the
+	// permanents phaseOutLocked is announcing as having phased out
+	// (#6201), for the look-back harvest of their own "whenever this
+	// phases out" (CR 603.10b, harvestPhasedOutSelfLocked). Written and
+	// cleared inside that one call, so it is always empty between
+	// mutations, and Clone / RestoreFrom do not carry it.
+	phasingOut map[uuid.UUID]Characteristic
+
 	// stateTriggerHold counts the open sections that the per-event
 	// CR 603.8 state-trigger check skips — combat damage being dealt
 	// and a state-based-action sweep, which the rules see as one event
