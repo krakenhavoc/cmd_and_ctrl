@@ -409,6 +409,7 @@ body old-b049/devouring-tendrils-gain-2
 body old-b050/blocker-controller-loses-1
 body old-b059/draw-two-then-discard-one
 body old-b059/look-at-that-hand-and-draw
+body old-b193/adarkar-valkyrie-return
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -1392,6 +1393,9 @@ choose choose-cards/old-b071-valki-exile
 choose choose-cards/old-b072-in-search-of-greatness-answer
 choose choose-cards/old-b072-reckless-crew-attach
 choose choose-cards/old-b178-scrabbling-claws-exile
+choose choose-cards/old-b193-borderland-explorer-search
+choose choose-cards/old-b193-dream-cache-put-back
+choose choose-cards/old-b193-prototype-portal-imprint
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -2301,6 +2305,7 @@ drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen old-b043-discard-two-unless-instant-or-sorcery
+drawthen old-b193/dream-cache-put-back
 drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen seasoned-cryomancer/discard-two
@@ -2555,6 +2560,7 @@ option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/old-b071-cosima-voyage
 option option-pick/old-b081-fact-or-fiction-splitter
+option option-pick/old-b193-dream-cache-side
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
