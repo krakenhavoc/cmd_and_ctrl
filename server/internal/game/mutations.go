@@ -2886,6 +2886,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.ManaSpent += spent
 	tally.ManaSpentLast = spent
 	g.SpellsCastThisTurn[playerID] = tally
+	// #6217: the spell's name for its caster, and its colours as the
+	// spell most recently cast this turn.
+	g.noteSpellCastLocked(playerID, cardID)
 	// CR 601.2i: which spell this was this turn, kept on the item so the
 	// permanent it becomes remembers it (CastProvenance.CastOrdinal).
 	if item := g.StackMeta[cardID]; item != nil {
@@ -3675,6 +3678,8 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
 		})
+		// #6217, CR 106.12: a land tapped for mana this turn.
+		g.noteManaAbilityTappedLocked(p.ID, cardID, ab.TapCost)
 		var addedColors []string
 		// #3939, CR 106.12b: the source's whole output is ONE production,
 		// as it is for ActivateManaAbility, so a replacement on "a land
@@ -3985,6 +3990,8 @@ func (g *Game) materializeExiledManaSourceLocked(
 		Label:   ab.Label,
 		Exhaust: ab.Exhaust,
 	})
+	// #6217, CR 106.12: a land tapped for mana this turn.
+	g.noteManaAbilityTappedLocked(p.ID, cardID, ab.TapCost)
 	produced := 0
 	for si, slot := range slots {
 		var color string
@@ -9247,6 +9254,8 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		Label:   ab.Label,
 		Exhaust: ab.Exhaust,
 	})
+	// #6217, CR 106.12: a land tapped for mana this turn.
+	g.noteManaAbilityTappedLocked(playerID, cardID, ab.TapCost)
 	// #6085: "Reveal any number of … cards from your hand" is the head
 	// of the effect (CR 605.3b, CR 701.20a): the named cards are shown to
 	// the table as the ability resolves, before the mana is made, and
