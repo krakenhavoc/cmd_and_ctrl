@@ -5403,6 +5403,13 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Lose all abilities except mana abilities (#6246, CR 613.1f).** Blood Sun's
+"All lands lose all abilities except mana abilities" is
+`Static: []game.StaticAbility{LandsLoseAllAbilitiesExceptMana()}`: a
+`RemovesAbilities` static with `KeepsManaAbilities`, so the lands keep their
+declared mana rows, a granted mana ability and their basic land types' mana
+ability, and lose everything else.
+
 **Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
 can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
 a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).

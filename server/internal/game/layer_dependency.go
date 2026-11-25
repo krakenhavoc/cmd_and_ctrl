@@ -528,7 +528,9 @@ func (g *Game) installTrialLocked(eff ContinuousEffect, idxs []int) func() {
 func applyRaw(eff ContinuousEffect, c *Characteristic, target *Card, g *Game) {
 	if eff.RemovesAbilities() {
 		c.Abilities = nil
-		c.GrantedAbilities = nil
+		keepsMana := effectKeepsManaAbilities(eff)
+		c.ManaAbilitiesKept = keepsMana && (!c.AbilitiesRemoved || c.ManaAbilitiesKept)
+		c.GrantedAbilities = keptGrantsUnderRemoval(c.GrantedAbilities, keepsMana)
 		c.BorrowedAbilities = nil
 		c.AbilitiesRemoved = true
 	}

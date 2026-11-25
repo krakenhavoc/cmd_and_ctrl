@@ -142,6 +142,17 @@ type Characteristic struct {
 	// layer-6 grant still survives it. Additive, S82 GAP batch 192 (#5948).
 	IntrinsicLandManaRemoved bool `json:",omitempty"`
 
+	// ManaAbilitiesKept records that the ability removal that applied to
+	// this object keeps its mana abilities (#6246): Blood Sun's "All
+	// lands lose all abilities except mana abilities" (CR 613.1f, CR
+	// 605.1a). AbilitiesRemoved is set as for any removal, so every other
+	// own ability is gone; the declared mana rows answer as before
+	// (untaxedManaAbilityRows), and a layer-6 grant that adds only mana
+	// abilities survives the removal. A later removal that keeps nothing
+	// clears it, and one that keeps mana never restores what an earlier
+	// one took (removeAbilitiesLocked). Additive.
+	ManaAbilitiesKept bool `json:",omitempty"`
+
 	// RemovedOwnAbilities are the individual catalog rows of this
 	// object's OWN definition that a layer-6 effect switched off, one
 	// at a time (CR 613.1f, ADR 0106 amendment of 2026-10-07, #1859):

@@ -458,7 +458,7 @@ func untaxedManaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, Abil
 	// the removing, so it survives on the other side of this switch
 	// rather than being re-granted. And since ADR 0093 a THIRD half
 	// survives too — a layer-6 grant, which is not the object's own.
-	case c.lostAllAbilities():
+	case c.lostAllAbilities() && !c.effective.ManaAbilitiesKept:
 		declared = nil
 	// CR 708.2a: a face-down permanent has no text, so nothing it
 	// carries declares a mana ability — CatalogKey is already silent,
