@@ -252,3 +252,17 @@ func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef, a
 		}
 	}
 }
+
+// exiledWithManaValueLocked is the mana value (CR 202.3) of the card
+// exiled with the permanent `source` (#6240, AbilityCost.
+// ManaValueOfExiledWith): the most recently exiled one when there are
+// several, zero when there is none.
+//
+// Caller must hold g.mu.
+func (g *Game) exiledWithManaValueLocked(source Card) int {
+	linked := g.ExiledWithForEffect(PermissionCardRef{ID: source.InstanceID, Epoch: source.ObjectEpoch})
+	if len(linked) == 0 {
+		return 0
+	}
+	return linked[len(linked)-1].ManaValue()
+}
