@@ -732,6 +732,7 @@ choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
+choose choose-cards/azors-gateway-exile
 choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
 choose choose-cards/back-for-seconds-pick
@@ -1681,6 +1682,7 @@ choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-fortress-return
 choose choose-cards/tomb-of-annihilation-veils-discarded
+choose choose-cards/tomb-of-the-dusk-rose-return
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/torment-of-scarabs-discarded
@@ -4924,6 +4926,7 @@ tail then/audacious-swap-exiled
 tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
 tail then/awaken-the-sky-tyrant-dragon
+tail then/azors-gateway-check
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
@@ -5056,6 +5059,7 @@ tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/guided-passage-shuffle
 tail then/gyrus-waker-of-corpses-copy
+tail then/hadanas-climb-transform
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/harsh-mercy-type-chosen
@@ -5154,6 +5158,7 @@ tail then/polygraph-orb-punisher-sacrificed
 tail then/precognitive-perception-draw
 tail then/prevent-damage-from-chosen-color
 tail then/prize-pig-ribbon-check
+tail then/profane-procession-transform
 tail then/proliferate-again
 tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
