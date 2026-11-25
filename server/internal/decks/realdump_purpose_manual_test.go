@@ -326,6 +326,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 192 (#5525).
 	"Mnemonic Betrayal": "exiles the cards in the opponents' graveyards, not permanents: no board is touched",
+
+	// S82 OLD batch 214 (#5530).
+	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
