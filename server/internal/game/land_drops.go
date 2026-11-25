@@ -49,6 +49,13 @@ import "github.com/google/uuid"
 // Game.ExtraLandDropsThisTurn.
 const DefaultLandDropsPerTurn = 1
 
+// UnlimitedLandPlays is "You may play any number of lands on each of
+// your turns" (Fastbond, #6213; CR 305.2: "continuous effects may
+// increase this number"), as an AdditionalLandPlays value. Any grant of
+// it makes the allowance this number, which no turn can reach, and the
+// allowance never sums past it.
+const UnlimitedLandPlays = 1 << 20
+
 // CatalogAdditionalLandPlays returns how many EXTRA lands per turn a
 // battlefield permanent with the given catalog key lets its
 // controller play — 1 for Exploration, 2 for Azusa, 0 (or a nil
@@ -154,6 +161,10 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 	n += g.ExtraLandDropsThisTurn[p.ID]
 	if n < 0 {
 		return 0
+	}
+	// #6213: "any number of lands" is a ceiling, not a count to add to.
+	if n > UnlimitedLandPlays {
+		return UnlimitedLandPlays
 	}
 	return n
 }

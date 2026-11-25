@@ -1287,6 +1287,7 @@ delayedTriggers[].copiesSpell.item.trigger.Event.explore_revealed	custom(uuid.UU
 delayedTriggers[].copiesSpell.item.trigger.Event.from_radiation	bool
 delayedTriggers[].copiesSpell.item.trigger.Event.kind	string
 delayedTriggers[].copiesSpell.item.trigger.Event.label	string
+delayedTriggers[].copiesSpell.item.trigger.Event.land_ordinal	number:int
 delayedTriggers[].copiesSpell.item.trigger.Event.last_known_all_creature_types	bool
 delayedTriggers[].copiesSpell.item.trigger.Event.last_known_colors	array
 delayedTriggers[].copiesSpell.item.trigger.Event.last_known_colors[]	string
@@ -1967,6 +1968,7 @@ events[].explore_revealed	custom(uuid.UUID)
 events[].from_radiation	bool
 events[].kind	string
 events[].label	string
+events[].land_ordinal	number:int
 events[].last_known_all_creature_types	bool
 events[].last_known_colors	array
 events[].last_known_colors[]	string
@@ -2832,6 +2834,7 @@ followUpParks[].then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.from_radiation	bool
 followUpParks[].then.asked.trigger.Event.kind	string
 followUpParks[].then.asked.trigger.Event.label	string
+followUpParks[].then.asked.trigger.Event.land_ordinal	number:int
 followUpParks[].then.asked.trigger.Event.last_known_all_creature_types	bool
 followUpParks[].then.asked.trigger.Event.last_known_colors	array
 followUpParks[].then.asked.trigger.Event.last_known_colors[]	string
@@ -3551,6 +3554,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.explore_revealed	cust
 frozenEntries[].event.counterTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.label	string
+frozenEntries[].event.counterTail.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -4247,6 +4251,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.explore_revealed	
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.kind	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.label	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
@@ -4934,6 +4939,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.explore_revealed	
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.kind	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.label	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
@@ -5872,6 +5878,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.explore_revealed	custo
 frozenEntries[].event.damageTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.label	string
+frozenEntries[].event.damageTail.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -6686,6 +6693,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.expl
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.label	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
@@ -7449,6 +7457,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.explore_revealed	
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.label	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
@@ -8136,6 +8145,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.explore_revealed	custo
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.label	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
@@ -8859,6 +8869,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.explore
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.label	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -9568,6 +9579,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.explore_revealed
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.label	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
@@ -10723,6 +10735,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.explore_reveale
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.label	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -11436,6 +11449,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.explore_revealed	cu
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.kind	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.label	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
@@ -12126,6 +12140,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.explore_revealed	custom(
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.label	string
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -13708,6 +13723,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.explore_revealed	cus
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.kind	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.label	string
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_colors[]	string
@@ -14393,6 +14409,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.explore_revealed	custom(
 frozenEntries[].event.millTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.label	string
+frozenEntries[].event.millTail.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -15547,6 +15564,7 @@ frozenEntries[].event.stackItem.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.from_radiation	bool
 frozenEntries[].event.stackItem.trigger.Event.kind	string
 frozenEntries[].event.stackItem.trigger.Event.label	string
+frozenEntries[].event.stackItem.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.stackItem.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.stackItem.trigger.Event.last_known_colors	array
 frozenEntries[].event.stackItem.trigger.Event.last_known_colors[]	string
@@ -16204,6 +16222,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.explore_revealed	custom
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.label	string
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -18259,6 +18278,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.explore_
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.label	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
@@ -18982,6 +19002,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ex
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.label	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -19667,6 +19688,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.explore_revea
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.label	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -20372,6 +20394,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.explore_rev
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.label	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -21146,6 +21169,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.explore_re
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.label	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.land_ordinal	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -23783,6 +23807,7 @@ lastKnownStack[].item.trigger.Event.explore_revealed	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.from_radiation	bool
 lastKnownStack[].item.trigger.Event.kind	string
 lastKnownStack[].item.trigger.Event.label	string
+lastKnownStack[].item.trigger.Event.land_ordinal	number:int
 lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
 lastKnownStack[].item.trigger.Event.last_known_colors	array
 lastKnownStack[].item.trigger.Event.last_known_colors[]	string
@@ -25478,6 +25503,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.explore_revealed	cust
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -26174,6 +26200,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.explore_revealed	
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.kind	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.label	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
@@ -26861,6 +26888,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.explore_revealed	
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
@@ -27799,6 +27827,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.explore_revealed	custo
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -28613,6 +28642,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.expl
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
@@ -29376,6 +29406,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.explore_revealed	
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
@@ -30063,6 +30094,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.explore_revealed	custo
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.label	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
@@ -30786,6 +30818,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.explore
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.label	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -31495,6 +31528,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.explore_revealed
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
@@ -32650,6 +32684,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.explore_reveale
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -33363,6 +33398,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.explore_revealed	cu
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
@@ -34053,6 +34089,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.explore_revealed	custom(
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -35635,6 +35672,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.explore_revealed	cus
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_colors[]	string
@@ -36320,6 +36358,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.explore_revealed	custom(
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -37474,6 +37513,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].stackItem.trigger.Event.kind	string
 movesAwaitingTokens[].stackItem.trigger.Event.label	string
+movesAwaitingTokens[].stackItem.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_colors[]	string
@@ -38131,6 +38171,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.explore_revealed	custom
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -40186,6 +40227,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.explore_
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
@@ -40909,6 +40951,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ex
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.label	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -41594,6 +41637,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.explore_revea
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -42299,6 +42343,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.explore_rev
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -43073,6 +43118,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.explore_re
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.label	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.land_ordinal	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -44449,6 +44495,7 @@ pausedModeWalk.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.from_radiation	bool
 pausedModeWalk.item.trigger.Event.kind	string
 pausedModeWalk.item.trigger.Event.label	string
+pausedModeWalk.item.trigger.Event.land_ordinal	number:int
 pausedModeWalk.item.trigger.Event.last_known_all_creature_types	bool
 pausedModeWalk.item.trigger.Event.last_known_colors	array
 pausedModeWalk.item.trigger.Event.last_known_colors[]	string
@@ -44838,6 +44885,7 @@ pausedResolutionTail.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.from_radiation	bool
 pausedResolutionTail.item.trigger.Event.kind	string
 pausedResolutionTail.item.trigger.Event.label	string
+pausedResolutionTail.item.trigger.Event.land_ordinal	number:int
 pausedResolutionTail.item.trigger.Event.last_known_all_creature_types	bool
 pausedResolutionTail.item.trigger.Event.last_known_colors	array
 pausedResolutionTail.item.trigger.Event.last_known_colors[]	string
@@ -45221,6 +45269,7 @@ pausedStepWalk.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.from_radiation	bool
 pausedStepWalk.item.trigger.Event.kind	string
 pausedStepWalk.item.trigger.Event.label	string
+pausedStepWalk.item.trigger.Event.land_ordinal	number:int
 pausedStepWalk.item.trigger.Event.last_known_all_creature_types	bool
 pausedStepWalk.item.trigger.Event.last_known_colors	array
 pausedStepWalk.item.trigger.Event.last_known_colors[]	string
@@ -45435,6 +45484,7 @@ pendingChoices[].asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.from_radiation	bool
 pendingChoices[].asked.trigger.Event.kind	string
 pendingChoices[].asked.trigger.Event.label	string
+pendingChoices[].asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].asked.trigger.Event.last_known_colors	array
 pendingChoices[].asked.trigger.Event.last_known_colors[]	string
@@ -46739,6 +46789,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.explore_revealed	custom(uu
 pendingChoices[].attackSplit.tail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.kind	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.label	string
+pendingChoices[].attackSplit.tail.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_colors[]	string
@@ -48101,6 +48152,7 @@ pendingChoices[].copyWalk.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.from_radiation	bool
 pendingChoices[].copyWalk.item.trigger.Event.kind	string
 pendingChoices[].copyWalk.item.trigger.Event.label	string
+pendingChoices[].copyWalk.item.trigger.Event.land_ordinal	number:int
 pendingChoices[].copyWalk.item.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].copyWalk.item.trigger.Event.last_known_colors	array
 pendingChoices[].copyWalk.item.trigger.Event.last_known_colors[]	string
@@ -49096,6 +49148,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.explore_revealed	custom(uuid.
 pendingChoices[].diceRoll.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.kind	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.label	string
+pendingChoices[].diceRoll.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_colors[]	string
@@ -50320,6 +50373,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.explore_revealed	cus
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.from_radiation	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.kind	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.label	string
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_colors	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_colors[]	string
@@ -51007,6 +51061,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.explore_revealed	cus
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.kind	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.label	string
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_colors[]	string
@@ -51700,6 +51755,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.explore_revealed	custom(u
 pendingChoices[].libraryOrder.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.kind	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.label	string
+pendingChoices[].libraryOrder.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_colors[]	string
@@ -52448,6 +52504,7 @@ pendingChoices[].nameThen.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.from_radiation	bool
 pendingChoices[].nameThen.asked.trigger.Event.kind	string
 pendingChoices[].nameThen.asked.trigger.Event.label	string
+pendingChoices[].nameThen.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].nameThen.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].nameThen.asked.trigger.Event.last_known_colors	array
 pendingChoices[].nameThen.asked.trigger.Event.last_known_colors[]	string
@@ -53142,6 +53199,7 @@ pendingChoices[].ordered.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.from_radiation	bool
 pendingChoices[].ordered.asked.trigger.Event.kind	string
 pendingChoices[].ordered.asked.trigger.Event.label	string
+pendingChoices[].ordered.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].ordered.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].ordered.asked.trigger.Event.last_known_colors	array
 pendingChoices[].ordered.asked.trigger.Event.last_known_colors[]	string
@@ -53651,6 +53709,7 @@ pendingChoices[].pickTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].pickTail.asked.trigger.Event.kind	string
 pendingChoices[].pickTail.asked.trigger.Event.label	string
+pendingChoices[].pickTail.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].pickTail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].pickTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].pickTail.asked.trigger.Event.last_known_colors[]	string
@@ -54384,6 +54443,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ex
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -55080,6 +55140,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
@@ -55767,6 +55828,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
@@ -56705,6 +56767,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exp
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -57519,6 +57582,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
@@ -58282,6 +58346,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
@@ -58969,6 +59034,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exp
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
@@ -59692,6 +59758,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -60401,6 +60468,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
@@ -61556,6 +61624,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -62269,6 +62338,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
@@ -62959,6 +63029,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.explo
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -64541,6 +64612,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.e
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_colors[]	string
@@ -65226,6 +65298,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.explo
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -66380,6 +66453,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.explore_reveale
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.label	string
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_colors[]	string
@@ -67037,6 +67111,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.expl
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_colors[]	string
@@ -69092,6 +69167,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
@@ -69815,6 +69891,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -70500,6 +70577,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -71205,6 +71283,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -71979,6 +72058,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.label	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
@@ -73141,6 +73221,7 @@ pendingChoices[].scryThen.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.from_radiation	bool
 pendingChoices[].scryThen.asked.trigger.Event.kind	string
 pendingChoices[].scryThen.asked.trigger.Event.label	string
+pendingChoices[].scryThen.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].scryThen.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].scryThen.asked.trigger.Event.last_known_colors	array
 pendingChoices[].scryThen.asked.trigger.Event.last_known_colors[]	string
@@ -73877,6 +73958,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.explore_revealed
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.kind	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.label	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.land_ordinal	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
@@ -75541,6 +75623,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.explore_revealed	custom(uuid.UUI
 pendingChoices[].targetWalk.frame.trigger.Event.from_radiation	bool
 pendingChoices[].targetWalk.frame.trigger.Event.kind	string
 pendingChoices[].targetWalk.frame.trigger.Event.label	string
+pendingChoices[].targetWalk.frame.trigger.Event.land_ordinal	number:int
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_colors	array
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_colors[]	string
@@ -76431,6 +76514,7 @@ pendingChoices[].triggerFrame.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.from_radiation	bool
 pendingChoices[].triggerFrame.trigger.Event.kind	string
 pendingChoices[].triggerFrame.trigger.Event.label	string
+pendingChoices[].triggerFrame.trigger.Event.land_ordinal	number:int
 pendingChoices[].triggerFrame.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].triggerFrame.trigger.Event.last_known_colors	array
 pendingChoices[].triggerFrame.trigger.Event.last_known_colors[]	string
@@ -76823,6 +76907,7 @@ pendingTriggers[].trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.from_radiation	bool
 pendingTriggers[].trigger.Event.kind	string
 pendingTriggers[].trigger.Event.label	string
+pendingTriggers[].trigger.Event.land_ordinal	number:int
 pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
 pendingTriggers[].trigger.Event.last_known_colors	array
 pendingTriggers[].trigger.Event.last_known_colors[]	string
@@ -78651,6 +78736,7 @@ promptRuns[].asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.from_radiation	bool
 promptRuns[].asked.trigger.Event.kind	string
 promptRuns[].asked.trigger.Event.label	string
+promptRuns[].asked.trigger.Event.land_ordinal	number:int
 promptRuns[].asked.trigger.Event.last_known_all_creature_types	bool
 promptRuns[].asked.trigger.Event.last_known_colors	array
 promptRuns[].asked.trigger.Event.last_known_colors[]	string
@@ -79503,6 +79589,7 @@ resolving.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 resolving.item.trigger.Event.from_radiation	bool
 resolving.item.trigger.Event.kind	string
 resolving.item.trigger.Event.label	string
+resolving.item.trigger.Event.land_ordinal	number:int
 resolving.item.trigger.Event.last_known_all_creature_types	bool
 resolving.item.trigger.Event.last_known_colors	array
 resolving.item.trigger.Event.last_known_colors[]	string
@@ -85419,6 +85506,7 @@ stackMeta[].trigger.Event.explore_revealed	custom(uuid.UUID)
 stackMeta[].trigger.Event.from_radiation	bool
 stackMeta[].trigger.Event.kind	string
 stackMeta[].trigger.Event.label	string
+stackMeta[].trigger.Event.land_ordinal	number:int
 stackMeta[].trigger.Event.last_known_all_creature_types	bool
 stackMeta[].trigger.Event.last_known_colors	array
 stackMeta[].trigger.Event.last_known_colors[]	string
