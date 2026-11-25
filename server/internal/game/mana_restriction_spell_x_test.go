@@ -29,3 +29,21 @@ func TestManaRestrictSpellXCostAdmitsOnlySpellsWithXInTheirManaCost(t *testing.T
 		t.Error("admitted a payment that is not a cast")
 	}
 }
+
+// ManaRestrictSpellNoXCost (Titans' Nest): the mana pays a SPELL with no {X}
+// in its printed mana cost, and nothing else (CR 106.6, CR 107.3).
+func TestManaRestrictSpellNoXCostAdmitsOnlySpellsWithoutXInTheirManaCost(t *testing.T) {
+	tags := []string{ManaRestrictSpellNoXCost}
+	if !ManaSpendForCast(Card{ManaCost: "{2}{U}", TypeLine: "Sorcery"}).allows(tags) {
+		t.Error("refused a spell without {X} in its mana cost")
+	}
+	if ManaSpendForCast(Card{ManaCost: "{X}{U}{U}", TypeLine: "Sorcery"}).allows(tags) {
+		t.Error("admitted a spell with {X}")
+	}
+	if ManaSpendForAbility(Card{TypeLine: "Artifact"}).allows(tags) {
+		t.Error("admitted an activated ability")
+	}
+	if (ManaSpendContext{Purpose: SpendPurposeUnlock}).allows(tags) {
+		t.Error("admitted a payment that is not a cast")
+	}
+}

@@ -220,6 +220,15 @@ const (
 	// ability never does (ManaSpendContext.ManaCostHasX). A payment
 	// that does not say what it casts refuses it.
 	ManaRestrictSpellXCost = "spell:has-x"
+	// ManaRestrictSpellNoXCost permits the token only on a SPELL that has
+	// no {X} in its printed mana cost (S82, CR 106.6, CR 107.3): Titans'
+	// Nest's "Spend this mana only to cast a spell that's one or more
+	// colors without {X} in its mana cost". It asks about the card being
+	// cast, as ManaRestrictSpellXCost does, so an activation never
+	// satisfies it. A payment that does not say what it casts carries no
+	// colours, which the colour tags it is paired with refuse (weaker than
+	// printed, never stronger).
+	ManaRestrictSpellNoXCost = "spell:no-x"
 	// ManaRestrictFaceDownSpell permits the token only on a spell cast
 	// face down (CR 708.4): Tin Street Gossip's "cast face-down spells".
 	// It asks about the spell being cast, so an activation, a unlock or
@@ -875,6 +884,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.YourCommander
 	case ManaRestrictSpellXCost:
 		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
+	case ManaRestrictSpellNoXCost:
+		return ctx.Purpose == SpendPurposeCast && !ctx.ManaCostHasX
 	case ManaRestrictFaceDownSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
 	case ManaRestrictSpellNoAbilities:
