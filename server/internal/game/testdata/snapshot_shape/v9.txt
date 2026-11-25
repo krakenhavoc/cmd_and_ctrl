@@ -85032,6 +85032,15 @@ turnTally.becameTapped	map:string
 turnTally.becameTapped{}	number:int
 turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
+turnTally.combatBlocks	array
+turnTally.combatBlocks[]	object
+turnTally.combatBlocks[].attacker	object
+turnTally.combatBlocks[].attacker.epoch	number:int
+turnTally.combatBlocks[].attacker.id	custom(uuid.UUID)
+turnTally.combatBlocks[].blocker	object
+turnTally.combatBlocks[].blocker.epoch	number:int
+turnTally.combatBlocks[].blocker.id	custom(uuid.UUID)
+turnTally.combatBlocks[].phaseId	number:int
 turnTally.combatDamagedPlayers	map:string
 turnTally.combatDamagedPlayers{}	number:int
 turnTally.countersPut	map:string
