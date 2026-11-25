@@ -312,6 +312,10 @@ type CardDef struct {
 	CounterRemovalLocks  []CounterRemovalLock
 	UntapCaps            []UntapCap
 	UntapOptOuts         []UntapOptOut
+	// TurnSkipOffers is Time Vault's "If you would begin your turn
+	// while this artifact is tapped, you may skip that turn instead"
+	// (#6226, turn_skip_offer.go).
+	TurnSkipOffers []TurnSkipOffer
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -1215,6 +1219,12 @@ func init() {
 	CatalogUntapOptOuts = func(key string) []UntapOptOut {
 		if d := catalogDef(key); d != nil {
 			return d.UntapOptOuts
+		}
+		return nil
+	}
+	CatalogTurnSkipOffers = func(key string) []TurnSkipOffer {
+		if d := catalogDef(key); d != nil {
+			return d.TurnSkipOffers
 		}
 		return nil
 	}

@@ -526,6 +526,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6226: a this-turn skip naming no player, turn or part.
+			if problem := skipThisTurnModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #5718: the table-wide targeting bar is a game record that
 			// names nothing.
 			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {

@@ -476,6 +476,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6144 (Avizoa, Ivory Gargoyle): a player's next untap or draw
 		// step skipped. Its cases are in skip_next_step_test.go.
 		ModSkipNextStep: true,
+		// #6226 (Fatespinner): a step or phase skipped this turn. Its
+		// cases are in skip_this_turn_test.go.
+		ModSkipThisTurn: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

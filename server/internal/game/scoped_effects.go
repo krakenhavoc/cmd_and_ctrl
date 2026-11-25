@@ -1391,6 +1391,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipNextCombatPhase: {reader: readerRule},
 	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
 	ModSkipNextStep: {reader: readerRule},
+	// #6226: "skips each <draw step | main phase | combat phase> this
+	// turn" (Fatespinner).
+	ModSkipThisTurn: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1976,6 +1979,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipThisTurnModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
