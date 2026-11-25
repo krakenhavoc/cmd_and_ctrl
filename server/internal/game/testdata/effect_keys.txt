@@ -98,6 +98,7 @@ body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
 body catalog/activated
 body catalog/triggered
+body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
 body channel-harm/may-deal-that-much
@@ -742,6 +743,8 @@ choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bitter-revelation-take
 choose choose-cards/black-suns-twilight-return
+choose choose-cards/blood-for-bones-first
+choose choose-cards/blood-for-bones-second
 choose choose-cards/blossom-prancer-take
 choose choose-cards/body-snatcher-discard
 choose choose-cards/bolster
@@ -3108,6 +3111,7 @@ run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/canoptek-wraith-land
 run prompt-run/capital-punishment-discards
 run prompt-run/cataclysmic-gearhulk-keep
+run prompt-run/cavalier-of-night-sacrifice
 run prompt-run/chaos-defiler-destroy
 run prompt-run/chitterspitter-acorn
 run prompt-run/choking-miasma-counter
@@ -4251,6 +4255,7 @@ tail mass/indomitable-creativity-reveal
 tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
 tail mass/krenkos-buzzcrusher-search
+tail mass/legions-end-name-sweep
 tail mass/mass-polymorph-reveal
 tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
@@ -4518,6 +4523,7 @@ tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/caesar-legions-emperor-sacrifice
+tail sacrificed-one/prompt-run/cavalier-of-night-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/cmdr2-b09-foul-rebirth-token
 tail sacrificed-one/prompt-run/cmdr2-b09-promise-of-aclazotz-populate
@@ -4728,6 +4734,7 @@ tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
 tail tail/anzrags-rampage-exiled
+tail tail/blood-for-bones-after-first
 tail tail/boreas-charger-put
 tail tail/bottled-cloister-draw
 tail tail/break-out-entered

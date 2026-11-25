@@ -29,25 +29,8 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			target, ok := effects.B16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			c, ok := ctx.Game.LookupCardForEffect(target)
-			if !ok {
-				return nil
-			}
-			victim, name, faceDown := c.Controller, c.Name, c.FaceDownIsPermanent()
-			return effects.ExileAllMatching{
-				Match: func(g *game.Game, _ uuid.UUID, o game.Card) bool {
-					if o.InstanceID == target {
-						return true
-					}
-					return !faceDown && !o.FaceDownIsPermanent() && o.IsCreature() &&
-						o.Controller == victim && game.HasName(o, name)
-				},
-				ThenTail: ctx.Tail(declarationInStoneClues),
-			}.Apply(ctx)
+			_, err := effects.OldB157ExileTargetAndSameName(ctx, ctx.Tail(declarationInStoneClues))
+			return err
 		},
 	})
 }
