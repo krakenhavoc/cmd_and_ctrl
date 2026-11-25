@@ -3157,8 +3157,8 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	var out []uuid.UUID
 	if cost.SacrificeSelf {
 		// #3275, CR 118.3: a source that can't be sacrificed can't pay
-		// "Sacrifice this".
-		if g.cantBeSacrificedLocked(sourceID) {
+		// "Sacrifice this", nor a nonland one under Yasharn (#6167).
+		if g.sacrificeCostBarredLocked(findBattlefieldCard(g, sourceID)) {
 			return nil, ErrCantBeSacrificed
 		}
 		out = append(out, sourceID)
@@ -3191,8 +3191,9 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		if c.Controller != playerID {
 			return nil, ErrCardCallerMismatch
 		}
-		// #3275, CR 118.3: nor what can't be sacrificed.
-		if g.permanentCantBeSacrificedLocked(c) {
+		// #3275, CR 118.3: nor what can't be sacrificed, nor a nonland
+		// permanent under Yasharn (#6167).
+		if g.sacrificeCostBarredLocked(c) {
 			return nil, ErrCantBeSacrificed
 		}
 		// specMatchLocked, not targetLegalLocked: sacrificing a

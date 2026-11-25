@@ -1214,7 +1214,7 @@ func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *Target
 		}
 		// #3275, CR 118.3: a permanent that can't be sacrificed can't
 		// pay a sacrifice.
-		if alt != nil && alt.Sacrifice != nil && g.permanentCantBeSacrificedLocked(&c) {
+		if alt != nil && alt.Sacrifice != nil && g.sacrificeCostBarredLocked(&c) {
 			return false
 		}
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)

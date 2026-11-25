@@ -34,6 +34,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
   - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
+  - ["Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)](#players-cant-pay-life-or-sacrifice-nonland-permanents-to-cast-spells-or-activate-abilities-6167)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
@@ -2432,6 +2433,30 @@ A mana ability's cost (CR 605.1a), a ward cost, a pay-unless, a land's
 printed text names casts and non-mana activations only. A new life
 component of a cast or of a non-mana activation asks
 `CanPayLifeToCastOrActivateLocked`, never `CanPayLifeLocked`.
+
+### "Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)
+
+Yasharn, Implacable Earth's static is the second-set world-rule bit
+`game.PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate`, carried on
+the source itself (a layer-6 static that ORs it into
+`ExtraRestrictions`, `AppliesTo: SelfOnly`). It is wider than Karn's
+Sylex's bit in two ways, and the engine reads both:
+
+- the life half names every activated ability, mana abilities included:
+  `cantPayLifeToCastOrActivateLocked` reads it for casts and non-mana
+  activations, and `CanPayLifeForManaAbilityLocked` for a mana ability's
+  life (Mana Confluence, a Phyrexian symbol in a filter's cost). A new
+  life component of a mana ability's cost asks that predicate;
+- no nonland permanent can pay a sacrifice COST
+  (`game/sacrifice_cost_bar.go`). `sacrificeCostBarredLocked` is the
+  #3275 "can't be sacrificed" question widened by the rule, asked at the
+  cost sites only: `validateSacrificeCostLocked` (activations, mana
+  abilities and additional costs), `SacrificeCostCandidatesForEffect`,
+  the alternative-cost walk, the sacrifice-the-grantor and sacrifice-all
+  costs, the auto-tapper and the enumerator (`SacrificeCostBarredForEffect`).
+  A new sacrifice cost asks it, never `permanentCantBeSacrificedLocked`.
+  An effect's "sacrifice a creature" is no cost and is untouched, and a
+  land still pays (a fetch land works).
 
 ### Adding a replacement effect (S17+)
 
