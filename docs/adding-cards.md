@@ -3241,6 +3241,35 @@ destroy instruction's rider and the turn's mark. "When that creature dies
 this turn, exile it" (Whippoorwill) is a delayed trigger, not a
 replacement: `ExileWhenItDiesThisTurn`.
 
+**"Can't be the target of <spells or abilities with a quality>"**
+(#6196). Bartel Runeaxe's Aura spells, Raiding Party's "white spells or
+abilities from white sources", Artifact Ward's "abilities from artifact
+sources", Anti-Magic Aura's spells, Lurker's "unless it attacked or
+blocked this turn". None of them is hexproof, shroud or protection —
+protection would also prevent damage, stop blocks and forbid enchanting
+— so they are their own static, `Characteristic.TargetingBars`, read by
+the targeting gate with protection's quality matcher (CR 702.16b):
+
+```go
+Static: []game.StaticAbility{CantBeTargetedByAuraSpells(text)}                  // Bartel Runeaxe
+Static: []game.StaticAbility{CantBeTargetedByColor("W", text)}                  // Raiding Party
+Static: []game.StaticAbility{AttachedCantBeTargetedBySpells(text)}              // Anti-Magic Aura
+Static: []game.StaticAbility{AttachedCantBeTargetedByAbilitiesFrom("artifact", text)} // Artifact Ward
+Static: []game.StaticAbility{CantBeTargetedBySpellsUnlessItAttackedOrBlocked(text)}   // Lurker
+```
+
+They sit ahead of hexproof in `canBeTargetedBy`, so a "may be targeted
+as though it didn't have hexproof" waiver does not lift them, and both
+the CR 601.2c announce check and the CR 608.2b re-check read them.
+Lurker's condition reads the turn's combat records — `TurnTally.Attacks`
+for the attack half and the per-pair block record
+(`TurnTally.CombatBlocks`, #6193) for the block half — so the bar stays
+lifted once combat is over, which is what "attacked or blocked this
+turn" says. A clause that reads the SPELL'S TARGET SPEC rather than a
+characteristic of it — Wall of Shadows' "spells that can target only Walls" — is not
+expressible: a clause's predicate is a closure, so that needs a declared
+flag on the target clause itself.
+
 **"Creatures dealt damage by this creature this turn"** (#1946, ADR 0108
 amendment of 2026-10-15). The turn keeps a record of which permanent
 objects each source dealt damage to (`TurnTally.DamagedObjects`; prevented
