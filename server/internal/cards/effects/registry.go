@@ -62,6 +62,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
 		CheckUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		checkChooseX(spec.Name, spec.Modes, true)
 		checkUpToCount(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		// #5771: "An opponent chooses one".
@@ -127,6 +128,7 @@ func Register(spec Spec) {
 			CheckRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			CheckUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			checkChooseX(spec.Name, a.Modes, false)
 			checkUpToCount(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
@@ -174,6 +176,7 @@ func Register(spec Spec) {
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
 			CheckUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			checkChooseX(spec.Name, t.Modes, false)
 			checkUpToCount(spec.Name, "a trigger's Modes", t.Modes, &t)
 			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
@@ -924,10 +927,11 @@ func Register(spec Spec) {
 		CheckSpendOnlyClause(spec.Name, i, ab.Cost)
 	}
 	for i, ma := range spec.ManaAbilities {
-		// #1213: `false` — a mana ability has no stack item and no
-		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
-		// has nothing to read its count from.
-		CheckSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
+		// #6125: a mana ability announces X with its activation (CR 107.3a,
+		// 602.2b via 605.3a) — "Sacrifice X Goats" (Springjack Pasture)
+		// reads its count from ManaAbilityParams.XValue.
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, true, false)
+		checkManaAbilityX(spec.Name, i, ma)
 		RefuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
 		checkManaTapOthersClause(spec.Name, i, ma)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held

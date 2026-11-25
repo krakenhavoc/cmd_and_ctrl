@@ -1383,6 +1383,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Chooser:       playerID,
 		OracleID:      CatalogKey(card),
 		OptionalCosts: params.OptionalCosts,
+		// #6125: "Choose X" (Doomsday Confluence) reads the X announced
+		// with the modes (CR 601.2b).
+		X: params.XValue,
 	})
 	// #5771, CR 700.2e: "An opponent chooses one —". The caster's payload
 	// names no mode; the cast parks below, before anything is paid, until
@@ -8471,6 +8474,17 @@ type ManaAbilityParams struct {
 	// the auto-tap never claims it (CR 601.2b).
 	PhyrexianLife int
 
+	// XValue is the X a mana ability with X in its cost announces
+	// (#6125, CR 107.3a, CR 602.2b via 605.3a): Wizard's Rockets' "{X},
+	// {T}, Sacrifice this artifact: Add X mana in any combination of
+	// colors", Springjack Pasture's "{T}, Sacrifice X Goats: Add X mana of
+	// any one color." Refused when the ability's cost has no X
+	// (ManaAbilityShape.DemandsX) or below zero. The ability resolves at
+	// once (CR 605.3b), so X lives only on the activation's PaidCost.XValue.
+	// On the wire as `x_value`. The auto-tapper never sets it, because it
+	// never plans such an ability.
+	XValue int
+
 	// CostBranch is the branch of an either/or cost the activator pays
 	// (#5397): forage on a mana ability, Thornvault Forager's "{T},
 	// Forage:" — 0 exiles three cards from the graveyard (named in
@@ -8670,7 +8684,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// asked of the same list the view published and the mana_pick
 	// would have carried. Before any cost is validated, so a refused
 	// colour costs nothing and taps nothing.
-	if err := g.validateUpfrontManaColors(playerID, cardID, ab, params.Colors); err != nil {
+	if err := g.validateUpfrontManaColors(playerID, cardID, ab, params.Colors, params.XValue); err != nil {
 		return err
 	}
 	// --- validate every cost before paying any ------------------
@@ -8697,15 +8711,18 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			return ErrSummoningSick
 		}
 	}
-	// #1213: a mana ability announces no X (CR 605.3b — there is no
-	// stack item to carry one), so the announced value is 0 and
-	// effects.Register refuses a CountFromX sacrifice clause here at
-	// boot. An OPEN count ("sacrifice one or more") still works, and
-	// reads its floor and ceiling off the clause alone.
+	// #6125, CR 107.3a / 602.2b: a mana ability whose cost has X ({X} in
+	// its mana, "Sacrifice X Goats") announces it with the activation; any
+	// other refuses one. A sacrifice-X clause reads the same X. An OPEN
+	// count ("sacrifice one or more") reads its floor and ceiling off the
+	// clause alone.
+	if params.XValue < 0 || (params.XValue != 0 && !ab.DemandsX()) {
+		return ErrInvalidParam
+	}
 	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, AbilityCost{
 		SacrificeSelf:  ab.SacrificeCost,
 		SacrificeOther: ab.SacrificeOther,
-	}, params.SacrificeIDs, 0)
+	}, params.SacrificeIDs, params.XValue)
 	if err != nil {
 		return err
 	}
@@ -8861,10 +8878,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// token is tested against — Eldrazi Temple mana can fund a
 		// colorless Eldrazi's ability, not a Signet's.
 		spendCtx := ManaSpendForAbilityRow(*card, origins.At(abilityIdx))
+		// #6125: a mana ability's own {X} (Wizard's Rockets) is a cost
+		// that contains {X} (ManaRestrictXCost).
+		spendCtx.CostHasX = spendCtx.CostHasX || priced.XSlots > 0
 		// #1600: an Orrery's controller may pay a filter land's {W/U}
 		// with colourless — the same widening the pay step below
 		// spends under, because it spends this manaCost.
-		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, 0)
+		manaCost = g.costAsPaidByLocked(playerID, spendCtx, priced, params.XValue)
 		// CR 107.4f / CR 602.2b (ADR 0131 §2): the symbols the activator
 		// announced they pay with life leave the mana cost here, through
 		// the helper the cast and CR 602 paths run, BEFORE the auto-tap
@@ -8880,16 +8900,16 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if manaLife > 0 && !g.CanPayLifeForManaAbilityLocked(p, manaLife+ab.LifeCost) {
 			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
 		}
-		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
+		if !p.ManaPool.CanPayFor(manaCost, params.XValue, spendCtx) {
 			if !params.AutoTap {
-				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, params.XValue, spendCtx)}
 			}
 			// #2461: refused here, before the activation begins, when the
 			// plan carried out would not fund the cost.
-			plan, short, ok := g.autoTapFundedLocked(p, manaCost, 0, spendCtx,
+			plan, short, ok := g.autoTapFundedLocked(p, manaCost, params.XValue, spendCtx,
 				ManaActivationAutoTapExclusions(cardID, params), 0)
 			if !ok {
-				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, 0, spendCtx)}
+				return &InsufficientManaError{Missing: p.ManaPool.MissingFor(manaCost, params.XValue, spendCtx)}
 			}
 			manaPlan, manaShort = plan, short
 		}
@@ -8953,7 +8973,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// of this call and is handed to ProducedForPaid, which is how
 	// "Add {C} for each storage counter removed this way" knows how
 	// many came off.
-	paid := PaidCost{}
+	paid := PaidCost{XValue: params.XValue}
 
 	// #1212: what this permanent IS, read before a single component
 	// of the cost runs. It has to be here and not at the mint below,
@@ -9013,7 +9033,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// Same context the validation above used. Spending under a
 		// different context than the check would let a restricted
 		// token pay for something it was never cleared for.
-		spent, ok := p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbilityRow(*card, origins.At(abilityIdx)))
+		spendRow := ManaSpendForAbilityRow(*card, origins.At(abilityIdx))
+		spendRow.CostHasX = spendRow.CostHasX || manaCost.XSlots > 0
+		spent, ok := p.ManaPool.SpendManaFor(manaCost, params.XValue, spendRow)
 		if !ok {
 			return &InsufficientManaError{Missing: []string{manaCost.String()}}
 		}
@@ -9549,6 +9571,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			})
 		}
 	}
+	// #6125: "You gain X life" (Springjack Pasture), with the mana
+	// already in the pool.
+	if ab.RiderGainLifeX && paid.XValue > 0 {
+		needStateChecks = true
+		if err := g.ChangePlayerLifeForEffect(cardID, playerID, paid.XValue); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, Actor: playerID, Source: cardID, ErrorMsg: err.Error()})
+		}
+	}
 	// #5644: with no colour left to pick the ability has resolved, and
 	// what it produced is known. One that queued a pick announces this
 	// from ResolveManaChoice instead (PendingChoice.ManaAbilityRun).
@@ -9966,6 +9996,11 @@ func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilit
 		return PaidCost{}
 	}
 	paid := g.maxCounterPaymentLocked(playerID, sourceID, ab.RemoveCounters)
+	// #6125: an X ability could be activated for any X; X = 1 stands in,
+	// so "could produce" sees the types its output may have (CR 106.7).
+	if ab.DemandsX() {
+		paid.XValue = 1
+	}
 	// #6085: "Reveal any number of …" could reveal every candidate in the
 	// hand, so that is what "could produce" assumes (CR 106.7).
 	if RevealCardsAnyNumber(ab.RevealCards) {

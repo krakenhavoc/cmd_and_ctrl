@@ -183,6 +183,8 @@ var manaRowScopes = map[string]rowScope{
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	"ExileCostAnyNumber": rowPublic, "ExileCostManaValueMin": rowPublic,
+	// #6125: X in a mana ability's cost is the printed cost.
+	"DemandsX":     rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,
 	"CounterCostLabel": rowPublic, "CounterCostAmong": rowPublic,
 	"CounterCostVariable": rowPublic, "CounterCostMax": rowPublic,

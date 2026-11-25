@@ -2476,6 +2476,9 @@ type manaParams struct {
 	// ADR 0131 §2: how many symbols of the mana component are paid with
 	// 2 life each — ManaAbilityParams.PhyrexianLife.
 	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// #6125: the X a mana ability with X in its cost announces —
+	// ManaAbilityParams.XValue.
+	XValue int `json:"x_value,omitempty"`
 	// #5397: the branch of an either/or cost the move pays (forage: 0
 	// exiles three graveyard cards named in exile_ids, 1 sacrifices the
 	// Food named in sacrifice_ids) — activateParams.CostBranch's field.
@@ -2687,6 +2690,13 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// #5382: a tap-only mana ability an activation cost increase
 		// taxes owes mana too (CR 605.3 through 602.2b).
 		manaCharged := g.ManaAbilityChargesManaForEffect(e.seat, *source, ab)
+		// #6125: an {X} in the mana (Wizard's Rockets) is offered at X = 1,
+		// the smallest activation that makes mana; a sacrifice-X clause
+		// (Springjack Pasture) announces the number its payment sacrifices.
+		manaX := 0
+		if ab.DemandsX() && !game.SacrificeCountFromX(ab.SacrificeOther) {
+			manaX = 1
+		}
 		if manaCharged {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
 			if err != nil {
@@ -2694,9 +2704,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			}
 			// #1600: widened as ActivateManaAbility widens it.
 			manaSpend = game.ManaSpendForAbilityRow(*source, origins.At(idx))
-			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, 0)
+			manaSpend.CostHasX = manaSpend.CostHasX || cost.XSlots > 0
+			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, manaX)
 			sourceOnly := game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{})
-			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend, sourceOnly) {
+			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, manaX, manaSpend, sourceOnly) {
 				// ADR 0131 §2: a printed {B/P} on the cost, or a {B} a
 				// life-for-mana grant (K'rrik) makes payable with life,
 				// may pay what the board cannot. Mana first, then the
@@ -2712,7 +2723,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 					if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost+life) {
 						break
 					}
-					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, 0, manaSpend, sourceOnly) {
+					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, manaX, manaSpend, sourceOnly) {
 						manaCostAsPaid, manaLife, found = reduced, n, true
 						break
 					}
@@ -2822,7 +2833,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 					// tapped for it (ManaActivationAutoTapExclusions).
 					if manaCharged && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
 						len(manaDiscardIDs) > 0 || len(manaExileIDs) > 0) &&
-						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
+						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, manaX, manaSpend,
 							game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{
 								SacrificeIDs: sacs, TapIDs: taps, DiscardIDs: manaDiscardIDs,
 								ExileIDs: manaExileIDs, ExilePermanentIDs: exiles,
@@ -2898,6 +2909,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								RevealIDs:         idStrings(manaRevealIDs),
 								AutoTap:           manaCharged,
 								PhyrexianLife:     manaLife,
+								XValue:            manaMoveX(ab, manaX, sacs),
 								CostBranch:        mr.branch,
 							}),
 						})
@@ -3075,4 +3087,14 @@ func (e *enumerator) exiledCardCostPick(source *game.Card, zone game.ZoneKind, a
 		}
 	}
 	return ab, nil, false
+}
+
+// manaMoveX is the X a mana move announces (#6125): the number a
+// sacrifice-X clause sacrifices, or the {X} the move pays (`manaX`).
+// Zero for an ability with no X.
+func manaMoveX(ab game.ManaAbilityShape, manaX int, sacs []uuid.UUID) int {
+	if game.SacrificeCountFromX(ab.SacrificeOther) {
+		return len(sacs)
+	}
+	return manaX
 }

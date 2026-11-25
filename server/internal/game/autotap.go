@@ -1934,6 +1934,11 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.ExileCards != nil {
 		return false
 	}
+	// #6125: an X to announce (Wizard's Rockets, Springjack Pasture) —
+	// how much to pay is the player's decision.
+	if a.DemandsX() {
+		return false
+	}
 	// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) asks
 	// which cards to show, and keeping them hidden is the player's call.
 	if a.RevealCards != nil {

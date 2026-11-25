@@ -406,6 +406,14 @@ type PaidCost struct {
 	// copy of the ability keeps it, as it keeps X.
 	Rolled []int `json:"rolled,omitempty"`
 
+	// XValue is the X a MANA ability announced (#6125,
+	// ManaAbilityParams.XValue): Wizard's Rockets' "Add X mana",
+	// Springjack Pasture's "Add X mana … You gain X life". A mana ability
+	// has no stack item (CR 605.3b), so its ProducedForPaid and Rider read
+	// X here. Zero on every other record, which keeps its X on the stack
+	// item.
+	XValue int `json:"xValue,omitempty"`
+
 	// Revealed is the cards a mana ability's "Reveal any number of …
 	// cards from your hand" revealed (#6085, ManaAbilityShape.RevealCards),
 	// in the order named: what Rosheen, Roaring Prophet's ProducedForPaid

@@ -1557,6 +1557,12 @@ type ModeSpecView struct {
 	// option instead of a toggle, and each occurrence is asked for
 	// its own targets. Added by #764.
 	Repeatable bool `json:"repeatable,omitempty"`
+	// CountIsX is "Choose X. You may choose the same mode more than
+	// once." (#6125, Doomsday Confluence): the number of modes is the X
+	// the cast announces, with no printed ceiling, so `min` / `max` here
+	// are 0 and the client asks for X first and then exactly X modes,
+	// repeats allowed. Printed text, so public.
+	CountIsX bool `json:"count_is_x,omitempty"`
 	// IfOptionalPaid is the bounds with the card's optional
 	// additional costs announced (#1655) — Inscription of Ruin's
 	// "if this spell was kicked, choose any number instead", Depth
@@ -6114,6 +6120,14 @@ type ManaAbilityView struct {
 	// the floor. Absent for every other mana ability.
 	ExileCostAnyNumber    bool `json:"exile_cost_any_number,omitempty"`
 	ExileCostManaValueMin int  `json:"exile_cost_mana_value_min,omitempty"`
+	// DemandsX marks a mana ability with X in its cost (#6125): Wizard's
+	// Rockets' "{X}, {T}, Sacrifice this artifact: Add X mana in any
+	// combination of colors", Springjack Pasture's "Sacrifice X Goats".
+	// The client asks for X and sends it on activate_mana_ability as
+	// `x_value`; for a sacrifice-X clause (`sacrifice_options.count_from_x`)
+	// the number of permanents picked is the X. Absent for every other mana
+	// ability.
+	DemandsX bool `json:"demands_x,omitempty"`
 	// RevealCostAnyNumber / Label / Options describe a mana ability's
 	// "Reveal any number of <quality> cards from your hand" (#6085,
 	// game.ManaAbilityShape.RevealCards) — Rosheen, Roaring Prophet. The
@@ -9668,6 +9682,7 @@ func viewOfModeSpec(g *game.Game, q game.ModeCountQuery, src game.TargetSource, 
 		printedMin: ms.Min,
 		printedMax: ms.Max,
 		Repeatable: ms.Repeatable,
+		CountIsX:   ms.CountIsX,
 		NotChosen:  modeMemoryWire(ms.NotChosen),
 		Pawprints:  ms.Pawprints,
 		Options:    make([]ModeOptionView, 0, len(ms.Options)),
@@ -10970,6 +10985,8 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 				views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			}
 		}
+		// #6125: X in the cost (Wizard's Rockets, Springjack Pasture).
+		views[i].DemandsX = raw[i].DemandsX()
 		// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet), off
 		// the walk the engine validates against.
 		if rc := raw[i].RevealCards; game.RevealCardsAnyNumber(rc) {

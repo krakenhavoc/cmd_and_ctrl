@@ -2449,6 +2449,12 @@ type ManaAbility struct {
 	Produced string
 	Label    string
 
+	// GainLifeX is "You gain X life" after the mana, X the X the
+	// activation announced (#6125, Springjack Pasture). Needs an X in the
+	// cost (Register refuses it otherwise); see
+	// game.ManaAbilityShape.RiderGainLifeX.
+	GainLifeX bool
+
 	// Answers is what the ability can do in response (ADR 0142 §2):
 	// game.AnswerSacOutlet for a creature sacrifice outlet (Ashnod's
 	// Altar's "Sacrifice a creature: Add {C}{C}"), game.AnswerValue for

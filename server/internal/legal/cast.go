@@ -1062,6 +1062,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			xLifeCeiling = c
 		}
 	}
+	// #6125: "Choose X" (Doomsday Confluence) — the mode count is the X,
+	// so a move announces X = 1 with one mode: the smallest count that
+	// does anything, and one the seat can pay for or it is not offered.
+	chooseX := false
+	if ms := game.ModeSpecFor(game.CatalogKey(card)); ms != nil && ms.CountIsX {
+		chooseX = true
+		xFloor = 1
+		xLifeCeiling = 1
+	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
 	// together never claim more than the seat has (CR 119.4). A "pay X
@@ -1122,11 +1131,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #1655: under THIS announcement's optional costs — a kicked
 		// Inscription of Ruin may take every bullet, an unkicked one
 		// exactly one, and each is its own move.
-		modeSets = e.legalModeSets(castSrc, modeSpec, game.ModeCountQuery{
+		q := game.ModeCountQuery{
 			Chooser:       e.seat,
 			OracleID:      game.CatalogKey(card),
 			OptionalCosts: chosen,
-		}, game.ModeAbility{})
+		}
+		if chooseX {
+			q.X = 1
+		}
+		modeSets = e.legalModeSets(castSrc, modeSpec, q, game.ModeAbility{})
 		if extra >= 0 {
 			kept := modeSets[:0:0]
 			for _, ms := range modeSets {

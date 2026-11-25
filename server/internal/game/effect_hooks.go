@@ -886,6 +886,13 @@ type ManaAbilityShape struct {
 	// nothing else; never beside RiderSelfDamage.
 	RiderSelfLifeGain int
 
+	// RiderGainLifeX is "You gain X life" after the mana, X being the X
+	// the activation announced (#6125, Springjack Pasture's "{T},
+	// Sacrifice X Goats: Add X mana of any one color. You gain X life.").
+	// Data rather than a rider closure, read with PaidCost.XValue once
+	// the mana is in the pool (CR 605.3b). Nothing at X = 0.
+	RiderGainLifeX bool `json:",omitempty"`
+
 	// RiderOpponentLifeGain is the life Rider gives EACH OPPONENT of the
 	// ability's controller, when Rider is exactly "Each opponent gains N
 	// life" (effects.ManaAbility.OpponentsGainLife builds both): Grove of

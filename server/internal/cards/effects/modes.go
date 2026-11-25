@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -500,4 +501,28 @@ func ReturnTheModesGraveyardTargetToHand(_ *game.StackItem, ctx *Context, occ in
 		return nil
 	}
 	return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
+}
+
+// ChooseXRepeating is "Choose X. You may choose the same mode more than
+// once." (#6125, Doomsday Confluence {X}{X}{B}): the number of modes is the
+// spell's announced X (CR 601.2b), with no printed ceiling, and a mode may
+// repeat (CR 700.2d). X = 0 chooses none. A spell's Modes only.
+func ChooseXRepeating(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: "Choose X", Options: options, Repeatable: true, CountIsX: true}
+}
+
+// checkChooseX is the boot-time rule for "Choose X" (#6125): a spell's
+// modes only (an ability's or trigger's X is not the count), repeatable,
+// with no printed bounds or other count rule beside it.
+func checkChooseX(name string, ms *game.ModeSpec, spell bool) {
+	if ms == nil || !ms.CountIsX {
+		return
+	}
+	switch {
+	case !spell:
+		panic(fmt.Sprintf("effects.Register: %q declares \"Choose X\" on an ability — only a spell's X counts its modes", name))
+	case !ms.Repeatable || ms.Min != 0 || ms.Max != 0 || ms.RaisedMax != 0 || ms.UpToCastX || !ms.UpToCount.IsZero() ||
+		ms.AtRandom || ms.Escalate != nil || ms.Pawprints != 0 || ms.NotChosen != game.ModeMemoryNone:
+		panic(fmt.Sprintf("effects.Register: %q declares \"Choose X\" that is not a plain repeatable X count — build it with ChooseXRepeating", name))
+	}
 }
