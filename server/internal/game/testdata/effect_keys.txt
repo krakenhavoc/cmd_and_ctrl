@@ -2123,6 +2123,7 @@ confirm confirm/urza-assembles-the-titans-reveal
 confirm confirm/uss-enterprise-c-discard-hand
 confirm confirm/valiant-endeavor-result
 confirm confirm/vaultguard-trooper-discard-hand
+confirm confirm/verazol-the-split-current-copy
 confirm confirm/vrondiss-dragon-spirit
 confirm confirm/vrondiss-self-damage
 confirm confirm/wandering-archaic-copy

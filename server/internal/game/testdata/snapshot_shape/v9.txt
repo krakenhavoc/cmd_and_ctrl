@@ -82833,6 +82833,7 @@ spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
 spellsCastThisTurn{}.instantSorceryVillain	number:int
 spellsCastThisTurn{}.instants	number:int
+spellsCastThisTurn{}.kicked	number:int
 spellsCastThisTurn{}.legendaryCreature	number:int
 spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
