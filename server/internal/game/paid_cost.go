@@ -405,6 +405,13 @@ type PaidCost struct {
 	// and for a roll that was replaced with no roll at all. A CR 707.10
 	// copy of the ability keeps it, as it keeps X.
 	Rolled []int `json:"rolled,omitempty"`
+
+	// Revealed is the cards a mana ability's "Reveal any number of …
+	// cards from your hand" revealed (#6085, ManaAbilityShape.RevealCards),
+	// in the order named: what Rosheen, Roaring Prophet's ProducedForPaid
+	// counts. Only a mana ability's record carries it, and that record
+	// lives for the activation alone (CR 605.3b).
+	Revealed []uuid.UUID `json:"revealed,omitempty"`
 }
 
 // PaidCostBranch reports whether the either/or branch keyed `key` was

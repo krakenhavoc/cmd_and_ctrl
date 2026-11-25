@@ -5898,6 +5898,18 @@ the card. Read "that player" off the trigger (`item.Trigger.Event.Actor` for an
 upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
 library.
 
+### Putting exiled cards onto the battlefield face down (#6092, CR 708.2)
+
+"Put all creature cards exiled with this enchantment onto the battlefield face
+down under your control. They're 2/2 Cyberman artifact creatures." (Death in
+Heaven) is `game.ReturnFromExileFaceDownForEffect(cardID, controller, tapped,
+listed)`, the exile twin of `ReturnFromGraveyardFaceDownForEffect`: the CR 614
+entry with the face-down state on the event, a new object (CR 400.7), known to
+its controller alone (CR 708.5), with `effects.CybermanBody()` (or nil for the
+plain 2/2) as the listed body. Read "exiled with this" with
+`g.ExiledWithForEffect(game.PermissionCardRef(src))`, which needs the exile to
+have been `Linked`.
+
 
 ### Who assigns combat damage, and to what (#6192, ADR 0224 amendment 2026-11-25)
 
@@ -15200,8 +15212,16 @@ Three things to know:
   RevealFromOpeningHandForYourFirstUpkeep(label, body)`, `body` a registered
   delayed-trigger body (ADR 0133 amendment 2026-11-24). The card stays in
   hand, revealed; the trigger fires in its owner's first upkeep, the
-  starting player's included. "The first upkeep" of any player (the
-  Chancellors) has no constructor yet.
+  starting player's included. The other moments are
+  `RevealFromOpeningHand(at, label, body)` (ADR 0133 amendment
+  2026-11-25): `game.RevealAtTheFirstUpkeep`, "at the beginning of the
+  first upkeep" (Chancellor of the Dross, the starting player's upkeep
+  whoever revealed); `game.RevealAtYourFirstMainPhase`, "at the beginning
+  of your first main phase of the game" (Chancellor of the Tangle); and
+  `game.RevealAtEachOpponentsFirstSpell`, "when each opponent casts their
+  first spell of the game" (Chancellor of the Annex), one trigger per
+  opponent, with the spell that opponent cast as the item's payload
+  (`ctx.PayloadCards()`).
 - **The question is private.** It names a card in a hidden zone, so the
   view strips its words from every viewer but the chooser
   (`PendingChoice.private`, wire `private_text`). The table sees who the

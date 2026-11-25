@@ -21,6 +21,9 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
     !!ability.exile_cost_n ||
     // Collect evidence N (Cryptex) asks which graveyard cards.
     !!ability.exile_cost_any_number ||
+    // #6085: Rosheen's "Reveal any number of …" asks which cards to show,
+    // when the hand holds any.
+    (ability.reveal_cost_options?.length ?? 0) > 0 ||
     // #1600: Food Chain's "Exile a creature you control".
     !!ability.exile_permanent_options ||
     // #5397: an either/or cost (forage) asks which way to pay.

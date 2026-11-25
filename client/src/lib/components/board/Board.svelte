@@ -3341,6 +3341,42 @@
   // startManaCardCosts is the head of the mana cost chain once any
   // either/or branch is folded in (#5397).
   function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    // #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) first —
+    // how many to show is the question, so it always asks while the hand
+    // holds a matching card, and an empty set is a legal answer.
+    if (ability.reveal_cost_any_number && (ability.reveal_cost_options?.length ?? 0) > 0) {
+      manaRevealPrompt = { card, ability };
+      return;
+    }
+    manaRevealIDs = [];
+    askManaDiscardCost(card, ability);
+  }
+
+  // #6085: the reveal picks, carried on the side like the discard picks
+  // until the one activate_mana_ability goes out as `reveal_ids`.
+  let manaRevealPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaRevealIDs: string[] = [];
+
+  const manaRevealOptions = $derived.by(() => {
+    const p = manaRevealPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.reveal_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmManaRevealCost(ids: string[]): void {
+    const p = manaRevealPrompt;
+    manaRevealPrompt = null;
+    if (!p) return;
+    manaRevealIDs = ids;
+    askManaDiscardCost(p.card, p.ability);
+  }
+
+  function askManaDiscardCost(card: CardView, ability: ManaAbilityView): void {
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -3536,6 +3572,8 @@
         ...(manaExileIDs.length > 0 ? { exile_ids: manaExileIDs } : {}),
         // #1600: and the permanents an exile-a-permanent cost names.
         ...manaExilePermanentPayment(manaExilePermanentIDs),
+        // #6085: absent unless Rosheen's reveal named a card.
+        ...(manaRevealIDs.length > 0 ? { reveal_ids: manaRevealIDs } : {}),
         ...counter,
         // #1443: absent unless the picker named a colour.
         ...manaColorParams(manaColors),
@@ -3548,6 +3586,7 @@
   }
 
   function resetManaCostPayment(): void {
+    manaRevealIDs = [];
     manaDiscardIDs = [];
     manaExileIDs = [];
     manaExilePermanentIDs = [];
@@ -5153,6 +5192,23 @@
       abilityTopIDs = [];
       abilityExileIDs = [];
       abilityDiscardIDs = [];
+    }}
+  />
+  <!-- #6085: "Reveal any number of cards with {X} in their mana cost"
+       (Rosheen, Roaring Prophet). The discard picker with the verb
+       changed and any number, none included; the answer rides
+       reveal_ids. Revealing moves nothing (CR 701.20b). -->
+  <DiscardCostModal
+    card={manaRevealPrompt?.card ?? null}
+    options={manaRevealOptions}
+    label={manaRevealPrompt?.ability.reveal_cost_label}
+    variable={true}
+    verb="Reveal"
+    note="mana ability · CR 605.3b"
+    onConfirm={confirmManaRevealCost}
+    onCancel={() => {
+      manaRevealPrompt = null;
+      manaRevealIDs = [];
     }}
   />
   <!-- #1213: the mana-ability half of the discard picker (Skirge
