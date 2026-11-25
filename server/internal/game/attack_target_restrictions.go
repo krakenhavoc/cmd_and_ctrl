@@ -118,6 +118,12 @@ type AttackTargetRestriction struct {
 	// Island" (ADR 0107 §2, #1879). Plain data, so the Characteristic
 	// stays snapshot-safe.
 	DefenderMustControl []PermanentQuery `json:",omitempty"`
+	// DefenderMustNotControl is the opposite clause: it forbids attacking
+	// any target whose defending player (CR 508.5) controls a permanent
+	// matching ANY of these queries: "can't attack if defending player
+	// controls an untapped creature with power 2 or less" (Mogg Jailer,
+	// #6197, CR 508.1c). Read live at declaration.
+	DefenderMustNotControl []PermanentQuery `json:",omitempty"`
 	// DefenderMustBePoisoned forbids attacking any target whose
 	// defending player has no poison counters: "can't attack unless
 	// defending player is poisoned" (CR 122.1f).
@@ -233,6 +239,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 	return r.Source == o.Source && r.SourceName == o.SourceName &&
 		r.NotOwner == o.NotOwner && r.NotOwnersPlaneswalkers == o.NotOwnersPlaneswalkers &&
 		samePermanentQueries(r.DefenderMustControl, o.DefenderMustControl) &&
+		samePermanentQueries(r.DefenderMustNotControl, o.DefenderMustNotControl) &&
 		r.DefenderMustBePoisoned == o.DefenderMustBePoisoned &&
 		r.DefenderMustBeMonarch == o.DefenderMustBeMonarch &&
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
@@ -266,7 +273,7 @@ func inactiveLastTurnReason(name string) string {
 // asksOfTheDefender reports whether r has any clause about the target's
 // defending player (CR 508.5), as opposed to only the owner clauses.
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
-	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
+	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
 		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0 ||
 		len(r.ControllerMustControlAnother) > 0
@@ -283,6 +290,10 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	name := g.playerNameLocked(defender)
 	if len(r.DefenderMustControl) > 0 && !g.controlsMatchingLocked(defender, r.DefenderMustControl) {
 		return name + " controls no " + PermanentQueriesNoun(r.DefenderMustControl)
+	}
+	if qs := r.DefenderMustNotControl; len(qs) > 0 && g.controlsMatchingLocked(defender, qs) {
+		n := PermanentQueriesNoun(qs)
+		return name + " controls " + articleForWord(n) + " " + n
 	}
 	p := g.playerByIDLocked(defender)
 	if r.DefenderMustBePoisoned && (p == nil || p.Counters[CounterPoison] < 1) {

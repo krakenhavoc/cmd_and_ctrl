@@ -7790,7 +7790,11 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// board where something charges for it. Asked of the engine's own
 	// accessor and only when a tax exists at all, so no board without
 	// one pays for the walk.
-	if g.TargetTaxesExistForEffect() {
+	// #6206: or because the SPELL charges itself for each target
+	// (Phyrexian Purge's "costs 3 life more to cast for each target").
+	// Asked by the face's catalog key, so the cheap check still comes
+	// before the live-card lookup.
+	if g.TargetTaxesExistForEffect() || !game.LifePerTargetForKey(f.key).Empty() {
 		if live, ok := liveCardForView(g, c); ok {
 			live.SetFace(f.index)
 			stampCastTargetTaxes(g, caster, live, &out)
