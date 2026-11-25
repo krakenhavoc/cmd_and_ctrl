@@ -1098,6 +1098,7 @@ choose choose-cards/lazav-wearer-of-faces-copy
 choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
+choose choose-cards/leave-chance-discarded
 choose choose-cards/ledger-shredder-connive
 choose choose-cards/left-right-piles
 choose choose-cards/legion-angel-take
@@ -4593,6 +4594,7 @@ tail read-the-runes/sacrificed
 tail reality-fracture-helpers/after-exile
 tail reality-fracture/surveil-keep-noncreature-nonland
 tail realms-uncharted/choose
+tail reason-believe/rest-to-hand
 tail recipient/cant-be-regenerated-if-dealt-damage
 tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
