@@ -964,6 +964,12 @@ type PendingChoiceView struct {
 	// its options, for the Agent's controller under an Opposition Agent)
 	// or {apply: false} (don't search). Chooser-only.
 	SearchUndecided bool `json:"search_undecided,omitempty"`
+	// SearchCastable (#6216) are the cards in the searcher's library they
+	// may cast right now because they are searching it ("While you're
+	// searching your library, you may cast this card from your library",
+	// Panglacial Wurm). Each is cast with a cast_spell naming this prompt
+	// as `search_cast`; the search then goes on. Chooser-only.
+	SearchCastable []CardView `json:"search_castable,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -11253,6 +11259,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
 			}
+			// #6216: the cards the searcher may cast while searching.
+			for _, id := range g.SearchCastableLocked(c.Chooser) {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.SearchCastable = append(v.SearchCastable, viewOfCard(card))
+				}
+			}
 		}
 		// PendingChoiceConfirm — the chained-choice two-way prompt.
 		// Only the branch labels travel; everything else about the
@@ -12835,6 +12847,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchLibrarySkipped = false
 			out[i].SearchOptional = false
 			out[i].SearchUndecided = false
+			out[i].SearchCastable = nil
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the

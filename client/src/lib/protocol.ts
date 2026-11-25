@@ -2301,6 +2301,12 @@ export interface PendingChoiceView {
   // answers are {apply: true} (begin the search, then the Agent's controller
   // picks) and {apply: false} (don't search).
   search_undecided?: boolean;
+  // #6216: the cards in the searcher's library they may cast right now
+  // because they are searching it ("While you're searching your library,
+  // you may cast this card from your library", Panglacial Wurm). Each is
+  // cast with a cast_spell naming this prompt as `search_cast`; the search
+  // then goes on. Chooser-only.
+  search_castable?: CardView[];
   // #3217: on a "search your library and/or graveyard" prompt, the
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.

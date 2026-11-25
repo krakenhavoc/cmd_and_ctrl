@@ -371,6 +371,17 @@
   // search ("a card", CR 701.23d) must find that many: the server sends
   // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
+  // #6216, CR 608.2g: cast a card from the library during this search
+  // (Panglacial Wurm). The prompt stays open; the server takes the card off
+  // its candidates.
+  function castWhileSearching(instanceID: string) {
+    if (!active || !viewerID) return;
+    sendAction(
+      "cast_spell",
+      { instance_id: instanceID, from_zone: "library", search_cast: active.id, auto_tap: true },
+      viewerID,
+    );
+  }
   // #4134: "you may search" has an answer beside "Find nothing": not
   // searching at all, which skips the shuffle and the search event. It is
   // only on the table BEFORE the search begins (looking at the list is
@@ -3530,6 +3541,27 @@
           them all.
         {/if}
       </p>
+      {#if isSearch && (active?.search_castable?.length ?? 0) > 0}
+        <!-- #6216, CR 608.2g: a card its owner may cast while searching
+             their library. The cast pays its cost (auto-tapping) and goes
+             on the stack; this search then carries on. -->
+        <section class="search-cast" aria-label="Cast while searching">
+          <p class="prompt-hint">
+            While you're searching your library you may cast {active?.search_castable?.length === 1
+              ? "this card"
+              : "these cards"} from it. The search carries on afterwards.
+          </p>
+          {#each active?.search_castable ?? [] as card (card.instance_id)}
+            <button
+              type="button"
+              class="search-cast-button"
+              onclick={() => castWhileSearching(card.instance_id)}
+            >
+              {L.castWhileSearching(card.name)}
+            </button>
+          {/each}
+        </section>
+      {/if}
       {#if isEachLeg}
         <!-- ADR 0187 §8: whose effect, the rule, who is next, what the
              earlier players chose (CR 101.4b), and the running price. -->

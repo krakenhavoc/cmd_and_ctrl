@@ -237,6 +237,10 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// CastWhileSearchingLibrary is the card's own "While you're searching
+	// your library, you may cast this card from your library." (Panglacial
+	// Wurm, CR 608.2g, #6216; search_cast.go).
+	CastWhileSearchingLibrary bool
 	// ImposedSacrifices are the "<spells / activated abilities> cost an
 	// additional "Sacrifice a <kind>"" statics this permanent contributes
 	// (CR 601.2f, 602.2b, #6205) — Drought, Brutal Suppression. Read
@@ -1144,6 +1148,10 @@ func init() {
 			return d.CyclingCostAlternatives
 		}
 		return nil
+	}
+	CatalogCastWhileSearchingLibrary = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.CastWhileSearchingLibrary
 	}
 	CatalogTargetTaxes = func(key string) []TargetTax {
 		if d := catalogDef(key); d != nil {

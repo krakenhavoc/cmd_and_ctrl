@@ -1786,7 +1786,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
 	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "CyclingCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "ImposedSacrifices": defFieldInert, "LifePerTarget": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
-	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert, "CantSpendManaToCast": defFieldInert,
+	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastWhileSearchingLibrary": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert, "CantSpendManaToCast": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert, "ForetellOnAnyTurn": defFieldInert, "UntapCounterRemovals": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
