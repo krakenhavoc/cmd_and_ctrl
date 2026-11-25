@@ -5403,6 +5403,15 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**An Aura that returns as a non-Aura enchantment (#6235).** Takklemaggot's
+dies trigger is `AuraReturnsOnHostDeath(name, grantKey)`, with
+`Grants: []AbilityGrant{ChosenPlayerUpkeepDamageGrant(grantKey, 1, name)}`
+for the ability it gains. The dead creature's controller chooses a creature
+the card could enchant (`game.CreaturesAuraCardCouldEnchantForEffect`) and
+it returns attached to that creature, or, with none, as a non-Aura
+enchantment through `game.EntersAs{Types, LoseSubtypes: ["Aura"],
+LoseKeywords: ["enchant"], ChosenPlayer}`.
+
 **Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
 can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
 a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).
