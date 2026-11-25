@@ -2094,6 +2094,7 @@ followUpParks[].then.nums	array
 followUpParks[].then.nums[]	number:int
 followUpParks[].then.paid	object
 followUpParks[].then.paid.action	object
+followUpParks[].then.paid.action.CardType	string
 followUpParks[].then.paid.action.Count	number:int
 followUpParks[].then.paid.action.Either	array
 followUpParks[].then.paid.action.Either[]	recursive(game.PayAction)
@@ -2806,6 +2807,7 @@ frozenEntries[].event.counterTail.then.nums	array
 frozenEntries[].event.counterTail.then.nums[]	number:int
 frozenEntries[].event.counterTail.then.paid	object
 frozenEntries[].event.counterTail.then.paid.action	object
+frozenEntries[].event.counterTail.then.paid.action.CardType	string
 frozenEntries[].event.counterTail.then.paid.action.Count	number:int
 frozenEntries[].event.counterTail.then.paid.action.Either	array
 frozenEntries[].event.counterTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -3496,6 +3498,7 @@ frozenEntries[].event.damageTail.each.each.nums	array
 frozenEntries[].event.damageTail.each.each.nums[]	number:int
 frozenEntries[].event.damageTail.each.each.paid	object
 frozenEntries[].event.damageTail.each.each.paid.action	object
+frozenEntries[].event.damageTail.each.each.paid.action.CardType	string
 frozenEntries[].event.damageTail.each.each.paid.action.Count	number:int
 frozenEntries[].event.damageTail.each.each.paid.action.Either	array
 frozenEntries[].event.damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
@@ -4177,6 +4180,7 @@ frozenEntries[].event.damageTail.each.then.nums	array
 frozenEntries[].event.damageTail.each.then.nums[]	number:int
 frozenEntries[].event.damageTail.each.then.paid	object
 frozenEntries[].event.damageTail.each.then.paid.action	object
+frozenEntries[].event.damageTail.each.then.paid.action.CardType	string
 frozenEntries[].event.damageTail.each.then.paid.action.Count	number:int
 frozenEntries[].event.damageTail.each.then.paid.action.Either	array
 frozenEntries[].event.damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
@@ -5083,6 +5087,7 @@ frozenEntries[].event.damageTail.then.nums	array
 frozenEntries[].event.damageTail.then.nums[]	number:int
 frozenEntries[].event.damageTail.then.paid	object
 frozenEntries[].event.damageTail.then.paid.action	object
+frozenEntries[].event.damageTail.then.paid.action.CardType	string
 frozenEntries[].event.damageTail.then.paid.action.Count	number:int
 frozenEntries[].event.damageTail.then.paid.action.Either	array
 frozenEntries[].event.damageTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -5889,6 +5894,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.nums	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.nums[]	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action	object
+frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.CardType	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Count	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Either	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -6646,6 +6652,7 @@ frozenEntries[].event.entryTail.batch.then.nums	array
 frozenEntries[].event.entryTail.batch.then.nums[]	number:int
 frozenEntries[].event.entryTail.batch.then.paid	object
 frozenEntries[].event.entryTail.batch.then.paid.action	object
+frozenEntries[].event.entryTail.batch.then.paid.action.CardType	string
 frozenEntries[].event.entryTail.batch.then.paid.action.Count	number:int
 frozenEntries[].event.entryTail.batch.then.paid.action.Either	array
 frozenEntries[].event.entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
@@ -7327,6 +7334,7 @@ frozenEntries[].event.entryTail.keyed.nums	array
 frozenEntries[].event.entryTail.keyed.nums[]	number:int
 frozenEntries[].event.entryTail.keyed.paid	object
 frozenEntries[].event.entryTail.keyed.paid.action	object
+frozenEntries[].event.entryTail.keyed.paid.action.CardType	string
 frozenEntries[].event.entryTail.keyed.paid.action.Count	number:int
 frozenEntries[].event.entryTail.keyed.paid.action.Either	array
 frozenEntries[].event.entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
@@ -8042,6 +8050,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.nums	array
 frozenEntries[].event.entryTail.search.spec.thenTail.nums[]	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.paid	object
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action	object
+frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.CardType	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Count	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Either	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
@@ -8745,6 +8754,7 @@ frozenEntries[].event.entryTail.tokens.then.nums	array
 frozenEntries[].event.entryTail.tokens.then.nums[]	number:int
 frozenEntries[].event.entryTail.tokens.then.paid	object
 frozenEntries[].event.entryTail.tokens.then.paid.action	object
+frozenEntries[].event.entryTail.tokens.then.paid.action.CardType	string
 frozenEntries[].event.entryTail.tokens.then.paid.action.Count	number:int
 frozenEntries[].event.entryTail.tokens.then.paid.action.Either	array
 frozenEntries[].event.entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
@@ -9890,6 +9900,7 @@ frozenEntries[].event.keywordActionTail.then.nums	array
 frozenEntries[].event.keywordActionTail.then.nums[]	number:int
 frozenEntries[].event.keywordActionTail.then.paid	object
 frozenEntries[].event.keywordActionTail.then.paid.action	object
+frozenEntries[].event.keywordActionTail.then.paid.action.CardType	string
 frozenEntries[].event.keywordActionTail.then.paid.action.Count	number:int
 frozenEntries[].event.keywordActionTail.then.paid.action.Either	array
 frozenEntries[].event.keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -10597,6 +10608,7 @@ frozenEntries[].event.lifeTail.each.then.nums	array
 frozenEntries[].event.lifeTail.each.then.nums[]	number:int
 frozenEntries[].event.lifeTail.each.then.paid	object
 frozenEntries[].event.lifeTail.each.then.paid.action	object
+frozenEntries[].event.lifeTail.each.then.paid.action.CardType	string
 frozenEntries[].event.lifeTail.each.then.paid.action.Count	number:int
 frozenEntries[].event.lifeTail.each.then.paid.action.Either	array
 frozenEntries[].event.lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
@@ -11281,6 +11293,7 @@ frozenEntries[].event.lifeTail.then.nums	array
 frozenEntries[].event.lifeTail.then.nums[]	number:int
 frozenEntries[].event.lifeTail.then.paid	object
 frozenEntries[].event.lifeTail.then.paid.action	object
+frozenEntries[].event.lifeTail.then.paid.action.CardType	string
 frozenEntries[].event.lifeTail.then.paid.action.Count	number:int
 frozenEntries[].event.lifeTail.then.paid.action.Either	array
 frozenEntries[].event.lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -12849,6 +12862,7 @@ frozenEntries[].event.millTail.run.then.nums	array
 frozenEntries[].event.millTail.run.then.nums[]	number:int
 frozenEntries[].event.millTail.run.then.paid	object
 frozenEntries[].event.millTail.run.then.paid.action	object
+frozenEntries[].event.millTail.run.then.paid.action.CardType	string
 frozenEntries[].event.millTail.run.then.paid.action.Count	number:int
 frozenEntries[].event.millTail.run.then.paid.action.Either	array
 frozenEntries[].event.millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
@@ -13528,6 +13542,7 @@ frozenEntries[].event.millTail.then.nums	array
 frozenEntries[].event.millTail.then.nums[]	number:int
 frozenEntries[].event.millTail.then.paid	object
 frozenEntries[].event.millTail.then.paid.action	object
+frozenEntries[].event.millTail.then.paid.action.CardType	string
 frozenEntries[].event.millTail.then.paid.action.Count	number:int
 frozenEntries[].event.millTail.then.paid.action.Either	array
 frozenEntries[].event.millTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -15298,6 +15313,7 @@ frozenEntries[].event.tokenTail.then.nums	array
 frozenEntries[].event.tokenTail.then.nums[]	number:int
 frozenEntries[].event.tokenTail.then.paid	object
 frozenEntries[].event.tokenTail.then.paid.action	object
+frozenEntries[].event.tokenTail.then.paid.action.CardType	string
 frozenEntries[].event.tokenTail.then.paid.action.Count	number:int
 frozenEntries[].event.tokenTail.then.paid.action.Either	array
 frozenEntries[].event.tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -17334,6 +17350,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.nums	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.nums[]	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action	object
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.CardType	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
@@ -18049,6 +18066,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.nums	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.nums[]	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action	object
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.CardType	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
@@ -18728,6 +18746,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.nums	array
 frozenEntries[].event.zoneRoute.batchLegs.then.nums[]	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.paid	object
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action	object
+frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.CardType	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -19427,6 +19446,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.nums	array
 frozenEntries[].event.zoneRoute.discardLegs.then.nums[]	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.paid	object
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action	object
+frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.CardType	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -20195,6 +20215,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.nums	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.nums[]	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action	object
+frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.CardType	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Count	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -24414,6 +24435,7 @@ movesAwaitingTokens[].counterTail.then.nums	array
 movesAwaitingTokens[].counterTail.then.nums[]	number:int
 movesAwaitingTokens[].counterTail.then.paid	object
 movesAwaitingTokens[].counterTail.then.paid.action	object
+movesAwaitingTokens[].counterTail.then.paid.action.CardType	string
 movesAwaitingTokens[].counterTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].counterTail.then.paid.action.Either	array
 movesAwaitingTokens[].counterTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -25104,6 +25126,7 @@ movesAwaitingTokens[].damageTail.each.each.nums	array
 movesAwaitingTokens[].damageTail.each.each.nums[]	number:int
 movesAwaitingTokens[].damageTail.each.each.paid	object
 movesAwaitingTokens[].damageTail.each.each.paid.action	object
+movesAwaitingTokens[].damageTail.each.each.paid.action.CardType	string
 movesAwaitingTokens[].damageTail.each.each.paid.action.Count	number:int
 movesAwaitingTokens[].damageTail.each.each.paid.action.Either	array
 movesAwaitingTokens[].damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
@@ -25785,6 +25808,7 @@ movesAwaitingTokens[].damageTail.each.then.nums	array
 movesAwaitingTokens[].damageTail.each.then.nums[]	number:int
 movesAwaitingTokens[].damageTail.each.then.paid	object
 movesAwaitingTokens[].damageTail.each.then.paid.action	object
+movesAwaitingTokens[].damageTail.each.then.paid.action.CardType	string
 movesAwaitingTokens[].damageTail.each.then.paid.action.Count	number:int
 movesAwaitingTokens[].damageTail.each.then.paid.action.Either	array
 movesAwaitingTokens[].damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
@@ -26691,6 +26715,7 @@ movesAwaitingTokens[].damageTail.then.nums	array
 movesAwaitingTokens[].damageTail.then.nums[]	number:int
 movesAwaitingTokens[].damageTail.then.paid	object
 movesAwaitingTokens[].damageTail.then.paid.action	object
+movesAwaitingTokens[].damageTail.then.paid.action.CardType	string
 movesAwaitingTokens[].damageTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].damageTail.then.paid.action.Either	array
 movesAwaitingTokens[].damageTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -27497,6 +27522,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.nums	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.nums[]	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action	object
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.CardType	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -28254,6 +28280,7 @@ movesAwaitingTokens[].entryTail.batch.then.nums	array
 movesAwaitingTokens[].entryTail.batch.then.nums[]	number:int
 movesAwaitingTokens[].entryTail.batch.then.paid	object
 movesAwaitingTokens[].entryTail.batch.then.paid.action	object
+movesAwaitingTokens[].entryTail.batch.then.paid.action.CardType	string
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
@@ -28935,6 +28962,7 @@ movesAwaitingTokens[].entryTail.keyed.nums	array
 movesAwaitingTokens[].entryTail.keyed.nums[]	number:int
 movesAwaitingTokens[].entryTail.keyed.paid	object
 movesAwaitingTokens[].entryTail.keyed.paid.action	object
+movesAwaitingTokens[].entryTail.keyed.paid.action.CardType	string
 movesAwaitingTokens[].entryTail.keyed.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.keyed.paid.action.Either	array
 movesAwaitingTokens[].entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
@@ -29650,6 +29678,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.nums	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.nums[]	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action	object
+movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.CardType	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Either	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
@@ -30353,6 +30382,7 @@ movesAwaitingTokens[].entryTail.tokens.then.nums	array
 movesAwaitingTokens[].entryTail.tokens.then.nums[]	number:int
 movesAwaitingTokens[].entryTail.tokens.then.paid	object
 movesAwaitingTokens[].entryTail.tokens.then.paid.action	object
+movesAwaitingTokens[].entryTail.tokens.then.paid.action.CardType	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Count	number:int
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
@@ -31498,6 +31528,7 @@ movesAwaitingTokens[].keywordActionTail.then.nums	array
 movesAwaitingTokens[].keywordActionTail.then.nums[]	number:int
 movesAwaitingTokens[].keywordActionTail.then.paid	object
 movesAwaitingTokens[].keywordActionTail.then.paid.action	object
+movesAwaitingTokens[].keywordActionTail.then.paid.action.CardType	string
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Either	array
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -32205,6 +32236,7 @@ movesAwaitingTokens[].lifeTail.each.then.nums	array
 movesAwaitingTokens[].lifeTail.each.then.nums[]	number:int
 movesAwaitingTokens[].lifeTail.each.then.paid	object
 movesAwaitingTokens[].lifeTail.each.then.paid.action	object
+movesAwaitingTokens[].lifeTail.each.then.paid.action.CardType	string
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Count	number:int
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Either	array
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
@@ -32889,6 +32921,7 @@ movesAwaitingTokens[].lifeTail.then.nums	array
 movesAwaitingTokens[].lifeTail.then.nums[]	number:int
 movesAwaitingTokens[].lifeTail.then.paid	object
 movesAwaitingTokens[].lifeTail.then.paid.action	object
+movesAwaitingTokens[].lifeTail.then.paid.action.CardType	string
 movesAwaitingTokens[].lifeTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].lifeTail.then.paid.action.Either	array
 movesAwaitingTokens[].lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -34457,6 +34490,7 @@ movesAwaitingTokens[].millTail.run.then.nums	array
 movesAwaitingTokens[].millTail.run.then.nums[]	number:int
 movesAwaitingTokens[].millTail.run.then.paid	object
 movesAwaitingTokens[].millTail.run.then.paid.action	object
+movesAwaitingTokens[].millTail.run.then.paid.action.CardType	string
 movesAwaitingTokens[].millTail.run.then.paid.action.Count	number:int
 movesAwaitingTokens[].millTail.run.then.paid.action.Either	array
 movesAwaitingTokens[].millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
@@ -35136,6 +35170,7 @@ movesAwaitingTokens[].millTail.then.nums	array
 movesAwaitingTokens[].millTail.then.nums[]	number:int
 movesAwaitingTokens[].millTail.then.paid	object
 movesAwaitingTokens[].millTail.then.paid.action	object
+movesAwaitingTokens[].millTail.then.paid.action.CardType	string
 movesAwaitingTokens[].millTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].millTail.then.paid.action.Either	array
 movesAwaitingTokens[].millTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -36906,6 +36941,7 @@ movesAwaitingTokens[].tokenTail.then.nums	array
 movesAwaitingTokens[].tokenTail.then.nums[]	number:int
 movesAwaitingTokens[].tokenTail.then.paid	object
 movesAwaitingTokens[].tokenTail.then.paid.action	object
+movesAwaitingTokens[].tokenTail.then.paid.action.CardType	string
 movesAwaitingTokens[].tokenTail.then.paid.action.Count	number:int
 movesAwaitingTokens[].tokenTail.then.paid.action.Either	array
 movesAwaitingTokens[].tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -38942,6 +38978,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.nums	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.nums[]	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action	object
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.CardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
@@ -39657,6 +39694,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.nums	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.nums[]	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action	object
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.CardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
@@ -40336,6 +40374,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.nums	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.nums[]	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action	object
+movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.CardType	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -41035,6 +41074,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.nums	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.nums[]	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action	object
+movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.CardType	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -41803,6 +41843,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.nums	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.nums[]	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action	object
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.CardType	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Count	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -45435,6 +45476,7 @@ pendingChoices[].attackSplit.tail.nums	array
 pendingChoices[].attackSplit.tail.nums[]	number:int
 pendingChoices[].attackSplit.tail.paid	object
 pendingChoices[].attackSplit.tail.paid.action	object
+pendingChoices[].attackSplit.tail.paid.action.CardType	string
 pendingChoices[].attackSplit.tail.paid.action.Count	number:int
 pendingChoices[].attackSplit.tail.paid.action.Either	array
 pendingChoices[].attackSplit.tail.paid.action.Either[]	recursive(game.PayAction)
@@ -47746,6 +47788,7 @@ pendingChoices[].diceRoll.then.nums	array
 pendingChoices[].diceRoll.then.nums[]	number:int
 pendingChoices[].diceRoll.then.paid	object
 pendingChoices[].diceRoll.then.paid.action	object
+pendingChoices[].diceRoll.then.paid.action.CardType	string
 pendingChoices[].diceRoll.then.paid.action.Count	number:int
 pendingChoices[].diceRoll.then.paid.action.Either	array
 pendingChoices[].diceRoll.then.paid.action.Either[]	recursive(game.PayAction)
@@ -48912,6 +48955,7 @@ pendingChoices[].divideShield.walk.each.nums	array
 pendingChoices[].divideShield.walk.each.nums[]	number:int
 pendingChoices[].divideShield.walk.each.paid	object
 pendingChoices[].divideShield.walk.each.paid.action	object
+pendingChoices[].divideShield.walk.each.paid.action.CardType	string
 pendingChoices[].divideShield.walk.each.paid.action.Count	number:int
 pendingChoices[].divideShield.walk.each.paid.action.Either	array
 pendingChoices[].divideShield.walk.each.paid.action.Either[]	recursive(game.PayAction)
@@ -49593,6 +49637,7 @@ pendingChoices[].divideShield.walk.then.nums	array
 pendingChoices[].divideShield.walk.then.nums[]	number:int
 pendingChoices[].divideShield.walk.then.paid	object
 pendingChoices[].divideShield.walk.then.paid.action	object
+pendingChoices[].divideShield.walk.then.paid.action.CardType	string
 pendingChoices[].divideShield.walk.then.paid.action.Count	number:int
 pendingChoices[].divideShield.walk.then.paid.action.Either	array
 pendingChoices[].divideShield.walk.then.paid.action.Either[]	recursive(game.PayAction)
@@ -50280,6 +50325,7 @@ pendingChoices[].libraryOrder.then.nums	array
 pendingChoices[].libraryOrder.then.nums[]	number:int
 pendingChoices[].libraryOrder.then.paid	object
 pendingChoices[].libraryOrder.then.paid.action	object
+pendingChoices[].libraryOrder.then.paid.action.CardType	string
 pendingChoices[].libraryOrder.then.paid.action.Count	number:int
 pendingChoices[].libraryOrder.then.paid.action.Either	array
 pendingChoices[].libraryOrder.then.paid.action.Either[]	recursive(game.PayAction)
@@ -51022,6 +51068,7 @@ pendingChoices[].nameThen.nums	array
 pendingChoices[].nameThen.nums[]	number:int
 pendingChoices[].nameThen.paid	object
 pendingChoices[].nameThen.paid.action	object
+pendingChoices[].nameThen.paid.action.CardType	string
 pendingChoices[].nameThen.paid.action.Count	number:int
 pendingChoices[].nameThen.paid.action.Either	array
 pendingChoices[].nameThen.paid.action.Either[]	recursive(game.PayAction)
@@ -51953,6 +52000,7 @@ pendingChoices[].parked.mode	number:int
 pendingChoices[].parked.name	string
 pendingChoices[].parked.slot	number:int
 pendingChoices[].payActionClause	object
+pendingChoices[].payActionClause.CardType	string
 pendingChoices[].payActionClause.Count	number:int
 pendingChoices[].payActionClause.Either	array
 pendingChoices[].payActionClause.Either[]	recursive(game.PayAction)
@@ -52215,6 +52263,7 @@ pendingChoices[].pickTail.nums	array
 pendingChoices[].pickTail.nums[]	number:int
 pendingChoices[].pickTail.paid	object
 pendingChoices[].pickTail.paid.action	object
+pendingChoices[].pickTail.paid.action.CardType	string
 pendingChoices[].pickTail.paid.action.Count	number:int
 pendingChoices[].pickTail.paid.action.Either	array
 pendingChoices[].pickTail.paid.action.Either[]	recursive(game.PayAction)
@@ -52941,6 +52990,7 @@ pendingChoices[].replacementResume.event.counterTail.then.nums	array
 pendingChoices[].replacementResume.event.counterTail.then.nums[]	number:int
 pendingChoices[].replacementResume.event.counterTail.then.paid	object
 pendingChoices[].replacementResume.event.counterTail.then.paid.action	object
+pendingChoices[].replacementResume.event.counterTail.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -53631,6 +53681,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.nums	array
 pendingChoices[].replacementResume.event.damageTail.each.each.nums[]	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.paid	object
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action	object
+pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.CardType	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Either	array
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
@@ -54312,6 +54363,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.nums	array
 pendingChoices[].replacementResume.event.damageTail.each.then.nums[]	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.paid	object
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action	object
+pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
@@ -55218,6 +55270,7 @@ pendingChoices[].replacementResume.event.damageTail.then.nums	array
 pendingChoices[].replacementResume.event.damageTail.then.nums[]	number:int
 pendingChoices[].replacementResume.event.damageTail.then.paid	object
 pendingChoices[].replacementResume.event.damageTail.then.paid.action	object
+pendingChoices[].replacementResume.event.damageTail.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -56024,6 +56077,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.nums	
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.nums[]	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action	object
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -56781,6 +56835,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.nums	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.nums[]	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action	object
+pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
@@ -57462,6 +57517,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.nums	array
 pendingChoices[].replacementResume.event.entryTail.keyed.nums[]	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.paid	object
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action	object
+pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.CardType	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
@@ -58177,6 +58233,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.nums	arr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.nums[]	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action	object
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.CardType	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
@@ -58880,6 +58937,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.nums	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.nums[]	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action	object
+pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
@@ -60025,6 +60083,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.nums	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.nums[]	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action	object
+pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -60732,6 +60791,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.nums	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.nums[]	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action	object
+pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
@@ -61416,6 +61476,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.nums	array
 pendingChoices[].replacementResume.event.lifeTail.then.nums[]	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.paid	object
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action	object
+pendingChoices[].replacementResume.event.lifeTail.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -62984,6 +63045,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.nums	array
 pendingChoices[].replacementResume.event.millTail.run.then.nums[]	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.paid	object
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action	object
+pendingChoices[].replacementResume.event.millTail.run.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
@@ -63663,6 +63725,7 @@ pendingChoices[].replacementResume.event.millTail.then.nums	array
 pendingChoices[].replacementResume.event.millTail.then.nums[]	number:int
 pendingChoices[].replacementResume.event.millTail.then.paid	object
 pendingChoices[].replacementResume.event.millTail.then.paid.action	object
+pendingChoices[].replacementResume.event.millTail.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -65433,6 +65496,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.nums	array
 pendingChoices[].replacementResume.event.tokenTail.then.nums[]	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.paid	object
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action	object
+pendingChoices[].replacementResume.event.tokenTail.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
@@ -67469,6 +67533,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.nums	arra
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.nums[]	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
@@ -68184,6 +68249,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.num
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.nums[]	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.CardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
@@ -68863,6 +68929,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.nums	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.nums[]	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action	object
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -69562,6 +69629,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.nums	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.nums[]	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action	object
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -70330,6 +70398,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.nums	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.nums[]	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action	object
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.CardType	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Count	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
@@ -71482,6 +71551,7 @@ pendingChoices[].scryThen.nums	array
 pendingChoices[].scryThen.nums[]	number:int
 pendingChoices[].scryThen.paid	object
 pendingChoices[].scryThen.paid.action	object
+pendingChoices[].scryThen.paid.action.CardType	string
 pendingChoices[].scryThen.paid.action.Count	number:int
 pendingChoices[].scryThen.paid.action.Either	array
 pendingChoices[].scryThen.paid.action.Either[]	recursive(game.PayAction)
@@ -72210,6 +72280,7 @@ pendingChoices[].searchPrompt.spec.thenTail.nums	array
 pendingChoices[].searchPrompt.spec.thenTail.nums[]	number:int
 pendingChoices[].searchPrompt.spec.thenTail.paid	object
 pendingChoices[].searchPrompt.spec.thenTail.paid.action	object
+pendingChoices[].searchPrompt.spec.thenTail.paid.action.CardType	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Count	number:int
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Either	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)

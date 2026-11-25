@@ -243,6 +243,11 @@ type PayAction struct {
 	// 118.3). It narrows a sacrifice the same way: "sacrifice three other
 	// nonland permanents" (Scavenger's Talent). Unused by every other kind.
 	Nonland bool `json:",omitempty"`
+	// CardType narrows a discard to cards of one card type ("creature"):
+	// Crypt Lurker's "discard a creature card". Only a card of that type in
+	// the payer's hand is an option, so a hand without one can't pay (CR
+	// 118.3). Unused by every other kind. Additive (#522).
+	CardType string `json:",omitempty"`
 	// Except is a permanent a sacrifice may not take: the "other" of
 	// "sacrifice three other nonland permanents", the ability's own
 	// source (Scavenger's Talent). The zero value excludes nothing.
@@ -344,6 +349,9 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 		for _, c := range p.Hand.Cards {
 			// #4566: "discard a nonland card" takes no land.
 			if a.Nonland && c.IsLand() {
+				continue
+			}
+			if a.CardType != "" && !c.HasCardType(a.CardType) {
 				continue
 			}
 			out = append(out, c.InstanceID)
