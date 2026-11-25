@@ -323,6 +323,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 181 (#5521).
 	"Ethereal Absolution": "a standing -1/-1 on the opponents' creatures and an exile-from-graveyard ability: it wears small creatures down but destroys nothing itself",
+
+	// S82 OLD batch 192 (#5525).
+	"Mnemonic Betrayal": "exiles the cards in the opponents' graveyards, not permanents: no board is touched",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

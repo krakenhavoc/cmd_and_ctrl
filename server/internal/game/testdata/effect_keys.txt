@@ -206,6 +206,7 @@ body exile-and-return/hand
 body exile-top/play-until-end-of-your-next-turn
 body exile/glimpse-the-impossible-bin
 body exile/listed-cards
+body exile/mnemonic-betrayal-return
 body exile/s82-old-b061-fire-giants-fury
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
