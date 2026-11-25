@@ -202,6 +202,15 @@ type PrintedValues struct {
 // creature — never the card underneath, which the copier's controller
 // may not even be allowed to look at (CR 708.5). #1270.
 func CopiableValuesOf(src Card) PrintedValues {
+	// #6233, CR 707.2: a text-changing effect is not copiable, so the
+	// copiable values of a permanent with another card's full text
+	// (CR 612.6) are the ones under it.
+	if src.FullTextBase != nil {
+		under := src
+		under.setPrintedValues(*src.FullTextBase)
+		under.FullTextBase = nil
+		return CopiableValuesOf(under)
+	}
 	if src.FaceDownIsPermanent() {
 		return faceDownCopiableValues(src)
 	}
@@ -788,6 +797,14 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 // disposition for them), the restored oracle ID is what rebuilds
 // them, and off the battlefield nothing reads them at all.
 func (c *Card) restorePrintedSelf() {
+	// #6233: a full-text overlay ends with the object too. Its baseline
+	// goes back first, so a Clone of the Shapeshifter is then undone by
+	// PrintedSelf below like any other Clone.
+	if c.FullTextBase != nil {
+		c.setPrintedValues(*c.FullTextBase)
+		c.clearCarriedAbilitySlices()
+		c.FullTextBase = nil
+	}
 	// #1593: a duration copy ends with the object it applied to, and
 	// its baseline goes with it. PrintedSelf is always set alongside
 	// it, so the restore below puts the card's own values back.

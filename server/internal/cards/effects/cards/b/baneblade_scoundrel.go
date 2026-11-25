@@ -33,15 +33,7 @@ func init() {
 		label := name + " — each creature blocking it gets -1/-1 until end of turn"
 		return effects.On(game.EventBecomesBlocked, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return ev.CardID == source.InstanceID
-		}, label, func(g *game.Game, item *game.StackItem) error {
-			ctx := effects.NewContext(g, item)
-			for _, id := range effects.BlockersOf(g, item.SourceCardID) {
-				if err := (effects.BoostUntilEOT{Target: id, Power: -1, Toughness: -1, Label: label}).Apply(ctx.AsGroupMember()); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+		}, label, effects.OldB180ShrinkEachBlocker(label))
 	}
 	effects.Register(effects.Spec{
 		OracleID:        oracle,

@@ -1384,6 +1384,9 @@ type payUnlessFrame struct {
 	cost      ParsedCost
 	onDecline func(g *Game) error
 	onPay     func(g *Game) error
+	// onPaySpent is onPay handed the mana the payment spent (#6188),
+	// nil where onPay is nil or the frame is an any-player leg's.
+	onPaySpent func(spent []ManaToken) func(g *Game) error
 
 	// tap is the CR 701.67 "you can tap your artifacts and creatures
 	// to help" clause of a waterbend payment — "Ward—Waterbend {4}"
@@ -4798,10 +4801,11 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 		return
 	}
 	paid := false
+	var spent []ManaToken
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
 			cost := WaterbendReduced(manaCost, 0, len(tapIDs))
-			paid = g.payCostWithLifeSpendLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost, ManaSpendContext{Purpose: choice.PaySpendPurpose})
+			paid, spent = g.payCostWithLifeSpendLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost, ManaSpendContext{Purpose: choice.PaySpendPurpose})
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)
 				// #5276, CR 701.67c: a waterbend payment (a ward's
@@ -4820,6 +4824,9 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	consequence := frame.onDecline
 	if paid {
 		consequence = frame.onPay
+		if frame.onPaySpent != nil {
+			consequence = frame.onPaySpent(spent)
+		}
 	}
 	runBranch(consequence)
 	g.runStateChecksLocked()
@@ -4931,14 +4938,17 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, exclu
 // claim was validated when the answer arrived; one that no longer holds
 // here is a decline.
 func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife, fixedLife int) bool {
-	return g.payCostWithLifeSpendLocked(p, cost, source, excluded, phyrexianLife, fixedLife, ManaSpendContext{})
+	paid, _ := g.payCostWithLifeSpendLocked(p, cost, source, excluded, phyrexianLife, fixedLife, ManaSpendContext{})
+	return paid
 }
 
 // payCostWithLifeSpendLocked is payCostWithLifeLocked under a spend
-// context (#6189): a cumulative upkeep's payment names its purpose, so
-// mana restricted to one may fund it; every other pay-unless passes the
-// zero context, which no restricted mana may pay (#352).
-func (g *Game) payCostWithLifeSpendLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife, fixedLife int, spend ManaSpendContext) bool {
+// context, reporting the mana it spent: a cumulative upkeep's payment
+// names its purpose, so mana restricted to one may fund it (#6189),
+// while every other pay-unless passes the zero context, which no
+// restricted mana may pay (#352); the spent tokens are what a pay
+// branch that counts them reads (#6188, Balduvian Fallen).
+func (g *Game) payCostWithLifeSpendLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife, fixedLife int, spend ManaSpendContext) (bool, []ManaToken) {
 	// #1600, CR 609.4b: Chromatic Orrery's "you may spend mana as
 	// though it were mana of any color" reaches a ward or a Rhystic
 	// Study tax too — every cost the player pays. A narrowed grant
@@ -4947,10 +4957,10 @@ func (g *Game) payCostWithLifeSpendLocked(p *Player, cost ParsedCost, source uui
 	cost = g.costAsPaidByLocked(p.ID, spend, cost, 0)
 	cost, lifeOwed, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(source), cost, spend, phyrexianLife, nil)
 	if err != nil {
-		return false
+		return false, nil
 	}
 	if fixedLife < 0 || !g.CanPayLifeLocked(p, lifeOwed+fixedLife) {
-		return false
+		return false, nil
 	}
 	lifeOwed += fixedLife
 	var (
@@ -4964,26 +4974,26 @@ func (g *Game) payCostWithLifeSpendLocked(p *Player, cost ParsedCost, source uui
 		var ok bool
 		plan, short, ok = g.autoTapFundedLocked(p, cost, 0, spend, excluded, 0)
 		if !ok {
-			return false
+			return false, nil
 		}
 		tap = true
 	}
 	if err := g.payPhyrexianLifeLocked(source, p.ID, lifeOwed); err != nil {
-		return false
+		return false, nil
 	}
 	if tap {
 		g.materializePlanLocked(p, plan, short)
 	}
 	spent, ok := p.ManaPool.SpendManaFor(cost, 0, spend)
 	if !ok {
-		return false
+		return false, nil
 	}
 	// #761: the log line carries what was spent, like every other
 	// payment path. There is no stack item to hang the record on —
 	// this pays a PROMPT's cost, which is already resolving — so
 	// nothing else records it.
 	g.EmitEvent(manaSpentEvent(p.ID, source, spent))
-	return true
+	return true, spent
 }
 
 // ResolveTriggerOrder processes the chooser's answer to a
