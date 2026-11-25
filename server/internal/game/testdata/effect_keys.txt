@@ -206,6 +206,7 @@ body exile-and-return/hand
 body exile-top/play-until-end-of-your-next-turn
 body exile/glimpse-the-impossible-bin
 body exile/listed-cards
+body exile/mnemonic-betrayal-return
 body exile/s82-old-b061-fire-giants-fury
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
@@ -525,6 +526,7 @@ body s82-old-b107/basri-devoted-paladin-attacker-counter
 body s82-old-b166/cabal-therapist-name
 body s82-old-b198/viviens-invocation-damage
 body s82-old-b199/skyrider-patrol-counter-and-flying
+body s82-old-b214/destroy-attached-equipment
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -739,6 +741,7 @@ choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
+choose choose-cards/azors-gateway-exile
 choose choose-cards/azra-oddsmaker-chosen
 choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
@@ -1160,6 +1163,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-enchantment-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
+choose choose-cards/liliana-the-necromancer-reanimate
 choose choose-cards/lively-dirge-return
 choose choose-cards/living-lore-exile
 choose choose-cards/living-wish-take
@@ -1405,6 +1409,7 @@ choose choose-cards/old-b193-dream-cache-put-back
 choose choose-cards/old-b193-prototype-portal-imprint
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
+choose choose-cards/omnispell-adept-cast
 choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
@@ -1558,6 +1563,9 @@ choose choose-cards/s82-old-b206-fumble-attach
 choose choose-cards/s82-old-b206-return-picked
 choose choose-cards/s82-old-b206-sacrifice-picked
 choose choose-cards/s82-old-b207-each-player-returns-lands
+choose choose-cards/s82-old-b209-aim-counters
+choose choose-cards/s82-old-b212-board-the-weatherlight-take
+choose choose-cards/s82-old-b212-urzas-tome-exile
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1671,6 +1679,7 @@ choose choose-cards/tether-technician-strike
 choose choose-cards/tetsuo-imperial-champion-cast
 choose choose-cards/tezzeret-betrayer-of-flesh-discard-the-one
 choose choose-cards/tezzeret-betrayer-of-flesh-discard-two-or-artifact
+choose choose-cards/tezzeret-cruel-machinist-face-down
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
@@ -1702,6 +1711,7 @@ choose choose-cards/tidal-terror-tap-two
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-fortress-return
 choose choose-cards/tomb-of-annihilation-veils-discarded
+choose choose-cards/tomb-of-the-dusk-rose-return
 choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/torment-of-scarabs-discarded
@@ -2768,6 +2778,7 @@ payunless pay-unless/battlemages-bracers-copy-ability
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
+payunless pay-unless/blood-operative-return
 payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/bns-b52-slinza-fight
@@ -2941,6 +2952,7 @@ payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/miara-draw
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/mishras-self-replicator-copy
 payunless pay-unless/mizzix-replica-rider-copy
 payunless pay-unless/mohiam-imperial-truthsayer-exile
 payunless pay-unless/monstrosity-of-the-lake-stun
@@ -3010,6 +3022,7 @@ payunless pay-unless/s82-old-b046-lisette-counters
 payunless pay-unless/s82-old-b046-valentin-pest
 payunless pay-unless/s82-old-b199-skyrider-patrol
 payunless pay-unless/s82-old-b205-tenacious-dead-return
+payunless pay-unless/s82-old-b212-lingering-phantom-return
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3182,6 +3195,7 @@ run prompt-run/bns-b52-sutina-return-land
 run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
+run prompt-run/brawl-bash-ogre-sacrifice
 run prompt-run/breath-of-fury-attach
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/bristlebud-farmer-sacrifice
@@ -4636,6 +4650,7 @@ tail sacrificed-one/prompt-run/bloodcrazed-socialite-pump
 tail sacrificed-one/prompt-run/bloodmist-infiltrator-unblockable
 tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
+tail sacrificed-one/prompt-run/brawl-bash-ogre-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/caesar-legions-emperor-sacrifice
 tail sacrificed-one/prompt-run/cavalier-of-night-sacrifice
@@ -4969,6 +4984,7 @@ tail then/audacious-swap-exiled
 tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
 tail then/awaken-the-sky-tyrant-dragon
+tail then/azors-gateway-check
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
@@ -5102,6 +5118,7 @@ tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/guided-passage-shuffle
 tail then/gyrus-waker-of-corpses-copy
+tail then/hadanas-climb-transform
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
 tail then/harsh-mercy-type-chosen
@@ -5202,6 +5219,7 @@ tail then/polygraph-orb-punisher-sacrificed
 tail then/precognitive-perception-draw
 tail then/prevent-damage-from-chosen-color
 tail then/prize-pig-ribbon-check
+tail then/profane-procession-transform
 tail then/proliferate-again
 tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
@@ -5393,6 +5411,7 @@ tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
 tail unlucky-cabbage-merchant/after-search
 tail urborg-scavengers/counter
+tail urgoros/draw-if-no-discard
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled
