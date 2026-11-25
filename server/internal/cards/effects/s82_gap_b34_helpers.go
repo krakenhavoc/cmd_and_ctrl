@@ -52,7 +52,7 @@ func GapB34TableInTurnOrder(ctx *Context) []uuid.UUID {
 	g := ctx.Game
 	var out []uuid.UUID
 	for i := range g.Seats {
-		p := g.Seats[(g.Turn.ActiveSeat+i)%len(g.Seats)]
+		p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]
 		if p != nil && !p.Eliminated {
 			out = append(out, p.ID)
 		}

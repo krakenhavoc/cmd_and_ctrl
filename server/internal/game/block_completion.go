@@ -322,7 +322,7 @@ func (g *Game) defendingSeatsAPNAPLocked() []uuid.UUID {
 	}
 	var out []uuid.UUID
 	for i := 0; i < n; i++ {
-		s := g.Seats[(start+i)%n]
+		s := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 		if s == nil {
 			continue
 		}

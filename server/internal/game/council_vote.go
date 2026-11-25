@@ -442,7 +442,7 @@ func (g *Game) votersFromLocked(start uuid.UUID) []uuid.UUID {
 	}
 	out := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
-		s := g.Seats[(first+i)%n]
+		s := g.Seats[g.SeatInTurnOrderForEffect(first, i)]
 		if s == nil || s.Eliminated {
 			continue
 		}

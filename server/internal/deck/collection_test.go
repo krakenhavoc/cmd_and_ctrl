@@ -164,3 +164,45 @@ func TestPlanarCardsAreThePlanesTheCollectionExcludes(t *testing.T) {
 		t.Error("a nil collection has planar cards")
 	}
 }
+
+// TestNonlegendaryCreatureCardNames is the database half of Spy Kit's
+// "all names of nonlegendary creature cards" (#6257): a nonlegendary
+// creature card's name is one, a legendary creature's, a noncreature's
+// and a token's are not, and a double-faced card's face is judged by its
+// own type line (CR 201.4d).
+func TestNonlegendaryCreatureCardNames(t *testing.T) {
+	idx := cards.NewIndex()
+	idx.Put(collectionIndexCard("Grizzly Bears", "Creature — Bear", "normal", true))
+	idx.Put(collectionIndexCard("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "normal", true))
+	idx.Put(collectionIndexCard("Lightning Bolt", "Instant", "normal", true))
+	idx.Put(collectionIndexCard("Lightning Token", "Token Creature — Elemental", "token", true))
+	dfc := collectionIndexCard("Delver of Secrets // Insectile Aberration", "Creature — Human Wizard // Creature — Human Insect", "transform", true)
+	dfc.CardFaces = []cards.CardFace{
+		{Name: "Delver of Secrets", TypeLine: "Creature — Human Wizard"},
+		{Name: "Insectile Aberration", TypeLine: "Creature — Human Insect"},
+	}
+	idx.Put(dfc)
+	saga := collectionIndexCard("Fable of the Mirror-Breaker // Reflection of Kiki-Jiki", "Enchantment — Saga // Enchantment Creature — Goblin Shaman", "transform", true)
+	saga.CardFaces = []cards.CardFace{
+		{Name: "Fable of the Mirror-Breaker", TypeLine: "Enchantment — Saga"},
+		{Name: "Reflection of Kiki-Jiki", TypeLine: "Enchantment Creature — Goblin Shaman"},
+	}
+	idx.Put(saga)
+	col := NewCollection(idx)
+	for name, want := range map[string]bool{
+		"Grizzly Bears":               true,
+		"grizzly bears":               true,
+		"Krenko, Mob Boss":            false,
+		"Lightning Bolt":              false,
+		"Lightning Token":             false,
+		"Insectile Aberration":        true,
+		"Fable of the Mirror-Breaker": false,
+		"Reflection of Kiki-Jiki":     true,
+		"Not A Card":                  false,
+		"":                            false,
+	} {
+		if got := col.IsNonlegendaryCreatureCardName(name); got != want {
+			t.Errorf("IsNonlegendaryCreatureCardName(%q) = %v, want %v", name, got, want)
+		}
+	}
+}

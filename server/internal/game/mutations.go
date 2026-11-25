@@ -1321,6 +1321,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #6205, CR 601.2f: a sacrifice another permanent adds to this
+	// spell's cost (Drought's "Sacrifice a Swamp" for each black mana
+	// symbol) joins the card's own sacrifice clause once, here, so the
+	// validator, the payer and the record below read one clause. The
+	// enumerator and the view fold it the same way.
+	if folded, ok := g.ImposedSacrificeCastCostForEffect(playerID, card, addCost); ok {
+		addCost = folded
+	} else {
+		return ErrImposedSacrificeUnfoldable
+	}
 	// #2097, CR 601.2b / 601.2h: "sacrifice all creatures you control"
 	// is settled here, with the other announce-time choices and before
 	// anything reads sacrifice_ids — the price (CostQuery.Sacrificing),
@@ -7498,7 +7508,8 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
-	// APNAP: active player first, then clockwise. Seq increases in
+	// APNAP: active player first, then in turn order (#6223: clockwise
+	// unless the turn order has been reversed). Seq increases in
 	// drain order, so the active player's triggers (placed first)
 	// resolve last — CR 603.3b stacking order. One scan mints the
 	// starting Seq; incrementing locally keeps the drain O(triggers)
@@ -7506,7 +7517,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	seq := g.nextStackSeqLocked()
 	var announce []*StackItem
 	for offset := 0; offset < numSeats; offset++ {
-		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		seat := g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, offset)
 		for _, t := range bySeat[seat] {
 			t.Seq = seq
 			seq++
@@ -7542,7 +7553,7 @@ func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeat
 		return
 	}
 	for offset := 0; offset < numSeats; offset++ {
-		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		seat := g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, offset)
 		for _, t := range bySeat[seat] {
 			if g.StackMeta[t.ID] != t {
 				// Gone already: an earlier placement's event set off
@@ -8526,6 +8537,16 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	ab, err := ChosenManaAbilityShape(ab, params.CostBranch)
 	if err != nil {
 		return err
+	}
+	// #6205, CR 605 / 602.2b / 601.2f: a mana ability is an activated
+	// ability, so a sacrifice the board imposes on activated abilities
+	// (Drought) folds into its sacrifice clause here, as the enumerator
+	// and the view fold it.
+	if src := findBattlefieldCard(g, cardID); src != nil {
+		var foldOK bool
+		if ab, foldOK = g.ImposedSacrificeManaAbilityForEffect(playerID, *src, ab); !foldOK {
+			return ErrImposedSacrificeUnfoldable
+		}
 	}
 	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
 	// controller, or anyone for an any-player row.
@@ -10430,7 +10451,7 @@ func (g *Game) passPriorityLocked() error {
 	if !g.allPassedInSuccessionLocked() {
 		next := g.Turn.PriorityHolder
 		for i := 0; i < numSeats; i++ {
-			next = (next + 1) % numSeats
+			next = g.SeatInTurnOrderForEffect(next, 1)
 			if s := g.Seats[next]; s != nil && !s.Eliminated {
 				g.Turn.PriorityHolder = next
 				return nil

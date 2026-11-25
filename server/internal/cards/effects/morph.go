@@ -81,6 +81,16 @@ func faceDownCast(key, printed string, kind game.FaceDownKind, faceUpCost string
 	}
 }
 
+// MorphReveal is "Morph—Reveal a <colour> card in your hand" (#6249,
+// CR 702.37a/e): morph whose morph cost is not mana but revealing one
+// card of colour `color` ("W", "U", "B", "R" or "G") from the
+// controller's hand. Temur Charger's is MorphReveal("G").
+func MorphReveal(color string) game.AlternativeCost {
+	ac := faceDownCast("morph", "Morph", game.FaceDownMorphed, "", false)
+	ac.FaceDown.FaceUpReveal = color
+	return ac
+}
+
 // AsTurnedFaceUp adds the card's printed "As this creature is turned
 // face up, put N +1/+1 counters on it" to its morph, megamorph or
 // disguise declaration (CR 614.1e, #5237):

@@ -216,7 +216,7 @@ func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
 	var seats []uuid.UUID
 	n := len(g.Seats)
 	for i := 0; i < n; i++ {
-		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]
 		if p == nil || p.Eliminated || p.ID == except {
 			continue
 		}

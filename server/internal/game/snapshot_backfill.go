@@ -66,7 +66,7 @@ var PrintedVariableToughness func(scryfallID string) (top bool, faces []bool, ok
 // sets a number (Hashaton) clears the flag.
 func backfillVariableToughness(c *Card) {
 	c.VariableToughness = backfillPrintedVariableToughness(c.ScryfallID, c.Toughness, c.ActiveFace, c.Faces)
-	for _, p := range []*PrintedValues{c.PrintedSelf, c.DurationCopyBase} {
+	for _, p := range []*PrintedValues{c.PrintedSelf, c.DurationCopyBase, c.FullTextBase} {
 		if p != nil {
 			p.VariableToughness = backfillPrintedVariableToughness(p.ScryfallID, p.Toughness, p.ActiveFace, p.Faces)
 		}

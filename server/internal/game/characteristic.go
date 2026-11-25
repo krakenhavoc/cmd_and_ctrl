@@ -73,6 +73,17 @@ type Characteristic struct {
 	// client's badge; nothing but the projection reads it.
 	AllCreatureTypes bool
 
+	// AllNonlegendaryCreatureNames records that this object has "all
+	// names of nonlegendary creature cards in addition to its name"
+	// (Spy Kit, #6257): a LAYER 3 name fact (CR 612, the layer a name is
+	// changed in), kept as a flag for the reason AllCreatureTypes is —
+	// thousands of names would not fit in Name. Name stays its own name.
+	// The name readers (CardNameMatches, PermanentHasName, the legend
+	// rule) ask it through HasAllNonlegendaryCreatureNames and the
+	// card-database hook NonlegendaryCreatureCardName (all_names.go). A
+	// later name SET clears it (CR 612.8: "loses any names it had").
+	AllNonlegendaryCreatureNames bool
+
 	// SourceManaValue, SourceManaValueKnown and SourceRingBearer are
 	// facts about a protection SOURCE (CR 702.16a), not characteristics
 	// a layer computes: the source's mana value (CR 202.3) and whether

@@ -343,6 +343,9 @@ type GameSnapshot struct {
 	Settings          TableSettings `json:"settings"`
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
+	// TurnOrderReversed is Game.TurnOrderReversed (#6223). omitempty:
+	// absent is the default order, so no schema bump.
+	TurnOrderReversed bool `json:"turnOrderReversed,omitempty"`
 
 	// Outcome is the result of an ended game (ADR 0057 Decision 5):
 	// nil while active and for a table ended by End(). omitempty, so
@@ -1111,7 +1114,10 @@ type cardSnapshot struct {
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
 	DurationCopyBase *PrintedValues `json:"durationCopyBase,omitempty"`
-	NeedsEffect      bool           `json:"needsEffect"`
+	// FullTextBase is Card.FullTextBase (#6233): the printed values
+	// under a full-text overlay. Additive; absent means none applies.
+	FullTextBase *PrintedValues `json:"fullTextBase,omitempty"`
+	NeedsEffect  bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
 	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
@@ -2754,6 +2760,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		Settings:              g.Settings,
 		StartingSeat:          g.StartingSeat,
 		SplitSecondActive:     g.SplitSecondActive,
+		TurnOrderReversed:     g.TurnOrderReversed,
 		Outcome:               cloneGameOutcome(g.Outcome),
 		EventSeq:              g.eventSeq,
 		EventBatch:            g.eventBatch,
@@ -3272,6 +3279,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,
@@ -4073,6 +4081,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.TurnOrderReversed = s.TurnOrderReversed
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.TurnChangePending = s.TurnChangePending
@@ -4472,6 +4481,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,

@@ -91,7 +91,7 @@ func B05EachPlayerDraws(g *game.Game, item *game.StackItem, n int) error {
 	}
 	start := g.Turn.ActiveSeat
 	for i := 0; i < numSeats; i++ {
-		p := g.Seats[(start+i)%numSeats]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 		if p == nil || p.Eliminated {
 			continue
 		}

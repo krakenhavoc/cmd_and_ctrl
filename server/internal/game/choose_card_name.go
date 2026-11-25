@@ -391,7 +391,9 @@ func CardNameMatches(c Card, named string) bool {
 			return true
 		}
 	}
-	return false
+	// #6257, CR 201.2a: Spy Kit's "all names of nonlegendary creature
+	// cards in addition to its name".
+	return hasNameOfNonlegendaryCreatureCard(c, want)
 }
 
 // PermanentHasName reports whether the permanent `c` has the name
@@ -414,7 +416,8 @@ func PermanentHasName(c Card, named string) bool {
 	if want == "" || c.FaceDown {
 		return false
 	}
-	return strings.EqualFold(strings.TrimSpace(c.Effective().Name), want)
+	return strings.EqualFold(strings.TrimSpace(c.Effective().Name), want) ||
+		hasNameOfNonlegendaryCreatureCard(c, want)
 }
 
 // PublicCardNamesLocked is the suggestion list the "choose a card
