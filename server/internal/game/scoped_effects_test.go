@@ -496,6 +496,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6144 (Avizoa, Ivory Gargoyle): a player's next untap or draw
 		// step skipped. Its cases are in skip_next_step_test.go.
 		ModSkipNextStep: true,
+		// #6218 (Undiscovered Paradise): a permanent returned to hand in
+		// a player's next untap step. Its cases are in
+		// untap_type_choice_test.go.
+		ModReturnAtNextUntap: true,
 		// #6226 (Fatespinner): a step or phase skipped this turn. Its
 		// cases are in skip_this_turn_test.go.
 		ModSkipThisTurn: true,

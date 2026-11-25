@@ -143,6 +143,12 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// CantSpendMana is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; #6227): the mana half of the total
+	// cost must be covered by the convoke taps and the delve exiles
+	// alone. Read through CantSpendManaFor into the cast's
+	// ManaSpendContext; see cant_spend_mana.go.
+	CantSpendMana bool
 	// Splice is CR 702.47's "Splice onto [quality] [cost]": while the
 	// card is in its owner's hand it may be revealed as they cast a spell
 	// of that quality, adding its rules text (the rest of this row) to
@@ -318,6 +324,10 @@ type CardDef struct {
 	CounterRemovalLocks  []CounterRemovalLock
 	UntapCaps            []UntapCap
 	UntapOptOuts         []UntapOptOut
+	// UntapTypeChoices is Storage Matrix's "each player chooses
+	// artifact, creature, or land during their untap step" (#6218,
+	// untap_type_choice.go).
+	UntapTypeChoices []UntapTypeChoice
 	// TurnSkipOffers is Time Vault's "If you would begin your turn
 	// while this artifact is tapped, you may skip that turn instead"
 	// (#6226, turn_skip_offer.go).
@@ -1004,6 +1014,12 @@ func init() {
 		}
 		return false
 	}
+	CatalogCantSpendMana = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CantSpendMana
+		}
+		return false
+	}
 	CatalogGrantedTapCosts = func(key string) []GrantedTapCost {
 		if d := catalogDef(key); d != nil {
 			return d.GrantedTapCosts
@@ -1241,6 +1257,12 @@ func init() {
 	CatalogUntapOptOuts = func(key string) []UntapOptOut {
 		if d := catalogDef(key); d != nil {
 			return d.UntapOptOuts
+		}
+		return nil
+	}
+	CatalogUntapTypeChoices = func(key string) []UntapTypeChoice {
+		if d := catalogDef(key); d != nil {
+			return d.UntapTypeChoices
 		}
 		return nil
 	}

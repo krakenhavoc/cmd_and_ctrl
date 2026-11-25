@@ -12701,7 +12701,15 @@ and then discard the change to `docs/engine-seams.md`.
   (Soulflayer, Ethereal Forager). A static that reads them sets
   `DependsOnExile`, or it goes stale when one leaves exile. "Spells you
   cast have delve" is `SpellsYouCastHaveDelve: true` (Teval, Arbiter of
-  Virtue).) (Ordinary activated abilities built from
+  Virtue).) (**"You can't spend mana to cast this spell"** has a shape
+  since #6227: `CantSpendMana: true` on the Spec, beside the card's
+  `TapCost` and / or `Delve`, and nothing else. The mana half of the
+  total cost is then payable only by the convoke taps and the delve
+  exiles the cast announces (CR 601.2h): no mana in the pool pays any of
+  it, the auto-tapper plans nothing, and a cast that leaves anything
+  owed is refused for insufficient mana. Declaring it on a card with
+  neither convoke nor delve panics at boot, since nothing could ever pay
+  for it. Hogaak, Arisen Necropolis is the one card that says it.) (Ordinary activated abilities built from
   those components are fine since S21: see `Spec.Activated`
   above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which

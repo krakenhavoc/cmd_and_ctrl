@@ -530,6 +530,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6218: a return-at-untap record naming no player or object.
+			if problem := returnAtNextUntapModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #6226: a this-turn skip naming no player, turn or part.
 			if problem := skipThisTurnModProblem(m); problem != "" {
 				unknown = append(unknown, problem)

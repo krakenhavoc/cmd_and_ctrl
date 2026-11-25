@@ -1429,6 +1429,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipNextCombatPhase: {reader: readerRule},
 	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
 	ModSkipNextStep: {reader: readerRule},
+	// #6218: "during your next untap step, as you untap your
+	// permanents, return this land" (Undiscovered Paradise).
+	ModReturnAtNextUntap: {reader: readerRule},
 	// #6226: "skips each <draw step | main phase | combat phase> this
 	// turn" (Fatespinner).
 	ModSkipThisTurn: {reader: readerRule},
@@ -1682,10 +1685,12 @@ func blockRequirementModProblem(m Mod) string {
 		// creatures here (exceptObjectsScopeProblem checks it).
 		// #6160: Mystic Reflection names the creature to copy and the
 		// entry that spent it (nextEntersAsCopiesModProblem checks it).
+		// #6218: a returnAtNextUntap record names its permanent here
+		// (returnAtNextUntapModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
 			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
-			m.Kind != ModAddRestrictions && m.Kind != ModNextEntersAsCopies {
+			m.Kind != ModAddRestrictions && m.Kind != ModNextEntersAsCopies && m.Kind != ModReturnAtNextUntap {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -2028,6 +2033,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := returnAtNextUntapModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipThisTurnModProblem(m); problem != "" {
