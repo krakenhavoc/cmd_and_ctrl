@@ -977,6 +977,7 @@ choose choose-cards/floriferous-vinewall-take
 choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
 choose choose-cards/formidable-speaker-search
+choose choose-cards/fortunate-few-pick
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
@@ -3774,6 +3775,7 @@ tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail carrion-locust/lose-life
 tail cartographers-hawk/search-for-a-plains
+tail cauldron-dance/entered
 tail cease/gain-and-draw
 tail cemetery-desecrator/exiled
 tail cemetery-tampering/offer-the-exiled-card
@@ -3832,6 +3834,7 @@ tail conspiracy/agenda-named
 tail conundrum-sphinx/named
 tail copy-and-cast/cast-copies-then-exile-self
 tail copy-and-cast/mnemonic-deluge-three-copies
+tail copy-and-cast/spelltwine-both-then-exile-self
 tail cori-steel-cutter/offer-attach
 tail corpse-appraiser/look-at-top-three
 tail counter/double-if-grew

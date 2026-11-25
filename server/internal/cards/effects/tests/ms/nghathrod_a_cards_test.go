@@ -467,7 +467,7 @@ func TestNghaPsionicRitualWireAndEnumerator(t *testing.T) {
 // replicate tap with no fixed count, and one beside a mandatory tap cost.
 func TestNghaRegisterRefusesMalformedReplicateTaps(t *testing.T) {
 	kicker := effects.ReplicateTapping("an untapped Horror you control", 3, effects.OfCreatureType("Horror"))
-	kicker.Key = "kicker"
+	kicker.Key = "buyback"
 	open := effects.ReplicateTapping("an untapped Horror you control", 3, effects.OfCreatureType("Horror"))
 	open.TapOthers.AnyNumber, open.TapOthers.Count = true, 0
 	ok := effects.ReplicateTapping("an untapped Horror you control", 3, effects.OfCreatureType("Horror"))
