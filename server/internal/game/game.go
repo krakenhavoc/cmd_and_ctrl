@@ -2073,7 +2073,10 @@ func (g *Game) advanceCursorLocked() {
 	// the cursor has moved; any step of a combat phase can be the last
 	// one this call leaves (a phase an effect ended walks through here
 	// step by step), so every move out of one sweeps.
-	if PhaseOf(g.Turn.Step) == PhaseCombat {
+	//
+	// #6229: and "until the end of your next upkeep" (Halfdane) as the
+	// cursor leaves an upkeep step, for the same reason.
+	if PhaseOf(g.Turn.Step) == PhaseCombat || g.Turn.Step == StepUpkeep {
 		defer g.ClearExpiredScopedStaticsLocked()
 	}
 	// CR 511.3: "as soon as the end of combat step ends, all
