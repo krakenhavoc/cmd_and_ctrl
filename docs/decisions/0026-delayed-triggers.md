@@ -506,3 +506,13 @@ shape.
 sacrificed.
 
 Back-out: delete the card and its body. The field stays, since keys are append-only; nothing else reads it.
+
+## Amendment (2026-11-25): "… unless they pay {N} before that step" (#6220)
+
+Nafs Asp: "Whenever this creature deals damage to a player, that player loses 1 life at the beginning of their next draw step unless they pay {1} before that draw step." Sabertooth Cobra: "… The player gets another poison counter at the beginning of their next upkeep unless they pay {2} before that step." A pay-unless asked at resolution is the wrong time: the player may pay at ANY time they have priority until the step begins (CR 117.1). The owner decided (2026-11-24) to build the standing window rather than ask at the step with a caveat.
+
+- **The record is the delayed trigger.** The consequence is an ordinary data-form delayed trigger at that player's next step (`At` + `TurnOf`), and the payment rides it: `DelayedTrigger.PayToCancel{Player, Cost}` (`effects.ScheduleDelayedTrigger.PayToCancel`). Snapshot: additive (`payToCancel`). Nothing else is stored, so there is no second record to keep in step: the window closes exactly when the trigger fires and leaves the queue as the step begins.
+- **The payment.** A new `special_action` kind, `pay_to_cancel`, with the trigger's ID as `card_id`: only the named player, any time they have priority (the dispatcher's priority check), split second or not (it is neither a cast nor an activation), paid through the special action's mana path with the zero spend context, so restricted mana cannot pay it. Paying removes the trigger and is logged as a special action ("Pay {1}: …"); the player keeps priority (CR 117.3c).
+- **View, enumerator, client, bot.** `PlayerView.pay_to_cancel` lists the seat's waiting payments (its own frame only); the enumerator offers the move while the seat can afford it; the panel shows a "Pay {1}" button per payment (`L.payToCancel`), live exactly when that move is in the seat's legal moves. The bot prices it as any special action, so it pays when it can.
+
+Cards: Nafs Asp (OLD b891), Sabertooth Cobra (b793), built by their batches.

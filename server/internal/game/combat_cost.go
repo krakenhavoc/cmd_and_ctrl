@@ -730,7 +730,7 @@ func (g *Game) BlockCostDemandsForEffect(blocker *Card) []CombatCostDemandView {
 	if blocker == nil {
 		return nil
 	}
-	price := g.priceBlockersLocked([]*Card{blocker})
+	price := g.priceBlockPlansLocked([]blockPlan{g.stagedBlockPlanLocked(blocker)})
 	return g.combatCostDemandsLocked(blocker.Controller, price.NonMana)
 }
 

@@ -964,6 +964,12 @@ type PendingChoiceView struct {
 	// its options, for the Agent's controller under an Opposition Agent)
 	// or {apply: false} (don't search). Chooser-only.
 	SearchUndecided bool `json:"search_undecided,omitempty"`
+	// SearchCastable (#6216) are the cards in the searcher's library they
+	// may cast right now because they are searching it ("While you're
+	// searching your library, you may cast this card from your library",
+	// Panglacial Wurm). Each is cast with a cast_spell naming this prompt
+	// as `search_cast`; the search then goes on. Chooser-only.
+	SearchCastable []CardView `json:"search_castable,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -2582,6 +2588,16 @@ type DamageAssignmentView struct {
 	// controller of attacker_card_id. No trample, and covers_lethal is
 	// never set, so the prompt is never sent unasked.
 	Banding bool `json:"banding,omitempty"`
+	// DefenderAssignsBy names the permanent whose static, rather than
+	// banding, hands an attacker's division to the defending player
+	// (Defensive Formation, #6192). Set with banding; display only.
+	DefenderAssignsBy string `json:"defender_assigns_by,omitempty"`
+	// OneCreature marks an unblocked attacker that may assign its combat
+	// damage to a creature the defending player controls (Cunning Giant,
+	// #6192): blocker_card_ids are those creatures, as_though_unblocked is
+	// set, and the answer is all of attacker_power on exactly one of them
+	// or all of it as trample_to_player.
+	OneCreature bool `json:"one_creature,omitempty"`
 	// #2956 (ADR 0147): the canonical split, legal.CanonicalDamageSplit,
 	// which the bots answer with. The client pre-fills the prompt with
 	// it, and sends it unasked when covers_lethal is set and the
@@ -3281,6 +3297,14 @@ type PlayerView struct {
 	// permanents it would pay with is nobody else's to read. Empty for
 	// almost every seat in almost every game.
 	IgnorableEffects []IgnorableEffectView `json:"ignorable_effects,omitempty"`
+
+	// PayToCancel are the "… unless they pay {N} before that step"
+	// payments waiting on this player (#6220, Nafs Asp, Sabertooth
+	// Cobra): each a button on the seat's own panel that sends
+	// `special_action {kind: "pay_to_cancel", card_id: id, auto_tap: true}`
+	// while they have priority. The seat's own (and its controller's),
+	// as ignorable_effects is. Empty for almost every seat.
+	PayToCancel []PayToCancelView `json:"pay_to_cancel,omitempty"`
 
 	// HandRevealed names why this player plays with their hand revealed
 	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
@@ -6331,6 +6355,9 @@ type BlockTaxView struct {
 	// Labels are the printed clauses that tax this seat's blocks, one
 	// per clause, for the hint.
 	Labels []string `json:"labels"`
+	// Life is the life the blocks staged now cost (#6191, Heat Wave's
+	// "pays 1 life for each blocking creature"); 0 with none.
+	Life int `json:"life,omitempty"`
 }
 
 // viewOfBlockTaxes is TurnView.BlockTaxes. Caller holds g's lock.
@@ -6344,8 +6371,27 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 			continue
 		}
 		seat := g.Seats[idx].ID
-		row := BlockTaxView{Seat: idx, Cost: g.PriceBlockDeclarationForEffect(seat).Cost}
+		staged := g.PriceBlockDeclarationForEffect(seat)
+		row := BlockTaxView{Seat: idx, Cost: staged.Cost, Life: staged.Life}
 		seen := map[string]bool{}
+		addLabels := func(lines []game.BlockTaxLine) {
+			for _, l := range lines {
+				if !seen[l.Label] {
+					seen[l.Label] = true
+					row.Labels = append(row.Labels, l.Label)
+				}
+			}
+		}
+		addLabels(staged.Lines)
+		// #6191: a tax that reads the attacker blocked (Hipparion,
+		// Heat Wave) shows only against an attacker, so each creature is
+		// also priced against every attacking creature for the hint.
+		var attackers []uuid.UUID
+		for i := range g.Battlefield.Cards {
+			if a := &g.Battlefield.Cards[i]; a.AttackingTarget != uuid.Nil {
+				attackers = append(attackers, a.InstanceID)
+			}
+		}
 		each, uniform := "", true
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
@@ -6358,11 +6404,9 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 			} else if price.Cost != each {
 				uniform = false
 			}
-			for _, l := range price.Lines {
-				if !seen[l.Label] {
-					seen[l.Label] = true
-					row.Labels = append(row.Labels, l.Label)
-				}
+			addLabels(price.Lines)
+			for _, a := range attackers {
+				addLabels(g.PriceBlockAdditionForEffect(seat, []game.BlockDeclaration{{Blocker: c.InstanceID, Attacker: a}}).Lines)
 			}
 		}
 		if len(row.Labels) == 0 {
@@ -11223,6 +11267,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
 			}
+			// #6216: the cards the searcher may cast while searching.
+			for _, id := range g.SearchCastableLocked(c.Chooser) {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.SearchCastable = append(v.SearchCastable, viewOfCard(card))
+				}
+			}
 		}
 		// PendingChoiceConfirm — the chained-choice two-way prompt.
 		// Only the branch labels travel; everything else about the
@@ -11660,6 +11710,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				HasDeathtouch:     frame.HasDeathtouch,
 				BlockerDivides:    frame.BlockerDivides,
 				Banding:           frame.Banding,
+				DefenderAssignsBy: frame.DefenderAssignsBy,
+				OneCreature:       frame.OneCreature,
 			}
 			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
 				shares := make([]DamageShareView, len(split.Assignments))
@@ -12015,6 +12067,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
 		IgnorableEffects:    viewOfIgnorableEffects(g, p.ID),
+		PayToCancel:         viewOfPayToCancel(g, p.ID),
 		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
@@ -12437,6 +12490,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// controller's), as the companion's {3} row is.
 		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
 			out.IgnorableEffects = nil
+			out.PayToCancel = nil
 		}
 		// #5868: an emblem's ability rows are its owner's (or the
 		// controller's of the owner's whole turn), for the reason a
@@ -12803,6 +12857,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchLibrarySkipped = false
 			out[i].SearchOptional = false
 			out[i].SearchUndecided = false
+			out[i].SearchCastable = nil
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the

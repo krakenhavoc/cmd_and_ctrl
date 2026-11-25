@@ -139,6 +139,11 @@ func (g *Game) cardOpensZoneLocked(card Card, key string, zone ZoneKind) bool {
 	if zone == ZoneExile && card.FaceDown {
 		return false
 	}
+	// #6216: "While you're searching your library, you may cast this card
+	// from your library" (Panglacial Wurm, search_cast.go).
+	if zone == ZoneLibrary && g.searchCastOpenLocked(card.Owner, card) {
+		return true
+	}
 	if CardCastableFromZone(key, zone) {
 		return true
 	}

@@ -1836,6 +1836,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 			FromPermission: true,
 		}
 	}
+	if p.AltCostKey == AltCostKeyGrantedFaceDownFree {
+		// #6219: Illusionary Mask's free face-down cast (illusionary_mask.go).
+		return grantedFaceDownFreeOffer(p)
+	}
 	if p.AltCostKey == AltCostKeyGrantedSneak {
 		// #4680: the granted sneak's price and riders (sneak.go).
 		return grantedSneakOffer(p, card)
@@ -2117,7 +2121,7 @@ func (g *Game) GrantCastPermissionOverCardForEffect(cardID uuid.UUID, perm CastP
 	if perm.Zone != z.Kind {
 		return false
 	}
-	if perm.Zone == ZoneHand && perm.AltCostKey == "" && perm.Cost != "" {
+	if (perm.Zone == ZoneHand || perm.Zone == ZoneCommand) && perm.AltCostKey == "" && perm.Cost != "" {
 		// A hand permission applies only to a cast that claims the
 		// offer under its key (ForClaim), so a keyless one prices
 		// nothing and the cast pays the printed cost (#3234: Kari
@@ -2624,7 +2628,12 @@ func (g *Game) consumeBudgetGroupLocked(p *Player, group uuid.UUID) {
 // the next one when it fails.
 func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind, accept func(*CastPermission) bool) *CastPermission {
 	if zone == ZoneCommand {
-		return nil
+		// #6242: only a stored grant over the caster's own commander
+		// opens a command-zone cast through a permission ("you may cast
+		// your commander from the command zone without paying its mana
+		// cost", free_cast_command.go). The ordinary command-zone cast
+		// needs none (CR 903.8).
+		return g.storedCommandPermissionLocked(playerID, card, accept)
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {

@@ -237,6 +237,10 @@ type RevealPickPrompt struct {
 	// as CardsChosen.Nums. Read only with ThenKey.
 	Asked *AskedItem
 	Nums  []int
+	// Word is one more word of plain data, handed back as
+	// CardsChosen.Word (#6248: the card's own branch key, carried across a
+	// chain of picks). Read only with ThenKey.
+	Word string
 }
 
 // RevealPickThenForEffect asks `p.Chooser` to pick from the revealed
@@ -292,19 +296,20 @@ func (g *Game) queueRevealPickKeyedLocked(p RevealPickPrompt) int {
 		lo = hi
 	}
 	if g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoiceRevealPick,
-		Chooser:     p.Chooser,
-		FromPlayer:  owner,
-		Count:       hi,
-		Source:      p.Source,
-		Reason:      p.Question,
-		ChooseCards: all,
-		ChooseMin:   lo,
-		ChooseMax:   hi,
-		PickThen:    p.ThenKey.key,
-		OptionCarry: copyUUIDs(p.Carry),
-		Asked:       copyAskedItem(p.Asked),
-		PickNums:    copyInts(p.Nums),
+		Kind:         PendingChoiceRevealPick,
+		Chooser:      p.Chooser,
+		FromPlayer:   owner,
+		Count:        hi,
+		Source:       p.Source,
+		Reason:       p.Question,
+		ChooseCards:  all,
+		ChooseMin:    lo,
+		ChooseMax:    hi,
+		PickThen:     p.ThenKey.key,
+		OptionCarry:  copyUUIDs(p.Carry),
+		Asked:        copyAskedItem(p.Asked),
+		PickNums:     copyInts(p.Nums),
+		PickMatchArg: p.Word,
 	}) == uuid.Nil {
 		return 0
 	}

@@ -617,6 +617,12 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 			if assign.has(b.card.InstanceID, a.card.InstanceID) {
 				continue
 			}
+			// #6191, CR 509.1c: a pair a per-attacker block tax would
+			// charge for is not owed either, unless the creature is
+			// already blocking.
+			if !b.blocking && g.blockPairTaxedLocked(b.card, a.card) {
+				continue
+			}
 			if g.BlockPairRefusalLocked(a.card, b.card).Legal() {
 				weight[i][j] = blockPairWeight(b.card, a.card)
 				anyPair = true

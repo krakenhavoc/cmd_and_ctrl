@@ -1586,6 +1586,7 @@ choose choose-cards/seed-of-hope-permanent
 choose choose-cards/selective-adaptation-battlefield
 choose choose-cards/selective-adaptation-keyword
 choose choose-cards/sensational-spider-man-remove-stun
+choose choose-cards/separate-into-piles
 choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-kin-exile
@@ -2386,6 +2387,7 @@ number number/resourceful-defense-move-counters
 number number/s82-gap-b153-scrounging-bandar-move
 number number/s82-old-b061-blessing-of-frost-share
 number number/s82-old-b170-remove-counters
+number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters

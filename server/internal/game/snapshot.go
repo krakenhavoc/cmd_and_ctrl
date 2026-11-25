@@ -2106,6 +2106,9 @@ type delayedTriggerSnapshot struct {
 	// "meddling/delay" body, which that binary lacks, so it refuses the
 	// file rather than firing without the gate.
 	WhileExiled *ObjectRef `json:"whileExiled,omitempty"`
+	// PayToCancel is #6220's "unless they pay {N} before that step".
+	// Additive.
+	PayToCancel *PayToCancel `json:"payToCancel,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -3736,6 +3739,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
 		WhileExiled:           d.WhileExiled.stamped(),
+		PayToCancel:           clonePayToCancel(d.PayToCancel),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -4931,6 +4935,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
 		WhileExiled:           d.WhileExiled.value(),
+		PayToCancel:           clonePayToCancel(d.PayToCancel),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
