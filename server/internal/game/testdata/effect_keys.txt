@@ -3451,6 +3451,7 @@ run soulbond/pair
 run the-city-on-the-edge-of-forever/gain-five
 run wanderwine-prophets/extra-turn
 searchrule search/aangs-journey-basic-land-and-shrine
+searchrule search/basic-land-and-jiang-yanggu
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
