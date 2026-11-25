@@ -3123,6 +3123,7 @@ run prompt-run/eldrazi-monument-sacrificed
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/empty-the-laboratory-sacrifice
+run prompt-run/enigmatic-incarnation-sacrificed
 run prompt-run/entish-restoration-search
 run prompt-run/entrapment-maneuver-soldiers
 run prompt-run/entrust-the-spark-search
@@ -4009,6 +4010,7 @@ tail freestrider-lookout/rest-on-bottom
 tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
+tail gallia-of-the-endless-dance/draw-two
 tail gallifrey-stands/win-at-thirteen-doctors
 tail gamekeeper/exiled
 tail gandalf-shadows-foe/return-lands-tapped
@@ -4492,6 +4494,7 @@ tail sacrificed-one/prompt-run/daretti-ingenious-iconoclast-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/dreamshaper-shaman-sacrifice
+tail sacrificed-one/prompt-run/enigmatic-incarnation-sacrificed
 tail sacrificed-one/prompt-run/euru-acorn-scrounger-acorns
 tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
