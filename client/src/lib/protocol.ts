@@ -785,8 +785,9 @@ export interface OutcomeView {
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
   // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
   // of only mandatory actions repeated with no way to stop, CR 732.4 —
-  // a draw).
-  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // a draw) or "draw_effect" (an effect stated that the game is a draw,
+  // CR 104.4c — Divine Intervention; `source` is its card).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop" | "draw_effect";
   // The object whose effect won, for an effect win; the loop's card,
   // for a mandatory loop's draw.
   source?: string;
