@@ -73,7 +73,7 @@ func ApnapLivingSeats(g *game.Game) []uuid.UUID {
 	var out []uuid.UUID
 	n := len(g.Seats)
 	for i := 0; i < n; i++ {
-		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]
 		if p != nil && !p.Eliminated {
 			out = append(out, p.ID)
 		}
@@ -100,7 +100,7 @@ func OpponentsInTurnOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
 	}
 	var out []uuid.UUID
 	for i := 1; i < n; i++ {
-		p := g.Seats[(start+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 		if p != nil && !p.Eliminated {
 			out = append(out, p.ID)
 		}

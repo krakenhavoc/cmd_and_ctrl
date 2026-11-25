@@ -437,6 +437,10 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
 			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, Energy: 1, PayLabel: "a blue card", CastsFace: 1,
+			// #6256: "have an opponent gain N life" and who could be
+			// given it — never set beside the prices above on a real
+			// offer, but the redaction table has to see them filled.
+			OpponentGainsLife: 3, OpponentOptions: []string{"p2"},
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
 			// ADR 0135 §3: an awaken offer's two clauses.
 			Clauses: []LegalTargetsView{*lt, *lt},
@@ -1011,6 +1015,11 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	"Life":     surfacePublicPile,
 	"Energy":   surfacePublicPile,
 	"PayLabel": surfacePublicPile,
+	// #6256: the amount "have an opponent gain N life" charges is
+	// printed; who could be given it is the table, which is public
+	// too (every seat sees who is still in the game).
+	"OpponentGainsLife": surfacePublicPile,
+	"OpponentOptions":   surfacePublicPile,
 	// ADR 0152 §5: which printed face the offer casts is printed.
 	"CastsFace": surfacePublicPile,
 	// ADR 0135 §2: whether the price discards its cards is printed.

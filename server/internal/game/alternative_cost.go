@@ -123,6 +123,20 @@ type AlternativeCost struct {
 	// #693 renumbering tail.)
 	Life int
 
+	// OpponentGainsLife is "rather than pay this spell's mana cost, you
+	// may have an opponent gain N life" (Invigorate, #6256): the amount
+	// one opponent the CASTER names gains. The choice rides
+	// CastSpellParams.AltCostOpponent, the way gift's recipient and an
+	// "an opponent gains 5 life" splice cost's do
+	// (SpliceCost.OpponentGainsLife), and it is paid as that opponent's
+	// life change through gainLifeAsCostLocked — one the CR 614 window
+	// sees, and one an opponent who cannot gain life cannot be given (CR
+	// 614.17b), so such a player is not offered and the offer is
+	// withheld when no opponent is left who could gain it (CR 118.3).
+	//
+	// The card's own gate ("if you control a Forest") is a Condition,
+	// not part of this.
+	OpponentGainsLife int
 	// RevealHand is "you may reveal your hand rather than pay this
 	// spell's mana cost" (Land Grant, #6214): the whole payment is
 	// showing the hand to every player, which costs nothing material and
@@ -1171,6 +1185,11 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if EnergyShortfall(p, alt.Energy) != nil {
 		return false
 	}
+	// #6256, CR 614.17b: "have an opponent gain 3 life" needs an
+	// opponent who can gain it — the splice cost's own list.
+	if alt.OpponentGainsLife > 0 && len(g.SpliceOpponentsLocked(playerID)) == 0 {
+		return false
+	}
 	// #5390, CR 118.3: "removing six counters from among creatures you
 	// control" — the counters the caster's creatures hold, in all kinds,
 	// must reach N. The activation's own predicate, with the spell as
@@ -1277,6 +1296,31 @@ func (g *Game) altCostCardOKForSpellLocked(p *Player, castID uuid.UUID, alt *Alt
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
 	}
 	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
+}
+
+// validateAltCostOpponentLocked checks the opponent half of an
+// alternative cost's claim (#6256, CR 601.2b): required exactly when the
+// claimed offer has an OpponentGainsLife component, refused — not
+// ignored — when it does not, and otherwise one of the opponents who
+// could be given the life (SpliceOpponentsLocked, CR 614.17b).
+//
+// Caller must hold g.mu.
+func (g *Game) validateAltCostOpponentLocked(caster uuid.UUID, alt *AlternativeCost, chosen uuid.UUID) error {
+	if alt == nil || alt.OpponentGainsLife <= 0 {
+		if chosen != uuid.Nil {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if chosen == uuid.Nil {
+		return ErrInvalidParam
+	}
+	for _, id := range g.SpliceOpponentsLocked(caster) {
+		if id == chosen {
+			return nil
+		}
+	}
+	return ErrInvalidParam
 }
 
 // validateAlternativeCostPaymentLocked checks the non-mana half of a
@@ -1536,9 +1580,18 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 // would make Force of Will free.
 //
 // Caller must hold g.mu.
-func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, opponent uuid.UUID, answers map[uuid.UUID]bool) error {
 	if alt == nil {
 		return nil
+	}
+	// #6256, CR 118.9: "have an opponent gain 3 life" — the named
+	// opponent's life change, paid as a cost the way an "an opponent
+	// gains 5 life" splice cost is (gainLifeAsCostLocked), with the
+	// spell as its source.
+	if alt.OpponentGainsLife > 0 {
+		if err := g.gainLifeAsCostLocked(castID, opponent, alt.OpponentGainsLife); err != nil {
+			return err
+		}
 	}
 	// ADR 0129 §5: the energy, through the one path that pays it (CR
 	// 107.14), naming the spell as the source so the log reads "pays 8

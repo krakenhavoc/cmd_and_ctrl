@@ -108,7 +108,7 @@ func nihiloorAsk(g *game.Game, item *game.StackItem, n int) error {
 		return nil
 	}
 	for ; n < len(g.Seats); n++ {
-		opp := g.Seats[(at+n)%len(g.Seats)]
+		opp := g.Seats[g.SeatInTurnOrderForEffect(at, n)]
 		if opp == nil || opp.ID == you || opp.Eliminated {
 			continue
 		}

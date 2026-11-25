@@ -823,6 +823,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 702.174a). Present exactly when optional_costs
 			// names the card's gift cost.
 			GiftOpponent string `json:"gift_opponent,omitempty"`
+			// #6256 — the opponent an alternative cost's "have an
+			// opponent gain N life" gives the life to (Invigorate).
+			// Present exactly when the claimed alternative_cost names
+			// that price.
+			AltCostOpponent string `json:"alt_cost_opponent,omitempty"`
 			// #1703 — the creatures tapped to pay an announced
 			// teamwork cost (CR 702.194a), and the one creature an
 			// announced blight cost puts its -1/-1 counters on
@@ -1007,6 +1012,13 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("cast_spell gift_opponent: %w", err)
 			}
 			params.GiftOpponent = id
+		}
+		if p.AltCostOpponent != "" {
+			id, err := uuid.Parse(p.AltCostOpponent)
+			if err != nil {
+				return fmt.Errorf("cast_spell alt_cost_opponent: %w", err)
+			}
+			params.AltCostOpponent = id
 		}
 		if p.AssistPlayer != "" {
 			id, err := uuid.Parse(p.AssistPlayer)

@@ -82,7 +82,7 @@ func haythamNthOpponent(g *game.Game, caster uuid.UUID, nth int) (uuid.UUID, boo
 	}
 	seen := 0
 	for k := 1; k < len(g.Seats); k++ {
-		p := g.Seats[(start+k)%len(g.Seats)]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, k)]
 		if p == nil || p.Eliminated || p.ID == caster {
 			continue
 		}
