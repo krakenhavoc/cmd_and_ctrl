@@ -21,11 +21,11 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}, Sacrifice this artifact: Draw a card. If you control an Angel, you gain 5 life.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Cost:    effects.Plus(effects.ManaCost("{1}"), effects.SacrificeThis()),
 			Effect: effects.Do(effects.DrawCards{N: 1}, effects.If{
 				Cond: effects.CondBoard{Name: "you control an Angel", Test: func(ctx *effects.Context) bool {
-					return effects.ControlsA("Angel")(ctx.Game, ctx.Controller())
+					return effects.ControlsA(ctx.TextSubtype("Angel"))(ctx.Game, ctx.Controller())
 				}},
 				Then: []effects.Applier{effects.GainLife{Amount: 5}},
 			}),

@@ -25,6 +25,7 @@ func init() {
 			Label:     "{1}, Sacrifice another creature: Untap this creature. Activate only during your turn.",
 			Cost:      effects.Plus(effects.ManaCost("{1}"), effects.SacrificeAnotherN(1, "another creature", effects.Creature())),
 			Condition: effects.DuringYourTurn(),
+			Purpose:   game.Purpose{Answers: game.AnswerSacOutlet},
 			Effect:    effects.B31UntapSelf,
 		}},
 	})

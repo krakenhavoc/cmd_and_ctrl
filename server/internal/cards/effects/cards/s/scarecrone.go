@@ -23,7 +23,7 @@ func init() {
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}, Sacrifice a Scarecrow: Draw a card.",
 			Cost:    effects.Plus(effects.ManaCost("{1}"), effects.SacrificeN(1, "a Scarecrow", effects.Subtype("Scarecrow"))),
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerSacOutlet},
 			Effect:  effects.Do(effects.DrawCards{N: 1}),
 		}, {
 			Label:   "{4}, {T}: Return target artifact creature card from your graveyard to the battlefield.",
