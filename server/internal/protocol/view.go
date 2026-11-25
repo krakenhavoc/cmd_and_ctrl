@@ -5033,6 +5033,12 @@ type SpecialActionView struct {
 	// offers the same X. A pointer, because 0 is a real ceiling ("only
 	// X = 0 is payable"); nil beside DemandsX means not even X = 0 is.
 	XMax *int `json:"x_max,omitempty"`
+	// RevealOptions marks a turn_face_up row whose morph cost is
+	// "reveal a <colour> card in your hand" (#6249, CR 702.37e): the
+	// instance IDs of the viewer's hand cards that may be revealed to pay
+	// it. The client asks which one and sends it as `reveal_id`. The row
+	// is offered only while this is non-empty; absent on every other row.
+	RevealOptions []string `json:"reveal_options,omitempty"`
 }
 
 // RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
@@ -10170,6 +10176,10 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			if x, ok := g.SpecialActionXCeilingForEffect(owner, card, sa); ok {
 				view.XMax = &x
 			}
+		}
+		// #6249: a reveal morph cost lists the hand cards that pay it.
+		for _, id := range g.FaceUpRevealOptionsForEffect(owner, sa) {
+			view.RevealOptions = append(view.RevealOptions, id.String())
 		}
 		out = append(out, view)
 	}
