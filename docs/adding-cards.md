@@ -3258,6 +3258,21 @@ g.CantBeRegeneratedIfDealtDamageByForEffect(src, ref, true, label)
 g.ExileIfDealtDamageByWouldDieThisTurnForEffect(src, ref, uuid.Nil, false, label)
 ```
 
+**"Can't be destroyed by lethal damage unless lethal damage dealt by a
+single source is marked on it"** (Ogre Enforcer, #6209). CR 704.5g is a
+SUM, so this clause reads what the sum cannot say — who marked the
+damage. `Card.MarkedBySource` is the per-source split of
+`Card.DamageMarked`, kept wherever the mark is (it is damage MARKED, not
+the turn's damage DEALT, so the tally above is the wrong record for it),
+and the state-based action reads it for a creature with the static:
+
+```go
+Spec{SingleSourceLethalOnly: SingleSourceLethalOnly(text)} // Ogre Enforcer
+```
+
+It says nothing about the deathtouch state-based action (CR 704.5h) or
+about a "destroy" effect, neither of which is lethal damage.
+
 **"If it has dealt N or more damage to that player this turn"** (#5674).
 The turn also keeps how much each source object dealt to each player,
 combat and noncombat together (`TurnTally.DamagedPlayers`; the amount is

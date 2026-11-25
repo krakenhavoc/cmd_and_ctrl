@@ -1846,7 +1846,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
-	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
+	"DealtDamageCantBeRegenerated": defFieldRules, "SingleSourceLethalOnly": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
 	"GameActionReplacements": defFieldRules,
 }
 

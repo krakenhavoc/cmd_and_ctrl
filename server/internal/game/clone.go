@@ -695,6 +695,10 @@ func deepenCard(out *Card) {
 		sheet := cloneStickerSheet(*out.StickerSheet)
 		out.StickerSheet = &sheet
 	}
+	// #6209: the per-source split of the marked damage.
+	if len(out.MarkedBySource) > 0 {
+		out.MarkedBySource = append([]SourceMark(nil), out.MarkedBySource...)
+	}
 	// #1706: a multi-blocker's further attackers.
 	if len(out.AlsoBlocking) > 0 {
 		out.AlsoBlocking = append([]uuid.UUID(nil), out.AlsoBlocking...)

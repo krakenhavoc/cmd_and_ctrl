@@ -757,9 +757,18 @@ func (g *Game) applyManualDamageMarkLocked(ev *ReplacementEvent) (int, error) {
 		if g.Battlefield.Cards[i].InstanceID != ev.DamageTarget {
 			continue
 		}
-		g.Battlefield.Cards[i].DamageMarked += ev.DamageAmount
-		if g.Battlefield.Cards[i].DamageMarked < 0 {
-			g.Battlefield.Cards[i].DamageMarked = 0
+		c := &g.Battlefield.Cards[i]
+		c.DamageMarked += ev.DamageAmount
+		// #6209: the per-source split follows the mark, in both
+		// directions — the sandbox's negative delta takes a mark back.
+		if ev.DamageAmount > 0 {
+			c.noteMarkedDamageSource(ev.DamageSource, ev.DamageAmount)
+		} else {
+			c.releaseMarkedDamage(-ev.DamageAmount)
+		}
+		if c.DamageMarked < 0 {
+			c.DamageMarked = 0
+			clearMarkedDamageSources(c)
 		}
 		if ev.DamageAmount > 0 {
 			g.EmitEvent(Event{
@@ -961,7 +970,7 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 	// ADR 0108 §10: a battlefield static can make the damage dealt as
 	// though its source had wither (Everlasting Torment), read as it
 	// lands (damage_as_though.go).
-	ok, minusOne, excess := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
+	ok, minusOne, excess := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageSource, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
 	if !ok {
 		return 0, ErrCardNotFound
 	}

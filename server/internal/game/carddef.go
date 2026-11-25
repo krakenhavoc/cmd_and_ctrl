@@ -263,6 +263,12 @@ type CardDef struct {
 	// from the battlefield through CatalogDealtDamageCantBeRegenerated,
 	// keyed by CatalogAbilityKey; see dealt_damage_by.go.
 	DealtDamageCantBeRegenerated []DealtDamageCantBeRegenerated
+	// SingleSourceLethalOnly is this creature's "can't be destroyed by
+	// lethal damage unless lethal damage dealt by a single source is
+	// marked on it" static (#6209, CR 704.5g) — Ogre Enforcer. Read
+	// through CatalogSingleSourceLethalOnly, keyed by CatalogAbilityKey;
+	// see single_source_lethal.go.
+	SingleSourceLethalOnly []SingleSourceLethalOnly
 	// ExertOnAttack is the static ability "You may exert this creature
 	// as it attacks" (CR 701.43d, ADR 0130 §2). Read through
 	// CatalogExertOnAttack, keyed by CatalogAbilityKey; see exert.go.
@@ -1131,6 +1137,12 @@ func init() {
 	CatalogDealtDamageCantBeRegenerated = func(key string) []DealtDamageCantBeRegenerated {
 		if d := catalogDef(key); d != nil {
 			return d.DealtDamageCantBeRegenerated
+		}
+		return nil
+	}
+	CatalogSingleSourceLethalOnly = func(key string) []SingleSourceLethalOnly {
+		if d := catalogDef(key); d != nil {
+			return d.SingleSourceLethalOnly
 		}
 		return nil
 	}
