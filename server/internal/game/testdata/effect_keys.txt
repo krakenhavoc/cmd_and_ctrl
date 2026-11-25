@@ -1769,6 +1769,7 @@ choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
+choose choose-cards/watchers-of-the-dead-keep
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/wick-the-whorled-mind-snail
