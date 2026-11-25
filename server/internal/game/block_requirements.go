@@ -25,7 +25,7 @@ import (
 // block is illegal (CR 702.111b) and a requirement never beats a
 // restriction.
 //
-// # The five texts
+// # The texts
 //
 //   - "blocks each combat if able" (Watchdog; Grand Melee's second
 //     line on every creature) — a requirement on the would-be BLOCKER,
@@ -40,6 +40,8 @@ import (
 //     one requirement on the attacker, obeyed by at least one blocker.
 //   - "must be blocked by exactly one creature if able" (Nacatl
 //     War-Pride) — one requirement, obeyed by exactly one blocker.
+//   - "must be blocked by two or more creatures if able" (Gorm the
+//     Great; #6243) — one requirement, obeyed by two blockers or more.
 //   - "target creature blocks THIS creature this turn if able" (Provoke,
 //     Grappling Hook, Turntimber Basilisk; #1684) — a requirement on
 //     the would-be BLOCKER that names one attacking OBJECT (instance
@@ -126,13 +128,21 @@ const (
 	// creature that can block two of three attackers obeys two and
 	// disobeys one, and the declaration must still obey two.
 	BlockRequirementBlocksEach BlockRequirementKind = "blocksEach"
+	// BlockRequirementTwoOrMore is "must be blocked by two or more
+	// creatures if able" (Gorm the Great, #6243), on the attacker: one
+	// requirement, obeyed only by a declaration that gives the attacker at
+	// least two blockers. It is a separate requirement from "must be
+	// blocked if able", which the same card prints beside it: with one
+	// creature able to block, CR 509.1c's maximum is the one requirement
+	// that one blocker obeys; with two, it is both.
+	BlockRequirementTwoOrMore BlockRequirementKind = "twoOrMore"
 )
 
 // KnownBlockRequirementKind reports whether this binary can interpret k.
 func KnownBlockRequirementKind(k BlockRequirementKind) bool {
 	switch k {
 	case BlockRequirementBlocks, BlockRequirementLure, BlockRequirementMustBeBlocked, BlockRequirementExactlyOne,
-		BlockRequirementBlocksAttacker, BlockRequirementBlocksEach:
+		BlockRequirementBlocksAttacker, BlockRequirementBlocksEach, BlockRequirementTwoOrMore:
 		return true
 	}
 	return false
@@ -465,7 +475,8 @@ func (g *Game) blockRequirementHitsLocked(defender uuid.UUID, assign blockAssign
 					out = append(out, blockReqHit{req: r, holder: atk.InstanceID, idx: j, blocker: by, attacker: atk.InstanceID})
 				}
 			case r.Kind == BlockRequirementMustBeBlocked && n >= 1,
-				r.Kind == BlockRequirementExactlyOne && n == 1:
+				r.Kind == BlockRequirementExactlyOne && n == 1,
+				r.Kind == BlockRequirementTwoOrMore && n >= 2:
 				out = append(out, blockReqHit{req: r, holder: atk.InstanceID, idx: j, blocker: first, attacker: atk.InstanceID})
 			}
 		}
@@ -500,6 +511,7 @@ type brAttacker struct {
 	min     int
 	max     int // 0: unbounded
 	mb, one int // must-be-blocked / exactly-one requirement counts
+	two     int // two-or-more requirement count (#6243)
 	modes   []brMode
 	// #6087: the filtered "must be blocked by <filter>" requirements the
 	// first matching blocker obeys (0 once one already blocks), and
@@ -554,6 +566,7 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 			c0:   counts[c.InstanceID],
 			mb:   unfilteredMustBeBlockedCount(reqs),
 			one:  blockRequirementCount(reqs, BlockRequirementExactlyOne),
+			two:  blockRequirementCount(reqs, BlockRequirementTwoOrMore),
 		}
 		if key, n, obeyed := g.filteredMustBeBlockedOf(c, reqs, assign); n > 0 && !obeyed {
 			a.fkey, a.fmb = key, n
@@ -616,8 +629,9 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 	room := g.blockLimitRoomLocked(defender, assign, blks)
 
 	// Modes. An attacker is "special" when a mode choice matters: a
-	// live minimum of two or more (0 or at least m), or an "exactly
-	// one" requirement (1, or 2 and more).
+	// live minimum of two or more (0 or at least m), an "exactly one"
+	// requirement (1, or 2 and more), or a "two or more" requirement
+	// (#6243: 1, or 2 and more) — none of which a capacity can say.
 	var specials []*brAttacker
 	for _, a := range atks {
 		free := brMode{hi: 0}
@@ -628,7 +642,7 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 			free.first = -a.mb
 		}
 		need := a.min - a.c0
-		if need < 2 && a.one == 0 {
+		if need < 2 && a.one == 0 && a.two == 0 {
 			if a.max > 0 && free.hi <= 0 {
 				a.modes = []brMode{{closed: true}}
 			} else {
@@ -637,14 +651,14 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 			continue
 		}
 		a.modes = []brMode{{closed: true}}
-		if a.one > 0 && a.c0 == 0 && a.min <= 1 {
+		if (a.one > 0 || a.two > 0) && a.c0 == 0 && a.min <= 1 {
 			a.modes = append(a.modes, brMode{lo: 1, hi: 1, first: -a.mb - a.one})
 		}
 		many := brMode{lo: need, hi: free.hi}
 		if many.lo < 1 {
 			many.lo = 1
 		}
-		if a.one > 0 && many.lo < 2-a.c0 {
+		if (a.one > 0 || a.two > 0) && many.lo < 2-a.c0 {
 			many.lo = 2 - a.c0
 		}
 		if a.c0 == 0 {

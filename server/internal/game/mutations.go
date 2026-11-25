@@ -458,6 +458,13 @@ type CastSpellParams struct {
 	// pays no such cost. Lands on StackItem.Paid.BeholdType. On the wire
 	// as `behold_type`.
 	BeholdType string
+	// ChosenCreatureType is the creature type the caster names for a
+	// spell that chooses one as it is cast (#6245, CR 601.2c: Selective
+	// Snare's "of the creature type of your choice"), in any spelling
+	// CanonicalCreatureType accepts. Required on such a spell, refused on
+	// any other. Stamped on the spell as Card.NamedTribe. On the wire as
+	// `chosen_creature_type`.
+	ChosenCreatureType string
 
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
@@ -808,6 +815,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	if !found {
 		return ErrCardNotFound
+	}
+	// #6245, CR 601.2c: a creature type named as the spell is cast is
+	// the spell's, on the copy every announce gate below judges.
+	castType, err := castCreatureTypeLocked(card, params.ChosenCreatureType)
+	if err != nil {
+		return err
+	}
+	if castType != "" {
+		card.NamedTribe = castType
 	}
 	// #1474: a card an EFFECT has paused on its way out cannot be
 	// cast or played. CR 601.2a moves the spell before any cost is
@@ -1519,6 +1535,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"x_value", params.XValue,
 			"err", err,
 		)
+		return err
+	}
+	// #6236, CR 601.2c: a Flagbearer an opponent's rule says to choose.
+	g.RecomputeLayersIfStaleLocked()
+	if err := g.checkFlagbearerTargetsLocked(castSrc, oppTargets.check, params.Targets); err != nil {
 		return err
 	}
 	// ADR 0202, CR 702.47d: each spliced text's targets, against its own
@@ -2271,6 +2292,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// ADR 0141, CR 702.103b: and a bestowed spell is an Aura
 			// spell on the stack. MoveCard cleared the flag (CR 400.7).
 			g.Stack.Cards[i].Bestowed = card.Bestowed
+			// #6245: and the creature type named as it was cast.
+			if ChoosesCreatureTypeAsCast(card) {
+				g.Stack.Cards[i].NamedTribe = card.NamedTribe
+			}
 		}
 	}
 	if faceDown != FaceDownNone {
@@ -4303,7 +4328,17 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if berr != nil {
 		mandatory = nil
 	}
-	cost, err = AdditionalCostMana(cost, mandatory, g.OptionalCostsForCastLocked(p.ID, card), params.OptionalCosts)
+	optional := g.OptionalCostsForCastLocked(p.ID, card)
+	// #6206, CR 118.7 / 118.8d: a cost change aimed at ONE component of
+	// the cost — Memory Crystal's "Buyback costs cost {2} less" — prices
+	// that component on its own, because once the component's mana has
+	// joined the total below there is no telling it from the spell's own
+	// (see component_cost_modifier.go). Nil for nearly every cast.
+	priced, err := g.pricedComponentsLocked(p, card, params, mandatory, optional)
+	if err != nil {
+		return ParsedCost{}, chosen, err
+	}
+	cost, err = AdditionalCostMana(cost, mandatory, optional, params.OptionalCosts, priced)
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
@@ -12128,8 +12163,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByAction)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil

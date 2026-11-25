@@ -1437,3 +1437,20 @@ func YouTappedAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Chara
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.IsCreature() && c.Controller != source.Controller
 }
+
+// AnOpponentShufflesTheirLibrary — "Whenever an opponent shuffles their
+// library" (Psychic Surgery, Cosi's Trickster; #6215). Watch
+// game.EventLibraryShuffled. Every shuffle counts, a search's included,
+// and a library of zero or one card too (CR 701.24e).
+func AnOpponentShufflesTheirLibrary(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventLibraryShuffled && ev.Actor != uuid.Nil && ev.Actor != source.Controller
+}
+
+// ASpellOrAbilityShufflesALibrary — "Whenever a spell or ability causes
+// a player to shuffle their library" (Psychogenic Probe; #6215). Watch
+// game.EventLibraryShuffled; "that player" is ev.Actor. The sandbox's
+// manual shuffle (game.ShuffleByAction) is no spell or ability, and the
+// opening and mulligan shuffles emit no event.
+func ASpellOrAbilityShufflesALibrary(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventLibraryShuffled && ev.Label == game.ShuffleByEffect && ev.Actor != uuid.Nil
+}

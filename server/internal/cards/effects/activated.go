@@ -510,6 +510,10 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaValueFromSource {
 			out.ManaValueFromSource = true
 		}
+		// Soul Foundry: and "X is the mana value of the exiled card".
+		if c.ManaValueOfExiledWith {
+			out.ManaValueOfExiledWith = true
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {
@@ -923,6 +927,25 @@ func DiscardN(n int, label string) game.AbilityCost {
 // activated ability's fixed count of two or more only.
 func DiscardNDifferentNames(n int, label string, match ...func(game.Card) bool) game.AbilityCost {
 	dc := &game.DiscardCost{N: n, Label: label, DifferentNames: true}
+	if len(match) > 0 {
+		dc.Match = match[0]
+	}
+	return game.AbilityCost{DiscardCards: dc}
+}
+
+// DiscardNWithTheSameName is "Discard N cards with the same name" —
+// Sphinx of the Chimes' "Discard two nonland cards with the same name:
+// Draw four cards." (#6264):
+//
+//	DiscardNWithTheSameName(2, "two nonland cards with the same name", func(c game.Card) bool { return !c.IsLand() })
+//
+// The set rule is the engine's (game.DiscardCost.SameName, CR 201.2a), so
+// the activation refuses two cards with different names, the enumerator
+// pays N cards sharing a name, and the client's picker greys a card that
+// shares no name with those already picked. Register allows it on an
+// activated ability's fixed count of two or more only.
+func DiscardNWithTheSameName(n int, label string, match ...func(game.Card) bool) game.AbilityCost {
+	dc := &game.DiscardCost{N: n, Label: label, SameName: true}
 	if len(match) > 0 {
 		dc.Match = match[0]
 	}

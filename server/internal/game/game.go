@@ -417,6 +417,13 @@ type Game struct {
 	// begins, alongside ForetoldThisTurn.
 	DilemmasFacedThisTurn map[uuid.UUID]int
 
+	// PilesOrGuessesThisTurn lists, once each, the spells and abilities
+	// (their stack items) that caused one or more players to guess or to
+	// group cards or permanents into a pile this turn (#6175, CR 700.3;
+	// The Celestial Toymaker). Written by NotePileOrGuessForEffect, which
+	// every pile and guess effect calls; cleared as a turn begins.
+	PilesOrGuessesThisTurn []uuid.UUID
+
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
 	// Turn.advance to a new turn. Keyed by player ID. Added in S31
@@ -953,6 +960,14 @@ type Game struct {
 	// construction, so Clone / RestoreFrom do not carry it: no
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
+
+	// phasingOut holds the battlefield characteristics of the
+	// permanents phaseOutLocked is announcing as having phased out
+	// (#6201), for the look-back harvest of their own "whenever this
+	// phases out" (CR 603.10b, harvestPhasedOutSelfLocked). Written and
+	// cleared inside that one call, so it is always empty between
+	// mutations, and Clone / RestoreFrom do not carry it.
+	phasingOut map[uuid.UUID]Characteristic
 
 	// stateTriggerHold counts the open sections that the per-event
 	// CR 603.8 state-trigger check skips — combat damage being dealt

@@ -475,6 +475,7 @@ func (g *Game) onTurnBeganLocked() {
 		g.ForetoldThisTurn = nil
 	}
 	g.DilemmasFacedThisTurn = nil
+	g.PilesOrGuessesThisTurn = nil
 	if g.LandsPlayedThisTurn != nil {
 		g.LandsPlayedThisTurn = nil
 	}

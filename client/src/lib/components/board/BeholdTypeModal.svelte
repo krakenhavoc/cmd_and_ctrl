@@ -24,9 +24,13 @@
     count: number;
     onConfirm: (type: string) => void;
     onCancel: () => void;
+    // #6245: "target" is a spell that names a creature type as it is cast
+    // (Selective Snare): the type limits its targets, and each row counts
+    // the creatures it could target. "behold" (the default) is #5406's.
+    purpose?: "behold" | "target";
   }
 
-  const { card, types, count, onConfirm, onCancel }: Props = $props();
+  const { card, types, count, onConfirm, onCancel, purpose = "behold" }: Props = $props();
 
   // The row with the most creatures; the first on a tie.
   function suggested(list: BeholdTypeOption[]): number {
@@ -83,14 +87,23 @@
     label={card.name}
     src="choose a creature type"
     width={420}
-    sheetKey={`behold-type:${card.instance_id}`}
-    primary={confirmAction(`Behold ${types[chosen]?.type ?? ""}`, confirm)}
+    sheetKey={`${purpose}-type:${card.instance_id}`}
+    primary={confirmAction(
+      `${purpose === "target" ? "Choose" : "Behold"} ${types[chosen]?.type ?? ""}`,
+      confirm,
+    )}
     secondary={[cancelAction(onCancel)]}
   >
-    <p class="prompt-hint">
-      Choose a creature type. You then behold {count} creatures of that type: creature cards in your hand
-      or creatures you control.
-    </p>
+    {#if purpose === "target"}
+      <p class="prompt-hint">
+        Choose a creature type. The spell's targets must be creatures of that type.
+      </p>
+    {:else}
+      <p class="prompt-hint">
+        Choose a creature type. You then behold {count} creatures of that type: creature cards in your
+        hand or creatures you control.
+      </p>
+    {/if}
     <ul class="type-options">
       {#each types as t, i (t.type)}
         <li>

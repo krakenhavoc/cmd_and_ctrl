@@ -58,6 +58,34 @@ func AddSupertypesMod(supertypes ...string) Mod {
 	return Mod{Kind: ModAddSupertypes, Supertypes: copyStrings(supertypes)}
 }
 
+// ModRemoveSupertypes is "<it> is no longer <supertype>" (layer 4, CR
+// 613.1d; #6199): the Supertypes are removed and every card type, subtype
+// and other supertype stays. Melting's "All lands are no longer snow" and
+// Arcum's Weathervane's "Target snow land is no longer snow". Applied in
+// layer 4 in timestamp order with every other type-changing effect
+// (CR 613.7), so a later "becomes snow" (ModAddSupertypes) puts it back
+// and an earlier one does not. Reads Supertypes (at least one, each one of
+// CR 205.4a's). An on-disk identity: never renamed, never reused.
+const ModRemoveSupertypes ModKind = "removeSupertypes"
+
+// RemoveSupertypesMod is "is no longer <supertype>" (layer 4).
+func RemoveSupertypesMod(supertypes ...string) Mod {
+	return Mod{Kind: ModRemoveSupertypes, Supertypes: copyStrings(supertypes)}
+}
+
+// RemoveSupertypes is ModRemoveSupertypes' Apply on one characteristic,
+// exported for a printed static that removes a supertype in layer 4
+// (effects.LandsAreNoLongerSupertype). The match ignores case.
+func (c *Characteristic) RemoveSupertypes(supertypes []string) {
+	kept := make([]string, 0, len(c.Supertypes))
+	for _, s := range c.Supertypes {
+		if !typeListHas(supertypes, s) {
+			kept = append(kept, s)
+		}
+	}
+	c.Supertypes = kept
+}
+
 // addSupertypes is ModAddSupertypes' Apply on one characteristic.
 func (c *Characteristic) addSupertypes(supertypes []string) {
 	super := append([]string(nil), c.Supertypes...)
@@ -86,17 +114,17 @@ var knownSupertypes = []string{"Basic", "Legendary", "Ongoing", "Snow", "World"}
 // two kinds, and for the one field only ModSetTypes reads. "" when the
 // mod is sound.
 func becomeNamedModProblem(m Mod) string {
-	if m.Kind != ModSetTypes && m.Kind != ModAddSupertypes && len(m.Supertypes) > 0 {
-		return fmt.Sprintf("mod %q names supertypes, which only a setTypes or addSupertypes mod reads", m.Kind)
+	if m.Kind != ModSetTypes && m.Kind != ModAddSupertypes && m.Kind != ModRemoveSupertypes && len(m.Supertypes) > 0 {
+		return fmt.Sprintf("mod %q names supertypes, which only a setTypes, addSupertypes or removeSupertypes mod reads", m.Kind)
 	}
 	switch m.Kind {
-	case ModAddSupertypes:
+	case ModAddSupertypes, ModRemoveSupertypes:
 		if len(m.Supertypes) == 0 {
-			return "an addSupertypes mod names no supertype"
+			return fmt.Sprintf("an %s mod names no supertype", m.Kind)
 		}
 		for _, s := range m.Supertypes {
 			if !typeIn(s, knownSupertypes) {
-				return fmt.Sprintf("an addSupertypes mod names %q, which is not a supertype", s)
+				return fmt.Sprintf("an %s mod names %q, which is not a supertype", m.Kind, s)
 			}
 		}
 	case ModSetName:

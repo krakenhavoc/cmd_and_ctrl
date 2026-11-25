@@ -367,6 +367,15 @@ type Characteristic struct {
 	// reads it (beam_me_up.go).
 	CantBeBeamedUp bool `json:",omitempty"`
 
+	// FlagbearerTargetRule is "while an opponent is choosing targets as
+	// part of casting a spell they control or activating an ability they
+	// control, that player must choose at least one Flagbearer on the
+	// battlefield if able" (Coalition Flag, Standard Bearer; #6236, CR
+	// 601.2c). Written by a layer-6 self static, so it goes with the
+	// permanent's abilities, and read by checkFlagbearerTargetsLocked.
+	// flagbearer.go.
+	FlagbearerTargetRule bool `json:",omitempty"`
+
 	// CantTransform is "this permanent can't transform" (CR 101.2):
 	// Immerwolf's "Non-Human Werewolves you control can't transform"
 	// (ADR 0132 amendment 2026-10-16, #4071). Written by an ordinary
