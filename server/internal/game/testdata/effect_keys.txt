@@ -2914,6 +2914,7 @@ payunless pay-unless/heavyweight-demolisher-tap
 payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
+payunless pay-unless/hired-heist-draw
 payunless pay-unless/human-torch-share-damage
 payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown
