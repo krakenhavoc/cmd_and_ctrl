@@ -271,6 +271,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// #6148, CR 606.5: the loyalty cost as the engine charges it,
 		// combined with every addition on the board (Carth the Lion).
 		ab.Cost = g.LoyaltyAdjustedCostForEffect(e.seat, ab.Cost)
+		// #6205: and every sacrifice the board imposes on it (Drought),
+		// folded as the activation folds it. A cost the fold can't join
+		// can't be activated now.
+		var foldOK bool
+		if ab.Cost, foldOK = g.ImposedSacrificeAbilityCostForEffect(e.seat, *source, ab.Cost); !foldOK {
+			continue
+		}
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -2494,7 +2501,8 @@ func (e *enumerator) manaMoves() {
 		// this ability" mana rows (Mana Cache), and manaMovesForSource
 		// holds each row to game.MayActivateMana, the predicate
 		// ActivateManaAbility refuses with.
-		if source.Controller != e.seat && !game.HasAnyPlayerManaAbility(*source) {
+		// #6204: and a land under the seat's Piracy permission.
+		if source.Controller != e.seat && !g.MayReachManaAcrossLocked(e.seat, *source) {
 			continue
 		}
 		// CR 602.5, the mana half: Arrest stops these too, Faith's
@@ -2569,6 +2577,13 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 	// can't pay is no move (CR 118.3).
 	for _, mr := range expandManaCostBranches(abilities) {
 		idx, ab := mr.row, mr.ab
+		// #6205: a sacrifice the board imposes (Drought on a filter
+		// land's {B/R}) folds into the row's sacrifice clause, as
+		// ActivateManaAbility folds it.
+		var foldOK bool
+		if ab, foldOK = g.ImposedSacrificeManaAbilityForEffect(e.seat, *source, ab); !foldOK {
+			continue
+		}
 		// CR 113.6 (#1228): the ability has to function from the zone
 		// the card is in. Same predicate the engine gates on, so a
 		// Forest sitting in a hand is never offered as a mana source
@@ -2579,7 +2594,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// CR 602.2 (#1864): who may activate this row — the one
 		// predicate ActivateManaAbility asks.
-		if !game.MayActivateMana(e.seat, *source, zone, ab) {
+		if !g.MayActivateManaLocked(e.seat, *source, zone, ab) {
 			continue
 		}
 		// #1183: "Activate each exhaust ability only once", and

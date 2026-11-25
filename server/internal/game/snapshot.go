@@ -458,6 +458,11 @@ type GameSnapshot struct {
 	// abilities twice this turn. Additive.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
 
+	// TapForeignLandsThisTurn is Game's (#6204, ADR 0106 §1 amendment
+	// 2026-11-25): the players who may tap lands they don't control for
+	// mana this turn. Additive.
+	TapForeignLandsThisTurn map[uuid.UUID]bool `json:"tapForeignLandsThisTurn,omitempty"`
+
 	// LoyaltyPermanentTwiceThisTurn is Game's (#5479): the permanents
 	// whose loyalty abilities may be activated twice this turn. Additive.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyPermanentTwiceThisTurn,omitempty"`
@@ -1114,7 +1119,10 @@ type cardSnapshot struct {
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
 	DurationCopyBase *PrintedValues `json:"durationCopyBase,omitempty"`
-	NeedsEffect      bool           `json:"needsEffect"`
+	// FullTextBase is Card.FullTextBase (#6233): the printed values
+	// under a full-text overlay. Additive; absent means none applies.
+	FullTextBase *PrintedValues `json:"fullTextBase,omitempty"`
+	NeedsEffect  bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
 	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
@@ -2839,6 +2847,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	s.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
@@ -3276,6 +3285,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,
@@ -4235,6 +4245,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
+	g.TapForeignLandsThisTurn = copyBoolMap(s.TapForeignLandsThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
 	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
 	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)
@@ -4477,6 +4488,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,

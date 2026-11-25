@@ -145,6 +145,7 @@ func (g *Game) cloneLocked() *Game {
 	out.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	out.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	out.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	out.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	out.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	out.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
@@ -730,6 +731,8 @@ func deepenCard(out *Card) {
 	// reason, and an undo that shared it would revert a Cytoshape to
 	// whatever the live game's baseline had become.
 	out.DurationCopyBase = copyPrintedValues(out.DurationCopyBase)
+	// #6233: the full-text baseline, for the same reason.
+	out.FullTextBase = copyPrintedValues(out.FullTextBase)
 	// #1270: the listed face-down body is a pointer too. Never
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.
@@ -1373,6 +1376,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsThisTurn = src.LoyaltyExtraActivationsThisTurn
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.LoyaltyTwiceThisTurn = src.LoyaltyTwiceThisTurn
+	g.TapForeignLandsThisTurn = src.TapForeignLandsThisTurn
 	g.LoyaltyPermanentTwiceThisTurn = src.LoyaltyPermanentTwiceThisTurn
 	g.LoyaltyPermanentExtraThisTurn = src.LoyaltyPermanentExtraThisTurn
 	g.LoyaltyPermanentExtraUsedThisTurn = src.LoyaltyPermanentExtraUsedThisTurn

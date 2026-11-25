@@ -2580,6 +2580,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		name := m.Text
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Name = name
+			// CR 612.8: "loses any names it had" (#6257).
+			ch.AllNonlegendaryCreatureNames = false
 		}
 	case ModSetBasicLandTypes:
 		// The engine has already emptied the abilities (removes: true,

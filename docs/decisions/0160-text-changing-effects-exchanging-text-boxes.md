@@ -208,7 +208,8 @@ row as waiting.
 ## Out of scope
 
 - Volrath's Shapeshifter ("full text", CR 612.6) and the un-set text-box cards (Phoebe, Animate
-  Graveyard, Do-It-Yourself Seraph), none Commander-legal.
+  Graveyard, Do-It-Yourself Seraph), none Commander-legal. *Volrath's Shapeshifter was brought into
+  scope by the 2026-11-25 amendment below (#6233).*
 - An instance-carried token's abilities (a legacy token whose abilities are not registered under its
   token key) do not travel with its text; every token template in the catalog registers its key since
   #521.
@@ -645,3 +646,52 @@ outside the files whose filter the engine derives (`permissionFilterDerived`).
 
 - **A copy exception applied as a permanent enters as a copy** (Phantasmal Image's "it's an Illusion"):
   out of reach by rule, like any enters condition.
+
+---
+
+## Amendment 2026-11-25 — "has the full text of" another card (#6233)
+
+**Status:** Accepted · 2026-11-25. Sprint S82. Owner decision of 2026-11-24 on #6233: real printed cards
+must work, so the full-text card this ADR left out of scope is built and ships Full.
+
+### What changed, and why
+
+The Out of scope list above excluded Volrath's Shapeshifter. The owner reversed that: the card is in the
+older-sets pass (S82), and the engine already had every piece but the trigger for it. This amendment
+removes it from Out of scope and records how it works.
+
+### The rule
+
+CR 612.6: "One card (Volrath's Shapeshifter) states that an object has the 'full text' of another
+object. This changes not just the text that appears in the object's text box and type line, but also
+changes the text that represents its name, mana cost, color indicator, power, and toughness." CR 404.2
+keeps a graveyard as one ordered pile, so it has a top card. It is a text-changing effect, layer 3
+(CR 613.1c), and so not a copiable value (CR 707.2: "Other effects (including type-changing and
+text-changing effects) … are not copied").
+
+### Decisions
+
+1. **Declared as data.** `effects.Spec.FullTextOfTopGraveyardCreature` (a `game.FullTextStatic`) on the
+   catalog entry; its `Keep` names a `Spec.Grants` bundle holding the text the permanent keeps
+   ("{2}: Discard a card."). No func field reaches `Game`.
+2. **Materialised, not passed.** Full text changes the oracle identity every catalog hook keys on and the
+   printed P/T the CR 704.5f check reads, so, like a copy (ADR 0043 Decision 1, §2 above), it is written
+   onto the flat printed fields before the layer pass. There is no record: `materialiseDurationCopiesLocked`
+   lifts the overlay off each permanent, applies the copies, and then puts the overlay back when the
+   permanent's catalog entry (read after the copies, so a Clone of the Shapeshifter has it too) prints the
+   static and the top card of its controller's graveyard is a creature card. The values are that card's
+   single-faced copiable values plus the `Keep` grant. A graveyard arrival or departure already bumps the
+   layer version (#1117), so the overlay follows the pile with no event of its own.
+3. **The baseline.** `Card.FullTextBase` holds the values under the overlay. It is additive on the
+   snapshot (`fullTextBase`), deep-copied for undo, put back by the CR 400.7 leave path
+   (`restorePrintedSelf`), and read by `CopiableValuesOf` and `OwnPrintedValues`, so a Clone copying a
+   Shapeshifter that has a Bears' text becomes a Volrath's Shapeshifter. `IsCopy` stays false.
+4. **Ordering.** The overlay is applied after layer 1 and before the layer pass, so the exchange records of
+   §2 (and every layer 4-7 effect) apply on top of it. That is CR 613.7's timestamp order within layer 3:
+   the static's timestamp is the permanent's own (CR 613.7a), and an exchange that names the permanent
+   can only have been created after it entered, so it always applies later.
+
+### Cards
+
+Volrath's Shapeshifter (`16e9a4ee-0398-4e76-bc7e-dd2d52056aaf`), built by its S82 batch (OLD b746).
+
