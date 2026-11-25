@@ -933,6 +933,7 @@ func Register(spec Spec) {
 		// every one of them a boot-time refusal rather than a
 		// mysteriously-dead card.
 		checkManaAbilityZones(spec.Name, i, ma)
+		checkManaRevealClause(spec.Name, i, ma)
 		// #1864: an any-player mana ability's limits.
 		CheckAnyPlayerManaAbility(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two

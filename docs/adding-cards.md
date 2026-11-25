@@ -817,6 +817,21 @@ unless the card prints one (The Deck of Many Things' "0 or less").
   (CR 706.7). "…and ignore one" with a chooser is Ichor Elixir's
   `ev.RollOneMoreAndIgnoreOne`.
 
+**"Whenever you discard one or more cards at random, select one or more
+targets at random, choose one or more modes at random"** (Chira, All In,
+#6101) watches three events the engine emits once per instruction where
+it makes the draw ([game/random_events.go](../server/internal/game/random_events.go)):
+`EventDiscardedAtRandom` (every effect discard at random, a "discard N
+cards at random" activation cost, a pay-unless random discard),
+`EventTargetsSelectedAtRandom` (`ChosenAtRandom` targets and
+`ReselectTargetsAtRandomForEffect`) and `EventModesChosenAtRandom`
+(`ChooseOneAtRandom`). `Actor` is the player who discards, selects or
+chooses. A card never emits them itself: route a random discard through
+`DiscardCards`, `DiscardRandomForEffect` or `DiscardAtRandom`, never a
+`ChooseAtRandomForEffect` over the hand followed by a discard. Coins and
+dice are one event per coin or die; "one or more" takes the first of the
+batch (`ev.Seq == ev.BatchSeq`).
+
 Two rolls are not an effect's, and each has its own declaration (#5682,
 [game/dice_cost.go](../server/internal/game/dice_cost.go)); both still go
 through the dice door, so a replacement of the roll and `WheneverYouRollDice`
@@ -5919,6 +5934,18 @@ the only player who may look at it (CR 708.5); the library's owner still owns
 the card. Read "that player" off the trigger (`item.Trigger.Event.Actor` for an
 upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
 library.
+
+### Putting exiled cards onto the battlefield face down (#6092, CR 708.2)
+
+"Put all creature cards exiled with this enchantment onto the battlefield face
+down under your control. They're 2/2 Cyberman artifact creatures." (Death in
+Heaven) is `game.ReturnFromExileFaceDownForEffect(cardID, controller, tapped,
+listed)`, the exile twin of `ReturnFromGraveyardFaceDownForEffect`: the CR 614
+entry with the face-down state on the event, a new object (CR 400.7), known to
+its controller alone (CR 708.5), with `effects.CybermanBody()` (or nil for the
+plain 2/2) as the listed body. Read "exiled with this" with
+`g.ExiledWithForEffect(game.PermissionCardRef(src))`, which needs the exile to
+have been `Linked`.
 
 
 ### Who assigns combat damage, and to what (#6192, ADR 0224 amendment 2026-11-25)
@@ -15222,8 +15249,16 @@ Three things to know:
   RevealFromOpeningHandForYourFirstUpkeep(label, body)`, `body` a registered
   delayed-trigger body (ADR 0133 amendment 2026-11-24). The card stays in
   hand, revealed; the trigger fires in its owner's first upkeep, the
-  starting player's included. "The first upkeep" of any player (the
-  Chancellors) has no constructor yet.
+  starting player's included. The other moments are
+  `RevealFromOpeningHand(at, label, body)` (ADR 0133 amendment
+  2026-11-25): `game.RevealAtTheFirstUpkeep`, "at the beginning of the
+  first upkeep" (Chancellor of the Dross, the starting player's upkeep
+  whoever revealed); `game.RevealAtYourFirstMainPhase`, "at the beginning
+  of your first main phase of the game" (Chancellor of the Tangle); and
+  `game.RevealAtEachOpponentsFirstSpell`, "when each opponent casts their
+  first spell of the game" (Chancellor of the Annex), one trigger per
+  opponent, with the spell that opponent cast as the item's payload
+  (`ctx.PayloadCards()`).
 - **The question is private.** It names a card in a hidden zone, so the
   view strips its words from every viewer but the chooser
   (`PendingChoice.private`, wire `private_text`). The table sees who the

@@ -124,6 +124,9 @@ func (g *Game) ReselectTargetsAtRandomForEffect(r RandomRetarget) error {
 	// A draw that landed on the target already there changed nothing
 	// and is still a draw: the log says what the spell targets now.
 	g.emitRandomRetargetLocked(r, item, next, drawn > 0)
+	if drawn > 0 {
+		g.emitChoseAtRandomLocked(EventTargetsSelectedAtRandom, r.Drawer, r.Source, drawn)
+	}
 	return nil
 }
 
@@ -301,6 +304,7 @@ func (g *Game) drawTriggerTargetLocked(f *pickTargetFrame, lt LegalTargets) Targ
 	cur := f.steps[f.step]
 	ref := g.drawStepTargetLocked(RandomDraw{Player: f.source.Controller, Source: f.source.InstanceID}, cur, lt)
 	g.emitRandomTargetLocked(f.source.Controller, f.source.InstanceID, cur, ref)
+	g.emitChoseAtRandomLocked(EventTargetsSelectedAtRandom, f.source.Controller, f.source.InstanceID, 1)
 	return ref
 }
 

@@ -476,6 +476,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"PutOnLibraryBottom":        repFieldCarried,
 	"ExiledWith":                repFieldCarried,
 	"ExileCounter":              repFieldCarried,
+	"ExileCounterCount":         repFieldCarried,
 	"Destruction":               repFieldCarried,
 	"CantBeRegenerated":         repFieldCarried,
 	"StateBasedDestruction":     repFieldCarried,
@@ -817,6 +818,7 @@ type replacementEventSnapshot struct {
 	PutOnLibraryBottom        bool                `json:"putOnLibraryBottom,omitempty"`
 	ExiledWith                *PermissionCardRef  `json:"exiledWith,omitempty"`
 	ExileCounter              string              `json:"exileCounter,omitempty"`
+	ExileCounterCount         int                 `json:"exileCounterCount,omitempty"`
 	Destruction               bool                `json:"destruction,omitempty"`
 	CantBeRegenerated         bool                `json:"cantBeRegenerated,omitempty"`
 	StateBasedDestruction     bool                `json:"stateBasedDestruction,omitempty"`
@@ -1301,6 +1303,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		PutOnLibraryBottom:        ev.PutOnLibraryBottom,
 		ExiledWith:                permissionRefPtr(ev.ExiledWith),
 		ExileCounter:              ev.ExileCounter,
+		ExileCounterCount:         ev.ExileCounterCount,
 		Destruction:               ev.Destruction,
 		CantBeRegenerated:         ev.CantBeRegenerated,
 		StateBasedDestruction:     ev.StateBasedDestruction,
@@ -1487,6 +1490,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		PutOnLibraryBottom:        s.PutOnLibraryBottom,
 		ExiledWith:                permissionRefValue(s.ExiledWith),
 		ExileCounter:              s.ExileCounter,
+		ExileCounterCount:         s.ExileCounterCount,
 		Destruction:               s.Destruction,
 		CantBeRegenerated:         s.CantBeRegenerated,
 		StateBasedDestruction:     s.StateBasedDestruction,

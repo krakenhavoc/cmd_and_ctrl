@@ -1237,6 +1237,8 @@ delayedTriggers[].copiesSpell.item.paid.returnedObjects	array
 delayedTriggers[].copiesSpell.item.paid.returnedObjects[]	object
 delayedTriggers[].copiesSpell.item.paid.returnedObjects[].epoch	number:int
 delayedTriggers[].copiesSpell.item.paid.returnedObjects[].id	custom(uuid.UUID)
+delayedTriggers[].copiesSpell.item.paid.revealed	array
+delayedTriggers[].copiesSpell.item.paid.revealed[]	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.item.paid.rolled	array
 delayedTriggers[].copiesSpell.item.paid.rolled[]	number:int
 delayedTriggers[].copiesSpell.item.paid.sacrificedObjects	array
@@ -10821,6 +10823,7 @@ frozenEntries[].event.entryTail.tokens.then.words[]	string
 frozenEntries[].event.entryTail.tokens.token	custom(uuid.UUID)
 frozenEntries[].event.exchangeTextWith	custom(uuid.UUID)
 frozenEntries[].event.exileCounter	string
+frozenEntries[].event.exileCounterCount	number:int
 frozenEntries[].event.exiledWith	object
 frozenEntries[].event.exiledWith.epoch	number:int
 frozenEntries[].event.exiledWith.id	custom(uuid.UUID)
@@ -16440,6 +16443,8 @@ frozenEntries[].event.stackItem.paid.returnedObjects	array
 frozenEntries[].event.stackItem.paid.returnedObjects[]	object
 frozenEntries[].event.stackItem.paid.returnedObjects[].epoch	number:int
 frozenEntries[].event.stackItem.paid.returnedObjects[].id	custom(uuid.UUID)
+frozenEntries[].event.stackItem.paid.revealed	array
+frozenEntries[].event.stackItem.paid.revealed[]	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.rolled	array
 frozenEntries[].event.stackItem.paid.rolled[]	number:int
 frozenEntries[].event.stackItem.paid.sacrificedObjects	array
@@ -25353,6 +25358,8 @@ lastKnownStack[].item.paid.returnedObjects	array
 lastKnownStack[].item.paid.returnedObjects[]	object
 lastKnownStack[].item.paid.returnedObjects[].epoch	number:int
 lastKnownStack[].item.paid.returnedObjects[].id	custom(uuid.UUID)
+lastKnownStack[].item.paid.revealed	array
+lastKnownStack[].item.paid.revealed[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.rolled	array
 lastKnownStack[].item.paid.rolled[]	number:int
 lastKnownStack[].item.paid.sacrificedObjects	array
@@ -34350,6 +34357,7 @@ movesAwaitingTokens[].entryTail.tokens.then.words[]	string
 movesAwaitingTokens[].entryTail.tokens.token	custom(uuid.UUID)
 movesAwaitingTokens[].exchangeTextWith	custom(uuid.UUID)
 movesAwaitingTokens[].exileCounter	string
+movesAwaitingTokens[].exileCounterCount	number:int
 movesAwaitingTokens[].exiledWith	object
 movesAwaitingTokens[].exiledWith.epoch	number:int
 movesAwaitingTokens[].exiledWith.id	custom(uuid.UUID)
@@ -39969,6 +39977,8 @@ movesAwaitingTokens[].stackItem.paid.returnedObjects	array
 movesAwaitingTokens[].stackItem.paid.returnedObjects[]	object
 movesAwaitingTokens[].stackItem.paid.returnedObjects[].epoch	number:int
 movesAwaitingTokens[].stackItem.paid.returnedObjects[].id	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.paid.revealed	array
+movesAwaitingTokens[].stackItem.paid.revealed[]	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.rolled	array
 movesAwaitingTokens[].stackItem.paid.rolled[]	number:int
 movesAwaitingTokens[].stackItem.paid.sacrificedObjects	array
@@ -47423,6 +47433,8 @@ pausedModeWalk.item.paid.returnedObjects	array
 pausedModeWalk.item.paid.returnedObjects[]	object
 pausedModeWalk.item.paid.returnedObjects[].epoch	number:int
 pausedModeWalk.item.paid.returnedObjects[].id	custom(uuid.UUID)
+pausedModeWalk.item.paid.revealed	array
+pausedModeWalk.item.paid.revealed[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.rolled	array
 pausedModeWalk.item.paid.rolled[]	number:int
 pausedModeWalk.item.paid.sacrificedObjects	array
@@ -47815,6 +47827,8 @@ pausedResolutionTail.item.paid.returnedObjects	array
 pausedResolutionTail.item.paid.returnedObjects[]	object
 pausedResolutionTail.item.paid.returnedObjects[].epoch	number:int
 pausedResolutionTail.item.paid.returnedObjects[].id	custom(uuid.UUID)
+pausedResolutionTail.item.paid.revealed	array
+pausedResolutionTail.item.paid.revealed[]	custom(uuid.UUID)
 pausedResolutionTail.item.paid.rolled	array
 pausedResolutionTail.item.paid.rolled[]	number:int
 pausedResolutionTail.item.paid.sacrificedObjects	array
@@ -48201,6 +48215,8 @@ pausedStepWalk.item.paid.returnedObjects	array
 pausedStepWalk.item.paid.returnedObjects[]	object
 pausedStepWalk.item.paid.returnedObjects[].epoch	number:int
 pausedStepWalk.item.paid.returnedObjects[].id	custom(uuid.UUID)
+pausedStepWalk.item.paid.revealed	array
+pausedStepWalk.item.paid.revealed[]	custom(uuid.UUID)
 pausedStepWalk.item.paid.rolled	array
 pausedStepWalk.item.paid.rolled[]	number:int
 pausedStepWalk.item.paid.sacrificedObjects	array
@@ -51283,6 +51299,8 @@ pendingChoices[].copyWalk.item.paid.returnedObjects	array
 pendingChoices[].copyWalk.item.paid.returnedObjects[]	object
 pendingChoices[].copyWalk.item.paid.returnedObjects[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.returnedObjects[].id	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.paid.revealed	array
+pendingChoices[].copyWalk.item.paid.revealed[]	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.rolled	array
 pendingChoices[].copyWalk.item.paid.rolled[]	number:int
 pendingChoices[].copyWalk.item.paid.sacrificedObjects	array
@@ -65140,6 +65158,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.words[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.token	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.exchangeTextWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.exileCounter	string
+pendingChoices[].replacementResume.event.exileCounterCount	number:int
 pendingChoices[].replacementResume.event.exiledWith	object
 pendingChoices[].replacementResume.event.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.exiledWith.id	custom(uuid.UUID)
@@ -70759,6 +70778,8 @@ pendingChoices[].replacementResume.event.stackItem.paid.returnedObjects	array
 pendingChoices[].replacementResume.event.stackItem.paid.returnedObjects[]	object
 pendingChoices[].replacementResume.event.stackItem.paid.returnedObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.returnedObjects[].id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.paid.revealed	array
+pendingChoices[].replacementResume.event.stackItem.paid.revealed[]	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.rolled	array
 pendingChoices[].replacementResume.event.stackItem.paid.rolled[]	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.sacrificedObjects	array
@@ -81966,6 +81987,8 @@ pendingTriggers[].paid.returnedObjects	array
 pendingTriggers[].paid.returnedObjects[]	object
 pendingTriggers[].paid.returnedObjects[].epoch	number:int
 pendingTriggers[].paid.returnedObjects[].id	custom(uuid.UUID)
+pendingTriggers[].paid.revealed	array
+pendingTriggers[].paid.revealed[]	custom(uuid.UUID)
 pendingTriggers[].paid.rolled	array
 pendingTriggers[].paid.rolled[]	number:int
 pendingTriggers[].paid.sacrificedObjects	array
@@ -84887,6 +84910,8 @@ resolving.item.paid.returnedObjects	array
 resolving.item.paid.returnedObjects[]	object
 resolving.item.paid.returnedObjects[].epoch	number:int
 resolving.item.paid.returnedObjects[].id	custom(uuid.UUID)
+resolving.item.paid.revealed	array
+resolving.item.paid.revealed[]	custom(uuid.UUID)
 resolving.item.paid.rolled	array
 resolving.item.paid.rolled[]	number:int
 resolving.item.paid.sacrificedObjects	array
@@ -91353,6 +91378,8 @@ stackMeta[].paid.returnedObjects	array
 stackMeta[].paid.returnedObjects[]	object
 stackMeta[].paid.returnedObjects[].epoch	number:int
 stackMeta[].paid.returnedObjects[].id	custom(uuid.UUID)
+stackMeta[].paid.revealed	array
+stackMeta[].paid.revealed[]	custom(uuid.UUID)
 stackMeta[].paid.rolled	array
 stackMeta[].paid.rolled[]	number:int
 stackMeta[].paid.sacrificedObjects	array
