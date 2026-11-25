@@ -1182,6 +1182,7 @@ choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/memory-vampire-collect-evidence
 choose choose-cards/memory-worm-discarded
+choose choose-cards/metamorphic-alteration-chosen
 choose choose-cards/miasma-demon-discarded
 choose choose-cards/mill-then-take-cache-grab-pick
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
@@ -5160,6 +5161,7 @@ tail then/outbreak-type-chosen
 tail then/pact-of-the-serpent-type-chosen
 tail then/palanis-hatcher-dinosaur
 tail then/paradoxical-outcome-draw
+tail then/patient-rebuilding-draw
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
 tail then/phenomenon-investigators-draw
