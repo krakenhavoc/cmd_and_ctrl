@@ -72,11 +72,19 @@ func OldB242ForEachKindPutOrRemove() Effect {
 	}
 }
 
-// oldB242Next is oldB242AskKind, reached through a variable so the answer's
-// body does not close an initialisation cycle with the prompt it answers.
-var oldB242Next func(ctx *Context, target uuid.UUID, kinds []string) error
+// oldB242Next is oldB242AskKind, reached through an interface method so the
+// answer's body does not close an initialisation cycle with the prompt it
+// answers (a call through an interface is not an initialisation dependency),
+// and so this core file needs no init() (#5906: an init() marks a card file).
+var oldB242Next interface {
+	ask(ctx *Context, target uuid.UUID, kinds []string) error
+} = oldB242Asker{}
 
-func init() { oldB242Next = oldB242AskKind }
+type oldB242Asker struct{}
+
+func (oldB242Asker) ask(ctx *Context, target uuid.UUID, kinds []string) error {
+	return oldB242AskKind(ctx, target, kinds)
+}
 
 func oldB242AskKind(ctx *Context, target uuid.UUID, kinds []string) error {
 	if len(kinds) == 0 || !OnBattlefield(ctx.Game, target) {
@@ -123,7 +131,7 @@ var oldB242KindAnswer = OptionPickThen("option-pick/dramatists-puppet-put-or-rem
 			}
 		}
 	}
-	return oldB242Next(ctx, target, r.Words[1:])
+	return oldB242Next.ask(ctx, target, r.Words[1:])
 })
 
 // OldB242DecimatorTargets is the target clause set of Decimator Beetle's attack
