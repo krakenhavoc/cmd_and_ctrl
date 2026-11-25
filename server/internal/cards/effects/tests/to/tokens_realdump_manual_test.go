@@ -173,10 +173,6 @@ var knownUnmatchedTokens = map[string]string{
 	// token card is */*, which a fixed size can never match; the template is 0/0 and the card sets X/X as it
 	// creates the token.
 	"0/0 blue and red Weird": "the printed token card is */*; Experimental Overload sets X/X as it creates it",
-	// Purphoros's Intervention creates "an X/1 red Elemental creature token with trample and haste";
-	// the printed token card is */1, which a fixed size can never match. The template is 0/1 and the
-	// card sets the power to X as it creates the token.
-	"0/1 red Elemental with trample and haste": "the printed token card is */1; Purphoros's Intervention sets X/1 as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
