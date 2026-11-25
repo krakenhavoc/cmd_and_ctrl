@@ -329,6 +329,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 214 (#5530).
 	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
+
+	// S82 OLD batch 310 (#5547).
+	"Roilmage's Trick": "a one-turn -X/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
