@@ -2695,6 +2695,7 @@ option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/torment-of-hailfire-punisher
 option option-pick/torment-of-scarabs-answer
+option option-pick/torment-of-venom-pay-or-lose
 option option-pick/toymakers-trap-guesser
 option option-pick/tresserhorns-lord-returned-choice
 option option-pick/triarch-stalker-opponent
