@@ -1,8 +1,6 @@
 package cardsbu
 
 import (
-	"slices"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
@@ -33,20 +31,7 @@ func init() {
 		Name:         "Burakos, Party Leader",
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 1},
-		Static: []game.StaticAbility{{
-			Label: "Burakos is also a Cleric, Rogue, Warrior, and Wizard.",
-			Layer: game.Layer4Type,
-			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, t := range effects.FinB9PartyTypes {
-					if !slices.Contains(c.Subtypes, t) {
-						c.Subtypes = append(c.Subtypes, t)
-					}
-				}
-			},
-		}},
+		Static:       []game.StaticAbility{effects.S82OldB090AlsoAPartyCreature("Burakos is also a Cleric, Rogue, Warrior, and Wizard.")},
 		Triggered: []game.TriggeredAbility{
 			effects.WheneverThisAttacks("Burakos — defending player loses X life and you create X Treasure tokens, X being your party size", burakosAttack),
 		},
