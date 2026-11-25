@@ -394,6 +394,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3275: a rules gate read by every sacrifice route. Its cases
 		// are in cant_be_sacrificed_test.go.
 		ModCantBeSacrificed: true,
+		// #6239: a one-shot rules gate read by the adapt. Its cases are
+		// in the effects package's adapt test.
+		ModAdaptIgnoresCounters: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
