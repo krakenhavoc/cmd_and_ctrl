@@ -1190,6 +1190,14 @@ export function discardCostOf(card: CardView, choices?: CastChoices): number {
   return castAdditionalCost(card, choices)?.discard_cards ?? 0;
 }
 
+// discardXCount is how many cards a "discard X cards" additional cost
+// (#6145, Channeled Force) takes for this cast: the announced X, or 0 for
+// every other cost. Its picker opens after the X prompt, not before it.
+export function discardXCount(card: CardView, choices?: CastChoices): number {
+  if (!castAdditionalCost(card, choices)?.discard_x) return 0;
+  return Math.max(choices?.xValue ?? 0, 0);
+}
+
 // costBranchesOf returns the branches of a card's either/or additional
 // cost (ADR 0100 §2), or an empty list for every other card.
 export function costBranchesOf(card: CardView): AdditionalCostView[] {
@@ -2167,6 +2175,11 @@ export function xCeilingFor(card: CardView, altCost: string | undefined): number
   // #1948: "exile X cards from your graveyard" — X is what the graveyard
   // pays, the same number the server refuses above.
   const ac = card.additional_cost;
+  // #6145: "discard X cards" — X is what the hand pays.
+  if (ac?.discard_x) {
+    const discardMax = ac.discard_x_max ?? 0;
+    return ceiling === undefined ? discardMax : Math.min(ceiling, discardMax);
+  }
   if (ac?.exile_cost_x) {
     const exileMax = ac.exile_cost_x_max ?? 0;
     return ceiling === undefined ? exileMax : Math.min(ceiling, exileMax);

@@ -522,6 +522,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextCombatPhaseModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6144: a next-step skip naming no player or another step.
+			if problem := skipNextStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #6147: an enters-tapped filter naming a non-permanent type.
 			if problem := permanentsEnterTappedModProblem(m); problem != "" {
 				unknown = append(unknown, problem)

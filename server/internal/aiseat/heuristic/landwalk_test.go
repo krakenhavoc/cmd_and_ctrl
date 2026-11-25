@@ -17,6 +17,8 @@ import (
 func TestAttacksSeeLandwalk(t *testing.T) {
 	island := func(c *protocol.CardView) { c.Name, c.TypeLine = "Island", "Basic Land — Island" }
 	tropical := func(c *protocol.CardView) { c.Name, c.TypeLine = "Tropical Island", "Land — Island Forest" }
+	snowIsland := func(c *protocol.CardView) { c.Name, c.TypeLine = "Snow-Covered Island", "Basic Snow Land — Island" }
+	legendary := func(c *protocol.CardView) { c.Name, c.TypeLine = "Mikokoro, Center of the Sea", "Legendary Land" }
 	for _, tc := range []struct {
 		name    string
 		keyword string
@@ -27,6 +29,11 @@ func TestAttacksSeeLandwalk(t *testing.T) {
 		{"islandwalk against a Mountain", "islandwalk", func(*protocol.CardView) {}, false},
 		{"nonbasic landwalk against a basic Island", "nonbasic landwalk", island, false},
 		{"nonbasic landwalk against a Tropical Island", "nonbasic landwalk", tropical, true},
+		{"snow islandwalk against an Island", "snow islandwalk", island, false},
+		{"snow islandwalk against a snow Island", "snow islandwalk", snowIsland, true},
+		{"snow landwalk against a snow Island", "snow landwalk", snowIsland, true},
+		{"legendary landwalk against an Island", "legendary landwalk", island, false},
+		{"legendary landwalk against a legendary land", "legendary landwalk", legendary, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := newView(

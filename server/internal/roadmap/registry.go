@@ -194,9 +194,11 @@ var items = []Item{
 		Rules:   []string{"702.14"},
 		Keywords: []string{
 			"plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "desertwalk", "nonbasic landwalk", "artifact landwalk",
+			"snow landwalk", "legendary landwalk", "snow plainswalk", "snow islandwalk", "snow swampwalk", "snow mountainwalk", "snow forestwalk",
 		},
-		Probe:   hasKeyword("plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "desertwalk", "nonbasic landwalk", "artifact landwalk"),
-		Printed: `(?im)^(?:[a-z' -]+, )*(?:plains|island|swamp|mountain|forest|desert|nonbasic land)walk\b`,
+		Probe: hasKeyword("plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "desertwalk", "nonbasic landwalk", "artifact landwalk",
+			"snow landwalk", "legendary landwalk", "snow plainswalk", "snow islandwalk", "snow swampwalk", "snow mountainwalk", "snow forestwalk"),
+		Printed: `(?im)^(?:[a-z' -]+[,;] )*(?:(?:snow )?(?:plains|island|swamp|mountain|forest|land)|desert|nonbasic land|legendary land)walk\b`,
 		Phrases: []string{"landwalk", "snow swampwalk"},
 	},
 	{

@@ -305,7 +305,7 @@ func (w *TextWords) subtype(sub string) string {
 // in "protection from <colour>" and "hexproof from <colour>", the
 // creature type in "protection from <creature type>" (read and respelled
 // through the protection parser, protectionFromCreatureType, #3872), and
-// the land type in a basic landwalk ("swampwalk"). Every other token —
+// the land type in a basic landwalk ("swampwalk", "snow swampwalk"). Every other token —
 // and these shapes for a word the substitution leaves alone — comes back
 // unchanged.
 func (w *TextWords) keyword(tok string) string {
@@ -332,7 +332,13 @@ func (w *TextWords) keyword(tok string) string {
 		return tok[:len(prefix)] + ColorName(now)
 	}
 	if strings.HasSuffix(lower, "walk") {
-		land := lower[:len(lower)-len("walk")]
+		// "snow swampwalk" keeps its supertype; the land type is the
+		// word that changes (#6143).
+		snow := ""
+		if strings.HasPrefix(lower, snowLandwalkPrefix) {
+			snow = snowLandwalkPrefix
+		}
+		land := lower[len(snow) : len(lower)-len("walk")]
 		if !IsBasicLandType(land) {
 			return tok
 		}
@@ -340,7 +346,7 @@ func (w *TextWords) keyword(tok string) string {
 		if equalFoldASCII(now, land) {
 			return tok
 		}
-		return strings.ToLower(now) + "walk"
+		return snow + strings.ToLower(now) + "walk"
 	}
 	return tok
 }

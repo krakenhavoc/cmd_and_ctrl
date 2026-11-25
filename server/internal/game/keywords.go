@@ -80,23 +80,30 @@ var canonicalKeywords = map[string]bool{
 	// Landwalk (CR 702.14) joins with #705, in the same change that
 	// teaches BlockPairRefusalLocked to read the defending player's
 	// lands (landwalk.go). One token per kind the engine enforces;
-	// the rarer variants (snow swampwalk, legendary landwalk,
-	// desertwalk) join with their first card. landwalkTokens in
+	// the rarer variants join with their first card (desertwalk;
+	// snow and legendary landwalk, #6143). landwalkTokens in
 	// landwalk.go is the other half of this list, and
 	// TestLandwalkTokensAreCanonical keeps the two in step.
-	"plainswalk":        true,
-	"islandwalk":        true,
-	"swampwalk":         true,
-	"mountainwalk":      true,
-	"forestwalk":        true,
-	"desertwalk":        true,
-	"nonbasic landwalk": true,
-	"artifact landwalk": true,
-	"fear":              true,
-	"intimidate":        true,
-	"shadow":            true,
-	"horsemanship":      true,
-	"skulk":             true,
+	"plainswalk":         true,
+	"islandwalk":         true,
+	"swampwalk":          true,
+	"mountainwalk":       true,
+	"forestwalk":         true,
+	"desertwalk":         true,
+	"nonbasic landwalk":  true,
+	"artifact landwalk":  true,
+	"snow landwalk":      true,
+	"legendary landwalk": true,
+	"snow plainswalk":    true,
+	"snow islandwalk":    true,
+	"snow swampwalk":     true,
+	"snow mountainwalk":  true,
+	"snow forestwalk":    true,
+	"fear":               true,
+	"intimidate":         true,
+	"shadow":             true,
+	"horsemanship":       true,
+	"skulk":              true,
 	// cycling (CR 702.29) joins with #660, in the same change that
 	// teaches the engine to honour it: a cycling ability is a real
 	// CR 602 activation from hand now (effects.Cycling,

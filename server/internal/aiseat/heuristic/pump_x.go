@@ -27,13 +27,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 
 // paysXLife reports whether a card's additional cost is "pay X life"
 // (Toxic Deluge, Hatred): the wire's demands_x with neither of the other
-// X costs that set it (blight X, exile X cards).
+// X costs that set it (blight X, exile X cards, discard X cards).
 func paysXLife(c *protocol.CardView) bool {
 	if c == nil || c.AdditionalCost == nil {
 		return false
 	}
 	ac := c.AdditionalCost
-	return ac.DemandsX && !ac.BlightX && !ac.ExileCostX
+	return ac.DemandsX && !ac.BlightX && !ac.ExileCostX && !ac.DiscardX
 }
 
 // pumpXLifeCost is what a cast whose X is paid in life charges for that

@@ -353,6 +353,13 @@ type PendingChoice struct {
 	// `color_purpose`; see ColorPurpose.
 	ColorPurpose ColorPurpose
 
+	// ColorMulti makes a PendingChoiceColor ask for "the color or colors
+	// of your choice" (#6146): the answer is a non-empty SET of the
+	// options, sent as their letters ("WU"), rather than one colour.
+	// Unused for every other kind. Projected as `color_multi`; a client
+	// that ignores it still sends one letter, which is a legal set.
+	ColorMulti bool
+
 	// ControlPurpose is what giving the entering permanent away does to
 	// its recipient, for a PendingChoiceEntryController (ADR 0102).
 	// Unused for every other kind. Carried for ColorPurpose's reason —
@@ -3740,7 +3747,7 @@ func (g *Game) ResolveDamageAssignment(
 			case !frame.HasDeathtouch:
 				// #3665: and the damage other creatures have been
 				// assigned to it in this step, held until it is dealt.
-				lethal = max(blk.CurrentToughness()-blk.DamageMarked-g.heldCombatDamageToLocked(blk.InstanceID), 0)
+				lethal = max(blk.LethalDamageThreshold()-blk.DamageMarked-g.heldCombatDamageToLocked(blk.InstanceID), 0)
 				if lethal == 0 {
 					break
 				}

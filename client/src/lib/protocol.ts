@@ -2084,6 +2084,11 @@ export interface PendingChoiceView {
   // and "C" last on the one prompt that asks "colorless or the color of
   // your choice" (#5650).
   color_amounts?: Record<string, number>;
+  // #6146: on a "choose_color" prompt that asks for "the color or colors
+  // of your choice": the answer is a non-empty set of color_options, sent
+  // as their letters in resolve_choice's `color` ("WU"). Absent on every
+  // other prompt, which takes one letter.
+  color_multi?: boolean;
   // #780: on a "choose_color" prompt — the card's own declaration of
   // what it will DO with the colour it is handed. Public (it is a
   // reading of the printed text) and absent on every other kind, and
@@ -3349,6 +3354,13 @@ export interface AdditionalCostView {
   // when any card pays. Fewer cards than `min` means the cost cannot be
   // paid right now, so the spell is uncastable.
   discard_options?: LegalTargetsView;
+  // #6145: "discard X cards" (Channeled Force). `demands_x` is set too, so
+  // the X prompt opens first; the picks on `discard_ids` must number
+  // exactly the announced X (`discard_cards` is absent). `discard_x_max`
+  // is the largest X the hand pays, absent at 0. A narrowed clause
+  // ("discard X land cards") lists its cards on `discard_options`.
+  discard_x?: boolean;
+  discard_x_max?: number;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.

@@ -947,6 +947,14 @@ type Spec struct {
 	// (game/equip_cost_alternative.go). Nil for nearly every card.
 	EquipCostAlternatives []game.EquipCostAlternative
 
+	// CyclingCostAlternatives is "you may pay {0} rather than pay cycling
+	// costs" (New Perspectives): a CR 118.9 alternative cost this permanent
+	// offers its controller for cycling and typecycling abilities, read from
+	// the battlefield. The engine derives a twin row for each cycling
+	// ability, the equip twin's way, replacing the ability's mana and leaving
+	// the rest of its cost (the discard). Nil for nearly every card.
+	CyclingCostAlternatives []game.EquipCostAlternative
+
 	// TargetTaxes is a cost a permanent adds to spells that TARGET
 	// something: "Spells your opponents cast that target this creature
 	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).

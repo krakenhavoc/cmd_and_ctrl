@@ -40,7 +40,7 @@ func init() {
 					return nil
 				}
 				return effects.UntilEndOfTurn(ctx, id, nil, "Hammerheim — loses all landwalk abilities until end of turn",
-					game.RemoveKeywordsMod("plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "desertwalk", "nonbasic landwalk"))
+					game.RemoveKeywordsMod(game.LandwalkTokens()...))
 			},
 		}},
 	})

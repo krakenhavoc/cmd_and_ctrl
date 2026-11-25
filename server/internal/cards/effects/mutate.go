@@ -27,6 +27,22 @@ func Mutate(cost string) game.AlternativeCost {
 	}
 }
 
+// MutateFromHandOrGraveyard is Mutate plus "You may cast this card from your
+// graveyard using its mutate ability" (Brokkos, Apex of Forever): two offers
+// with two keys, the shape BlitzFromHandOrGraveyard uses. "mutate" is bound to
+// the hand and "mutate-graveyard" to the graveyard, with the same price and
+// target. The card also lists game.ZoneGraveyard in CastableZones, and the
+// graveyard opens only through its own offer: the card cannot be cast from
+// there for its mana cost.
+func MutateFromHandOrGraveyard(cost string) []game.AlternativeCost {
+	hand := Mutate(cost)
+	hand.FromZone = game.ZoneHand
+	grave := hand
+	grave.Key = game.MutateGraveyardKey
+	grave.FromZone = game.ZoneGraveyard
+	return []game.AlternativeCost{hand, grave}
+}
+
 // ThisCreatureMutates is "Whenever this creature mutates" (CR
 // 702.140d): a mutating creature spell merged with the permanent this
 // ability is on. The mutated permanent is the same object as before

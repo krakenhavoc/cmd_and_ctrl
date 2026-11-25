@@ -1123,6 +1123,13 @@ export const LABEL_SPECS = {
     owners: ["lib/choiceDock.ts"],
     doc: "the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number",
   }),
+  chooseColors: label({
+    name: "Choose colors",
+    kind: "text",
+    role: "button",
+    owners: ["lib/choiceDock.ts"],
+    doc: "a choose_color prompt's primary when it asks for the color or colors of your choice (#6146): sends the colors toggled in the picker, and stays disabled until at least one is",
+  }),
   playerManaAbility: dynamicLabel({
     stem: " life, add ",
     match: "contains",

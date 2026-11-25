@@ -783,6 +783,29 @@
     answer({ color });
   }
 
+  // #6146: "the color or colors of your choice" (color_multi). A press
+  // toggles a colour; the dock's Choose sends the set, in the server's
+  // WUBRG letters, and is disabled while the set is empty.
+  const isColorMulti = $derived(isColorChoice && !!active?.color_multi);
+  let colorPicks = $state<string[]>([]);
+  let colorPicksFor = $state<string | null>(null);
+  $effect(() => {
+    const id = active?.id ?? null;
+    if (id !== colorPicksFor) {
+      colorPicksFor = id;
+      colorPicks = [];
+    }
+  });
+  function toggleColor(color: string): void {
+    colorPicks = colorPicks.includes(color)
+      ? colorPicks.filter((c) => c !== color)
+      : [...colorPicks, color];
+  }
+  function submitColors(): void {
+    if (!active || !viewerID || colorPicks.length === 0) return;
+    answer({ color: colorPicks.join("") });
+  }
+
   // S26 choose_creature_type branch — "as this permanent enters,
   // choose a creature type" (CR 614.12). The legal set is the whole
   // CR 205.3m vocabulary, so this is a filter box over a scrolling
@@ -1676,6 +1699,7 @@
             energy: viewerEnergy,
             payAmount: payAmountValue,
             payAmountAnswerable: payAmountOK,
+            colorPicks,
             life: snap.seats?.find((s) => s.id === viewerID)?.life,
             seats: snap.seats,
             body: isManaPick
@@ -1706,6 +1730,7 @@
             onOption: answerOptionPick,
             onLoop: submitLoopShortcut,
             onAmount: submitPayAmount,
+            onColors: submitColors,
           },
         )
       : null,
@@ -2387,11 +2412,22 @@
 {/snippet}
 {#snippet colorBody()}
   <div class="dock-mana">
-    <ManaSymbolPicker
-      options={colorPickOptions(buttons, "choose")}
-      onPick={(o) => o.color && pickColor(o.color)}
-      label="colors"
-    />
+    {#if isColorMulti}
+      <ManaSymbolPicker
+        options={colorPickOptions(buttons, "choose").map((o) => ({
+          ...o,
+          pressed: !!o.color && colorPicks.includes(o.color),
+        }))}
+        onPick={(o) => o.color && toggleColor(o.color)}
+        label="colors"
+      />
+    {:else}
+      <ManaSymbolPicker
+        options={colorPickOptions(buttons, "choose")}
+        onPick={(o) => o.color && pickColor(o.color)}
+        label="colors"
+      />
+    {/if}
   </div>
 {/snippet}
 {#snippet commanderBody()}

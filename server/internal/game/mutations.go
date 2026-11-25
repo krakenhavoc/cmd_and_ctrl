@@ -1227,7 +1227,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		otherX := !g.tapCostForCastParamsLocked(playerID, card, params).Empty()
 		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
-			otherX = otherX || ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
+			otherX = otherX || ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
 		}
 		if err := validateOptionalCostX(optionalCosts, params.OptionalCosts, params.XValue, paidHasX, otherX); err != nil {
 			slog.Warn("cast_spell rejected: X does not fit the optional cost",
@@ -5956,7 +5956,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 					// The damage stays marked either way — see
 					// indestructible.go.
 					indestructible := IsIndestructible(&c)
-					if c.DamageMarked >= curT && !indestructible {
+					if c.DamageMarked >= c.LethalDamageThreshold() && !indestructible {
 						doom = true
 					}
 					// S18 sub-PR 3: CR 702.2c — a creature hit by any
@@ -11135,6 +11135,19 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
+// LethalDamageThreshold is the amount of damage that is lethal to this
+// creature before damage already marked on it is counted: its toughness
+// (CR 120.6, 704.5g), or its power when an effect says lethal damage is
+// determined by power rather than toughness (Characteristic.LethalByPower).
+// By power it is never below 1, because damage is only lethal once some is
+// marked. Read through the layered view.
+func (c *Card) LethalDamageThreshold() int {
+	if c.effective != nil && c.effective.LethalByPower {
+		return max(c.CurrentPower(), 1)
+	}
+	return c.CurrentToughness()
+}
+
 // assignsAsThoughUnblocked reports whether the creature may assign its
 // combat damage as though it weren't blocked (Characteristic.
 // AssignsAsThoughUnblocked, CR 510.1c), read through the layered view.
@@ -11387,7 +11400,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 					// CR 702.19b: lethal counts the damage other
 					// attackers have already been assigned to it in
 					// this step, which is not marked yet (#3665).
-					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked - assignedTo(blkID)
+					lethalThreshold := blk.LethalDamageThreshold() - blk.DamageMarked - assignedTo(blkID)
 					if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
 						lethalThreshold = 1
 					}
