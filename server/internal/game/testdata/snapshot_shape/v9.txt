@@ -390,6 +390,7 @@ battlefield.cards[].provenance.altCostObjects[]	object
 battlefield.cards[].provenance.altCostObjects[].epoch	number:int
 battlefield.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 battlefield.cards[].provenance.castOrdinal	number:int
+battlefield.cards[].provenance.castThisTurn	bool
 battlefield.cards[].provenance.caster	custom(uuid.UUID)
 battlefield.cards[].provenance.convoked	array
 battlefield.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -904,6 +905,7 @@ delayedTriggers[].copiesSpell.card.provenance.altCostObjects[]	object
 delayedTriggers[].copiesSpell.card.provenance.altCostObjects[].epoch	number:int
 delayedTriggers[].copiesSpell.card.provenance.altCostObjects[].id	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.card.provenance.castOrdinal	number:int
+delayedTriggers[].copiesSpell.card.provenance.castThisTurn	bool
 delayedTriggers[].copiesSpell.card.provenance.caster	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.card.provenance.convoked	array
 delayedTriggers[].copiesSpell.card.provenance.convoked[]	custom(uuid.UUID)
@@ -1810,6 +1812,7 @@ enteringTokens[].provenance.altCostObjects[]	object
 enteringTokens[].provenance.altCostObjects[].epoch	number:int
 enteringTokens[].provenance.altCostObjects[].id	custom(uuid.UUID)
 enteringTokens[].provenance.castOrdinal	number:int
+enteringTokens[].provenance.castThisTurn	bool
 enteringTokens[].provenance.caster	custom(uuid.UUID)
 enteringTokens[].provenance.convoked	array
 enteringTokens[].provenance.convoked[]	custom(uuid.UUID)
@@ -2377,6 +2380,7 @@ exile.cards[].provenance.altCostObjects[]	object
 exile.cards[].provenance.altCostObjects[].epoch	number:int
 exile.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 exile.cards[].provenance.castOrdinal	number:int
+exile.cards[].provenance.castThisTurn	bool
 exile.cards[].provenance.caster	custom(uuid.UUID)
 exile.cards[].provenance.convoked	array
 exile.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -5751,6 +5755,10 @@ frozenEntries[].event.damageTail.sourceLki.Name	string
 frozenEntries[].event.damageTail.sourceLki.PTDefined	bool
 frozenEntries[].event.damageTail.sourceLki.PTSwitched	bool
 frozenEntries[].event.damageTail.sourceLki.Power	number:int
+frozenEntries[].event.damageTail.sourceLki.PowerGatedGoads	array
+frozenEntries[].event.damageTail.sourceLki.PowerGatedGoads[]	object
+frozenEntries[].event.damageTail.sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+frozenEntries[].event.damageTail.sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.RemovedOwnAbilities	array
 frozenEntries[].event.damageTail.sourceLki.RemovedOwnAbilities[]	object
 frozenEntries[].event.damageTail.sourceLki.RemovedOwnAbilities[].row	number:int
@@ -10522,6 +10530,7 @@ frozenEntries[].event.keywordActionTail.armyToken.provenance.altCostObjects[]	ob
 frozenEntries[].event.keywordActionTail.armyToken.provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.provenance.castOrdinal	number:int
+frozenEntries[].event.keywordActionTail.armyToken.provenance.castThisTurn	bool
 frozenEntries[].event.keywordActionTail.armyToken.provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.provenance.convoked	array
 frozenEntries[].event.keywordActionTail.armyToken.provenance.convoked[]	custom(uuid.UUID)
@@ -13068,6 +13077,7 @@ frozenEntries[].event.millTail.run.planned[].provenance.altCostObjects[]	object
 frozenEntries[].event.millTail.run.planned[].provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.millTail.run.planned[].provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].provenance.castOrdinal	number:int
+frozenEntries[].event.millTail.run.planned[].provenance.castThisTurn	bool
 frozenEntries[].event.millTail.run.planned[].provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].provenance.convoked	array
 frozenEntries[].event.millTail.run.planned[].provenance.convoked[]	custom(uuid.UUID)
@@ -13512,6 +13522,7 @@ frozenEntries[].event.millTail.run.seen[].provenance.altCostObjects[]	object
 frozenEntries[].event.millTail.run.seen[].provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.millTail.run.seen[].provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].provenance.castOrdinal	number:int
+frozenEntries[].event.millTail.run.seen[].provenance.castThisTurn	bool
 frozenEntries[].event.millTail.run.seen[].provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].provenance.convoked	array
 frozenEntries[].event.millTail.run.seen[].provenance.convoked[]	custom(uuid.UUID)
@@ -15224,6 +15235,10 @@ frozenEntries[].event.sourceLki.Name	string
 frozenEntries[].event.sourceLki.PTDefined	bool
 frozenEntries[].event.sourceLki.PTSwitched	bool
 frozenEntries[].event.sourceLki.Power	number:int
+frozenEntries[].event.sourceLki.PowerGatedGoads	array
+frozenEntries[].event.sourceLki.PowerGatedGoads[]	object
+frozenEntries[].event.sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+frozenEntries[].event.sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.RemovedOwnAbilities	array
 frozenEntries[].event.sourceLki.RemovedOwnAbilities[]	object
 frozenEntries[].event.sourceLki.RemovedOwnAbilities[].row	number:int
@@ -16002,6 +16017,7 @@ frozenEntries[].event.tokenGroups[].template.provenance.altCostObjects[]	object
 frozenEntries[].event.tokenGroups[].template.provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.tokenGroups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.provenance.castOrdinal	number:int
+frozenEntries[].event.tokenGroups[].template.provenance.castThisTurn	bool
 frozenEntries[].event.tokenGroups[].template.provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.provenance.convoked	array
 frozenEntries[].event.tokenGroups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -17153,6 +17169,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.altCostObje
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.castOrdinal	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.castThisTurn	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.convoked	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -17611,6 +17628,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.altCostObjec
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.castOrdinal	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.castThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.convoked	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.convoked[]	custom(uuid.UUID)
@@ -18055,6 +18073,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.castOrdinal	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.castThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.convoked	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.convoked[]	custom(uuid.UUID)
@@ -22073,6 +22092,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.altCostObjects[]	o
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.altCostObjects[].epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.altCostObjects[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.castOrdinal	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.castThisTurn	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.caster	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.convoked	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.convoked[]	custom(uuid.UUID)
@@ -22403,6 +22423,10 @@ heldCombatDamage.answers[].frame.SourceLKI.Name	string
 heldCombatDamage.answers[].frame.SourceLKI.PTDefined	bool
 heldCombatDamage.answers[].frame.SourceLKI.PTSwitched	bool
 heldCombatDamage.answers[].frame.SourceLKI.Power	number:int
+heldCombatDamage.answers[].frame.SourceLKI.PowerGatedGoads	array
+heldCombatDamage.answers[].frame.SourceLKI.PowerGatedGoads[]	object
+heldCombatDamage.answers[].frame.SourceLKI.PowerGatedGoads[].by	custom(uuid.UUID)
+heldCombatDamage.answers[].frame.SourceLKI.PowerGatedGoads[].source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.RemovedOwnAbilities	array
 heldCombatDamage.answers[].frame.SourceLKI.RemovedOwnAbilities[]	object
 heldCombatDamage.answers[].frame.SourceLKI.RemovedOwnAbilities[].row	number:int
@@ -22656,6 +22680,10 @@ lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
 lastKnownBattlefield{}.PTSwitched	bool
 lastKnownBattlefield{}.Power	number:int
+lastKnownBattlefield{}.PowerGatedGoads	array
+lastKnownBattlefield{}.PowerGatedGoads[]	object
+lastKnownBattlefield{}.PowerGatedGoads[].by	custom(uuid.UUID)
+lastKnownBattlefield{}.PowerGatedGoads[].source	custom(uuid.UUID)
 lastKnownBattlefield{}.RemovedOwnAbilities	array
 lastKnownBattlefield{}.RemovedOwnAbilities[]	object
 lastKnownBattlefield{}.RemovedOwnAbilities[].row	number:int
@@ -22697,6 +22725,7 @@ lastKnownPermanents{}[].attacking	bool
 lastKnownPermanents{}[].basePower	number:int
 lastKnownPermanents{}[].blocking	array
 lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)
+lastKnownPermanents{}[].castThisTurn	bool
 lastKnownPermanents{}[].characteristic	object
 lastKnownPermanents{}[].characteristic.Abilities	array
 lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
@@ -22913,6 +22942,10 @@ lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
 lastKnownPermanents{}[].characteristic.PTSwitched	bool
 lastKnownPermanents{}[].characteristic.Power	number:int
+lastKnownPermanents{}[].characteristic.PowerGatedGoads	array
+lastKnownPermanents{}[].characteristic.PowerGatedGoads[]	object
+lastKnownPermanents{}[].characteristic.PowerGatedGoads[].by	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.PowerGatedGoads[].source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.RemovedOwnAbilities	array
 lastKnownPermanents{}[].characteristic.RemovedOwnAbilities[]	object
 lastKnownPermanents{}[].characteristic.RemovedOwnAbilities[].row	number:int
@@ -22993,6 +23026,7 @@ lastKnownPermanents{}[].delved[].epoch	number:int
 lastKnownPermanents{}[].delved[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].enchanted	bool
 lastKnownPermanents{}[].epoch	number:int
+lastKnownPermanents{}[].goaded	bool
 lastKnownPermanents{}[].left	bool
 lastKnownPermanents{}[].linkedPermanent	object
 lastKnownPermanents{}[].linkedPermanent.epoch	number:int
@@ -23367,6 +23401,7 @@ lastKnownStack[].card.provenance.altCostObjects[]	object
 lastKnownStack[].card.provenance.altCostObjects[].epoch	number:int
 lastKnownStack[].card.provenance.altCostObjects[].id	custom(uuid.UUID)
 lastKnownStack[].card.provenance.castOrdinal	number:int
+lastKnownStack[].card.provenance.castThisTurn	bool
 lastKnownStack[].card.provenance.caster	custom(uuid.UUID)
 lastKnownStack[].card.provenance.convoked	array
 lastKnownStack[].card.provenance.convoked[]	custom(uuid.UUID)
@@ -24327,6 +24362,7 @@ match.decks[].fixed[].provenance.altCostObjects[]	object
 match.decks[].fixed[].provenance.altCostObjects[].epoch	number:int
 match.decks[].fixed[].provenance.altCostObjects[].id	custom(uuid.UUID)
 match.decks[].fixed[].provenance.castOrdinal	number:int
+match.decks[].fixed[].provenance.castThisTurn	bool
 match.decks[].fixed[].provenance.caster	custom(uuid.UUID)
 match.decks[].fixed[].provenance.convoked	array
 match.decks[].fixed[].provenance.convoked[]	custom(uuid.UUID)
@@ -24769,6 +24805,7 @@ match.decks[].main[].provenance.altCostObjects[]	object
 match.decks[].main[].provenance.altCostObjects[].epoch	number:int
 match.decks[].main[].provenance.altCostObjects[].id	custom(uuid.UUID)
 match.decks[].main[].provenance.castOrdinal	number:int
+match.decks[].main[].provenance.castThisTurn	bool
 match.decks[].main[].provenance.caster	custom(uuid.UUID)
 match.decks[].main[].provenance.convoked	array
 match.decks[].main[].provenance.convoked[]	custom(uuid.UUID)
@@ -25214,6 +25251,7 @@ match.decks[].side[].provenance.altCostObjects[]	object
 match.decks[].side[].provenance.altCostObjects[].epoch	number:int
 match.decks[].side[].provenance.altCostObjects[].id	custom(uuid.UUID)
 match.decks[].side[].provenance.castOrdinal	number:int
+match.decks[].side[].provenance.castThisTurn	bool
 match.decks[].side[].provenance.caster	custom(uuid.UUID)
 match.decks[].side[].provenance.convoked	array
 match.decks[].side[].provenance.convoked[]	custom(uuid.UUID)
@@ -27644,6 +27682,10 @@ movesAwaitingTokens[].damageTail.sourceLki.Name	string
 movesAwaitingTokens[].damageTail.sourceLki.PTDefined	bool
 movesAwaitingTokens[].damageTail.sourceLki.PTSwitched	bool
 movesAwaitingTokens[].damageTail.sourceLki.Power	number:int
+movesAwaitingTokens[].damageTail.sourceLki.PowerGatedGoads	array
+movesAwaitingTokens[].damageTail.sourceLki.PowerGatedGoads[]	object
+movesAwaitingTokens[].damageTail.sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.RemovedOwnAbilities	array
 movesAwaitingTokens[].damageTail.sourceLki.RemovedOwnAbilities[]	object
 movesAwaitingTokens[].damageTail.sourceLki.RemovedOwnAbilities[].row	number:int
@@ -32415,6 +32457,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.provenance.altCostObjects[]	ob
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.castOrdinal	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.provenance.castThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.convoked	array
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.convoked[]	custom(uuid.UUID)
@@ -34961,6 +35004,7 @@ movesAwaitingTokens[].millTail.run.planned[].provenance.altCostObjects[]	object
 movesAwaitingTokens[].millTail.run.planned[].provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].provenance.castOrdinal	number:int
+movesAwaitingTokens[].millTail.run.planned[].provenance.castThisTurn	bool
 movesAwaitingTokens[].millTail.run.planned[].provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].provenance.convoked	array
 movesAwaitingTokens[].millTail.run.planned[].provenance.convoked[]	custom(uuid.UUID)
@@ -35405,6 +35449,7 @@ movesAwaitingTokens[].millTail.run.seen[].provenance.altCostObjects[]	object
 movesAwaitingTokens[].millTail.run.seen[].provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].provenance.castOrdinal	number:int
+movesAwaitingTokens[].millTail.run.seen[].provenance.castThisTurn	bool
 movesAwaitingTokens[].millTail.run.seen[].provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].provenance.convoked	array
 movesAwaitingTokens[].millTail.run.seen[].provenance.convoked[]	custom(uuid.UUID)
@@ -37117,6 +37162,10 @@ movesAwaitingTokens[].sourceLki.Name	string
 movesAwaitingTokens[].sourceLki.PTDefined	bool
 movesAwaitingTokens[].sourceLki.PTSwitched	bool
 movesAwaitingTokens[].sourceLki.Power	number:int
+movesAwaitingTokens[].sourceLki.PowerGatedGoads	array
+movesAwaitingTokens[].sourceLki.PowerGatedGoads[]	object
+movesAwaitingTokens[].sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+movesAwaitingTokens[].sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.RemovedOwnAbilities	array
 movesAwaitingTokens[].sourceLki.RemovedOwnAbilities[]	object
 movesAwaitingTokens[].sourceLki.RemovedOwnAbilities[].row	number:int
@@ -37895,6 +37944,7 @@ movesAwaitingTokens[].tokenGroups[].template.provenance.altCostObjects[]	object
 movesAwaitingTokens[].tokenGroups[].template.provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.provenance.castOrdinal	number:int
+movesAwaitingTokens[].tokenGroups[].template.provenance.castThisTurn	bool
 movesAwaitingTokens[].tokenGroups[].template.provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.provenance.convoked	array
 movesAwaitingTokens[].tokenGroups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -39046,6 +39096,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.altCostObje
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.castOrdinal	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.castThisTurn	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.convoked	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -39504,6 +39555,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.altCostObjec
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.castOrdinal	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.castThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.convoked	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.convoked[]	custom(uuid.UUID)
@@ -39948,6 +40000,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.castOrdinal	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.castThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.convoked	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.convoked[]	custom(uuid.UUID)
@@ -43966,6 +44019,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.altCostObjects[]	o
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.altCostObjects[].epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.altCostObjects[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.castOrdinal	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.castThisTurn	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.caster	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.convoked	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.convoked[]	custom(uuid.UUID)
@@ -46029,6 +46083,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.provenance.altCostObjects
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.castOrdinal	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.provenance.castThisTurn	bool
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.caster	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.convoked	array
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -46493,6 +46548,7 @@ pendingChoices[].attackSplit.settled.groups[].template.provenance.altCostObjects
 pendingChoices[].attackSplit.settled.groups[].template.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.provenance.castOrdinal	number:int
+pendingChoices[].attackSplit.settled.groups[].template.provenance.castThisTurn	bool
 pendingChoices[].attackSplit.settled.groups[].template.provenance.caster	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.provenance.convoked	array
 pendingChoices[].attackSplit.settled.groups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -47624,6 +47680,7 @@ pendingChoices[].attackSplit.template.provenance.altCostObjects[]	object
 pendingChoices[].attackSplit.template.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].attackSplit.template.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.provenance.castOrdinal	number:int
+pendingChoices[].attackSplit.template.provenance.castThisTurn	bool
 pendingChoices[].attackSplit.template.provenance.caster	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.provenance.convoked	array
 pendingChoices[].attackSplit.template.provenance.convoked[]	custom(uuid.UUID)
@@ -48502,6 +48559,7 @@ pendingChoices[].copyWalk.src.provenance.altCostObjects[]	object
 pendingChoices[].copyWalk.src.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].copyWalk.src.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.provenance.castOrdinal	number:int
+pendingChoices[].copyWalk.src.provenance.castThisTurn	bool
 pendingChoices[].copyWalk.src.provenance.caster	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.provenance.convoked	array
 pendingChoices[].copyWalk.src.provenance.convoked[]	custom(uuid.UUID)
@@ -48897,6 +48955,10 @@ pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
 pendingChoices[].damageAssignment.SourceLKI.PTSwitched	bool
 pendingChoices[].damageAssignment.SourceLKI.Power	number:int
+pendingChoices[].damageAssignment.SourceLKI.PowerGatedGoads	array
+pendingChoices[].damageAssignment.SourceLKI.PowerGatedGoads[]	object
+pendingChoices[].damageAssignment.SourceLKI.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities[].row	number:int
@@ -49890,6 +49952,10 @@ pendingChoices[].divideShield.staged[].lki.Name	string
 pendingChoices[].divideShield.staged[].lki.PTDefined	bool
 pendingChoices[].divideShield.staged[].lki.PTSwitched	bool
 pendingChoices[].divideShield.staged[].lki.Power	number:int
+pendingChoices[].divideShield.staged[].lki.PowerGatedGoads	array
+pendingChoices[].divideShield.staged[].lki.PowerGatedGoads[]	object
+pendingChoices[].divideShield.staged[].lki.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].lki.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.RemovedOwnAbilities	array
 pendingChoices[].divideShield.staged[].lki.RemovedOwnAbilities[]	object
 pendingChoices[].divideShield.staged[].lki.RemovedOwnAbilities[].row	number:int
@@ -50132,6 +50198,10 @@ pendingChoices[].divideShield.staged[].sourceLki.Name	string
 pendingChoices[].divideShield.staged[].sourceLki.PTDefined	bool
 pendingChoices[].divideShield.staged[].sourceLki.PTSwitched	bool
 pendingChoices[].divideShield.staged[].sourceLki.Power	number:int
+pendingChoices[].divideShield.staged[].sourceLki.PowerGatedGoads	array
+pendingChoices[].divideShield.staged[].sourceLki.PowerGatedGoads[]	object
+pendingChoices[].divideShield.staged[].sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.RemovedOwnAbilities	array
 pendingChoices[].divideShield.staged[].sourceLki.RemovedOwnAbilities[]	object
 pendingChoices[].divideShield.staged[].sourceLki.RemovedOwnAbilities[].row	number:int
@@ -56518,6 +56588,10 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.Name	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTDefined	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTSwitched	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Power	number:int
+pendingChoices[].replacementResume.event.damageTail.sourceLki.PowerGatedGoads	array
+pendingChoices[].replacementResume.event.damageTail.sourceLki.PowerGatedGoads[]	object
+pendingChoices[].replacementResume.event.damageTail.sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.RemovedOwnAbilities	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.RemovedOwnAbilities[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.RemovedOwnAbilities[].row	number:int
@@ -61289,6 +61363,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.convoked	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.convoked[]	custom(uuid.UUID)
@@ -63835,6 +63910,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.altCo
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.convoked	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.convoked[]	custom(uuid.UUID)
@@ -64279,6 +64355,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.altCostO
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.convoked	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.convoked[]	custom(uuid.UUID)
@@ -65991,6 +66068,10 @@ pendingChoices[].replacementResume.event.sourceLki.Name	string
 pendingChoices[].replacementResume.event.sourceLki.PTDefined	bool
 pendingChoices[].replacementResume.event.sourceLki.PTSwitched	bool
 pendingChoices[].replacementResume.event.sourceLki.Power	number:int
+pendingChoices[].replacementResume.event.sourceLki.PowerGatedGoads	array
+pendingChoices[].replacementResume.event.sourceLki.PowerGatedGoads[]	object
+pendingChoices[].replacementResume.event.sourceLki.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.sourceLki.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.RemovedOwnAbilities	array
 pendingChoices[].replacementResume.event.sourceLki.RemovedOwnAbilities[]	object
 pendingChoices[].replacementResume.event.sourceLki.RemovedOwnAbilities[].row	number:int
@@ -66769,6 +66850,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.altCo
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.convoked	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -67920,6 +68002,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pro
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.convoked	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.convoked[]	custom(uuid.UUID)
@@ -68378,6 +68461,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prov
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.convoked	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.convoked[]	custom(uuid.UUID)
@@ -68822,6 +68906,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provena
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.convoked	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.convoked[]	custom(uuid.UUID)
@@ -72840,6 +72925,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.altCostObjects[].epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.castOrdinal	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.castThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.caster	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.convoked	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.convoked[]	custom(uuid.UUID)
@@ -74889,6 +74975,10 @@ pendingChoices[].targetWalk.frame.lki.Name	string
 pendingChoices[].targetWalk.frame.lki.PTDefined	bool
 pendingChoices[].targetWalk.frame.lki.PTSwitched	bool
 pendingChoices[].targetWalk.frame.lki.Power	number:int
+pendingChoices[].targetWalk.frame.lki.PowerGatedGoads	array
+pendingChoices[].targetWalk.frame.lki.PowerGatedGoads[]	object
+pendingChoices[].targetWalk.frame.lki.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.lki.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.RemovedOwnAbilities	array
 pendingChoices[].targetWalk.frame.lki.RemovedOwnAbilities[]	object
 pendingChoices[].targetWalk.frame.lki.RemovedOwnAbilities[].row	number:int
@@ -75298,6 +75388,7 @@ pendingChoices[].targetWalk.frame.source.provenance.altCostObjects[]	object
 pendingChoices[].targetWalk.frame.source.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].targetWalk.frame.source.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.provenance.castOrdinal	number:int
+pendingChoices[].targetWalk.frame.source.provenance.castThisTurn	bool
 pendingChoices[].targetWalk.frame.source.provenance.caster	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.provenance.convoked	array
 pendingChoices[].targetWalk.frame.source.provenance.convoked[]	custom(uuid.UUID)
@@ -75774,6 +75865,10 @@ pendingChoices[].triggerFrame.lki.Name	string
 pendingChoices[].triggerFrame.lki.PTDefined	bool
 pendingChoices[].triggerFrame.lki.PTSwitched	bool
 pendingChoices[].triggerFrame.lki.Power	number:int
+pendingChoices[].triggerFrame.lki.PowerGatedGoads	array
+pendingChoices[].triggerFrame.lki.PowerGatedGoads[]	object
+pendingChoices[].triggerFrame.lki.PowerGatedGoads[].by	custom(uuid.UUID)
+pendingChoices[].triggerFrame.lki.PowerGatedGoads[].source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.RemovedOwnAbilities	array
 pendingChoices[].triggerFrame.lki.RemovedOwnAbilities[]	object
 pendingChoices[].triggerFrame.lki.RemovedOwnAbilities[].row	number:int
@@ -76183,6 +76278,7 @@ pendingChoices[].triggerFrame.source.provenance.altCostObjects[]	object
 pendingChoices[].triggerFrame.source.provenance.altCostObjects[].epoch	number:int
 pendingChoices[].triggerFrame.source.provenance.altCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.provenance.castOrdinal	number:int
+pendingChoices[].triggerFrame.source.provenance.castThisTurn	bool
 pendingChoices[].triggerFrame.source.provenance.caster	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.provenance.convoked	array
 pendingChoices[].triggerFrame.source.provenance.convoked[]	custom(uuid.UUID)
@@ -77424,6 +77520,7 @@ phasedOut.cards[].provenance.altCostObjects[]	object
 phasedOut.cards[].provenance.altCostObjects[].epoch	number:int
 phasedOut.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 phasedOut.cards[].provenance.castOrdinal	number:int
+phasedOut.cards[].provenance.castThisTurn	bool
 phasedOut.cards[].provenance.caster	custom(uuid.UUID)
 phasedOut.cards[].provenance.convoked	array
 phasedOut.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -77871,6 +77968,7 @@ planechase.deck.cards[].provenance.altCostObjects[]	object
 planechase.deck.cards[].provenance.altCostObjects[].epoch	number:int
 planechase.deck.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 planechase.deck.cards[].provenance.castOrdinal	number:int
+planechase.deck.cards[].provenance.castThisTurn	bool
 planechase.deck.cards[].provenance.caster	custom(uuid.UUID)
 planechase.deck.cards[].provenance.convoked	array
 planechase.deck.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -78318,6 +78416,7 @@ planechase.faceUp.cards[].provenance.altCostObjects[]	object
 planechase.faceUp.cards[].provenance.altCostObjects[].epoch	number:int
 planechase.faceUp.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 planechase.faceUp.cards[].provenance.castOrdinal	number:int
+planechase.faceUp.cards[].provenance.castThisTurn	bool
 planechase.faceUp.cards[].provenance.caster	custom(uuid.UUID)
 planechase.faceUp.cards[].provenance.convoked	array
 planechase.faceUp.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -79022,6 +79121,7 @@ resolving.card.provenance.altCostObjects[]	object
 resolving.card.provenance.altCostObjects[].epoch	number:int
 resolving.card.provenance.altCostObjects[].id	custom(uuid.UUID)
 resolving.card.provenance.castOrdinal	number:int
+resolving.card.provenance.castThisTurn	bool
 resolving.card.provenance.caster	custom(uuid.UUID)
 resolving.card.provenance.convoked	array
 resolving.card.provenance.convoked[]	custom(uuid.UUID)
@@ -80121,6 +80221,7 @@ seats[].attractionDeck.cards[].provenance.altCostObjects[]	object
 seats[].attractionDeck.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].attractionDeck.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].provenance.castOrdinal	number:int
+seats[].attractionDeck.cards[].provenance.castThisTurn	bool
 seats[].attractionDeck.cards[].provenance.caster	custom(uuid.UUID)
 seats[].attractionDeck.cards[].provenance.convoked	array
 seats[].attractionDeck.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -80758,6 +80859,7 @@ seats[].command.cards[].provenance.altCostObjects[]	object
 seats[].command.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].command.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].command.cards[].provenance.castOrdinal	number:int
+seats[].command.cards[].provenance.castThisTurn	bool
 seats[].command.cards[].provenance.caster	custom(uuid.UUID)
 seats[].command.cards[].provenance.convoked	array
 seats[].command.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -81207,6 +81309,7 @@ seats[].companion.cards[].provenance.altCostObjects[]	object
 seats[].companion.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].companion.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].companion.cards[].provenance.castOrdinal	number:int
+seats[].companion.cards[].provenance.castThisTurn	bool
 seats[].companion.cards[].provenance.caster	custom(uuid.UUID)
 seats[].companion.cards[].provenance.convoked	array
 seats[].companion.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -81665,6 +81768,7 @@ seats[].emblems.cards[].provenance.altCostObjects[]	object
 seats[].emblems.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].emblems.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.castOrdinal	number:int
+seats[].emblems.cards[].provenance.castThisTurn	bool
 seats[].emblems.cards[].provenance.caster	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.convoked	array
 seats[].emblems.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -82210,6 +82314,7 @@ seats[].graveyard.cards[].provenance.altCostObjects[]	object
 seats[].graveyard.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].graveyard.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.castOrdinal	number:int
+seats[].graveyard.cards[].provenance.castThisTurn	bool
 seats[].graveyard.cards[].provenance.caster	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.convoked	array
 seats[].graveyard.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -82655,6 +82760,7 @@ seats[].hand.cards[].provenance.altCostObjects[]	object
 seats[].hand.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].hand.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].hand.cards[].provenance.castOrdinal	number:int
+seats[].hand.cards[].provenance.castThisTurn	bool
 seats[].hand.cards[].provenance.caster	custom(uuid.UUID)
 seats[].hand.cards[].provenance.convoked	array
 seats[].hand.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -83105,6 +83211,7 @@ seats[].junkyard.cards[].provenance.altCostObjects[]	object
 seats[].junkyard.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].junkyard.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].junkyard.cards[].provenance.castOrdinal	number:int
+seats[].junkyard.cards[].provenance.castThisTurn	bool
 seats[].junkyard.cards[].provenance.caster	custom(uuid.UUID)
 seats[].junkyard.cards[].provenance.convoked	array
 seats[].junkyard.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -83576,6 +83683,7 @@ seats[].library.cards[].provenance.altCostObjects[]	object
 seats[].library.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].library.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].library.cards[].provenance.castOrdinal	number:int
+seats[].library.cards[].provenance.castThisTurn	bool
 seats[].library.cards[].provenance.caster	custom(uuid.UUID)
 seats[].library.cards[].provenance.convoked	array
 seats[].library.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -84065,6 +84173,7 @@ seats[].sideboard.cards[].provenance.altCostObjects[]	object
 seats[].sideboard.cards[].provenance.altCostObjects[].epoch	number:int
 seats[].sideboard.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 seats[].sideboard.cards[].provenance.castOrdinal	number:int
+seats[].sideboard.cards[].provenance.castThisTurn	bool
 seats[].sideboard.cards[].provenance.caster	custom(uuid.UUID)
 seats[].sideboard.cards[].provenance.convoked	array
 seats[].sideboard.cards[].provenance.convoked[]	custom(uuid.UUID)
@@ -84925,6 +85034,7 @@ stack.cards[].provenance.altCostObjects[]	object
 stack.cards[].provenance.altCostObjects[].epoch	number:int
 stack.cards[].provenance.altCostObjects[].id	custom(uuid.UUID)
 stack.cards[].provenance.castOrdinal	number:int
+stack.cards[].provenance.castThisTurn	bool
 stack.cards[].provenance.caster	custom(uuid.UUID)
 stack.cards[].provenance.convoked	array
 stack.cards[].provenance.convoked[]	custom(uuid.UUID)
