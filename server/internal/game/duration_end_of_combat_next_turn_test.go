@@ -93,8 +93,9 @@ func TestUntilEndOfCombatOnYourNextTurnMadeOnAnotherTurn(t *testing.T) {
 // The kind keeps its persisted int, names itself, and refuses a stamp
 // that belongs to another kind.
 func TestUntilEndOfCombatOnYourNextTurnKeepsItsPersistedInt(t *testing.T) {
-	if !UntilEndOfCombatOnYourNextTurn.Known() || UntilEndOfCombatOnYourNextTurn != ThisTurnAndNextTurn+1 || (UntilEndOfCombatOnYourNextTurn + 1).Known() {
-		t.Error("UntilEndOfCombatOnYourNextTurn is not the last known duration kind, right after ThisTurnAndNextTurn")
+	// #6229 appended UntilACreatureSpellIsCast after it.
+	if !UntilEndOfCombatOnYourNextTurn.Known() || UntilEndOfCombatOnYourNextTurn != ThisTurnAndNextTurn+1 || UntilEndOfCombatOnYourNextTurn+1 != UntilACreatureSpellIsCast {
+		t.Error("UntilEndOfCombatOnYourNextTurn is not right after ThisTurnAndNextTurn, followed by UntilACreatureSpellIsCast")
 	}
 	if int(UntilEndOfCombatOnYourNextTurn) != 14 {
 		t.Errorf("UntilEndOfCombatOnYourNextTurn persists as %d, want 14", UntilEndOfCombatOnYourNextTurn)

@@ -419,9 +419,12 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 // redaction table has to see both filled.
 func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 	return CastSurfaceView{
-		TargetMode:   "creature",
-		LegalTargets: lt,
-		Clauses:      []LegalTargetsView{*lt, *lt},
+		TargetMode: "creature",
+		// #6245: the types offered for a spell that names one as it is
+		// cast, each with that type's legal cards.
+		CastCreatureTypes: []BeholdTypeOption{{Type: "Elf", Cards: []string{"c"}}},
+		LegalTargets:      lt,
+		Clauses:           []LegalTargetsView{*lt, *lt},
 		// #1172: the nested blocks carry every field of their own too,
 		// so the nested half of the allowlist guard below is checking
 		// a strip rather than a struct that was empty anyway.
@@ -895,8 +898,10 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// #1055: the three that answer "what may YOU announce".
 	"CastableHere": surfacePrivate,
 	"ClosesOnPass": surfacePrivate,
-	"LegalTargets": surfacePrivate,
-	"Clauses":      surfacePrivate,
+	// #6245: per-viewer legal targets, grouped by creature type.
+	"CastCreatureTypes": surfacePrivate,
+	"LegalTargets":      surfacePrivate,
+	"Clauses":           surfacePrivate,
 	// #1389: what the asking seat would be charged. A cost modifier
 	// may be scoped to one player, so it is theirs alone.
 	"CastPrices": surfacePrivate,

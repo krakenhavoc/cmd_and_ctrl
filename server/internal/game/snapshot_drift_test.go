@@ -382,6 +382,7 @@ var gameFields = plan(
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"layerPassing", dropped, "not game state: a re-entrancy guard for one layer pass, defer-cleared, so it is false between actions (#4909)",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
+	"phasingOut", dropped, "written and cleared inside one phaseOutLocked call (#6201); always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
 	// guard. Both are defer-cleared inside one mutation.
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",

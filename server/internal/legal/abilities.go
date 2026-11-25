@@ -245,7 +245,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
 	defer func() {
-		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX = game.AbilityOrigin{}, false, false, false, false
+		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX, e.rowCostHasC = game.AbilityOrigin{}, false, false, false, false, false
 	}()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
@@ -281,6 +281,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		e.rowEquip = ab.Equip
 		e.rowClassLevel = ab.ClassLevel
 		e.rowCostHasX = ab.Cost.XSlots() > 0
+		e.rowCostHasC = game.CostStringHasColorless(ab.Cost.Mana)
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and
@@ -471,6 +472,18 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// its early return run only when nothing reads targets, and
 		// otherwise each announcement below is priced on its own —
 		// ADR 0048 addendum §14's rule for a cast, one path over.
+		// #6270: "Exile a creature card from your graveyard and pay its
+		// mana cost" has no price until the card is named, so the card
+		// is pinned first — the first one the seat can pay for, in the
+		// order the exile payment would take them — and the ability is
+		// priced with it, as ActivateCatalogAbility prices it.
+		var pinnedExile []uuid.UUID
+		if ab.Cost.ManaFromExiledCard {
+			var ok bool
+			if ab, pinnedExile, ok = e.exiledCardCostPick(source, zone, ab); !ok {
+				continue
+			}
+		}
 		var basePay abilityManaPayment
 		perTarget := false
 		// #5382: an activation cost increase (Skyseer's Chariot) can
@@ -743,6 +756,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		exileIDs, ok := e.exileCardsPayment(ab.Cost.ExileCards, source.InstanceID, discardIDs)
 		if !ok {
 			continue
+		}
+		if pinnedExile != nil {
+			// #6270: the card the price was read off.
+			exileIDs = pinnedExile
 		}
 		// ADR 0109 §7 (#1902): "Put a card from your hand on top of
 		// your library", solved as the discard is — ONE payment, the
@@ -3013,4 +3030,22 @@ func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, t
 		return nil, false
 	}
 	return out, true
+}
+
+// exiledCardCostPick is #6270's pin: the first card of the exile
+// component's candidates (cheapest fuel first, as exileCardsPayment
+// takes them) whose mana cost the seat can pay, with `ab` priced off it
+// (game.AbilityWithExiledCardCostForEffect, the activation's own
+// pricer). ok is false when no candidate is affordable.
+func (e *enumerator) exiledCardCostPick(source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape) (game.ActivatedAbilityShape, []uuid.UUID, bool) {
+	for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.ExileCards)) {
+		priced := e.g.AbilityWithExiledCardCostForEffect(e.seat, ab, []uuid.UUID{id})
+		if priced.Cost.Mana == "" {
+			return priced, []uuid.UUID{id}, true
+		}
+		if _, ok := e.abilityManaPayment(source, zone, priced, nil); ok {
+			return priced, []uuid.UUID{id}, true
+		}
+	}
+	return ab, nil, false
 }

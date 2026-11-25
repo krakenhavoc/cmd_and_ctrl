@@ -706,15 +706,15 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
-	// Blocks is every creature declared as a blocker this turn, in
-	// declaration order, with the combat phase it blocked in (#6190):
-	// the block-side twin of Attacks, for "not declared as an attacking
-	// or blocking creature this combat" (Hollow Warrior). Keyed by
-	// OBJECT (CR 400.7), so a creature that left and came back blocked
-	// nothing. Read through DeclaredAsBlockerThisCombat. Additive
-	// within the snapshot schema: omitted when empty, flushed with the
-	// rest of the tally at the turn's end.
-	Blocks []BlockTallyRecord `json:"blocks,omitempty"`
+	// CombatBlocks is every pair "this creature blocked that attacker"
+	// made this turn (#6193): by the block declaration, by a creature put
+	// onto the battlefield blocking, or by an effect (BlockAttackersForEffect),
+	// each under the combat phase it was made in. "Creatures it was
+	// blocking that hadn't become blocked by another creature this combat
+	// become unblocked" (Balduvian Warlord) reads it after the other
+	// blocker has left combat, which the live blocking fields cannot say.
+	// Additive: an older snapshot reads none.
+	CombatBlocks []CombatBlockRecord `json:"combatBlocks,omitempty"`
 	// CouldAttack is every creature OBJECT that could have been declared
 	// as an attacker in a declare attackers step this turn (#6211, CR
 	// 508.1a, 508.1c): Season of the Witch's "except for creatures that
@@ -845,17 +845,6 @@ type AttackRecord struct {
 	AllTypes   bool      `json:"allTypes,omitempty"`
 }
 
-// BlockTallyRecord is one declared block: the OBJECT that blocked and
-// the combat phase it blocked in (#6190). The attack record's sibling,
-// with no defender — "was this creature declared as a blocker" is the
-// only question asked of it, and which attacker it blocked is on the
-// card itself while the block stands.
-type BlockTallyRecord struct {
-	Blocker uuid.UUID `json:"blocker"`
-	Epoch   int       `json:"epoch,omitempty"`
-	PhaseID int       `json:"phaseId,omitempty"`
-}
-
 // DeclaredAsAttackerThisCombat reports whether the OBJECT `c` is now
 // was declared as an attacker during the combat phase in progress
 // (#6190): Hollow Warrior's "not declared as an attacking ... creature
@@ -876,15 +865,20 @@ func (g *Game) DeclaredAsAttackerThisCombat(c *Card) bool {
 }
 
 // DeclaredAsBlockerThisCombat is DeclaredAsAttackerThisCombat's block
-// half, off TurnTally.Blocks (#6190).
+// half (#6190), off the per-pair block record the turn already keeps
+// (TurnTally.CombatBlocks, #6193): the blocks this object made in the
+// combat phase in progress, however they were made — the declaration, a
+// creature put onto the battlefield blocking, or an effect. It stays
+// true for a creature since removed from combat, because the record is
+// history.
 //
 // Caller must hold g.mu.
 func (g *Game) DeclaredAsBlockerThisCombat(c *Card) bool {
 	if c == nil {
 		return false
 	}
-	for _, b := range g.TurnTally.Blocks {
-		if b.Blocker == c.InstanceID && b.Epoch == c.ObjectEpoch && b.PhaseID == g.Turn.PhaseID {
+	for _, b := range g.TurnTally.CombatBlocks {
+		if b.Blocker.ID == c.InstanceID && b.Blocker.Epoch == c.ObjectEpoch && b.PhaseID == g.Turn.PhaseID {
 			return true
 		}
 	}
@@ -2266,6 +2260,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.DiedNames = copyStringIntMap(t.DiedNames)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
+	if len(t.CombatBlocks) > 0 {
+		out.CombatBlocks = append([]CombatBlockRecord(nil), t.CombatBlocks...)
+	}
 	if len(t.CouldAttack) > 0 {
 		out.CouldAttack = append([]ObjectRef(nil), t.CouldAttack...)
 	}
@@ -2308,9 +2305,6 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
 	out.CountersPut = copyStringIntMap(t.CountersPut)
 	out.PlusOneCountersPut = copyStringIntMap(t.PlusOneCountersPut)
-	if len(t.Blocks) > 0 {
-		out.Blocks = append([]BlockTallyRecord(nil), t.Blocks...)
-	}
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}
@@ -2561,19 +2555,6 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// an Actor.
 		if ev.Kind == EventCast && ev.CardID != uuid.Nil {
 			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
-		}
-		// #6190: the per-object block history, under the combat phase
-		// it was declared in. A fresh slice every time, never an append
-		// into shared capacity, for TurnTally.Attacks' reason (#1238).
-		if ev.Kind == EventBlock && ev.CardID != uuid.Nil {
-			rec := BlockTallyRecord{
-				Blocker: ev.CardID,
-				Epoch:   g.objectEpochLocked(ev.CardID),
-				PhaseID: g.Turn.PhaseID,
-			}
-			blocks := make([]BlockTallyRecord, len(g.TurnTally.Blocks), len(g.TurnTally.Blocks)+1)
-			copy(blocks, g.TurnTally.Blocks)
-			g.TurnTally.Blocks = append(blocks, rec)
 		}
 		// #5482: a spell cast from exile is a card played from exile.
 		if ev.Kind == EventCast && ev.OldZone == ZoneExile {

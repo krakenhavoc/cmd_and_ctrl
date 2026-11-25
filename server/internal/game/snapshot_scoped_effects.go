@@ -530,6 +530,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6226: a this-turn skip naming no player, turn or part.
+			if problem := skipThisTurnModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #6244: a next-loss replacement naming no player.
 			if problem := nextLossInsteadModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
@@ -541,6 +545,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			// #5718: the table-wide targeting bar is a game record that
 			// names nothing.
 			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6263: a colour bar naming no colour, or a non-colour.
+			if problem := colorSpellTargetingBarModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 			// #2567: an attack-this-permanent requirement naming no

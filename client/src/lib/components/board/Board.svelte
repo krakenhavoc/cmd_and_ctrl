@@ -196,6 +196,7 @@
     altCostSacrificeClause,
     altCostTapClause,
     applyCastChoices,
+    withCastCreatureType,
     castChoicesBase,
     isLegalCardTarget,
     isLegalPlayerTarget,
@@ -923,6 +924,9 @@
   } | null>(null);
   // #5406: a behold that chooses its creature type asks the type first,
   // then the reveal sheet asks for that type's creatures.
+  // #6245: the creature type a spell that names one as it is cast
+  // chooses, asked before its targets.
+  let castTypePrompt = $state<{ card: CardView; choices: CastChoices } | null>(null);
   let beholdTypePrompt = $state<{
     card: CardView;
     types: BeholdTypeOption[];
@@ -1075,6 +1079,13 @@
       return;
     }
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
+  }
+
+  function confirmCastType(type: string): void {
+    const p = castTypePrompt;
+    castTypePrompt = null;
+    if (!p) return;
+    continueCast(p.card, { ...p.choices, chosenCreatureType: type });
   }
 
   function confirmBeholdType(type: string): void {
@@ -2071,6 +2082,19 @@
   // so this falls through to the immediate cast without the client
   // needing to know what "overload" does.
   function continueCast(card: CardView, choices: CastChoices): void {
+    // #6245, CR 601.2c: a spell that names a creature type as it is cast
+    // asks for the type first, and its targets are that type's cards.
+    // With one type on offer it is taken without asking.
+    const castTypes = card.cast_creature_types ?? [];
+    if (castTypes.length > 0 && choices.chosenCreatureType === undefined) {
+      if (castTypes.length === 1) {
+        choices = { ...choices, chosenCreatureType: castTypes[0].type };
+      } else {
+        castTypePrompt = { card, choices };
+        return;
+      }
+    }
+    card = withCastCreatureType(card, choices.chosenCreatureType);
     if (isModal(card)) {
       modePromptChoices = choices;
       // #1655: a ticked kicker can change how many bullets it may take.
@@ -4757,6 +4781,14 @@
     onCancel={() => (revealPrompt = null)}
   />
   <!-- #5406: the creature type a behold that prints none is paid with. -->
+  <BeholdTypeModal
+    card={castTypePrompt?.card ?? null}
+    types={castTypePrompt?.card.cast_creature_types ?? []}
+    count={0}
+    purpose="target"
+    onConfirm={confirmCastType}
+    onCancel={() => (castTypePrompt = null)}
+  />
   <BeholdTypeModal
     card={beholdTypePrompt?.card ?? null}
     types={beholdTypePrompt?.types ?? []}

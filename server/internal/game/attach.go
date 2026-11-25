@@ -178,6 +178,13 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	// on the battlefield", and it keeps the attach-then-state-based-action
 	// path. The test is the one CR 704.5m/n asks of the finished
 	// attachment, run against the host it would have.
+	// #6203, CR 303.4j: an Aura can't become attached to a permanent that
+	// can't be enchanted (by it), whether it is moving or just entering;
+	// one entering stays unattached and the state-based check buries it.
+	if moved && host.Kind == TargetCard && g.auraBarredFromHostLocked(c, findBattlefieldCard(g, host.ID), true) {
+		g.emitAttachSkippedLocked(attachmentID, host, "that permanent can't be enchanted by this Aura")
+		return nil
+	}
 	if moved && c.IsAttached() && !g.attachmentLegalOnLocked(c, host, hostEpoch) {
 		g.emitAttachSkippedLocked(attachmentID, host, "this permanent can't be attached to that host")
 		return nil
@@ -557,6 +564,10 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 			// (or "doesn't remove Auras") is skipped for this Aura; any
 			// other instance of the same quality still counts (#4843).
 			if HasProtection(host) && ProtectedFromAttachment(host, c) {
+				return false
+			}
+			// #6203, CR 303.4c: "can't be enchanted" (by other Auras).
+			if g.auraBarredFromHostLocked(c, host, false) {
 				return false
 			}
 		}

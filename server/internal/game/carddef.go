@@ -318,6 +318,10 @@ type CardDef struct {
 	CounterRemovalLocks  []CounterRemovalLock
 	UntapCaps            []UntapCap
 	UntapOptOuts         []UntapOptOut
+	// TurnSkipOffers is Time Vault's "If you would begin your turn
+	// while this artifact is tapped, you may skip that turn instead"
+	// (#6226, turn_skip_offer.go).
+	TurnSkipOffers []TurnSkipOffer
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -402,6 +406,11 @@ type CardDef struct {
 	// (#3781): "where X is the greatest power among creatures you
 	// controlled as you cast this spell". See cast_time_values.go.
 	CastTimeValues []CastTimeValue
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): a creature type the
+	// caster names as they cast the spell (CR 601.2c, with the targets)
+	// on CastSpellParams.ChosenCreatureType. See cast_creature_type.go.
+	ChoosesCreatureTypeAsCast bool
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.
@@ -1235,6 +1244,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogTurnSkipOffers = func(key string) []TurnSkipOffer {
+		if d := catalogDef(key); d != nil {
+			return d.TurnSkipOffers
+		}
+		return nil
+	}
 	CatalogCantBeCountered = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
@@ -1248,6 +1263,10 @@ func init() {
 			return d.CantBeCounteredIf
 		}
 		return nil
+	}
+	CatalogChoosesCreatureTypeAsCast = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ChoosesCreatureTypeAsCast
 	}
 	CatalogCastTimeValues = func(key string) []CastTimeValue {
 		if d := catalogDef(key); d != nil {
