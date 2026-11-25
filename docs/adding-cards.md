@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
+  - [Special actions paid with mana (ADR 0109 amendment 2026-11-25, #6247)](#special-actions-paid-with-mana-adr-0109-amendment-2026-11-25-6247)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
   - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
@@ -4993,6 +4994,18 @@ right, and the replacement knows who is countering. Declare
 - **It can pause.** Two replacements that disagree are ordered by the
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
+
+### Special actions paid with mana (ADR 0109 amendment 2026-11-25, #6247)
+
+- **"Players can't search libraries. Any player may pay {2} for that
+  player to ignore this effect until end of turn."** (Leonin Arbiter):
+  `PlayersCantSearchLibraries: true` and
+  `IgnorableEffect: effects.AnyPlayerMayPayToIgnore(name, "{2}")`.
+- **"… unless that player pays {U} before that step."** (Quenchable
+  Fire, CR 116.2c): schedule the delayed trigger with
+  `Stop: &game.DelayedTriggerStop{Player: <who pays>, Cost: "{U}", Label: …}`.
+  The player gets a button on their panel; paying takes the trigger out
+  of the queue.
 
 ### "Play with their hands revealed" (ADR 0199, #3953)
 

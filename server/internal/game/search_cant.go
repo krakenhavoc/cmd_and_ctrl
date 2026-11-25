@@ -25,21 +25,36 @@ import "github.com/google/uuid"
 // A nil hook finds none.
 var CatalogOpponentsCantSearch func(key string) bool
 
+// CatalogPlayersCantSearch reports whether a battlefield permanent has the
+// printed "players can't search libraries" (Leonin Arbiter, #6247),
+// keyed by CatalogAbilityKey. A nil hook finds none.
+var CatalogPlayersCantSearch func(key string) bool
+
 // searchCantLocked reports whether `searcher` can't search libraries because
 // an opponent's permanent says so. Judged through catalogAbilityKeyOf, so a
 // permanent that lost its abilities blocks nothing (CR 613.1f).
 //
 // Caller must hold g.mu.
 func (g *Game) searchCantLocked(searcher uuid.UUID) bool {
-	if g.Battlefield == nil || CatalogOpponentsCantSearch == nil || searcher == uuid.Nil {
+	if g.Battlefield == nil || searcher == uuid.Nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller == uuid.Nil || c.Controller == searcher || !g.playerInGameLocked(c.Controller) {
+		key := catalogAbilityKeyOf(c)
+		if key == "" {
 			continue
 		}
-		if key := catalogAbilityKeyOf(c); key != "" && CatalogOpponentsCantSearch(key) {
+		// #6247: Leonin Arbiter's "players can't search libraries" binds
+		// every player, its controller included, except one who paid to
+		// ignore it this turn (CR 116.2d).
+		if CatalogPlayersCantSearch != nil && CatalogPlayersCantSearch(key) && !g.effectIgnoredLocked(searcher, c) {
+			return true
+		}
+		if CatalogOpponentsCantSearch == nil || c.Controller == uuid.Nil || c.Controller == searcher || !g.playerInGameLocked(c.Controller) {
+			continue
+		}
+		if CatalogOpponentsCantSearch(key) {
 			return true
 		}
 	}

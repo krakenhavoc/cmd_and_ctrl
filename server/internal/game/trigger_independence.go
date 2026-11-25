@@ -1815,6 +1815,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// S82 older sets (#5462): Stranglehold stops an opponent's library
 	// searches while its permanent is there.
 	"OpponentsCantSearchLibraries": defFieldOwnRules,
+	"PlayersCantSearchLibraries":   defFieldOwnRules,
 	// S82 older sets (#5462): Invasion Plans hands the block declaration
 	// to the attacking player while its permanent is there.
 	"AttackingPlayerChoosesBlocks": defFieldOwnRules,

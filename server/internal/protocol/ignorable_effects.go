@@ -22,8 +22,47 @@ type IgnorableEffectView struct {
 	// ignore Damping Engine's effect until end of turn").
 	Label string `json:"label"`
 	// SacrificeIDs are the permanents the seat may give up, in the order
-	// a "choose for me" would take them. Never empty.
+	// a "choose for me" would take them. Never empty for an ignore paid
+	// with a sacrifice; empty for one paid with mana.
 	SacrificeIDs []string `json:"sacrifice_ids"`
+	// ManaCost is the price in mana instead of a sacrifice, in brace
+	// notation (#6247, Leonin Arbiter's "{2}"). The button sends
+	// `special_action {kind: "ignore_effect", card_id: source_id,
+	// strict: true, auto_tap: true}` with no sacrifice_id. Absent for a
+	// sacrifice.
+	ManaCost string `json:"mana_cost,omitempty"`
+}
+
+// StoppableTriggerView is one CR 116.2c special action a seat may take
+// (#6247): pay mana to stop a delayed trigger before it triggers
+// (Quenchable Fire's "unless that player pays {U} before that step";
+// game/delayed_stop.go). Fired as `special_action {kind:
+// "stop_delayed_trigger", card_id: id, strict: true, auto_tap: true}`.
+type StoppableTriggerView struct {
+	// ID is the delayed trigger's; the action's card_id.
+	ID string `json:"id"`
+	// SourceName is the card that made it.
+	SourceName string `json:"source_name"`
+	// Label is the row ("Pay {U}: Quenchable Fire deals no additional
+	// damage to you").
+	Label string `json:"label"`
+	// Cost is the mana, in brace notation.
+	Cost string `json:"cost"`
+}
+
+// viewOfStoppableTriggers projects the seat's CR 116.2c offers from the
+// engine's own accessor. Nil for nearly every seat.
+func viewOfStoppableTriggers(g *game.Game, seat uuid.UUID) []StoppableTriggerView {
+	var out []StoppableTriggerView
+	for _, offer := range g.StopDelayedTriggerOffersLocked(seat) {
+		out = append(out, StoppableTriggerView{
+			ID:         offer.ID.String(),
+			SourceName: offer.SourceName,
+			Label:      offer.Label,
+			Cost:       offer.Cost,
+		})
+	}
+	return out
 }
 
 // viewOfIgnorableEffects projects the seat's CR 116.2d offers from the
@@ -43,6 +82,7 @@ func viewOfIgnorableEffects(g *game.Game, seat uuid.UUID) []IgnorableEffectView 
 			SourceName:   offer.SourceName,
 			Label:        offer.Label,
 			SacrificeIDs: ids,
+			ManaCost:     offer.ManaCost,
 		})
 	}
 	return out

@@ -1499,6 +1499,12 @@ type Spec struct {
 	// its abilities blocks nothing.
 	OpponentsCantSearchLibraries bool
 
+	// PlayersCantSearchLibraries declares Leonin Arbiter's "Players can't
+	// search libraries" (#6247): every player, its controller too. Pair it
+	// with an IgnorableEffect whose ManaCost is the "pay {2}" escape
+	// (effects.AnyPlayerMayPayToIgnore).
+	PlayersCantSearchLibraries bool
+
 	// AttackingPlayerChoosesBlocks declares Invasion Plans' "The attacking
 	// player chooses how each creature blocks each combat": in every
 	// declare blockers step the active player declares the blocks of every

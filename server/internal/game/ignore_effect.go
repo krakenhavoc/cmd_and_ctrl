@@ -64,6 +64,13 @@ type IgnorableEffect struct {
 	// An ability that does not bear on a player has nothing for them to
 	// ignore, so nothing is offered. Read-only, under g.mu.
 	Applies func(g *Game, source *Card, player uuid.UUID) bool
+	// ManaCost is the price in mana instead of a sacrifice (#6247):
+	// Leonin Arbiter's "Any player may pay {2} for that player to ignore
+	// this effect until end of turn" is "{2}". Empty for a sacrifice
+	// (Damping Engine). Paid like every special action's mana (CR 116.2,
+	// the planar die's payAbilityManaCostLocked), strict and auto-tapped
+	// as the client asks.
+	ManaCost string
 }
 
 // CatalogIgnorableEffect is the catalog hook the effects package wires
@@ -79,8 +86,11 @@ type IgnoreEffectOffer struct {
 	SourceName string
 	// Label is IgnorableEffect.Label.
 	Label string
+	// ManaCost is IgnorableEffect.ManaCost: the ignore is paid in mana,
+	// and Candidates is empty (#6247).
+	ManaCost string
 	// Candidates are the permanents the player may sacrifice to pay for
-	// it: those they control that can be sacrificed (CR 701.21a, and
+	// it, when it is paid with a sacrifice: those they control that can be sacrificed (CR 701.21a, and
 	// "can't be sacrificed" stops one). In payment order
 	// (SacrificePaymentOrderForEffect), so the first is the one a bot or
 	// a "choose for me" button gives up. Never empty: an offer the player
@@ -166,6 +176,17 @@ func (g *Game) ignoreEffectOfferLocked(player uuid.UUID, src *Card) *IgnoreEffec
 	if g.effectIgnoredLocked(player, src) {
 		return nil
 	}
+	if ig.ManaCost != "" {
+		// #6247: paid in mana. Offered whether or not the pool can pay
+		// it now: the payment is the auto-tapper's or the player's, and
+		// the performer refuses one that falls short.
+		return &IgnoreEffectOffer{
+			Source:     src.InstanceID,
+			SourceName: src.Name,
+			Label:      ig.Label,
+			ManaCost:   ig.ManaCost,
+		}
+	}
 	cands := g.ignoreEffectCandidatesLocked(player, src.InstanceID)
 	if len(cands) == 0 {
 		return nil
@@ -227,15 +248,33 @@ func (g *Game) performIgnoreEffectLocked(p *Player, sourceID uuid.UUID, params S
 	if offer == nil {
 		return ErrSpecialActionNotOffered
 	}
-	if params.SacrificeID == uuid.Nil || !slices.Contains(offer.Candidates, params.SacrificeID) {
+	var manaCost ParsedCost
+	if offer.ManaCost != "" {
+		if params.SacrificeID != uuid.Nil {
+			return ErrInvalidParam
+		}
+		cost, err := ParseCost(offer.ManaCost)
+		if err != nil {
+			return ErrInvalidParam
+		}
+		manaCost = cost
+	} else if params.SacrificeID == uuid.Nil || !slices.Contains(offer.Candidates, params.SacrificeID) {
 		return ErrInvalidParam
 	}
 	epoch := src.ObjectEpoch
 	// Its own CR 116.2 event, as every special action is (#1341).
 	g.beginEventBatchLocked()
-	// The cost: the sacrifice (CR 701.21a), settled now (a cost is paid
-	// before the action takes effect).
-	if err := g.payCostSacrificesLocked([]uuid.UUID{params.SacrificeID}, nil); err != nil {
+	if offer.ManaCost != "" {
+		// #6247: the mana (CR 116.2d's "pay {2}"), settled now.
+		if _, err := g.payAbilityManaCostLocked(p, sourceID, offer.SourceName, manaCost, ActivateAbilityParams{
+			Strict:  params.Strict,
+			AutoTap: params.AutoTap,
+		}, specialActionSpendContext(SpecialActionIgnoreEffect), nil); err != nil {
+			return err
+		}
+	} else if err := g.payCostSacrificesLocked([]uuid.UUID{params.SacrificeID}, nil); err != nil {
+		// The cost: the sacrifice (CR 701.21a), settled now (a cost is
+		// paid before the action takes effect).
 		return err
 	}
 	// The effect: ignore until end of turn. A permanent that has itself

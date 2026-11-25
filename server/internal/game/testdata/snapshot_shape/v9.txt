@@ -1452,6 +1452,10 @@ delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
 delayedTriggers[].sourceObject.id	custom(uuid.UUID)
 delayedTriggers[].sourceTurnOvers	number:int
+delayedTriggers[].stop	object
+delayedTriggers[].stop.cost	string
+delayedTriggers[].stop.label	string
+delayedTriggers[].stop.player	custom(uuid.UUID)
 delayedTriggers[].throughCleanup	bool
 delayedTriggers[].turnOf	custom(uuid.UUID)
 delayedTriggers[].until	bool

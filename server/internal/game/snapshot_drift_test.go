@@ -1173,6 +1173,7 @@ var delayedTriggerFields = plan(
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 	"CopiesSpell", carried, "", // #6141, CR 702.50a: epic's spell record
+	"Stop", carried, "", // #6247, CR 116.2c: who may pay to stop it
 )
 
 var pendingChoiceFields = plan(

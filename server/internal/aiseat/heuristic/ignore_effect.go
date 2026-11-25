@@ -28,6 +28,15 @@ func (p *Policy) valueOfIgnoreEffect(st *state, sp specialActionParams) (float64
 	if src == nil || st.seat == nil || !st.myTurn || !st.sorcerySpeed {
 		return ignoreEffectDeclined, "ignore declined: not a window to play what it unblocks"
 	}
+	// #6247: an ignore paid in mana (Leonin Arbiter's {2}) lifts a
+	// restriction on searching, which no hand card's cant_cast names, so
+	// nothing here can price what it buys. The bot declines it rather
+	// than spend mana every priority.
+	for _, row := range st.seat.IgnorableEffects {
+		if row.SourceID == sp.CardID && row.ManaCost != "" {
+			return ignoreEffectDeclined, "ignore declined: paying mana to ignore " + src.Name + " buys nothing the bot can price"
+		}
+	}
 	best, why := 0.0, ""
 	landDropLeft := st.seat.LandDropsPerTurn > st.seat.LandsPlayedThisTurn
 	for i := range st.seat.Hand.Cards {

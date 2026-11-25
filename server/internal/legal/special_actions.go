@@ -56,6 +56,7 @@ func (e *enumerator) specialActionMoves() {
 	}
 	e.outsidePlayMove()
 	e.ignoreEffectMoves()
+	e.stopDelayedTriggerMoves()
 	e.planarDieMove()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
@@ -220,16 +221,52 @@ func (e *enumerator) ignoreEffectMoves() {
 		if !e.enter(scope{source: offer.Source}) {
 			continue
 		}
+		params := specialActionParams{
+			CardID: offer.Source.String(),
+			Kind:   string(game.SpecialActionIgnoreEffect),
+		}
+		if offer.ManaCost != "" {
+			// #6247: paid in mana (Leonin Arbiter's {2}), offered when
+			// the seat can pay it, auto-tapped as the planar die is.
+			cost, err := game.ParseCost(offer.ManaCost)
+			if err != nil || !e.canPay(cost, 0, game.SpecialActionSpendContext(game.SpecialActionIgnoreEffect)) {
+				continue
+			}
+			params.Strict, params.AutoTap = true, true
+		} else {
+			params.SacrificeID = offer.Candidates[0].String()
+		}
 		e.add(Move{
 			Type:   TypeSpecialAction,
 			Player: e.seat,
 			Kind:   KindSpecialAction,
 			Label:  offer.Label,
 			Source: offer.Source,
+			Params: mustJSON(params),
+		})
+	}
+}
+
+// stopDelayedTriggerMoves offers CR 116.2c's stop (#6247, Quenchable
+// Fire's "unless that player pays {U} before that step") for each
+// delayed trigger the seat may pay to stop, when it can pay. The action
+// is taken on the trigger, named by its ID in card_id.
+func (e *enumerator) stopDelayedTriggerMoves() {
+	for _, offer := range e.g.StopDelayedTriggerOffersLocked(e.seat) {
+		cost, err := game.ParseCost(offer.Cost)
+		if err != nil || !e.canPay(cost, 0, game.SpecialActionSpendContext(game.SpecialActionStopDelayedTrigger)) {
+			continue
+		}
+		e.add(Move{
+			Type:   TypeSpecialAction,
+			Player: e.seat,
+			Kind:   KindSpecialAction,
+			Label:  offer.Label,
 			Params: mustJSON(specialActionParams{
-				CardID:      offer.Source.String(),
-				Kind:        string(game.SpecialActionIgnoreEffect),
-				SacrificeID: offer.Candidates[0].String(),
+				CardID:  offer.ID.String(),
+				Kind:    string(game.SpecialActionStopDelayedTrigger),
+				Strict:  true,
+				AutoTap: true,
 			}),
 		})
 	}

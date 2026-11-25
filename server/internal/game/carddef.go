@@ -546,6 +546,12 @@ type CardDef struct {
 	// battlefield through CatalogOpponentsCantSearch, keyed by
 	// CatalogAbilityKey; see search_cant.go.
 	OpponentsCantSearchLibraries bool
+	// PlayersCantSearchLibraries is this permanent's printed "Players
+	// can't search libraries" (Leonin Arbiter, #6247): every player, its
+	// controller too, unless that player is ignoring it (CR 116.2d,
+	// IgnorableEffect). Read through CatalogPlayersCantSearch; see
+	// search_cant.go.
+	PlayersCantSearchLibraries bool
 	// AttackingPlayerChoosesBlocks is this permanent's printed "The
 	// attacking player chooses how each creature blocks each combat"
 	// (Invasion Plans). Read from the battlefield through
@@ -1410,6 +1416,10 @@ func init() {
 	CatalogOpponentsCantSearch = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.OpponentsCantSearchLibraries
+	}
+	CatalogPlayersCantSearch = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.PlayersCantSearchLibraries
 	}
 	CatalogAttackingPlayerChoosesBlocks = func(key string) bool {
 		d := catalogDef(key)

@@ -710,3 +710,17 @@ Additive within v9, recorded with `-update-shape`: `chosenSecondName` on a card,
 #### Cards
 
 Arboria, The Abyss, Magus of the Abyss (the same trigger on a creature) and Null Chamber ship Full. That leaves no card waiting on #1997.
+
+## Amendment 2026-11-25 ([#6247](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6247)): special actions paid with mana (Leonin Arbiter, Quenchable Fire)
+
+Owner decision (2026-11-24, on #6247): build both, with the player-facing action, and ship the cards Full.
+
+**CR 116.2d paid with mana.** Leonin Arbiter: "Players can't search libraries. Any player may pay {2} for that player to ignore this effect until end of turn." `IgnorableEffect.ManaCost` ("{2}") prices the ignore in mana instead of a sacrifice, and `effects.AnyPlayerMayPayToIgnore(name, cost)` builds the declaration. The action is the same `special_action {kind: "ignore_effect", card_id}` with no `sacrifice_id` (one sent is refused). The mana is paid the way every special action's mana is (`payAbilityManaCostLocked`, with the caller's `strict` and `auto_tap`), and the record is the same `ModIgnoreEffect` naming the paying player. The offer is made whether or not the pool can pay it now, and the payment refuses a shortfall. The legal-move enumerator offers it only when it can be paid. "Players can't search libraries" is `Spec.PlayersCantSearchLibraries` (`CardDef.PlayersCantSearchLibraries`, `CatalogPlayersCantSearch`). Unlike Stranglehold's opponents-only static it binds its controller too, and `searchCantLocked` lets through a searcher whose ignore record names that permanent.
+
+**CR 116.2c, a new kind.** Quenchable Fire: "It deals an additional 3 damage to that player or planeswalker at the beginning of your next upkeep step unless that player or that planeswalker's controller pays {U} before that step." `DelayedTrigger.Stop` (`DelayedTriggerStop{Player, Cost, Label}`, plain data, carried by the snapshot as `stop`, additive) is who may pay what. `special_action {kind: "stop_delayed_trigger", card_id: <the delayed trigger's id>, strict, auto_tap}` pays the mana and takes the trigger out of the queue, so it never triggers. It may be taken any time that player has priority while the trigger waits (CR 116.2c: "for as long as the effect allows it"), and it is legal under split second. `Game.StopDelayedTriggerOffersLocked(player)` is its one accessor, asked by the engine, the enumerator (`stopDelayedTriggerMoves`, offered when payable) and the view.
+
+**Wire and client.** `IgnorableEffectView.mana_cost` (omitempty) and `PlayerView.stoppable_triggers` (`[{id, source_name, label, cost}]`, the seat's own frame only, like `ignorable_effects`). Both are buttons on the seat's own panel (`IgnoreEffects.svelte`, labels `ignoreEffectPay` and `stopDelayedTrigger`) that send the action at once, auto-tapped.
+
+**The bot seat.** It takes a `stop_delayed_trigger` move whenever it is offered one (the trigger only ever hurts the player it names, and the move is offered only when payable). It declines a mana-paid ignore, because nothing in its view can price what lifting a search ban buys (`valueOfIgnoreEffect`).
+
+Tests: `cards/effects/tests/so/special_actions_paid_with_mana_test.go`. Under the Arbiter no player searches. A player who pays {2} searches, and the other player is still bound. One mana is refused, and a sacrifice is refused for a mana ignore. Quenchable Fire's shape, paid off with {U} the same turn, never triggers, and unpaid it triggers at the next upkeep. Client: `ignoreEffects.render.test.ts`.

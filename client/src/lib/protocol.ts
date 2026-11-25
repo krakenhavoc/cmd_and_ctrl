@@ -2890,7 +2890,24 @@ export interface IgnorableEffectView {
   source_id: string;
   source_name: string;
   label: string;
-  sacrifice_ids: string[];
+  // Empty (or null) for an ignore paid with mana.
+  sacrifice_ids: string[] | null;
+  // #6247: the price in mana instead of a sacrifice (Leonin Arbiter's
+  // "{2}"). The button sends `special_action { kind: "ignore_effect",
+  // card_id: source_id, strict: true, auto_tap: true }`.
+  mana_cost?: string;
+}
+
+// StoppableTriggerView is one CR 116.2c special action a seat may take
+// (#6247): pay mana to stop a delayed trigger before it triggers
+// (Quenchable Fire's "unless that player pays {U} before that step").
+// The button sends `special_action { kind: "stop_delayed_trigger",
+// card_id: id, strict: true, auto_tap: true }`. Its own frame only.
+export interface StoppableTriggerView {
+  id: string;
+  source_name: string;
+  label: string;
+  cost: string;
 }
 
 // PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
@@ -3209,6 +3226,8 @@ export interface PlayerView {
   // which permanent to give up, then sends `special_action
   // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
   ignorable_effects?: IgnorableEffectView[];
+  // #6247 (CR 116.2c): delayed triggers this seat may pay to stop.
+  stoppable_triggers?: StoppableTriggerView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.

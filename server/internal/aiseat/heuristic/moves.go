@@ -740,6 +740,13 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return p.valueOfTurnFaceUp(st, m, sp)
 		case "ignore_effect":
 			return p.valueOfIgnoreEffect(st, sp)
+		case "stop_delayed_trigger":
+			// #6247, CR 116.2c: paying to stop a delayed trigger aimed at
+			// the bot (Quenchable Fire's {U} against 3 damage). The
+			// enumerator offers it only to the player it names and only
+			// when it can pay, and the trigger only ever hurts that
+			// player, so it is taken like any other special action.
+			return p.cfg.SpecialActionValue, "stop the delayed trigger aimed at it"
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 

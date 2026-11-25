@@ -2090,6 +2090,11 @@ type delayedTriggerSnapshot struct {
 	// body, which that binary lacks, so it refuses the file
 	// (ErrUnknownEffectKey) rather than firing a copy of nothing.
 	CopiesSpell *EpicSpell `json:"copiesSpell,omitempty"`
+
+	// #6247, CR 116.2c: who may pay what to stop the trigger. Additive:
+	// an older binary drops the key, and the trigger fires as if nobody
+	// paid (the printed outcome of not paying).
+	Stop *DelayedTriggerStop `json:"stop,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -3716,6 +3721,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		Stop:                  cloneDelayedTriggerStop(d.Stop),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -4907,6 +4913,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		Stop:                  cloneDelayedTriggerStop(d.Stop),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

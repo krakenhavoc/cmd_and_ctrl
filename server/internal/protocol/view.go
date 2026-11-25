@@ -3282,6 +3282,12 @@ type PlayerView struct {
 	// almost every seat in almost every game.
 	IgnorableEffects []IgnorableEffectView `json:"ignorable_effects,omitempty"`
 
+	// StoppableTriggers are the CR 116.2c special actions this player may
+	// take right now (#6247): a delayed trigger they may pay mana to stop
+	// before it triggers (Quenchable Fire). A button on the seat's own
+	// panel; another seat's frame drops it, as IgnorableEffects.
+	StoppableTriggers []StoppableTriggerView `json:"stoppable_triggers,omitempty"`
+
 	// HandRevealed names why this player plays with their hand revealed
 	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
 	// #3953). Public: the cards themselves reach every seat through the
@@ -11965,6 +11971,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
 		IgnorableEffects:    viewOfIgnorableEffects(g, p.ID),
+		StoppableTriggers:   viewOfStoppableTriggers(g, p.ID),
 		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
@@ -12387,6 +12394,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// controller's), as the companion's {3} row is.
 		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
 			out.IgnorableEffects = nil
+			out.StoppableTriggers = nil
 		}
 		// #5868: an emblem's ability rows are its owner's (or the
 		// controller's of the owner's whole turn), for the reason a

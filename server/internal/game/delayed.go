@@ -365,6 +365,12 @@ type DelayedTrigger struct {
 	// stack item as they resolved, as snapshot records. Nil on every other
 	// trigger. Plain data, never mutated once scheduled.
 	CopiesSpell *EpicSpell
+
+	// Stop is CR 116.2c's escape: a player who may pay to stop this
+	// trigger before it triggers (Quenchable Fire's "unless that player
+	// … pays {U} before that step", #6247, delayed_stop.go). Nil for
+	// every other delayed trigger.
+	Stop *DelayedTriggerStop
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -622,6 +628,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
+		Stop:                  cloneDelayedTriggerStop(dt.Stop),
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
@@ -1038,4 +1045,12 @@ func cloneEffectParams(p EffectParams) EffectParams {
 		p.Ability = &a
 	}
 	return p
+}
+
+func cloneDelayedTriggerStop(s *DelayedTriggerStop) *DelayedTriggerStop {
+	if s == nil {
+		return nil
+	}
+	c := *s
+	return &c
 }

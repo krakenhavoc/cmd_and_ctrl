@@ -1344,7 +1344,13 @@
            the price of a permanent of your choice (Damping Engine).
            Renders nothing unless an effect bears on you. -->
       {#if !spectator}
-        <IgnoreEffects seatID={seat.id} effects={seat.ignorable_effects} {view} {sendAction} />
+        <IgnoreEffects
+          seatID={seat.id}
+          effects={seat.ignorable_effects}
+          stops={seat.stoppable_triggers}
+          {view}
+          {sendAction}
+        />
         <!-- #4885: the mana abilities you have as a player (Channel's
              "pay 1 life: add {C}" until end of turn). Renders nothing
              unless you have one. -->
