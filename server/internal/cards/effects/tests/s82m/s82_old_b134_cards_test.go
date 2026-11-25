@@ -303,14 +303,6 @@ func TestOldB134TriumphOfAnaxChapterFourFightsUpToOneCreature(t *testing.T) {
 
 // --- Dreamstalker Manticore and Mischievous Chimera --------------------------
 
-func oldB134OpponentsTurnCast(t *testing.T, g *game.Game, caster *game.Player) {
-	t.Helper()
-	// Walk to the next player's turn and cast an instant from the caster's hand.
-	effectstest.AdvanceToPrecombatMainOf(t, g, 1)
-	effectstest.FloatForTest(g, caster, "{R}")
-	effectstest.CastFromHandForTest(t, g, caster, "Shock", "Instant", "{R}", "", game.CastSpellParams{Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: g.Seats[1].ID}}})
-}
-
 func TestOldB134ManticorePingsOnTheFirstSpellDuringAnOpponentsTurnOnly(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
