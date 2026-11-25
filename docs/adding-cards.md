@@ -1157,10 +1157,22 @@ shows stays printed, a `{C}` still needs colourless mana (CR 106.1b),
 and a restricted mana still pays only what its restriction allows. A
 card that grants it for ONE spell ("you may spend mana as though it
 were mana of any color to cast that spell") is a cast permission's
-`AnyColor` instead. "Spend WHITE mana as though it were mana of any
-color" (Celestial Dawn) and a grant over one permanent's own abilities
-(Manascape Refractor) have no shape yet. See ADR 0066's 2026-10-02
+`AnyColor` instead. A grant over one permanent's own abilities
+(Manascape Refractor) has no shape yet. See ADR 0066's 2026-10-02
 amendment.
+
+Three narrower shapes (#6202), all read at the same payments:
+
+```go
+AnyColorSpend: YouMaySpendColorAsColor("W", "R"),                // Sunglasses of Urza: white pays {R}, never {U}
+AnyColorSpend: YouMaySpendColorAsAnyOthersOnlyColorless("W"),    // Celestial Dawn: other mana pays only generic and {C}
+GrantNextSpellPromise{From: "North Star", Promise: game.NextSpellPromise{
+    ManaCostAnyType: true, Text: "For one spell this turn, …"}}  // North Star
+```
+
+North Star's promise widens the spell's MANA COST only (additional
+costs are paid normally) and is spent by the first spell cast for its
+mana cost whose cost prints a coloured or `{C}` symbol.
 
 **Mana only some spells may use, and costs only some mana may pay
 (#1600).** Mana restricted to spells of exactly one colour, or of two or
