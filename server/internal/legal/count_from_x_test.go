@@ -213,6 +213,14 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 			t.Logf("skipping %s: its X is a tap cost's, not the mana cost's", spec.Name)
 			continue
 		}
+		if spec.AdditionalCost != nil && spec.AdditionalCost.DiscardX {
+			// "As an additional cost to cast this spell, discard X cards"
+			// (Nahiri's Wrath): X is paid in cards from a hand the probe
+			// clears, so no X above 0 is payable here, which says nothing
+			// about its targets.
+			t.Logf("skipping %s: its X is a discard cost's, paid from a hand the probe empties", spec.Name)
+			continue
+		}
 		if spec.CastCondition != nil {
 			// The probe casts in the precombat main phase. A spell that
 			// may be cast only at another time (Winter's Chill: during
