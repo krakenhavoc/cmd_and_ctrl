@@ -368,6 +368,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}IgnoreEffects.svelte`],
     doc: "the CR 116.2d special action paid in mana (#6247): pay the cost (Leonin Arbiter's {2}) to ignore a static ability's effect until end of turn; on your own panel while the effect bears on you, and it pays at once with auto-tap",
   }),
+  payToCancel: dynamicLabel({
+    stem: " before that step",
+    match: "suffix",
+    shape: "Pay <cost> (<card name>) before that step",
+    make: (what: string) => `Pay ${what} before that step`,
+    example: ["{1} (Nafs Asp)"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}PayToCancel.svelte`],
+    doc: '#6220: pay a cost now so a delayed trigger waiting on you never happens ("… unless they pay {1} before that draw step", Nafs Asp); on your own panel while it waits, live while you have priority and can pay',
+  }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
     match: "prefix",

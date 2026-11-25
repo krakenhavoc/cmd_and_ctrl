@@ -5579,6 +5579,12 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Lose all abilities except mana abilities (#6246, CR 613.1f).** Blood Sun's
+"All lands lose all abilities except mana abilities" is
+`Static: []game.StaticAbility{LandsLoseAllAbilitiesExceptMana()}`: a
+`RemovesAbilities` static with `KeepsManaAbilities`, so the lands keep their
+declared mana rows, a granted mana ability and their basic land types' mana
+ability, and lose everything else.
 **Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
 cast your commander from the command zone without paying its mana cost" is
 `OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a
@@ -9601,6 +9607,16 @@ on the stack when the step begins, so every player gets a response
 window. The body reads its payload off the item it is handed
 (`item.Targets`, `item.Controller`) and its data off its params, and
 captures nothing — it cannot.
+
+**"… unless they pay {N} before that step" (#6220, ADR 0026 amendment
+2026-11-25).** Nafs Asp's "that player loses 1 life at the beginning of
+their next draw step unless they pay {1} before that draw step" is the
+delayed trigger with the payment on it:
+`ScheduleDelayedTrigger{Label, At: game.StepDraw, TurnOf: player, Body,
+Params, PayToCancel: &game.PayToCancel{Player: player, Cost: "{1}"}}`.
+The player may pay any time they have priority until the step begins (the
+`pay_to_cancel` special action, a button on their panel); paying removes
+the trigger, so the body runs only when nobody paid and need not check.
 
 **Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
 next cast an instant or sorcery spell this turn, copy that spell"
