@@ -1231,6 +1231,16 @@ type ActivatedAbilityShape struct {
 	// AbilityGrant bundle and refuses it beside the other three.
 	GrantorOnly bool
 
+	// DefendingPlayerOnly is "Only the player this creature is attacking
+	// may activate this ability" (Capricopian, #6170, ADR 0106 §1
+	// amendment 2026-11-25): the one activator is the player the source
+	// is attacking right now (Card.AttackingTarget naming a seat), so a
+	// creature that is not attacking, or is attacking a planeswalker or
+	// a battle, has nobody who may. Its controller never may: a creature
+	// cannot attack its own controller (CR 508.1b). Read in MayActivate
+	// beside the other named activators, and refused beside them.
+	DefendingPlayerOnly bool
+
 	// Purpose is what the ability does, as printed amounts (ADR 0126
 	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
 	// also what the row buys an activator who does not control the

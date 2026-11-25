@@ -4503,6 +4503,10 @@ export interface ActivatedAbilityView {
   // permanent now. Absent on every other row.
   grantor_only?: boolean;
   activator?: string;
+  // #6170: "Only the player this creature is attacking may activate this
+  // ability" (Capricopian). Open to the viewer only while the card's
+  // `attacking_target` is the viewer's seat. Absent on every other row.
+  defending_player_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
