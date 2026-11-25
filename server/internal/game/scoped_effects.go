@@ -1419,6 +1419,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipNextCombatPhase: {reader: readerRule},
 	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
 	ModSkipNextStep: {reader: readerRule},
+	// #6226: "skips each <draw step | main phase | combat phase> this
+	// turn" (Fatespinner).
+	ModSkipThisTurn: {reader: readerRule},
 	// #6244: "the next time you would lose the game this turn, instead
 	// …" (Stunning Reversal).
 	ModNextLossInstead: {reader: readerRule},
@@ -2015,6 +2018,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipThisTurnModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := nextLossInsteadModProblem(m); problem != "" {

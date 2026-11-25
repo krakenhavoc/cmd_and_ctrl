@@ -2674,6 +2674,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		g.runStepEntryHooksLocked()
 		return
 	}
+	// #6226 (CR 500.11): "skips each instance of the chosen step or
+	// phase this turn" (Fatespinner): a draw step, main phase or combat
+	// phase of that turn never begins (skip_this_turn.go).
+	if g.stepSkippedThisTurnLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// #5838 (CR 500.11, 614.10a): "skips their next combat phase" is
 	// spent by the first combat phase of the player's that would begin
 	// and is not skipped above; the rest of that phase leaves the plan
