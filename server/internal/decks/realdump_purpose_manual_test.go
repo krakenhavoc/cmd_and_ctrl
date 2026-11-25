@@ -332,6 +332,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 231 (#5532).
 	"Sentinel Totem": "exiles every graveyard, which holds cards and no permanents: a graveyard hate effect, not a board wipe",
+
+	// S82 OLD batch 240 (#5534).
+	"Crook of Condemnation": "its second ability exiles the cards in every graveyard: it touches no permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

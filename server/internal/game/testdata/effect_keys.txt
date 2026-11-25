@@ -2617,6 +2617,7 @@ option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/old-b071-cosima-voyage
 option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
+option option-pick/old-b240-unesh-splitter
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -5246,6 +5247,7 @@ tail then/offsprings-revenge-copy
 tail then/old-b071-cosima-draw
 tail then/old-b081-fact-or-fiction-take
 tail then/old-b179-emergency-powers-next
+tail then/old-b240-unesh-take
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
