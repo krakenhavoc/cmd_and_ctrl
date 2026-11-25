@@ -88264,6 +88264,8 @@ turnTally.becameCrewed[].epoch	number:int
 turnTally.becameCrewed[].id	custom(uuid.UUID)
 turnTally.becameTapped	map:string
 turnTally.becameTapped{}	number:int
+turnTally.blocked	map:string
+turnTally.blocked{}	number:int
 turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatBlocks	array

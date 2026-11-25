@@ -1527,6 +1527,7 @@ choose choose-cards/s82-old-b114-counter-pick-last
 choose choose-cards/s82-old-b117-return-to-hand
 choose choose-cards/s82-old-b161-shuffle-graveyard-into-library
 choose choose-cards/s82-old-b166-rank-officer-zombie
+choose choose-cards/s82-old-b170-deliver-unto-evil-return
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2348,6 +2349,7 @@ number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
 number number/s82-gap-b153-scrounging-bandar-move
 number number/s82-old-b061-blessing-of-frost-share
+number number/s82-old-b170-remove-counters
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
@@ -2579,6 +2581,7 @@ option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-old-b113-enters-with-counters
+option option-pick/s82-old-b170-deliver-unto-evil-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -4548,6 +4551,7 @@ tail s82-old-b117/return-up-to-two-permanents
 tail s82-old-b161/shuffle-up-to-four-from-graveyard
 tail s82-old-b162/collected-conjuring-exiled
 tail s82-old-b162/force-of-rage-sacrifice-the-elementals
+tail s82-old-b170/bond-of-insight-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5262,6 +5266,7 @@ tail tinybones-bauble-burglar/after-exile
 tail together/kardurs-vicious-return-boost
 tail together/revival-experiment-life
 tail together/s82-old-b054-chosen-returns
+tail together/s82-old-b170-bond-of-revival-haste
 tail token-and-attach-source/attach
 tail tokens-then/old-b072-reckless-crew-attach
 tail tomb-fortress/after-mill
