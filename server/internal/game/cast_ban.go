@@ -135,6 +135,22 @@ type CastBanRule struct {
 	// (the ban on mana value 0), which is why the kind and not this field
 	// is the presence bit. Ignored by every other kind. Additive.
 	ManaValue int `json:"manaValue,omitempty"`
+
+	// OnTurnBegun, when it is not zero, limits the ban to the banned
+	// player's own turn that is their OnTurnBegun-th (Player.TurnsBegun
+	// reads that number during it): "each opponent can't cast instant or
+	// sorcery spells during that player's next turn" (Azor, the
+	// Lawbringer, #5531). Before that turn and after it the ban reaches
+	// nothing, and so does any other player's turn. The duration still
+	// ends the effect with that turn (UntilEndOfYourNextTurnDuration).
+	// Additive; zero is a ban with no turn limit.
+	OnTurnBegun int `json:"onTurnBegun,omitempty"`
+}
+
+// NextTurnNumberForEffect is the TurnsBegun value `player` has during their
+// next turn, for a CastBanRule.OnTurnBegun. Caller must hold g.mu.
+func (g *Game) NextTurnNumberForEffect(player uuid.UUID) int {
+	return g.turnsBegunForLocked(player) + 1
 }
 
 // forbids reports whether this rule bans `playerID` from casting
@@ -143,6 +159,9 @@ type CastBanRule struct {
 // tested by the caller, not here, exactly as CastTimingRule.CoversCast
 // leaves its own duration to castTimingVerdictLocked.
 func (r CastBanRule) forbids(g *Game, playerID uuid.UUID, card Card, zone ZoneKind) bool {
+	if r.OnTurnBegun != 0 && (g.activePlayerIDLocked() != playerID || g.turnsBegunForLocked(playerID) != r.OnTurnBegun) {
+		return false
+	}
 	switch r.Kind {
 	case CastBanOutright:
 		if !r.Filter.Matches(card) {
