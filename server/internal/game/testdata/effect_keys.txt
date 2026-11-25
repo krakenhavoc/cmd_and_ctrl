@@ -4981,6 +4981,7 @@ tail tail/deadly-cover-up-after-sweep
 tail tail/deadly-cover-up-draw
 tail tail/deadly-cover-up-exiled
 tail tail/devastating-mastery-wipe
+tail tail/diabolic-servitude-exile-dead
 tail tail/dig-deep-counters
 tail tail/eagles-are-coming-birds
 tail tail/epiphany-at-the-drownyard-rest
