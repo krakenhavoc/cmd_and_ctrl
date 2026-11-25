@@ -11642,6 +11642,11 @@ creature" reads the creature's types before it goes, as one tail word
 puts the hit onto the battlefield, Heirloom Blade into the hand
 (`cmdr2B03RevealUntilSharingTypeToHand`). "Protection from mana value N or
 greater" is `game.ProtectionQualityManaValueAtLeast`, the mirror of "or less".
+"Protection from creatures your opponents control" is the token
+`game.ProtectionFromOpponentsCreatures` (Crypsis; "your" is the protected
+permanent's controller), and "protection from non-Human creatures" is
+`game.ProtectionFromNonSubtypeCreatures("Human")` (Spare from Evil; a
+changeling has every type, so it is not stopped) (#6253).
 A `OfThatPlayersChoice` clause on a damage trigger is asked of the player the
 damage was dealt to (`triggerChooserOf`): Bladegriff Prototype.
 
