@@ -35,6 +35,7 @@ anyplayer any-player/rhystic-circle-shield
 anyplayer any-player/rhystic-scrying-discard
 anyplayer any-player/rhystic-shield-extra
 anyplayer any-player/rhystic-tutor-search
+anyplayer any-player/sin-prodder-outcome
 anyplayer any-player/soul-strings-return
 anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/vexing-devil-sacrifice
@@ -111,6 +112,7 @@ body conduit-of-storms/add-red
 body conjure/sigardian-evangel-discard
 body conspire/copy
 body construct-a-cosmic-cube/control
+body copy/sea-gate-stormcaller-the-spell-just-cast
 body copy/surge-to-victory-exiled-card
 body copy/the-ability-you-just-activated
 body copy/the-spell-per-commander-cast
@@ -1489,6 +1491,8 @@ choose choose-cards/s82-old-b061-blessing-of-frost-creatures
 choose choose-cards/s82-old-b061-burning-rune-demon-picked
 choose choose-cards/s82-old-b062-egon-exile-two
 choose choose-cards/s82-old-b063-skull-raid-discarded
+choose choose-cards/s82-old-b103-settle-the-score
+choose choose-cards/s82-old-b103-silhana-wayfinder-place
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1785,6 +1789,7 @@ condition cast/you-next-cast-at-most-mv
 condition cast/you-next-cast-from-hand
 condition cast/you-next-cast-or-activate-x
 condition cast/you-next-cast-x-in-mana-cost
+condition cast/you-next-instant-or-sorcery-mana-value-two-or-less
 condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
 condition combat-damage/a-salamander-to-a-player
@@ -1999,6 +2004,7 @@ confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/moon-circuit-hacker-draw
 confirm confirm/moonveil-regent-discard-hand
+confirm confirm/moss-pit-skeleton-top-of-library
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
 confirm confirm/multiform-wonder-pump
@@ -2049,6 +2055,7 @@ confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
 confirm confirm/s82-gap-b200-ripple-reveal
 confirm confirm/s82-mom-b12-guerrilla-exile
+confirm confirm/s82-old-b105-sanctum-of-calm-waters
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -2137,6 +2144,7 @@ confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zagorka-sanctum
+confirm confirm/zareth-san-reanimate
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
 confirm may/alania-divergent-storm-draw-and-copy
@@ -3211,6 +3219,7 @@ run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
 run prompt-run/provisions-merchant-sacrifice-pump
+run prompt-run/pyroclastic-hellion-return-land
 run prompt-run/ragefire-hellkite-double-strike
 run prompt-run/ravenous-rotbelly-sacrifice
 run prompt-run/reactor-raid-draw
@@ -4346,6 +4355,7 @@ tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-any-order
 tail put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15
 tail put-from-library/rest-on-bottom-in-random-order
+tail put-from-library/s82-old-b109-shuffle-the-rest
 tail put-from-library/songbirds-blessing-hand-or-bottom
 tail q-stacking-the-deck/gains-copy-ability
 tail quag-feast/after-mill
@@ -4649,6 +4659,7 @@ tail tail/lord-of-the-void-exiled
 tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
+tail tail/necromentia-exiled
 tail tail/old-b051-will-elementals
 tail tail/old-b070-open-the-omenpaths-first-color
 tail tail/old-b070-open-the-omenpaths-second-color
@@ -4915,6 +4926,7 @@ tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/necromentia-named
 tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
@@ -4973,6 +4985,8 @@ tail then/s82-old-b023-kogla-indestructible
 tail then/s82-old-b061-burning-rune-demon-found
 tail then/s82-old-b062-master-skald-return
 tail then/s82-old-b064-hakka-scry
+tail then/s82-old-b105-niambi-gain-life
+tail then/s82-old-b105-track-down-reveal
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

@@ -63,7 +63,7 @@ func (r ReturnOneYouControl) Apply(ctx *Context) error {
 // bouncedChosen is the chosen permanent returning to its owner's hand,
 // keyed (#4290): ReturnOneYouControl's and Cloudstone Curio's.
 var BouncedChosen = RegisterPermanentsPick("prompt-run/return-chosen-permanent-to-hand", PermanentsDef{
-	Then: bouncePickedToHand,
+	Then: BouncePickedToHand,
 })
 
 // bouncePickedToHand is a ChoosePermanents.Then that returns every
@@ -71,7 +71,7 @@ var BouncedChosen = RegisterPermanentsPick("prompt-run/return-chosen-permanent-t
 // ReturnOneYouControl uses, and Cloudstone Curio's own custom
 // ChoosePermanents call, whose candidate set (a fact about what just
 // entered) can't be expressed as a Match predicate.
-func bouncePickedToHand(ctx *Context, picked game.PromptedPicks) error {
+func BouncePickedToHand(ctx *Context, picked game.PromptedPicks) error {
 	for _, id := range picked.Cards() {
 		if err := (BounceToHand{Target: id}).Apply(ctx.AsGroupMember()); err != nil {
 			return err
