@@ -1326,6 +1326,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #6205, CR 601.2f: a sacrifice another permanent adds to this
+	// spell's cost (Drought's "Sacrifice a Swamp" for each black mana
+	// symbol) joins the card's own sacrifice clause once, here, so the
+	// validator, the payer and the record below read one clause. The
+	// enumerator and the view fold it the same way.
+	if folded, ok := g.ImposedSacrificeCastCostForEffect(playerID, card, addCost); ok {
+		addCost = folded
+	} else {
+		return ErrImposedSacrificeUnfoldable
+	}
 	// #2097, CR 601.2b / 601.2h: "sacrifice all creatures you control"
 	// is settled here, with the other announce-time choices and before
 	// anything reads sacrifice_ids — the price (CostQuery.Sacrificing),
@@ -8532,6 +8542,16 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	ab, err := ChosenManaAbilityShape(ab, params.CostBranch)
 	if err != nil {
 		return err
+	}
+	// #6205, CR 605 / 602.2b / 601.2f: a mana ability is an activated
+	// ability, so a sacrifice the board imposes on activated abilities
+	// (Drought) folds into its sacrifice clause here, as the enumerator
+	// and the view fold it.
+	if src := findBattlefieldCard(g, cardID); src != nil {
+		var foldOK bool
+		if ab, foldOK = g.ImposedSacrificeManaAbilityForEffect(playerID, *src, ab); !foldOK {
+			return ErrImposedSacrificeUnfoldable
+		}
 	}
 	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
 	// controller, or anyone for an any-player row.

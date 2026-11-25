@@ -267,6 +267,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CyclingCostAlternatives", fallback: "Cycling may cost {0}", ownLabel: true},
 	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
 	{field: "CastWhileSearchingLibrary", label: boolRow("While you're searching your library, you may cast this card from your library.")},
+	{field: "ImposedSacrifices", fallback: "Costs an additional sacrifice", ownLabel: true},
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},
@@ -305,6 +306,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "YourPlaneswalkersLoyaltyTwiceEachTurn", label: boolRow("You may activate the loyalty abilities of planeswalkers you control twice each turn rather than only once.")},
 	{field: "ActivateAsThoughHaste", label: boolRow("You may activate abilities of creatures you control as though those creatures had haste.")},
 	{field: "ActivateAsThoughHasteOthers", label: boolRow("You may activate abilities of other creatures you control as though those creatures had haste.")},
+	{field: "FullTextOfTopGraveyardCreature", label: fullTextRows},
 	{field: "ExtraVote", label: extraVoteRows},
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
 	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
@@ -410,6 +412,14 @@ func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, na
 		out = append(out, AbilityRow{Kind: AbilityRowStatic, Label: text, Generic: generic})
 	}
 	return out
+}
+
+// fullTextRows labels a printed full-text static (#6233, CR 612.6).
+func fullTextRows(v reflect.Value) []string {
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
+		return []string{"As long as the top card of your graveyard is a creature card, this creature has the full text of that card."}
+	}
+	return nil
 }
 
 func boolRow(label string) func(reflect.Value) []string {

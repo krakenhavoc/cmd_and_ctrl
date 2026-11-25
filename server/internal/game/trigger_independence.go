@@ -1785,7 +1785,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "FirstSpellHasAssist": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
-	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "CyclingCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "LifePerTarget": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
+	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "CyclingCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "ImposedSacrifices": defFieldInert, "LifePerTarget": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastWhileSearchingLibrary": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert, "CantSpendManaToCast": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert, "ForetellOnAnyTurn": defFieldInert, "UntapCounterRemovals": defFieldInert,
@@ -1801,6 +1801,8 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
 	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert, "ActivateAsThoughHasteOthers": defFieldInert,
+	// #6233: the permanent's whole text follows its controller's graveyard, which an item can write.
+	"FullTextOfTopGraveyardCreature": defFieldOwnRules,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,

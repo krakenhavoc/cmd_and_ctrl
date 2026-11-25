@@ -1,0 +1,6 @@
+---
+title: "Cumulative upkeep paid and not paid, with the mana spent"
+date: 2026-11-25
+issues: [6188]
+---
+**Cumulative upkeep paid and not paid, with the mana spent** (#6188, CR 702.24a, 702.24b) — paying a cumulative upkeep emitted nothing and declining went straight to the sacrifice, so no card could watch either outcome. Both answers now announce themselves: `EventCumulativeUpkeepPaid` (Actor the payer, CardID/Source the permanent, Amount its age counters, `Event.SpentSymbols` one colour symbol per mana spent, read by `game.SpentSymbolsOf(ev, "B", "R")` for Balduvian Fallen's "for each {B} or {R} spent this way") and `EventCumulativeUpkeepNotPaid`, emitted before the sacrifice so a "when a player doesn't pay" trigger still sees its source on the battlefield. The pay branch of a mana pay-unless is handed what it spent (`PayUnlessAnswer.ManaSpent`, built at the answer, never on the prompt). Card side: `effects.CumulativeUpkeepPaidOrSacrificed` (the shared two answers), `WhenCumulativeUpkeepIsPaid`, `WhenCumulativeUpkeepIsNotPaid`. Snapshot: `Event.spent_symbols`, additive in v9; new effect key `payunless pay-unless/cumulative-upkeep-paid-or-sacrificed`. **Cards:** Balduvian Fallen, Hibernation's End, Heart of Bogardan and Thought Lash wait for their OLD batches (the payment kinds those last two need are #6189).

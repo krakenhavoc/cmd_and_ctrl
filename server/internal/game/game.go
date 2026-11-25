@@ -1206,6 +1206,12 @@ type Game struct {
 	// carried forward: a table roll after an undo is a fresh roll, not
 	// a replay of one the table already watched. Persisted.
 	tableRollNext uint64
+
+	// simulating marks a throwaway copy that plays a spell's resolution
+	// out to read what it would do (land_destruction.go, #6225). It is
+	// never set on a live game, never cloned and never persisted; the
+	// copy reports no effect error to the server's log or metrics.
+	simulating bool
 	// tableRolls is the ring of the last tableRollRingMax EventTableRoll
 	// events, as last emitted (their current Seq). RestoreFrom does not
 	// restore it; it re-emits every one the restored log no longer

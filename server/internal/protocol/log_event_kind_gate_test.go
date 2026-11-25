@@ -73,10 +73,18 @@ var silentEventKinds = map[string]string{
 	"EventProliferate":     "the counters themselves are the lines (#5653, CR 701.34a); the event exists for \"whenever you proliferate\" (Ezuri, Stalker of Spheres; Scheming Aspirant), whose own LogTrigger line follows",
 	"EventCollectEvidence": "the exiles themselves are the lines (#5223, CR 701.59a); the event exists for \"whenever you collect evidence\" (Evidence Examiner, Surveillance Monitor), whose own LogTrigger line follows",
 	"EventEchoPaid":        "the payment itself is the line: the mana spent, the discard or the sacrifice (ADR 0108 §5); the event exists for Shah of Naar Isle's trigger, whose own line follows",
-	"EventDamagePrevented": "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
-	"EventLibraryShuffled": "the search line (\"searched … and shuffled\") or the plain shuffle's line is what the table sees (#6215); the event exists for \"whenever a player shuffles\" (Psychogenic Probe, Psychic Surgery, Cosi's Trickster), whose own LogTrigger line follows",
-	"EventConcede":         "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
-	"EventETB":             silentAlreadyToldAsAZoneMove,
+	// #6188: the same reading as echo's, on both sides. Paying is the
+	// mana, the discard or the sacrifice the payment itself logs;
+	// declining is the sacrifice that follows (CR 702.24a). The events
+	// exist for the triggers that watch them (Balduvian Fallen,
+	// Hibernation's End, Heart of Bogardan, Thought Lash), whose own
+	// LogTrigger lines follow.
+	"EventCumulativeUpkeepPaid":    "the payment itself is the line (the mana spent, or the non-mana payment); the event exists for \"whenever this permanent's cumulative upkeep is paid\", whose own LogTrigger line follows",
+	"EventCumulativeUpkeepNotPaid": "the sacrifice that follows is the line (CR 702.24a); the event exists for \"when a player doesn't pay this permanent's cumulative upkeep\", whose own LogTrigger line follows",
+	"EventDamagePrevented":         "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
+	"EventLibraryShuffled":         "the search line (\"searched … and shuffled\") or the plain shuffle's line is what the table sees (#6215); the event exists for \"whenever a player shuffles\" (Psychogenic Probe, Psychic Surgery, Cosi's Trickster), whose own LogTrigger line follows",
+	"EventConcede":                 "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
+	"EventETB":                     silentAlreadyToldAsAZoneMove,
 	// ADR 0207: opening an Attraction is the LogZone line of the card
 	// entering from the command zone; rolling to visit is the die-roll
 	// line just before it; a visit is the LogTrigger line of the visit
@@ -92,6 +100,7 @@ var silentEventKinds = map[string]string{
 	"EventBecomesTarget":  "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventTriggerPlaced":  "the trigger was already a LogTrigger line when it was queued, and the stack view shows it placed; the kind exists for abilities that trigger on a triggered ability going on the stack (Aboleth Spawn, #4092)",
 	"EventAbilityCopied":  "a copy of an ability is a stack item the table is looking at, and whatever made it (a Strionic Resonator, a Rings of Brighthearth) is a log line of its own; the kind exists for abilities that trigger on one going on the stack (Grip of Chaos, #4050)",
+	"EventTargetsChosen":  "the cast, activation, trigger or change of targets it accompanies is already a log line naming the targets; the kind exists for abilities that trigger on a player choosing targets (Psychic Battle, #6228)",
 	"EventSpellCopied":    "the copy is a spell on the stack the table is looking at, and whatever made it (a storm trigger, a Twincast) is a log line of its own; the kind exists for magecraft (CR 207.2c)",
 	"EventBecomesBlocked": "the LogBlock entry for the blocker is the same fact from the other side",
 	"EventVotesFinished":  "every ballot is already a LogVote line as it is cast (ADR 0146), or a secret vote's LogVotesRevealed line just before it (ADR 0180), and a \"whenever players finish voting\" ability is a LogTrigger line when it is queued; the event exists for those triggers' ballots",

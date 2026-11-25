@@ -241,6 +241,12 @@ type CardDef struct {
 	// your library, you may cast this card from your library." (Panglacial
 	// Wurm, CR 608.2g, #6216; search_cast.go).
 	CastWhileSearchingLibrary bool
+	// ImposedSacrifices are the "<spells / activated abilities> cost an
+	// additional "Sacrifice a <kind>"" statics this permanent contributes
+	// (CR 601.2f, 602.2b, #6205) — Drought, Brutal Suppression. Read
+	// from the battlefield and folded into each cost's sacrifice clause
+	// (imposed_sacrifice.go).
+	ImposedSacrifices []ImposedSacrifice
 	// LifePerTarget is this card's OWN "This spell costs N life more to
 	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
 	// for the spell being cast, through LifePerTargetFor under
@@ -520,6 +526,12 @@ type CardDef struct {
 	// battlefield through CatalogAbilityKey; see
 	// activate_as_though_haste.go.
 	ActivateAsThoughHasteOthers bool
+	// FullTextOfTopGraveyardCreature is this permanent's printed "As
+	// long as the top card of your graveyard is a creature card, this
+	// creature has the full text of that card" (CR 612.6, Volrath's
+	// Shapeshifter, #6233). nil is none. Read from the battlefield by
+	// the layer-1 materialiser; see full_text.go.
+	FullTextOfTopGraveyardCreature *FullTextStatic
 	// ExtraVote is this permanent's printed "While voting, you get an
 	// additional vote" or "you may vote an additional time" (CR
 	// 701.38d, ADR 0146). Read from the battlefield through
@@ -1132,6 +1144,12 @@ func init() {
 	CatalogTargetTaxes = func(key string) []TargetTax {
 		if d := catalogDef(key); d != nil {
 			return d.TargetTaxes
+		}
+		return nil
+	}
+	CatalogImposedSacrifices = func(key string) []ImposedSacrifice {
+		if d := catalogDef(key); d != nil {
+			return d.ImposedSacrifices
 		}
 		return nil
 	}

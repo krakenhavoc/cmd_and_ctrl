@@ -730,6 +730,8 @@ func deepenCard(out *Card) {
 	// reason, and an undo that shared it would revert a Cytoshape to
 	// whatever the live game's baseline had become.
 	out.DurationCopyBase = copyPrintedValues(out.DurationCopyBase)
+	// #6233: the full-text baseline, for the same reason.
+	out.FullTextBase = copyPrintedValues(out.FullTextBase)
 	// #1270: the listed face-down body is a pointer too. Never
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.

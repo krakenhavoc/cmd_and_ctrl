@@ -50,6 +50,7 @@ func legacyCloneCard(c Card) Card {
 	}
 	out.PrintedSelf = copyPrintedValues(c.PrintedSelf)
 	out.DurationCopyBase = copyPrintedValues(c.DurationCopyBase)
+	out.FullTextBase = copyPrintedValues(c.FullTextBase)
 	out.FaceDownListed = c.FaceDownListed.clone()
 	out.ModesChosen = copyModesChosen(c.ModesChosen)
 	out.CounterStampedAt = copyStringInt64Map(c.CounterStampedAt)
@@ -131,6 +132,7 @@ func richMidgame(tb testing.TB) *Game {
 				c.Faces = []Face{{Name: "Front", Colors: []string{"G"}}, {Name: "Back"}}
 				c.PrintedSelf = &PrintedValues{Name: "Copied", Colors: []string{"U"}, Keywords: []string{"flying"}}
 				c.DurationCopyBase = &PrintedValues{Name: "Base"}
+				c.FullTextBase = &PrintedValues{Name: "Under"}
 				c.FaceDownListed = &FaceDownListing{Types: []string{"Creature"}, Subtypes: []string{"Cyberman"}, Power: 2, Toughness: 2}
 				c.ModesChosen = map[string][]int{"modal": {0, 2}}
 				c.CounterStampedAt = map[string]int64{"flying": 7}
@@ -240,6 +242,9 @@ func mutateEveryDeepenedField(g *Game) {
 		}
 		if c.DurationCopyBase != nil {
 			c.DurationCopyBase.Name = "mutated"
+		}
+		if c.FullTextBase != nil {
+			c.FullTextBase.Name = "mutated"
 		}
 		if c.FaceDownListed != nil {
 			c.FaceDownListed.Types[0] = "Land"
