@@ -19,7 +19,6 @@ func init() {
 		OracleID:     "68e87559-7cae-4dcf-b7cd-a61f19bcd840",
 		Name:         "Mass Manipulation",
 		Completeness: effects.CompletenessFull,
-		XMatters:     true,
 		Targets: effects.TargetsCountedByX(effects.TargetPermanent("X target creatures and/or planeswalkers",
 			effects.Or(effects.Creature(), effects.Planeswalker()))),
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
