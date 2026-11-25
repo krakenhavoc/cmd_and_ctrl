@@ -446,6 +446,7 @@ var replacementEventFields = map[string]replacementEventField{
 	// A draw.
 	"DrawPlayer":  repFieldCarried,
 	"DrawCount":   repFieldCarried,
+	"DrawCycled":  repFieldCarried,
 	"drawPending": repFieldCarried,
 	// The synthetic whole-instruction event (draw_instruction.go) is asked
 	// read-only and never pauses, so no frame holds it: if one ever did,
@@ -794,6 +795,7 @@ type replacementEventSnapshot struct {
 
 	DrawPlayer     *uuid.UUID            `json:"drawPlayer,omitempty"`
 	DrawCount      int                   `json:"drawCount,omitempty"`
+	DrawCycled     *uuid.UUID            `json:"drawCycled,omitempty"`
 	DrawPending    []pendingDrawSnapshot `json:"drawPending,omitempty"`
 	DrawInstead    *insteadRunSnapshot   `json:"drawInstead,omitempty"`
 	DrawTail       int                   `json:"drawTail,omitempty"`
@@ -1278,6 +1280,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		MustSettleNow:             ev.mustSettleNow,
 		DrawPlayer:                uuidPtrOrNil(ev.DrawPlayer),
 		DrawCount:                 ev.DrawCount,
+		DrawCycled:                uuidPtrOrNil(ev.DrawCycled),
 		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source, 0),
 		DrawTail:                  ev.drawTail,
 		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source, ev.keywordInstead.n),
@@ -1462,6 +1465,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		mustSettleNow:             s.MustSettleNow,
 		DrawPlayer:                uuidOrNil(s.DrawPlayer),
 		DrawCount:                 s.DrawCount,
+		DrawCycled:                uuidOrNil(s.DrawCycled),
 		drawTail:                  s.DrawTail,
 		KeywordAction:             s.KeywordAction,
 		KeywordActionCount:        s.KeywordActionCount,

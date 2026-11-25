@@ -43,7 +43,7 @@ func keyedFrameSample() *ReplacementEvent {
 	id := func(s string) uuid.UUID { return uuid.NewSHA1(uuid.Nil, []byte(s)) }
 	return &ReplacementEvent{
 		ID: 41, Kind: RepEventMove, Canceled: true, Actor: id("actor"), Source: id("source"), mustSettleNow: true,
-		DrawPlayer: id("drawer"), DrawCount: 2,
+		DrawPlayer: id("drawer"), DrawCount: 2, DrawCycled: id("cycled"),
 		drawPending:    []pendingDraw{{player: id("p"), count: 3, applied: []ReplacementEffectID{7, 9}}},
 		drawInstead:    drawInsteadRun{ref: DrawInsteadRef{key: "di"}, source: id("di-src")},
 		drawTail:       4,

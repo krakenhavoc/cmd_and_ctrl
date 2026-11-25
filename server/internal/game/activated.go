@@ -2841,6 +2841,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// board by then, so nothing downstream could recompute it.
 		Paid:       paid,
 		Uncopyable: ab.Uncopyable,
+		Cycling:    ab.Cycling,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,

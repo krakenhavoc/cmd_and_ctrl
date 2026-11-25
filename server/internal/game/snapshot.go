@@ -1893,6 +1893,7 @@ type stackItemSnapshot struct {
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
+	Cycling       bool         `json:"cycling,omitempty"`    // #6169
 	// ExileWithCounter (#3213) is Goliath Daydreamer's mark. Carried: a
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
@@ -3524,6 +3525,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -4761,6 +4763,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,

@@ -5588,6 +5588,7 @@ frozenEntries[].event.discardCause	string
 frozenEntries[].event.discardCauseController	custom(uuid.UUID)
 frozenEntries[].event.discardPlayer	custom(uuid.UUID)
 frozenEntries[].event.drawCount	number:int
+frozenEntries[].event.drawCycled	custom(uuid.UUID)
 frozenEntries[].event.drawInstead	object
 frozenEntries[].event.drawInstead.key	string
 frozenEntries[].event.drawInstead.n	number:int
@@ -14321,6 +14322,7 @@ frozenEntries[].event.stackItem.castValues	map:string
 frozenEntries[].event.stackItem.castValues{}	number:int
 frozenEntries[].event.stackItem.commutes	bool
 frozenEntries[].event.stackItem.controller	custom(uuid.UUID)
+frozenEntries[].event.stackItem.cycling	bool
 frozenEntries[].event.stackItem.distribution	map:array
 frozenEntries[].event.stackItem.distribution{}	number:int
 frozenEntries[].event.stackItem.doubledBy	custom(uuid.UUID)
@@ -22435,6 +22437,7 @@ lastKnownStack[].item.castValues	map:string
 lastKnownStack[].item.castValues{}	number:int
 lastKnownStack[].item.commutes	bool
 lastKnownStack[].item.controller	custom(uuid.UUID)
+lastKnownStack[].item.cycling	bool
 lastKnownStack[].item.distribution	map:array
 lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
@@ -27265,6 +27268,7 @@ movesAwaitingTokens[].discardCause	string
 movesAwaitingTokens[].discardCauseController	custom(uuid.UUID)
 movesAwaitingTokens[].discardPlayer	custom(uuid.UUID)
 movesAwaitingTokens[].drawCount	number:int
+movesAwaitingTokens[].drawCycled	custom(uuid.UUID)
 movesAwaitingTokens[].drawInstead	object
 movesAwaitingTokens[].drawInstead.key	string
 movesAwaitingTokens[].drawInstead.n	number:int
@@ -35998,6 +36002,7 @@ movesAwaitingTokens[].stackItem.castValues	map:string
 movesAwaitingTokens[].stackItem.castValues{}	number:int
 movesAwaitingTokens[].stackItem.commutes	bool
 movesAwaitingTokens[].stackItem.controller	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.cycling	bool
 movesAwaitingTokens[].stackItem.distribution	map:array
 movesAwaitingTokens[].stackItem.distribution{}	number:int
 movesAwaitingTokens[].stackItem.doubledBy	custom(uuid.UUID)
@@ -42897,6 +42902,7 @@ outcome.winner	custom(uuid.UUID)
 parkedDraws	array
 parkedDraws[]	object
 parkedDraws[].actor	custom(uuid.UUID)
+parkedDraws[].cycled	custom(uuid.UUID)
 parkedDraws[].id	custom(uuid.UUID)
 parkedDraws[].pending	array
 parkedDraws[].pending[]	object
@@ -42930,6 +42936,7 @@ pausedModeWalk.item.castValues	map:string
 pausedModeWalk.item.castValues{}	number:int
 pausedModeWalk.item.commutes	bool
 pausedModeWalk.item.controller	custom(uuid.UUID)
+pausedModeWalk.item.cycling	bool
 pausedModeWalk.item.distribution	map:array
 pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
@@ -43314,6 +43321,7 @@ pausedResolutionTail.item.castValues	map:string
 pausedResolutionTail.item.castValues{}	number:int
 pausedResolutionTail.item.commutes	bool
 pausedResolutionTail.item.controller	custom(uuid.UUID)
+pausedResolutionTail.item.cycling	bool
 pausedResolutionTail.item.distribution	map:array
 pausedResolutionTail.item.distribution{}	number:int
 pausedResolutionTail.item.doubledBy	custom(uuid.UUID)
@@ -43692,6 +43700,7 @@ pausedStepWalk.item.castValues	map:string
 pausedStepWalk.item.castValues{}	number:int
 pausedStepWalk.item.commutes	bool
 pausedStepWalk.item.controller	custom(uuid.UUID)
+pausedStepWalk.item.cycling	bool
 pausedStepWalk.item.distribution	map:array
 pausedStepWalk.item.distribution{}	number:int
 pausedStepWalk.item.doubledBy	custom(uuid.UUID)
@@ -46557,6 +46566,7 @@ pendingChoices[].copyWalk.item.castValues	map:string
 pendingChoices[].copyWalk.item.castValues{}	number:int
 pendingChoices[].copyWalk.item.commutes	bool
 pendingChoices[].copyWalk.item.controller	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.cycling	bool
 pendingChoices[].copyWalk.item.distribution	map:array
 pendingChoices[].copyWalk.item.distribution{}	number:int
 pendingChoices[].copyWalk.item.doubledBy	custom(uuid.UUID)
@@ -55877,6 +55887,7 @@ pendingChoices[].replacementResume.event.discardCause	string
 pendingChoices[].replacementResume.event.discardCauseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.discardPlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.drawCount	number:int
+pendingChoices[].replacementResume.event.drawCycled	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.drawInstead	object
 pendingChoices[].replacementResume.event.drawInstead.key	string
 pendingChoices[].replacementResume.event.drawInstead.n	number:int
@@ -64610,6 +64621,7 @@ pendingChoices[].replacementResume.event.stackItem.castValues	map:string
 pendingChoices[].replacementResume.event.stackItem.castValues{}	number:int
 pendingChoices[].replacementResume.event.stackItem.commutes	bool
 pendingChoices[].replacementResume.event.stackItem.controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.cycling	bool
 pendingChoices[].replacementResume.event.stackItem.distribution	map:array
 pendingChoices[].replacementResume.event.stackItem.distribution{}	number:int
 pendingChoices[].replacementResume.event.stackItem.doubledBy	custom(uuid.UUID)
@@ -74947,6 +74959,7 @@ pendingTriggers[].castValues	map:string
 pendingTriggers[].castValues{}	number:int
 pendingTriggers[].commutes	bool
 pendingTriggers[].controller	custom(uuid.UUID)
+pendingTriggers[].cycling	bool
 pendingTriggers[].distribution	map:array
 pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
@@ -77614,6 +77627,7 @@ resolving.item.castValues	map:string
 resolving.item.castValues{}	number:int
 resolving.item.commutes	bool
 resolving.item.controller	custom(uuid.UUID)
+resolving.item.cycling	bool
 resolving.item.distribution	map:array
 resolving.item.distribution{}	number:int
 resolving.item.doubledBy	custom(uuid.UUID)
@@ -83498,6 +83512,7 @@ stackMeta[].castValues	map:string
 stackMeta[].castValues{}	number:int
 stackMeta[].commutes	bool
 stackMeta[].controller	custom(uuid.UUID)
+stackMeta[].cycling	bool
 stackMeta[].distribution	map:array
 stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
