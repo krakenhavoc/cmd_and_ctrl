@@ -1931,8 +1931,8 @@ condition damage/old-b071-the-listed-object-dealt
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
-condition departed/player-loses-with-counter
 condition damage/your-creatures-combat-damage-each-player
+condition departed/player-loses-with-counter
 condition dies/a-creature
 condition dies/a-creature-you-control
 condition dies/another-creature-than-the-source
@@ -3883,8 +3883,8 @@ tail connive/each
 tail connive/kamiz-obscura-oculus
 tail connive/x
 tail conspiracy/agenda-named
-tail conundrum-sphinx/named
 tail consulate-crackdown/record-returns
+tail conundrum-sphinx/named
 tail copy-and-cast/cast-copies-then-exile-self
 tail copy-and-cast/mnemonic-deluge-three-copies
 tail copy-and-cast/spelltwine-both-then-exile-self
@@ -4538,8 +4538,8 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nightmare-shepherd/copy
 tail nine-fingers-keene/rest
-tail nissas-pilgrimage/forests-to-hand
 tail nissa-natures-artisan/rest-to-hand
+tail nissas-pilgrimage/forests-to-hand
 tail nissas-revelation/reveal
 tail nita-forum-conciliator/after-exile
 tail noctis/entered-unblockable
