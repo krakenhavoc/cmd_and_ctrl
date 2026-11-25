@@ -825,6 +825,10 @@ type PendingChoiceView struct {
 	Devour     int `json:"devour,omitempty"`
 	DevourDraw int `json:"devour_draw,omitempty"`
 	DevourLife int `json:"devour_life,omitempty"`
+	// DevourX marks devour whose N is the number of creatures devoured
+	// (#6267, Thromok the Insatiable): k creatures buy k*k counters, so
+	// Devour is absent. Absent on every other prompt.
+	DevourX bool `json:"devour_x,omitempty"`
 
 	// LifeCost is mandatory life paid by "pay_unless", or a "confirm" ACCEPT branch
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -10950,6 +10954,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntrySacrifice {
 			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()
+			v.DevourX = c.DevourIsX()
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel
