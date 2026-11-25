@@ -402,7 +402,8 @@ var canonicalKeywords = map[string]bool{
 	// to the other player (CR 702.22j-k). Every consumer reads the token
 	// off the layered ability list, so printed, imported and granted
 	// banding (Helm of Chatzuk) are the same. Not cumulative
-	// (CR 702.22m). "Bands with other" is not this token and stays out.
+	// (CR 702.22m). "Bands with other [quality]" is not this token: it
+	// is its own parameterised token, read by bands_with_other.go (#6142).
 	KeywordBanding: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on

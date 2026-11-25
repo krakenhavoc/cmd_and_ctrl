@@ -37,7 +37,7 @@ func (g *Game) sacrificeAllCandidatesLocked(playerID uuid.UUID, spec *TargetSpec
 	var ids []uuid.UUID
 	for _, id := range g.specCandidatesLocked(playerID, spec).Cards {
 		// #3275: a permanent that can't be sacrificed is not taken.
-		if c := findBattlefieldCard(g, id); c != nil && c.Controller == playerID && !g.permanentCantBeSacrificedLocked(c) {
+		if c := findBattlefieldCard(g, id); c != nil && c.Controller == playerID && !g.sacrificeCostBarredLocked(c) {
 			ids = append(ids, id)
 		}
 	}

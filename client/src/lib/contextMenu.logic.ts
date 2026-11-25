@@ -337,14 +337,16 @@ export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
 
 // reachesAcross says a row names an activator other than the plain
 // controller: any player, only the controller's opponents, or only the
-// owner, or only the player who granted it (CR 602.2, ADR 0106 §1 and its
-// 2026-10-07 and 2026-10-09 amendments).
+// owner, or only the player who granted it, or only the player it is
+// attacking (CR 602.2, ADR 0106 §1 and its 2026-10-07, 2026-10-09 and
+// 2026-11-25 amendments).
 export function reachesAcross(a: ActivatedAbilityView): boolean {
   return (
     a.any_player === true ||
     a.opponents_only === true ||
     a.owner_only === true ||
-    a.grantor_only === true
+    a.grantor_only === true ||
+    a.defending_player_only === true
   );
 }
 
@@ -364,6 +366,17 @@ export function rowOpenToViewer(
   if (a.opponents_only === true) return viewerID !== controller;
   if (a.owner_only === true) return viewerID === card.owner;
   if (a.grantor_only === true) return !!a.activator && viewerID === a.activator;
+  if (a.defending_player_only === true) {
+    // #6170: the player the creature is attacking, never a planeswalker
+    // or battle it attacks, and never its controller.
+    const kind = card.attacking_target_kind;
+    return (
+      !!card.attacking_target &&
+      (kind === undefined || kind === "player") &&
+      viewerID === card.attacking_target &&
+      viewerID !== controller
+    );
+  }
   return viewerID === controller;
 }
 
@@ -1338,7 +1351,10 @@ export function abilityRowBlocked(
     kind === "activated" &&
     ctx.card &&
     viewer &&
-    (named.opponents_only === true || named.owner_only === true || named.grantor_only === true) &&
+    (named.opponents_only === true ||
+      named.owner_only === true ||
+      named.grantor_only === true ||
+      named.defending_player_only === true) &&
     !rowOpenToViewer(named as ActivatedAbilityView, ctx.card, viewer)
   ) {
     return ROW_NOT_OPEN_TO_YOU;

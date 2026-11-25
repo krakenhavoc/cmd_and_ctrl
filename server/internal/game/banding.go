@@ -39,9 +39,11 @@ import (
 //     Banding). The defending player's division is among the blockers
 //     only, so an attacker's trample puts nothing on the player then.
 //
-// "Bands with other" (CR 702.22b and the second half of 702.22c) is not
-// implemented: it is not a canonical keyword, so a card that prints it
-// stays flagged and is never catalogued as Full.
+// "Bands with other [quality]" (CR 702.22b and the second half of
+// 702.22c, j-k) is its special form, in bands_with_other.go (#6142): a
+// band may also be [quality] creatures anchored by one with "bands with
+// other [quality]", and such a pair among the blockers (or the blocked
+// attackers) hands the damage division over as banding does.
 //
 // THE STATE. Game.attackBands, attacker -> band key, where the key is the
 // instance ID of the band's first member in the declaration. Keys are
@@ -160,6 +162,10 @@ func (g *Game) bandRefusalLocked(decls []AttackDeclaration) *BandRefusedError {
 			continue
 		}
 		var without *Card
+		// #6142, CR 702.22c's second sentence: [quality] creatures
+		// anchored by one with "bands with other [quality]" are a band
+		// whatever banding they have, so none counts as "without".
+		bwo := g.bandsWithOtherBandLocked(bandAttackers(band))
 		for _, d := range band {
 			c := findBattlefieldCard(g, d.Attacker)
 			if c == nil {
@@ -173,7 +179,7 @@ func (g *Game) bandRefusalLocked(decls []AttackDeclaration) *BandRefusedError {
 				return &BandRefusedError{Reason: BandRefusalSplitController,
 					Attacker: first.InstanceID, AttackerName: first.Name, Other: c.InstanceID, OtherName: c.Name}
 			}
-			if HasKeyword(c, KeywordBanding) {
+			if bwo || HasKeyword(c, KeywordBanding) {
 				continue
 			}
 			if without != nil {
@@ -184,6 +190,15 @@ func (g *Game) bandRefusalLocked(decls []AttackDeclaration) *BandRefusedError {
 		}
 	}
 	return nil
+}
+
+// bandAttackers is a band's attacking creatures.
+func bandAttackers(band []AttackDeclaration) []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(band))
+	for _, d := range band {
+		out = append(out, d.Attacker)
+	}
+	return out
 }
 
 // stageBandsLocked records the declaration's bands (CR 508.1e). Called
@@ -339,9 +354,11 @@ func (g *Game) expandBandBlocksLocked() {
 	}
 }
 
-// anyHasBandingLocked reports whether any of `ids` is a creature on the
-// battlefield with banding right now: CR 702.22j asks it of an
-// attacker's blockers, CR 702.22k of a blocker's attackers.
+// anyHasBandingLocked reports whether the damage division is handed over
+// for `ids` right now: one of them is a creature on the battlefield with
+// banding, or they hold both a [quality] creature with "bands with other
+// [quality]" and another [quality] creature (#6142). CR 702.22j asks it
+// of an attacker's blockers, CR 702.22k of a blocker's attackers.
 //
 // Caller must hold g.mu.
 func (g *Game) anyHasBandingLocked(ids []uuid.UUID) bool {
@@ -350,7 +367,7 @@ func (g *Game) anyHasBandingLocked(ids []uuid.UUID) bool {
 			return true
 		}
 	}
-	return false
+	return len(ids) >= 2 && g.bandsWithOtherPairLocked(ids)
 }
 
 // bandingDefenderLocked is who divides an attacker's combat damage under
@@ -364,7 +381,7 @@ func (g *Game) bandingDefenderLocked(atk *Card, blockers []uuid.UUID) uuid.UUID 
 		return d
 	}
 	for _, id := range blockers {
-		if b := findBattlefieldCard(g, id); HasKeyword(b, KeywordBanding) {
+		if b := findBattlefieldCard(g, id); HasKeyword(b, KeywordBanding) || (b != nil && hasAnyBandsWithOther(b)) {
 			return b.Controller
 		}
 	}

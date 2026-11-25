@@ -26,6 +26,15 @@ type CoinFlipRule struct {
 	// the player. Called and uncalled flips alike: an uncalled flip has no
 	// winner, and this rule is what lets one be won (the printed ruling).
 	HeadsAndWin bool
+	// FlipTwoIgnoreOne is Krark's Thumb's "If you would flip a coin,
+	// instead flip two coins and ignore one" (#6152, CR 705): a
+	// replacement of each coin the player flips. Each instance doubles the
+	// coins (two Thumbs flip four and keep one), and the player keeps the
+	// coin they want: on a called flip a won coin, which is never worse
+	// than a lost one, and on an uncalled flip the face the effect asked
+	// for (FlipCoinsPreferringForEffect). The ignored coins never happened:
+	// they emit no event, so nothing triggers on them.
+	FlipTwoIgnoreOne bool
 }
 
 // CatalogCoinFlipRules returns the rules a permanent with the catalog key
@@ -70,4 +79,37 @@ func (g *Game) flippedCoinsThisTurnLocked(player uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+// maxThumbDoublings caps the coins one flip can become: 2^6 = 64 coins a
+// coin, past any table's count of Thumbs and well inside the stream.
+const maxThumbDoublings = 6
+
+// coinsPerFlipLocked is how many coins `player` flips for each coin an
+// effect asks for: 2^k for k FlipTwoIgnoreOne rules on permanents they
+// control (#6152). Caller must hold g.mu.
+func (g *Game) coinsPerFlipLocked(player uuid.UUID) int {
+	if CatalogCoinFlipRules == nil || g.Battlefield == nil || player == uuid.Nil {
+		return 1
+	}
+	k := 0
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		if src.Controller != player {
+			continue
+		}
+		key := catalogAbilityKeyOf(src)
+		if key == "" {
+			continue
+		}
+		for _, r := range CatalogCoinFlipRules(key) {
+			if r.FlipTwoIgnoreOne {
+				k++
+			}
+		}
+	}
+	if k > maxThumbDoublings {
+		k = maxThumbDoublings
+	}
+	return 1 << k
 }
