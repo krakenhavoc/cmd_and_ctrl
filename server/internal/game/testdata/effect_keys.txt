@@ -1772,6 +1772,7 @@ choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/verdant-mastery-mine
 choose choose-cards/verdant-mastery-opponents-land
+choose choose-cards/vessel-of-nascency-take
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
 choose choose-cards/vivien-arkbow-ranger-creature
@@ -2957,6 +2958,7 @@ payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown
 payunless pay-unless/icewrought-sentry-tap
 payunless pay-unless/inalla-archmage-ritualist-copy
+payunless pay-unless/insidious-mist-transform
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
 payunless pay-unless/inti-seneschal-of-the-sun-discard
