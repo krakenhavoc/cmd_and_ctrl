@@ -5128,6 +5128,9 @@ export interface CastPriceView {
   cost: string;
   // Life charged on top (CR 119.4). Absent for every exile price today.
   life?: number;
+  // #6151: the part of `life` that is a commander tax paid in life
+  // (Liesa, Shroud of Dusk), 2 per earlier cast from the command zone.
+  commander_tax_life?: number;
   // ADR 0129 §5: energy charged on top (Amped Raptor's "an amount of {E}
   // equal to its mana value"). Absent for every price that charges none.
   energy?: number;

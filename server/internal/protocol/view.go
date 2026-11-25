@@ -4785,6 +4785,10 @@ type CastPriceView struct {
 	// Life is the life a Bolas's-Citadel-shaped price charges on top
 	// (CR 119.4). Absent for every exile price today.
 	Life int `json:"life,omitempty"`
+	// CommanderTaxLife is the part of Life that is a commander tax paid
+	// in life (#6151, Liesa, Shroud of Dusk): 2 per previous cast from
+	// the command zone, in place of {2} each. Absent for every other card.
+	CommanderTaxLife int `json:"commander_tax_life,omitempty"`
 	// Energy is the energy a price charges on top (ADR 0129 §5): Amped
 	// Raptor's "an amount of {E} equal to its mana value". Absent for
 	// every price that charges none.
@@ -8385,6 +8389,10 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 			// refuse; showing a guess would be worse than no badge.
 			continue
 		}
+		// #6151: a commander tax paid in life (Liesa) rides the price's
+		// life, as an offer's own life does.
+		v.CommanderTaxLife = g.CommanderTaxLifeForEffect(caster, card, params.FromZone)
+		v.Life += v.CommanderTaxLife
 		v.Cost = price.Total.String()
 		if v.Cost == "" {
 			v.Cost = "{0}"
