@@ -359,6 +359,7 @@ var TokenTable = map[string]game.Card{
 	"4/4 colorless Construct artifact":                                 {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 4, Toughness: 4},
 	"4/4 colorless Construct artifact with flying and haste":           {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 4, Toughness: 4, Keywords: []string{"flying", "haste"}},
 	"3/3 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 3, Toughness: 3},
+	"4/4 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4},
 	"9/9 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 9, Toughness: 9},
 	"1/1 black Insect with flying":                                     {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"4/4 white and blue Golem artifact":                                {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4, Colors: []string{"W", "U"}},
