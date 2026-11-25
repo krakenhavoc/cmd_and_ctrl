@@ -195,6 +195,60 @@ const (
 	// every bit here it belongs to the SOURCE (the Aura), so a layer-6
 	// "loses all abilities" leaves it.
 	CantCrew ExtraRestriction = 1 << iota
+
+	// PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate is "Players
+	// can't pay life or sacrifice nonland permanents to cast spells or
+	// activate abilities." (Yasharn, Implacable Earth, #6167). A world
+	// rule the SOURCE carries on itself (RestrictSelfExtra), like
+	// PlayersCantPayLifeToCastOrActivate, but wider in two ways: it names
+	// every activated ability, mana abilities included (CR 605), and it
+	// bars sacrificing a nonland permanent as a cost (CR 118.3, CR
+	// 601.2h, CR 602.2b). Read by cantPayLifeToCastOrActivateLocked and
+	// CanPayLifeForManaAbilityLocked for the life half, and by
+	// sacrificeCostBarredLocked, the predicate every sacrifice COST walk
+	// shares, for the other (sacrifice_cost_bar.go). An effect's
+	// "sacrifice a creature" is no cost and is untouched. Absent from
+	// Names: it is no badge on the permanent that carries it.
+	PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate
+
+	// CantBeEnchanted is "~ can't be enchanted" (Tetravus's Tetravite
+	// tokens, #6203; CR 303.4). No Aura may become attached to the
+	// permanent, an Aura spell can't target it, and an Aura already
+	// attached is illegal and goes to the graveyard (CR 303.4c, 704.5m).
+	// Read by auraBarredFromHostLocked (cant_be_enchanted.go). Absent from
+	// Names: it is no wire token yet.
+	CantBeEnchanted
+
+	// CantBecomeEnchanted is CantBeEnchanted for NEW attachments only:
+	// Guardian Beast's "noncreature artifacts you control can't be
+	// enchanted … This effect doesn't remove Auras already attached to
+	// those artifacts." An Aura can't target or become attached to the
+	// permanent, and one already attached stays (#6203).
+	CantBecomeEnchanted
+
+	// EnchantedCantBeEnchantedByOthers is carried by an AURA on itself
+	// (RestrictSelfExtra): "Enchanted <permanent> … can't be enchanted by
+	// other Auras" (Anti-Magic Aura, Consecrate Land, #6203). The
+	// permanent it is attached to can't be enchanted by any Aura but
+	// this one: another Aura can't target it or become attached, and
+	// one already attached goes to the graveyard (CR 303.4c). An Aura
+	// that loses its abilities stops carrying it (CR 613.6).
+	EnchantedCantBeEnchantedByOthers
+
+	// OthersCantGainControl is "other players can't gain control of ~"
+	// (Guardian Beast, #6203): an effect that would give control of the
+	// permanent to a player other than its controller does nothing
+	// (GainControlForEffect, ExchangeControlForEffect). Absent from
+	// Names.
+	OthersCantGainControl
+	// PlayersCantGetCounters is "Players can't get counters." (Solemnity,
+	// #6241; CR 122.1). A world rule the SOURCE carries on itself
+	// (RestrictSelfExtra), like PermanentsCantPhaseIn: while any permanent
+	// on the battlefield has it, counterPlacementRefusedLocked refuses
+	// every counter placement onto a player, of every kind, and
+	// proliferate offers no player (cant_get_counters.go). Absent from
+	// Names: it is no badge on the permanent that carries it.
+	PlayersCantGetCounters
 )
 
 // Has reports whether every bit in `want` is set.

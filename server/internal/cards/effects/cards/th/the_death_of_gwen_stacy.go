@@ -65,7 +65,7 @@ var gwenStacyNonDiscardersLose = game.RegisterPromptRunThen("prompt-run/the-deat
 		return nil
 	}
 	for i := 0; i < n; i++ {
-		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]
 		if p == nil || p.Eliminated || len(discards.By(p.ID)) > 0 {
 			continue
 		}

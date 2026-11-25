@@ -197,6 +197,10 @@ func (e *enumerator) choiceMoves() bool {
 				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
 			}
 			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+				// #6271: one card per filter of an EachOf pick.
+				if !g.RevealedPickSlotsFitLocked(c, set) {
+					continue
+				}
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": " + verb
@@ -439,13 +443,36 @@ func (e *enumerator) choiceMoves() bool {
 				// ADR 0150 §6: an any-player sacrifice or discard says
 				// whose effect it stops, as a mana link does.
 				payVerb, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
-				for _, set := range e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+				sets := [][]uuid.UUID(nil)
+				if action.Kind == game.PayActionSacrificeTotalPower {
+					// #6187: any number adding up to the total. The
+					// payments offered are the ones that stop as soon as
+					// the total is reached: in the payment order (the
+					// permanents the seat would miss least first), and
+					// biggest first (the fewest permanents).
+					sets = totalPowerPayments(g, pool, action.TotalPower)
+				} else {
+					sets = e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource)
+				}
+				if action.Repeats {
+					// #6189, CR 702.24a: each choice is made separately
+					// for each age counter, so one option may pay every
+					// pick. Those are the payments the combos miss.
+					sets = append(repeatedPayments(pool, action.Count), sets...)
+				}
+				for _, set := range sets {
 					a := true
 					p := base()
 					p.Apply = &a
 					p.CardIDs = idStrings(set)
 					label := reason + ": " + payVerb + " —"
 					for _, id := range set {
+						// #6189: a payment whose picks are players
+						// names seats, not cards.
+						if action.PicksPlayers {
+							label += " " + playerName(g, id)
+							continue
+						}
 						label += " " + cardNameFor(g, id, e.seat)
 					}
 					e.addChoice(c, label, p)
@@ -463,11 +490,14 @@ func (e *enumerator) choiceMoves() bool {
 			payLife := 0
 			if cost, err := game.ParseCost(c.PayCost); err == nil {
 				if c.PayTapCost().Empty() {
-					// Zero spend context, matching payCostLocked: a
-					// pay-unless cost is neither a cast nor an
-					// activation, so restricted mana cannot fund it
-					// (#352).
-					canPay = e.canPay(cost, 0, game.ManaSpendContext{})
+					// The prompt's own spend context, matching
+					// payCostLocked: a pay-unless cost is neither a
+					// cast nor an activation, so restricted mana
+					// cannot fund it (#352) — except a cumulative
+					// upkeep's, whose purpose Snowfall's mana names
+					// (#6189).
+					spend := game.ManaSpendContext{Purpose: c.PaySpendPurpose}
+					canPay = e.canPay(cost, 0, spend)
 					if !canPay {
 						// ADR 0131 §2: a printed {B/P}, or a {B} under
 						// K'rrik, may be paid with 2 life. Mana first;
@@ -478,11 +508,11 @@ func (e *enumerator) choiceMoves() bool {
 						// answer accepts (#544).
 						lifeCost := g.LifeGrantedCostForEffect(e.seat, cost)
 						for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
-							reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, game.ManaSpendContext{}, n)
+							reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, spend, n)
 							if !g.CanPayLifeLocked(e.p, life+c.LifeCost) {
 								break
 							}
-							if e.canPay(reduced, 0, game.ManaSpendContext{}) {
+							if e.canPay(reduced, 0, spend) {
 								canPay, payLife = true, n
 								break
 							}
@@ -3210,4 +3240,76 @@ func (e *enumerator) addSearchZoneSubsets(c *game.PendingChoice, reason string, 
 		}
 		e.addChoice(c, label+" only", p)
 	}
+}
+
+// repeatedPayments are the payments that name one option for every pick
+// (#6189, CR 702.24a): one set per option, that option `count` times.
+// None for count < 2, where the plain combinations already cover it.
+func repeatedPayments(pool []uuid.UUID, count int) [][]uuid.UUID {
+	if count < 2 {
+		return nil
+	}
+	out := make([][]uuid.UUID, 0, len(pool))
+	for _, id := range pool {
+		set := make([]uuid.UUID, count)
+		for i := range set {
+			set[i] = id
+		}
+		out = append(out, set)
+	}
+	return out
+}
+
+// totalPowerPayments are the total-power sacrifices (#6187) the
+// enumerator offers from `pool` (in the engine's payment order): the
+// first permanents in that order until their powers reach `total`, and
+// the most powerful first until they do. Duplicates are dropped, and
+// none is offered when the whole pool falls short (CR 118.3).
+func totalPowerPayments(g *game.Game, pool []uuid.UUID, total int) [][]uuid.UUID {
+	take := func(order []uuid.UUID) []uuid.UUID {
+		sum := 0
+		var out []uuid.UUID
+		for _, id := range order {
+			p := g.AltTappedPowerForEffect(id)
+			if p <= 0 {
+				continue
+			}
+			out = append(out, id)
+			if sum += p; sum >= total {
+				return out
+			}
+		}
+		return nil
+	}
+	first := take(pool)
+	if first == nil {
+		return nil
+	}
+	biggest := append([]uuid.UUID(nil), pool...)
+	sort.SliceStable(biggest, func(i, j int) bool {
+		return g.AltTappedPowerForEffect(biggest[i]) > g.AltTappedPowerForEffect(biggest[j])
+	})
+	second := take(biggest)
+	out := [][]uuid.UUID{first}
+	if !sameIDSet(first, second) {
+		out = append(out, second)
+	}
+	return out
+}
+
+// sameIDSet reports whether a and b hold the same ids, in any order.
+func sameIDSet(a, b []uuid.UUID) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	in := make(map[uuid.UUID]bool, len(a))
+	for _, id := range a {
+		in[id] = true
+	}
+	for _, id := range b {
+		if !in[id] {
+			return false
+		}
+	}
+	return true
 }

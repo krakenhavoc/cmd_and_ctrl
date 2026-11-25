@@ -77,7 +77,7 @@ func (g *Game) NextTurnSeatForEffect() (seat int, ok bool) {
 	// Every step takes the turn, passes a departed seat or spends a
 	// charge, so n + total + 1 steps always reach a verdict.
 	for i := 0; i < n+total+1; i++ {
-		from = (from + 1) % n
+		from = g.SeatInTurnOrderForEffect(from, 1)
 		if takes(from) {
 			return from, true
 		}

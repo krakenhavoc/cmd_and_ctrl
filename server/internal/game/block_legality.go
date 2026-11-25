@@ -273,7 +273,13 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 
 	// 2. Evasion keywords. Their order is stable because it controls the
 	// reason the client receives when an attacker has more than one.
-	if HasKeyword(attacker, "flying") && !HasKeyword(blocker, "flying") && !HasKeyword(blocker, "reach") {
+	if HasKeyword(attacker, "flying") && !HasKeyword(blocker, "flying") && !HasKeyword(blocker, "reach") &&
+		// #6250, CR 702.9b / 702.17b: "This creature can block Dragons
+		// as though it had reach" (Dragon Hunter) waives this one
+		// restriction for the attackers its clause names. The blocker
+		// does not gain reach, so nothing that counts reach sees it,
+		// and every other evasion below still applies.
+		!g.blockerReachAgainstLocked(blocker, attacker) {
 		return BlockRefusal{Reason: BlockReasonFlying, Source: attacker.InstanceID}
 	}
 	if _, land := g.landwalkBlockingLandLocked(attacker); land != nil {
@@ -505,6 +511,10 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 	case BlockReasonCantBlockAlone:
 		// #5396. About the blocker alone: which attacker it was
 		// pointed at does not matter, a second blocker anywhere does.
+		if e.Label != "" {
+			// #6197: a companion rule wider than "alone".
+			return blocker + " can't block unless " + e.Label + "."
+		}
 		return blocker + " can't block alone: declare another blocker with it."
 	}
 	return blocker + " can't block " + attacker + "."
@@ -539,6 +549,8 @@ func (e *BlockRefusedError) requirementSentence(blocker, attacker string) string
 		}
 	case BlockRequirementExactlyOne:
 		s, subject = attacker+" must be blocked by exactly one creature if able", e.AttackerName
+	case BlockRequirementTwoOrMore:
+		s, subject = attacker+" must be blocked by two or more creatures if able", e.AttackerName
 	default:
 		s = "A creature must block this combat if able"
 	}

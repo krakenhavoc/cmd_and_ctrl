@@ -297,6 +297,12 @@ type PayUnlessKeyedPrompt struct {
 	Guards uuid.UUID
 	// LifeCost is mandatory life paid with the cost in one payment.
 	LifeCost int
+
+	// SpendPurpose is the ManaSpendPurpose the mana payment is made
+	// under (#6189): SpendPurposeCumulativeUpkeep for a cumulative
+	// upkeep, so mana restricted to one may pay it. The zero value is
+	// every other pay-unless, which restricted mana cannot pay (#352).
+	SpendPurpose ManaSpendPurpose
 	// Asked is the asking stack item as data (NewAskedItem), handed to the
 	// branches as PayUnlessAnswer.Item. Nil when they read none.
 	Asked *AskedItem
@@ -392,6 +398,7 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		Reason:          p.Question,
 		PayCost:         p.Cost,
 		LifeCost:        p.LifeCost,
+		PaySpendPurpose: p.SpendPurpose,
 		OwedInStep:      owed,
 		GuardsStackItem: p.Guards,
 		PayActionClause: copyPayAction(p.Action),

@@ -39,12 +39,7 @@ func init() {
 			Purpose:   game.Purpose{Answers: game.AnswerPump},
 			Cost:      effects.ManaCost("{3}"),
 			AnyPlayer: true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !effects.SourceIsStillThisPermanent(g, item) {
-					return nil
-				}
-				return effects.AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(effects.NewContext(g, item))
-			},
+			Effect:    effects.PutAPlusOneCounterOnThisIfStillHere,
 		}},
 	})
 }

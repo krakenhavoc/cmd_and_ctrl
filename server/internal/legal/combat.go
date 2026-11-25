@@ -185,6 +185,17 @@ func (e *enumerator) combatMoves() {
 				if deferTax {
 					price = game.AttackTaxPrice{}
 				}
+				// #6190, CR 508.1d: "If a creature can't attack unless a
+				// player pays a cost, that player is not required to pay
+				// that cost." A cost paid in PERMANENTS — Exalted
+				// Dragon's land, Hollow Warrior's tapped creature — is a
+				// decision no enumerator may make for a seat (which land?
+				// which creature?), so a declaration that owes one is not
+				// offered and the bot declines it. A human declares it
+				// from the dock, naming the permanents.
+				if len(price.NonMana) > 0 {
+					continue
+				}
 				autoTap, phyLife := false, 0
 				if !price.IsFree() {
 					// #1600: widened as the engine's tax payment
@@ -443,6 +454,14 @@ func (e *enumerator) finishBlocksMove() (Move, bool) {
 		AlwaysLegal: true,
 	}
 	if price := g.PriceBlockDeclarationForEffect(seat); !price.IsFree() {
+		if len(price.NonMana) > 0 {
+			// #6190: the staged blocks owe permanents, which only the
+			// defender can name. The button stays offered (it is
+			// AlwaysLegal, and the step must be able to end), with no
+			// payment params: finishing without them is refused, and
+			// the step's own forced settle takes the blocks back.
+			return m, true
+		}
 		total := g.CostAsPaidByForEffect(seat, game.ManaSpendContext{}, price.Total, 0)
 		autoTap, phyLife, _ := e.attackTaxPayment(total)
 		m.Label += blockTaxLabel(price.Cost) + attackLifeLabel(phyLife)
@@ -480,6 +499,13 @@ func (e *enumerator) blockTaxAddition(opt game.BlockOption) (mana string, ok boo
 		fresh = append(fresh, d.Blocker)
 	}
 	add := g.PriceBlockersForEffect(fresh)
+	// #6190, CR 509.1c: a block whose cost is paid in permanents is
+	// never offered, for the reason an attack that owes one is not —
+	// which permanent to tap is the defender's decision, and they are
+	// not required to pay at all.
+	if len(add.NonMana) > 0 {
+		return "", false
+	}
 	if add.IsFree() {
 		return "", true
 	}

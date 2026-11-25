@@ -143,6 +143,12 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// CantSpendMana is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; #6227): the mana half of the total
+	// cost must be covered by the convoke taps and the delve exiles
+	// alone. Read through CantSpendManaFor into the cast's
+	// ManaSpendContext; see cant_spend_mana.go.
+	CantSpendMana bool
 	// Splice is CR 702.47's "Splice onto [quality] [cost]": while the
 	// card is in its owner's hand it may be revealed as they cast a spell
 	// of that quality, adding its rules text (the rest of this row) to
@@ -231,6 +237,12 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// LifePerTarget is this card's OWN "This spell costs N life more to
+	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
+	// for the spell being cast, through LifePerTargetFor under
+	// CatalogKey, and never from the battlefield: it is the spell's own
+	// cost, as SelfCostModifiers are. The zero value is every other card.
+	LifePerTarget LifePerTargetCost
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
@@ -251,6 +263,12 @@ type CardDef struct {
 	// from the battlefield through CatalogDealtDamageCantBeRegenerated,
 	// keyed by CatalogAbilityKey; see dealt_damage_by.go.
 	DealtDamageCantBeRegenerated []DealtDamageCantBeRegenerated
+	// SingleSourceLethalOnly is this creature's "can't be destroyed by
+	// lethal damage unless lethal damage dealt by a single source is
+	// marked on it" static (#6209, CR 704.5g) — Ogre Enforcer. Read
+	// through CatalogSingleSourceLethalOnly, keyed by CatalogAbilityKey;
+	// see single_source_lethal.go.
+	SingleSourceLethalOnly []SingleSourceLethalOnly
 	// ExertOnAttack is the static ability "You may exert this creature
 	// as it attacks" (CR 701.43d, ADR 0130 §2). Read through
 	// CatalogExertOnAttack, keyed by CatalogAbilityKey; see exert.go.
@@ -281,6 +299,11 @@ type CardDef struct {
 	// but not from anywhere else" (Spec.CastsOnlyFromGraveyard), read by
 	// aftermathZoneRule.
 	CastsOnlyFromGraveyard bool
+	// CantSpendManaToCast is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; Spec.CantSpendManaToCast), read through
+	// cantSpendManaToCastLocked: the spell can be cast only when convoke,
+	// delve and the other non-mana payments settle its whole cost.
+	CantSpendManaToCast bool
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -312,6 +335,14 @@ type CardDef struct {
 	CounterRemovalLocks  []CounterRemovalLock
 	UntapCaps            []UntapCap
 	UntapOptOuts         []UntapOptOut
+	// UntapTypeChoices is Storage Matrix's "each player chooses
+	// artifact, creature, or land during their untap step" (#6218,
+	// untap_type_choice.go).
+	UntapTypeChoices []UntapTypeChoice
+	// TurnSkipOffers is Time Vault's "If you would begin your turn
+	// while this artifact is tapped, you may skip that turn instead"
+	// (#6226, turn_skip_offer.go).
+	TurnSkipOffers []TurnSkipOffer
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -396,6 +427,11 @@ type CardDef struct {
 	// (#3781): "where X is the greatest power among creatures you
 	// controlled as you cast this spell". See cast_time_values.go.
 	CastTimeValues []CastTimeValue
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): a creature type the
+	// caster names as they cast the spell (CR 601.2c, with the targets)
+	// on CastSpellParams.ChosenCreatureType. See cast_creature_type.go.
+	ChoosesCreatureTypeAsCast bool
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.
@@ -643,6 +679,10 @@ type CardDef struct {
 	// MadnessLife is the "Pay N life" a madness cost adds to its mana
 	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
 	MadnessLife int
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148), read
+	// through LoyaltyAdjustedCostForEffect.
+	LoyaltyCostAdd int
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
 	// that many times" (#6151), read through CommanderTaxInLifeFor.
@@ -773,6 +813,13 @@ type CardDef struct {
 	// (Revelation) HandRevealEachPlayer. Read through
 	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
 	HandsRevealed HandRevealScope
+
+	// RevealsChosenPlayersDraws is "The chosen player reveals each card
+	// they draw" (Booby Trap, #6238): every card the permanent's
+	// ChosenPlayer draws is revealed to every player as it is drawn (CR
+	// 701.20a), while the permanent is on the battlefield with its
+	// abilities. Read in the draw path (draw_reveal.go).
+	RevealsChosenPlayersDraws bool
 
 	// AttackOnlyNearestOpponentInChosenDirection is "each player may
 	// attack only the nearest opponent in the chosen direction and
@@ -978,6 +1025,12 @@ func init() {
 		}
 		return false
 	}
+	CatalogCantSpendMana = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CantSpendMana
+		}
+		return false
+	}
 	CatalogGrantedTapCosts = func(key string) []GrantedTapCost {
 		if d := catalogDef(key); d != nil {
 			return d.GrantedTapCosts
@@ -1092,6 +1145,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogSingleSourceLethalOnly = func(key string) []SingleSourceLethalOnly {
+		if d := catalogDef(key); d != nil {
+			return d.SingleSourceLethalOnly
+		}
+		return nil
+	}
 	CatalogExertOnAttack = func(key string) *ExertOnAttack {
 		if d := catalogDef(key); d != nil {
 			return d.ExertOnAttack
@@ -1119,6 +1178,12 @@ func init() {
 	CatalogCastsOnlyFromGraveyard = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.CastsOnlyFromGraveyard
+		}
+		return false
+	}
+	CatalogCantSpendManaToCast = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CantSpendManaToCast
 		}
 		return false
 	}
@@ -1218,6 +1283,18 @@ func init() {
 		}
 		return nil
 	}
+	CatalogUntapTypeChoices = func(key string) []UntapTypeChoice {
+		if d := catalogDef(key); d != nil {
+			return d.UntapTypeChoices
+		}
+		return nil
+	}
+	CatalogTurnSkipOffers = func(key string) []TurnSkipOffer {
+		if d := catalogDef(key); d != nil {
+			return d.TurnSkipOffers
+		}
+		return nil
+	}
 	CatalogCantBeCountered = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
@@ -1231,6 +1308,10 @@ func init() {
 			return d.CantBeCounteredIf
 		}
 		return nil
+	}
+	CatalogChoosesCreatureTypeAsCast = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ChoosesCreatureTypeAsCast
 	}
 	CatalogCastTimeValues = func(key string) []CastTimeValue {
 		if d := catalogDef(key); d != nil {
@@ -1453,6 +1534,12 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogLoyaltyCostAdd = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.LoyaltyCostAdd
+		}
+		return 0
 	}
 	CatalogCommanderTaxInLife = func(key string) bool {
 		d := catalogDef(key)

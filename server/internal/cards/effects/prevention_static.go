@@ -72,6 +72,10 @@ const (
 	// static's controller controls, read as the damage would be dealt
 	// (Iroas, God of Victory).
 	ToAttackingCreaturesYouControl
+	// ToCreatureTokensYouControl is "to creature tokens you control": a
+	// token creature on the battlefield the static's controller controls
+	// (Emmara Tandris).
+	ToCreatureTokensYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -262,6 +266,9 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 	case ToAttackingCreaturesYouControl:
 		c, ok := g.LookupCardForEffect(target)
 		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target) && c.AttackingTarget != uuid.Nil
+	case ToCreatureTokensYouControl:
+		c, ok := g.LookupCardForEffect(target)
+		return ok && c.IsCreature() && c.IsToken() && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	}
 	return false
 }

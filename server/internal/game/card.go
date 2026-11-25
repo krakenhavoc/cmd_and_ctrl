@@ -372,6 +372,19 @@ type Card struct {
 	// together (setBlockingSet, clearBlocking).
 	AlsoBlocking []uuid.UUID
 
+	// MarkedBySource is the per-SOURCE split of DamageMarked (#6209):
+	// how much damage each source has marked on this creature right now,
+	// in the order it was marked. Read by Ogre Enforcer's "can't be
+	// destroyed by lethal damage unless lethal damage dealt by a single
+	// source is marked on it"; see single_source_lethal.go for how it is
+	// maintained and why the turn's damage tally is the wrong record for
+	// that question. Cleared with DamageMarked, and never totalling more
+	// than it. Only meaningful on the battlefield. Additive in the
+	// snapshot: a file written before it restores an empty split, which
+	// reads as "nobody has marked lethal damage on its own" — weaker,
+	// never stronger.
+	MarkedBySource []SourceMark
+
 	// Goads is every player who has goaded this creature and whose goad
 	// has not ended, one entry per goader, oldest goad first (#1598,
 	// CR 701.15c). Nil means "not goaded". Each goaded creature attacks
@@ -1073,6 +1086,8 @@ type Card struct {
 	// the snapshot, cleared when the permanent leaves the battlefield
 	// (CR 400.7). Not a copiable value (CR 707.2). Read with DevouredBy.
 	Devoured int
+
+	// TributePaid (#6251) is in the bool block at the end of Card.
 
 	// ModesChosen is "choose one that hasn't been chosen" with no
 	// duration (ADR 0097, #1749 — Silent Hallcreeper, Demonic Pact):
@@ -1782,6 +1797,11 @@ type Card struct {
 	// Added in S18 sub-PR 3.
 	MarkedLethalByDeathtouch bool
 
+	// MarkedBySource, the per-source split of DamageMarked (#6209), is a
+	// slice and lives above with AlsoBlocking rather than here in the
+	// bool block, where it would leave alignment padding
+	// (TestCardHasNoInteriorPadding).
+
 	// VariableToughness records that the printed toughness is not a
 	// number the engine can use — "*", "1+*", "?", or missing from a
 	// creature's record altogether — so Toughness is the importer's 0
@@ -2241,6 +2261,14 @@ type Card struct {
 	// PhaseInBarredFor is unused. The rest is the same bar: a prohibition,
 	// cleared for good once it stops holding (CR 611.2b).
 	PhaseInBarredWhileTapped bool
+
+	// TributePaid records that the opponent chosen for this permanent's
+	// tribute put the +1/+1 counters on it as it entered (CR 702.104a);
+	// "if tribute wasn't paid" (CR 702.104b) is its negation. Stamped at
+	// entry from ReplacementEvent.EntersTributePaid. Per instance,
+	// carried by the snapshot, cleared when the permanent leaves the
+	// battlefield (CR 400.7). Not a copiable value (CR 707.2).
+	TributePaid bool
 
 	// stackColored says stackColors is the spell's colour (#6088,
 	// spell_colors.go; documented beside stackColors, kept here for

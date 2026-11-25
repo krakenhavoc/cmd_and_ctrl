@@ -590,7 +590,9 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.ExtraRestrictions == b.ExtraRestrictions &&
 		a.ManaAbilityLifeTax == b.ManaAbilityLifeTax &&
 		a.CantHaveCounters == b.CantHaveCounters &&
+		a.CantHavePlusOneCounters == b.CantHavePlusOneCounters &&
 		a.CantBeBeamedUp == b.CantBeBeamedUp &&
+		a.FlagbearerTargetRule == b.FlagbearerTargetRule &&
 		a.AdditionalBlocks == b.AdditionalBlocks &&
 		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		a.DamageByToughness == b.DamageByToughness &&
@@ -604,6 +606,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.CantTransform == b.CantTransform &&
 		a.AttackBlockPowerFloor == b.AttackBlockPowerFloor &&
 		a.AttackBlockNeedsOtherPower == b.AttackBlockNeedsOtherPower &&
+		slices.Equal(a.PowerGatedGoads, b.PowerGatedGoads) &&
 		sameStringSlice(a.CantAttackWithoutAnyOf, b.CantAttackWithoutAnyOf) &&
 		slices.Equal(a.AttackHasteFor, b.AttackHasteFor) &&
 		sameStringSlice(a.Types, b.Types) &&

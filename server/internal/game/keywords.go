@@ -413,7 +413,8 @@ var canonicalKeywords = map[string]bool{
 	// to the other player (CR 702.22j-k). Every consumer reads the token
 	// off the layered ability list, so printed, imported and granted
 	// banding (Helm of Chatzuk) are the same. Not cumulative
-	// (CR 702.22m). "Bands with other" is not this token and stays out.
+	// (CR 702.22m). "Bands with other [quality]" is not this token: it
+	// is its own parameterised token, read by bands_with_other.go (#6142).
 	KeywordBanding: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
@@ -589,6 +590,21 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if g.scopedTargetingBarLocked(c, src.Controller) {
 		return false
 	}
+	// #6263: "can't be the targets of blue or black spells" -- a record
+	// that asks the source's colours, spells only (targeting_bar_colors.go).
+	if g.colorSpellTargetingBarLocked(c, src) {
+		return false
+	}
+	// #6196: "can't be the target of Aura spells", "of white spells or
+	// abilities from white sources", "of abilities from artifact
+	// sources", "of spells unless it attacked or blocked this turn" — a
+	// static on the permanent reading a QUALITY of the source, with
+	// protection's matcher and none of protection's other clauses
+	// (source_targeting_bar.go). Ahead of hexproof, as the other bars
+	// are: no hexproof waiver lifts it.
+	if _, barred := g.sourceTargetingBarLocked(c, src); barred {
+		return false
+	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
@@ -603,6 +619,11 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	// CR 702.16b. The pre-test is cheap and the snapshot is not, so
 	// a board with no protection on it pays one ability-list walk.
 	if HasProtection(c) && ProtectedFrom(c, src.Characteristics()) {
+		return false
+	}
+	// #6203: an Aura spell can't target a permanent it can't enchant
+	// ("can't be enchanted", "… by other Auras"; CR 303.4).
+	if src.IsSpell() && src.Object != nil && g.auraBarredFromHostLocked(src.Object, c, true) {
 		return false
 	}
 	return true

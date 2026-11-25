@@ -474,6 +474,9 @@ func Register(spec Spec) {
 		}
 	}
 	CheckSpellSpendOnly(spec)
+	// #6227: "You can't spend mana to cast this spell" needs something
+	// that is not mana to pay with.
+	CheckCantSpendMana(spec)
 	// ADR 0073 §7: a cast condition with no printed clause produces a
 	// refusal the client cannot explain, and a clause with no
 	// condition refuses nothing while claiming to. Same for a
@@ -497,6 +500,9 @@ func Register(spec Spec) {
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
 	// #3860: a target tax names what it charges, whom and for what.
 	checkTargetTaxes(spec.Name, spec.TargetTaxes)
+	// #6206: the spell's own per-target life surcharge, the same guard
+	// one slot over.
+	checkLifePerTarget(spec.Name, spec.LifePerTarget)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
@@ -552,6 +558,14 @@ func Register(spec Spec) {
 	// every cast of a card that declared any other shape, so say so at
 	// boot instead.
 	for i, m := range spec.SelfCostModifiers {
+		// #6206: a modifier aimed at one component of a cost ("Buyback
+		// costs cost {2} less") prices OTHER spells' costs from the
+		// battlefield, and the component pass never shows it a self
+		// modifier (activeCostModifiersLocked), so in this slot it would
+		// be dead text. It belongs in Spec.CostModifiers.
+		if m.PricesOptionalCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d (%q) prices the %q cost component — declare it in Spec.CostModifiers", spec.Name, i, m.Label, m.PricesOptionalCost))
+		}
 		if m.Kind == game.CostFloor {
 			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostFloor — a spell's own cost modifier increases or reduces", spec.Name, i))
 		}
@@ -564,6 +578,23 @@ func Register(spec Spec) {
 	for i, m := range spec.CostModifiers {
 		if m.Kind == game.CostZeroAlternative && (!m.Activations || m.Amount != nil) {
 			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) is a CostZeroAlternative without Activations or with an Amount — build it with PayZeroRatherThanThePowerUpCost", spec.Name, i, m.Label))
+		}
+	}
+	// #6206: a cost change aimed at one component of a cost is an
+	// increase or a reduction of that component's mana. A CostFloor or a
+	// zero alternative on a component is a shape no card prints and the
+	// pass has no meaning for, and the component pass prices casts, so a
+	// component modifier that also claimed activations or special
+	// actions would be gathered by nothing.
+	for i, m := range spec.CostModifiers {
+		if m.PricesOptionalCost == "" {
+			continue
+		}
+		if m.Kind != game.CostIncrease && m.Kind != game.CostReduction {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) prices the %q cost component and is neither an increase nor a reduction", spec.Name, i, m.Label, m.PricesOptionalCost))
+		}
+		if m.Activations || m.SpecialActions {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) prices the %q cost component of a CAST, so it cannot also price activations or special actions", spec.Name, i, m.Label, m.PricesOptionalCost))
 		}
 	}
 	for _, mods := range [][]game.CostModifier{spec.CostModifiers, spec.SelfCostModifiers} {
@@ -748,6 +779,11 @@ func Register(spec Spec) {
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
+		if ab.Cost.ManaFromExiledCard && (ab.Cost.ExileCards == nil || ab.Cost.ExileCards.N != 1 || ab.Cost.ExileCards.AnyNumber ||
+			ab.Cost.ExileCards.CountFromX || ab.Cost.ExileCards.CountOpponents || ab.Cost.ExileCards.Processes() || ab.Cost.ExileCards.ExilesSpell()) {
+			// #6270: "and pay its mana cost" reads the ONE card exiled.
+			panic(fmt.Sprintf("effects.Register: %q ability %d pays the mana cost of an exiled card without a one-card exile clause (#6270)", spec.Name, i))
+		}
 		CheckAbilityCostModifiers(spec.Name, i, ab)
 		// #4566: an either/or part of the cost (checkOrCost).
 		checkOrCost(spec.Name, i, ab.Cost)
@@ -902,7 +938,7 @@ func Register(spec Spec) {
 		// #4896: the mana payer solves its discard as the cheapest N,
 		// with no set rule, and no printed mana ability says "with
 		// different names".
-		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) || game.DiscardCostSameName(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
 				spec.Name, i))
 		}
@@ -963,6 +999,10 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	CheckSacrificeAllCost(spec)
+	// #6208: the three activation-cost variants — a shared-colour reveal,
+	// an ability's sacrifice-all clause, and the untap form turned over to
+	// an opponent's board.
+	CheckActivationCostVariants(spec)
 	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
@@ -2144,6 +2184,9 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 // card has one, and the walk that asks the opponent judges one clause
 // alone.
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
+	if c.ChosenByFirstTargetsController && (!c.ChosenByOpponent || i == 0) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen by the first target's controller but is not a later opponent's-choice clause — build it with OfTheFirstTargetsController after a clause of the controller's own (#6171)", name, i))
+	}
 	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
 	}
@@ -2902,6 +2945,12 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
 	}
+	if ec.TopOnly && (ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber || ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.Processes()) {
+		// #6194: "the top <kind> card of your graveyard" is a graveyard
+		// clause with a printed count, nothing else.
+		panic(fmt.Sprintf("effects.Register: %q %s exiles the top cards of a pile that is not the graveyard, or without a printed count (#6194)",
+			name, where))
+	}
 	if ec.ManaValueFromTargets {
 		// #5240: a floor read off a cast's targets exists on a spell's
 		// mandatory slot only (checkCastExileCardsClause).
@@ -3019,6 +3068,12 @@ func CheckAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		}
 		if m.SpecialActions {
 			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))
+		}
+		// #6206: an optional ADDITIONAL cost belongs to a cast (CR
+		// 601.2b), so the component pass never prices an activation, and
+		// an ability's own clause prices that ability's cost.
+		if m.PricesOptionalCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s prices the %q cost component — an optional additional cost belongs to a cast", name, where, m.PricesOptionalCost))
 		}
 		if m.ActiveWhen != (game.Designation{}) {
 			panic(fmt.Sprintf("effects.Register: %q %s declares a designation gate — gate the ability (ActivatedAbility.ActiveWhen) instead", name, where))

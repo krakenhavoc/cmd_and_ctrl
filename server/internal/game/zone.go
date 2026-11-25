@@ -262,6 +262,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	keepCounters := countersRemainOn(c.OracleID) && dst != nil &&
 		dst.Kind != ZoneHand && dst.Kind != ZoneLibrary
 	savedCounters := c.Counters
+	// #6245, CR 400.7: a creature type named as a spell was cast is the
+	// spell's, and the card that leaves the stack is a new object.
+	if src.Kind == ZoneStack {
+		c.NamedTribe = ""
+	}
 	// Cards leaving the battlefield lose their tapped state and
 	// battlefield-only position by convention; rules-level effects can
 	// re-tap if needed, and positions are re-stamped on re-entry.
@@ -352,6 +357,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.ChosenCard = ObjectRef{}
 		c.Notes = nil
 		c.Devoured = 0
+		c.TributePaid = false
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage

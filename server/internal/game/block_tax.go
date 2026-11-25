@@ -106,10 +106,31 @@ type BlockTax struct {
 	// Nil, or one returning "", is a tax of nothing.
 	ManaCost func(q BlockTaxQuery) string
 
+	// NonMana is the non-mana half of the clause FOR ONE blocking
+	// creature (#6190, CR 509.1d: "Costs may include paying mana,
+	// tapping permanents, sacrificing permanents, discarding cards, and
+	// so on") — Hollow Warrior's "can't ... block unless you tap an
+	// untapped creature you control not declared as an attacking or
+	// blocking creature this combat", in the vocabulary an ability's
+	// cost already uses (combat_cost.go). The zero value asks for
+	// nothing, which is every block tax before it.
+	//
+	// Plain data, not a func: AttackTax.NonMana's reason.
+	NonMana CombatCost
+
 	// ActiveWhen is the designation gate, evaluated in
 	// BlockTaxesForCard and nowhere else (AttackTax.ActiveWhen's
 	// reason). The zero value is "no gate".
 	ActiveWhen Designation
+}
+
+// BlockedBySelf is the AppliesTo for a tax a creature charges for its
+// OWN block — Hollow Warrior's "can't ... block unless you tap an
+// untapped creature you control" (#6190). A block tax is printed with
+// no "you" and so binds every blocking creature by default; this is the
+// predicate that narrows it to the permanent that prints it.
+func BlockedBySelf(q BlockTaxQuery) bool {
+	return q.Blocker.InstanceID == q.Source.InstanceID
 }
 
 // WhileSourceAttacking is the AppliesTo for "as long as this creature
@@ -169,10 +190,31 @@ type BlockTaxPrice struct {
 	// Lines is the per-source, per-blocker breakdown, in battlefield
 	// order of the blockers then of the sources.
 	Lines []BlockTaxLine
+
+	// NonMana is what the declaration owes in permanents (#6190): one
+	// line per (taxing permanent, blocking creature) whose clause asks
+	// for a sacrifice, a tap or a return. Paid from the permanents the
+	// defender names when they finish blocking, never chosen by the
+	// engine.
+	NonMana []CombatCostLine
 }
 
 // IsFree reports that the declaration costs nothing.
-func (p BlockTaxPrice) IsFree() bool { return p.Cost == "" }
+func (p BlockTaxPrice) IsFree() bool { return p.Cost == "" && len(p.NonMana) == 0 }
+
+// Describe is the price as a player reads it: "{1}{1}", "tapping an
+// untapped creature you control", or both. "" when free.
+func (p BlockTaxPrice) Describe() string {
+	nm := combatCostDescribe(p.NonMana)
+	switch {
+	case nm == "":
+		return p.Cost
+	case p.Cost == "":
+		return nm
+	default:
+		return p.Cost + " and " + nm
+	}
+}
 
 // PriceBlockDeclaration prices `seat`'s staged blocks — what finishing
 // the declaration would charge right now. Takes the read lock.
@@ -245,6 +287,15 @@ func (g *Game) priceBlockersLocked(blockers []*Card) BlockTaxPrice {
 				if t.AppliesTo != nil && !t.AppliesTo(q) {
 					continue
 				}
+				if !t.NonMana.Empty() {
+					out.NonMana = append(out.NonMana, CombatCostLine{
+						Source:   src.InstanceID,
+						Label:    t.NonMana.Label,
+						Payer:    blk.Controller,
+						Creature: blk.InstanceID,
+						Cost:     t.NonMana,
+					})
+				}
 				if t.ManaCost == nil {
 					continue
 				}
@@ -297,6 +348,12 @@ type DeclareBlockersParams struct {
 	// PhyrexianLife is how many Phyrexian symbols in the tax are paid
 	// with life (CR 107.4f).
 	PhyrexianLife int
+
+	// Pay is the permanents the defender names for a NON-MANA cost to
+	// block (#6190, CR 509.1d): the creature Hollow Warrior taps. Empty
+	// at every table with no such cost on it, and ids sent for a
+	// declaration that owes none are refused rather than ignored.
+	Pay CombatCostPayment
 }
 
 // payBlockTaxLocked charges `seat`'s staged blocks their CR 509.1d
@@ -319,6 +376,14 @@ func (g *Game) payBlockTaxLocked(seat uuid.UUID, params DeclareBlockersParams) e
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// #6190: the permanents first, before any mana is spent, so a
+	// refused completion spends nothing.
+	if err := g.combatCostRefusalLocked(seat, price.NonMana, params.Pay); err != nil {
+		return err
+	}
+	if price.Cost == "" {
+		return g.payCombatCostsLocked(seat, price.NonMana, params.Pay)
+	}
 	source, label := price.Lines[0].Source, price.Lines[0].Label
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
 	for _, id := range params.LockedSources {
@@ -335,7 +400,9 @@ func (g *Game) payBlockTaxLocked(seat uuid.UUID, params DeclareBlockersParams) e
 	}, ManaSpendContext{}, excluded); err != nil {
 		return &BlockTaxUnpaidError{Cost: price.Cost, Err: err}
 	}
-	return nil
+	// Last, for payAttackTaxLocked's reason: a sacrifice is a
+	// battlefield exit and the mana is already paid.
+	return g.payCombatCostsLocked(seat, price.NonMana, params.Pay)
 }
 
 // settleBlockTaxForcedLocked is completion point 4's version: the step

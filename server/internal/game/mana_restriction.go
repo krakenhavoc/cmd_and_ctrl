@@ -83,6 +83,13 @@ const (
 	// restriction that does (Karfell Harbinger, S82 OLD batch 071; Niko
 	// Defies Destiny, batch 060).
 	SpendPurposeForetell ManaSpendPurpose = "foretell"
+
+	// SpendPurposeCumulativeUpkeep is paying a cumulative upkeep's cost
+	// (CR 702.24a, #6189): Snowfall's and Adarkar Unicorn's "Spend this
+	// mana only to pay cumulative upkeep costs". It is the one
+	// pay-unless payment with a purpose of its own; every other one is
+	// SpendPurposeUnknown, which no restricted mana may pay (#352).
+	SpendPurposeCumulativeUpkeep ManaSpendPurpose = "cumulative_upkeep"
 )
 
 // Restriction tag constants and constructors. Card files build tags
@@ -137,6 +144,10 @@ const (
 	// this mana only to foretell cards or cast spells that have foretell"
 	// (S82 OLD batch 060), combined with ManaRestrictSpellForetell.
 	ManaRestrictForetell = "purpose:foretell"
+	// ManaRestrictCumulativeUpkeep permits the token only on a
+	// cumulative upkeep's payment (CR 702.24a, CR 106.6, #6189):
+	// Snowfall's "Spend this mana only to pay cumulative upkeep costs".
+	ManaRestrictCumulativeUpkeep = "purpose:cumulative_upkeep"
 	// ManaRestrictColorless permits the token only when the object
 	// being paid for is colorless (CR 105.2c) — Shrine of the
 	// Forsaken Gods, Eldrazi Temple.
@@ -211,6 +222,17 @@ const (
 	// that does not say whether its cost has {X} refuses it — weaker
 	// than printed, never stronger.
 	ManaRestrictXCost = "cost:has-x"
+	// ManaRestrictColorlessCost permits the token only on a cost that
+	// contains {C} (#6259, CR 106.6): Cultivator Drone's "…or pay a cost
+	// that contains {C}". The whole cost, as ManaRestrictXCost reads it:
+	// a spell whose cost being paid prints {C}, or an activated ability
+	// whose mana does (ManaSpendContext.CostHasC). The mana may then pay
+	// any part of that cost, generic included. A payment that does not
+	// say whether its cost has {C} refuses it — weaker than printed,
+	// never stronger. Usually inside ManaRestrictAnyOf beside "cast a
+	// colorless spell" and "activate an ability of a colorless
+	// permanent".
+	ManaRestrictColorlessCost = "cost:has-c"
 	// ManaRestrictSpellXCost permits the token only on a SPELL that has
 	// {X} in its printed mana cost (CR 107.3, CR 106.6): Troyan, Gutsy
 	// Explorer's "spells with {X} in their mana costs". Unlike
@@ -482,6 +504,25 @@ type ManaSpendContext struct {
 	// other payment, which means no source restriction.
 	SourceOnly ManaSourceKinds
 
+	// NoMana is the spell's own "You can't spend mana to cast this
+	// spell" (Hogaak, Arisen Necropolis, #6227): when set, NO mana may
+	// pay for it, whatever its colour, source or restrictions, so the
+	// mana half of the total cost has to be covered by the convoke taps
+	// and the delve exiles the announcement makes (CR 702.51a, 702.66a)
+	// and the cast is refused for insufficient mana when they leave
+	// anything owed (CR 601.2h).
+	//
+	// SourceOnly's sibling, and here for the same reason: it is a
+	// property of the SPELL rather than of any mana, and this context is
+	// what every cast payment, the pool solver, the auto-tapper's pool
+	// top-up, internal/legal's probe and the auto-tap preview already
+	// thread through, so one field makes all of them agree. Set by
+	// ManaSpendForCast from the card's catalog declaration
+	// (CantSpendManaFor); false for every other payment, which means no
+	// such restriction. Additive: a stored context from before it
+	// (AssistPrompt.Spend) reads as false.
+	NoMana bool
+
 	// CastFrom is the zone a spell is being cast FROM (CR 601.2a moves
 	// it to the stack first, so the zone has to be carried): what
 	// ManaRestrictNotFromHand reads (#2811). Empty when the caller does
@@ -527,6 +568,11 @@ type ManaSpendContext struct {
 	// from the {X} symbols of the row's mana (AbilityCost.XSlots), beside PowerUp. False for
 	// every other payment.
 	CostHasX bool
+
+	// CostHasC is CostHasX for a {C} symbol (CostStringHasColorless):
+	// what ManaRestrictColorlessCost reads (#6259). Set at the same sites
+	// from the same cost. False for every other payment.
+	CostHasC bool
 
 	// ManaCostHasX is set when the spell being cast has {X} in its
 	// printed mana cost, whatever cost is being paid for it: what
@@ -688,6 +734,7 @@ func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 		}
 		// #4834: the cost paid is the alternative one.
 		ctx.CostHasX = strings.Contains(alt.ManaCost, "{X}")
+		ctx.CostHasC = CostStringHasColorless(alt.ManaCost)
 		// #5680: and it is this one.
 		ctx.AltCost = alt.Key
 	}
@@ -792,7 +839,9 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		HasDevoid:        c.printsDevoid(),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
+		NoMana:           CantSpendManaFor(c),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
+		CostHasC:         CostStringHasColorless(manaCostForValue(c)),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
 		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
@@ -809,7 +858,16 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 // restriction. A token with no recorded source kinds (mana from a
 // spell, a token minted before kinds were recorded) can never satisfy
 // a source restriction — the weaker direction.
+//
+// #6227: "You can't spend mana to cast this spell" is the strongest
+// form of the same question and is asked first, because it is about no
+// property of the mana at all — every token is refused, so a cost with
+// anything left in it after the convoke taps and the delve exiles is
+// unpayable (CR 601.2h).
 func (ctx ManaSpendContext) allowsToken(tok ManaToken) bool {
+	if ctx.NoMana {
+		return false
+	}
 	if ctx.SourceOnly != 0 && !tok.SourceKinds.HasAny(ctx.SourceOnly) {
 		return false
 	}
@@ -880,6 +938,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.ClassLevel
 	case ManaRestrictXCost:
 		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
+	case ManaRestrictColorlessCost:
+		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasC
 	case ManaRestrictYourCommander:
 		return ctx.Purpose == SpendPurposeCast && ctx.YourCommander
 	case ManaRestrictSpellXCost:
@@ -902,6 +962,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeTurnFaceUp
 	case ManaRestrictForetell:
 		return ctx.Purpose == SpendPurposeForetell
+	case ManaRestrictCumulativeUpkeep:
+		return ctx.Purpose == SpendPurposeCumulativeUpkeep
 	case ManaRestrictSpellForetell:
 		return ctx.Purpose == SpendPurposeCast && ctx.ForetellSpell
 	case ManaRestrictNoGeneric:
@@ -1182,4 +1244,12 @@ func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []s
 		CastFrom:         from,
 	}
 	return ctx.withManaValueOf(manaCost).WithX(x).allows(restrictions)
+}
+
+// CostStringHasColorless reports whether a printed cost string contains
+// a colourless mana symbol, {C} or a colourless hybrid ({C/W}), which
+// ManaRestrictColorlessCost asks of the cost being paid (#6259). A snow
+// {S} is not one (CR 107.4h).
+func CostStringHasColorless(cost string) bool {
+	return strings.Contains(cost, "{C}") || strings.Contains(cost, "{C/")
 }

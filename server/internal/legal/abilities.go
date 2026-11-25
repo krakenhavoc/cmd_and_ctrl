@@ -245,7 +245,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
 	defer func() {
-		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX = game.AbilityOrigin{}, false, false, false, false
+		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX, e.rowCostHasC = game.AbilityOrigin{}, false, false, false, false, false
 	}()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
@@ -268,6 +268,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// could blight, since that creature is the activation's price.
 	for _, er := range e.expandBlightPicks(e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities))) {
 		row, ab, costBranch, unattach, blight := er.row, er.ab, er.branch, er.unattach, er.blight
+		// #6148, CR 606.5: the loyalty cost as the engine charges it,
+		// combined with every addition on the board (Carth the Lion).
+		ab.Cost = g.LoyaltyAdjustedCostForEffect(e.seat, ab.Cost)
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -278,6 +281,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		e.rowEquip = ab.Equip
 		e.rowClassLevel = ab.ClassLevel
 		e.rowCostHasX = ab.Cost.XSlots() > 0
+		e.rowCostHasC = game.CostStringHasColorless(ab.Cost.Mana)
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and
@@ -295,7 +299,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// #3275, CR 118.3: "Sacrifice this" can't be paid by a
 		// permanent that can't be sacrificed (validateSacrificeCostLocked
 		// refuses it, #544).
-		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.SacrificeCostBarredForEffect(source.InstanceID) {
 			continue
 		}
 		// #1208: ONE identity for both reads below, built the way
@@ -468,6 +472,18 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// its early return run only when nothing reads targets, and
 		// otherwise each announcement below is priced on its own —
 		// ADR 0048 addendum §14's rule for a cast, one path over.
+		// #6270: "Exile a creature card from your graveyard and pay its
+		// mana cost" has no price until the card is named, so the card
+		// is pinned first — the first one the seat can pay for, in the
+		// order the exile payment would take them — and the ability is
+		// priced with it, as ActivateCatalogAbility prices it.
+		var pinnedExile []uuid.UUID
+		if ab.Cost.ManaFromExiledCard {
+			var ok bool
+			if ab, pinnedExile, ok = e.exiledCardCostPick(source, zone, ab); !ok {
+				continue
+			}
+		}
 		var basePay abilityManaPayment
 		perTarget := false
 		// #5382: an activation cost increase (Skyseer's Chariot) can
@@ -543,7 +559,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// #1213: a VARIABLE count is an announcement, so the
 			// enumerator offers a bounded ladder of counts rather
 			// than one payment — see variableSacrificePayments.
-			if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
+			if ab.Cost.SacrificeAll {
+				// #6208: "Sacrifice all lands you control" has ONE payment,
+				// the engine's own set (empty included), named on the move so
+				// a policy prices what the activation gives up.
+				sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, ab.Cost.SacrificeOther)}
+			} else if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
 				sacrificeSets = e.variableSacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
 			} else {
 				sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
@@ -669,6 +690,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if discardIDs == nil {
 					continue
 				}
+			} else if dc.SameName {
+				// #6264: "with the same name" — the cheapest N that share
+				// a name, or no move when no name is held N times.
+				discardIDs = g.DiscardSameNamePaymentForEffect(e.seat, dc, e.cheapestFuelFirst(opts))
+				if discardIDs == nil {
+					continue
+				}
 			} else {
 				discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
 			}
@@ -705,8 +733,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				for _, s := range revealSets {
 					revealMaxX = max(revealMaxX, len(s))
 				}
-			} else if len(pool) >= rc.N {
-				revealSets = [][]uuid.UUID{pool[:rc.N:rc.N]}
+			} else if pay := g.RevealCardsPaymentForEffect(e.seat, source.InstanceID, rc); len(pay) == rc.N {
+				// #6208: the engine's own one payment, not the first N of
+				// the walk — a "that share a color" clause's first two
+				// candidates need not share one with each other.
+				revealSets = [][]uuid.UUID{pay}
 			} else {
 				revealSets = nil
 			}
@@ -725,6 +756,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		exileIDs, ok := e.exileCardsPayment(ab.Cost.ExileCards, source.InstanceID, discardIDs)
 		if !ok {
 			continue
+		}
+		if pinnedExile != nil {
+			// #6270: the card the price was read off.
+			exileIDs = pinnedExile
 		}
 		// ADR 0109 §7 (#1902): "Put a card from your hand on top of
 		// your library", solved as the discard is — ONE payment, the
@@ -2557,7 +2592,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// #3275, CR 118.3: a Treasure that can't be sacrificed can't
 		// pay its own sacrifice (validateSacrificeCostLocked).
-		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.SacrificeCostBarredForEffect(source.InstanceID) {
 			continue
 		}
 		// ADR 0155 Decision 7: the lent once-each-turn row, as
@@ -2599,7 +2634,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// CR 119.4 and CR 119.8, the same predicate one path
 		// over (#544, #1200).
-		if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
+		if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost) {
 			continue
 		}
 		// ADR 0129 §5, CR 118.3: the energy component, through the
@@ -2656,7 +2691,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				found := false
 				for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
 					reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, manaSpend, n)
-					if !g.CanPayLifeLocked(e.p, ab.LifeCost+life) {
+					if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost+life) {
 						break
 					}
 					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, 0, manaSpend, sourceOnly) {
@@ -2995,4 +3030,22 @@ func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, t
 		return nil, false
 	}
 	return out, true
+}
+
+// exiledCardCostPick is #6270's pin: the first card of the exile
+// component's candidates (cheapest fuel first, as exileCardsPayment
+// takes them) whose mana cost the seat can pay, with `ab` priced off it
+// (game.AbilityWithExiledCardCostForEffect, the activation's own
+// pricer). ok is false when no candidate is affordable.
+func (e *enumerator) exiledCardCostPick(source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape) (game.ActivatedAbilityShape, []uuid.UUID, bool) {
+	for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.ExileCards)) {
+		priced := e.g.AbilityWithExiledCardCostForEffect(e.seat, ab, []uuid.UUID{id})
+		if priced.Cost.Mana == "" {
+			return priced, []uuid.UUID{id}, true
+		}
+		if _, ok := e.abilityManaPayment(source, zone, priced, nil); ok {
+			return priced, []uuid.UUID{id}, true
+		}
+	}
+	return ab, nil, false
 }

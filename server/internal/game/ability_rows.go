@@ -269,6 +269,9 @@ var staticRowSlots = []staticRowSlot{
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},
+	// #6209: Ogre Enforcer's clause is a static of the creature itself,
+	// and its own wording rides the slot.
+	{field: "SingleSourceLethalOnly", fallback: "Can't be destroyed by lethal damage from two sources", ownLabel: true},
 	{field: "ExertOnAttack", fallback: "You may exert this creature as it attacks."},
 	{field: "HexproofBypasses", label: hexproofBypassRows},
 	{field: "WardSuppressions", fallback: "Stops ward from triggering"},
@@ -279,6 +282,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CounterRemovalLocks", fallback: "Counters can't be removed", ownLabel: true},
 	{field: "UntapCaps", fallback: "Limits untapping", ownLabel: true},
 	{field: "UntapOptOuts", fallback: "May choose not to untap", ownLabel: true},
+	{field: "UntapTypeChoices", fallback: "Untap only a chosen card type", ownLabel: true},
+	{field: "TurnSkipOffers", fallback: "May skip your turn", ownLabel: true},
 	{field: "DrawStep", fallback: "Extra draw", ownLabel: true},
 	{field: "CastRestrictions", fallback: "Casting restriction", ownLabel: true},
 	{field: "LandPlayRestrictions", fallback: "Land-play restriction", ownLabel: true},
@@ -328,6 +333,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 	{field: "HandsRevealed", label: handsRevealedRows},
+	{field: "RevealsChosenPlayersDraws", label: revealsChosenPlayersDrawsRows},
 	{field: "AttackOnlyNearestOpponentInChosenDirection", label: boolRow("Each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent.")},
 	{field: "LooksAtFaceDownCreatures", label: boolRow("You may look at face-down creatures your opponents control any time.")},
 }
@@ -507,6 +513,14 @@ func handsRevealedRows(v reflect.Value) []string {
 		return []string{"Your opponents play with their hands revealed."}
 	case HandRevealEachPlayer:
 		return []string{"Players play with their hands revealed."}
+	}
+	return nil
+}
+
+// revealsChosenPlayersDrawsRows is Booby Trap's static (#6238).
+func revealsChosenPlayersDrawsRows(v reflect.Value) []string {
+	if on, _ := v.Interface().(bool); on {
+		return []string{"The chosen player reveals each card they draw."}
 	}
 	return nil
 }

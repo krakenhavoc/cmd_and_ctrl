@@ -265,6 +265,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	PrintedS82GapB118GwaihirBird,
 	// Wake the Dragon's Dragon (S82 GAP batch 120, #5948).
 	PrintedS82GapB120Dragon,
+	// Vraska the Unseen's Assassin (S82 OLD batch 153, #5517).
+	PrintedOldB153Assassin,
 
 	// Mole Man, Moloid Master's Moloid (#4455).
 	printedMshB6MoloidToken,

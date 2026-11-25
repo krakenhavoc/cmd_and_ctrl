@@ -31,12 +31,12 @@ func naturesResurgenceDraws(_ *game.StackItem, ctx *effects.Context) error {
 	n := len(g.Seats)
 	owed := make([]int, n)
 	for i := 0; i < n; i++ {
-		if p := g.Seats[(g.Turn.ActiveSeat+i)%n]; p != nil && !p.Eliminated {
+		if p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]; p != nil && !p.Eliminated {
 			owed[i] = effects.B11CreatureCardsInGraveyard(g, p.ID)
 		}
 	}
 	for i := 0; i < n; i++ {
-		if p := g.Seats[(g.Turn.ActiveSeat+i)%n]; p != nil && !p.Eliminated {
+		if p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]; p != nil && !p.Eliminated {
 			if err := (effects.DrawCards{Player: p.ID, N: owed[i]}).Apply(ctx); err != nil {
 				return err
 			}

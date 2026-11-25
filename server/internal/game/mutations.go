@@ -208,6 +208,8 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 		OldZone: ZoneLibrary,
 		NewZone: ZoneHand,
 	})
+	// #6238: "the chosen player reveals each card they draw".
+	g.revealDrawnCardLocked(playerID, c.InstanceID)
 	return nil
 }
 
@@ -376,6 +378,13 @@ type CastSpellParams struct {
 	// Added in ADR 0089 (#1267).
 	GiftOpponent uuid.UUID
 
+	// AltCostOpponent is the opponent an alternative cost's "have an
+	// opponent gain N life" names (#6256, Invigorate). Required exactly
+	// when the claimed offer has that component, and rejected, not
+	// ignored, when it does not. Must be an opponent who can gain life
+	// (game.SpliceOpponentsLocked, CR 614.17b).
+	AltCostOpponent uuid.UUID
+
 	// TapIDs names the untapped permanents the caster is tapping to
 	// help pay for the spell — convoke's "your creatures can help
 	// cast this spell", waterbend's "you can tap your artifacts and
@@ -456,6 +465,13 @@ type CastSpellParams struct {
 	// pays no such cost. Lands on StackItem.Paid.BeholdType. On the wire
 	// as `behold_type`.
 	BeholdType string
+	// ChosenCreatureType is the creature type the caster names for a
+	// spell that chooses one as it is cast (#6245, CR 601.2c: Selective
+	// Snare's "of the creature type of your choice"), in any spelling
+	// CanonicalCreatureType accepts. Required on such a spell, refused on
+	// any other. Stamped on the spell as Card.NamedTribe. On the wire as
+	// `chosen_creature_type`.
+	ChosenCreatureType string
 
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
@@ -807,6 +823,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if !found {
 		return ErrCardNotFound
 	}
+	// #6245, CR 601.2c: a creature type named as the spell is cast is
+	// the spell's, on the copy every announce gate below judges.
+	castType, err := castCreatureTypeLocked(card, params.ChosenCreatureType)
+	if err != nil {
+		return err
+	}
+	if castType != "" {
+		card.NamedTribe = castType
+	}
 	// #1474: a card an EFFECT has paused on its way out cannot be
 	// cast or played. CR 601.2a moves the spell before any cost is
 	// paid, so it is in none of the cost lists the gate is asked about
@@ -1082,6 +1107,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// pitched or bounced to pay it. Validated here, next to the claim
 	// it belongs to; paid further down with the spell already on the
 	// stack, so a Blood Artist watching the pitch triggers above it.
+	// #6256: the opponent half of the claim ("have an opponent gain 3
+	// life"), validated beside the rest of the offer's payment.
+	if err := g.validateAltCostOpponentLocked(playerID, alt, params.AltCostOpponent); err != nil {
+		slog.Warn("cast_spell rejected: bad alternative cost opponent",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"alternative_cost", params.AlternativeCost,
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost payment",
 			"card_name", card.Name,
@@ -1291,7 +1327,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the validator, the auto-tapper's exclusions, the CR 903.9 walk and
 	// the payment all see the one set the engine fixed.
 	if addCost != nil && addCost.SacrificeAll {
-		ids, err := g.sacrificeAllPaymentLocked(playerID, addCost, params.SacrificeIDs)
+		ids, err := g.sacrificeAllPaymentLocked(playerID, addCost.Sacrifice, params.SacrificeIDs)
 		if err != nil {
 			slog.Warn("cast_spell rejected: sacrifice_ids are not every permanent a sacrifice-all cost takes",
 				"card_name", card.Name,
@@ -1517,6 +1553,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"x_value", params.XValue,
 			"err", err,
 		)
+		return err
+	}
+	// #6236, CR 601.2c: a Flagbearer an opponent's rule says to choose.
+	g.RecomputeLayersIfStaleLocked()
+	if err := g.checkFlagbearerTargetsLocked(castSrc, oppTargets.check, params.Targets); err != nil {
 		return err
 	}
 	// ADR 0202, CR 702.47d: each spliced text's targets, against its own
@@ -2269,6 +2310,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// ADR 0141, CR 702.103b: and a bestowed spell is an Aura
 			// spell on the stack. MoveCard cleared the flag (CR 400.7).
 			g.Stack.Cards[i].Bestowed = card.Bestowed
+			// #6245: and the creature type named as it was cast.
+			if ChoosesCreatureTypeAsCast(card) {
+				g.Stack.Cards[i].NamedTribe = card.NamedTribe
+			}
 		}
 	}
 	if faceDown != FaceDownNone {
@@ -2550,7 +2595,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			item.Paid.ReturnedAttacking = g.sneakDefenderLocked(params.AltCostIDs[0])
 		}
 	}
-	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
+	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.AltCostOpponent, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -2755,6 +2800,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasSubtype(ch, "Dragon") {
 				tally.DragonSpells++
 			}
+			// Kadena, Slinking Sorcerer's "first face-down creature spell".
+			if sc.FaceDown && characteristicHasType(ch, "Creature") {
+				tally.FaceDownCreatureSpells++
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
 				tally.InstantSorceryVillain++
@@ -2913,6 +2962,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// after the mana it granted has paid for it.
 	if src.Kind == ZoneExile {
 		g.endCardCastDurationsLocked(card)
+	}
+	// #6229: "until a player casts a creature spell" ends with any
+	// creature spell's cast (Soul Sculptor).
+	if spell, ok := g.stackCardLocked(cardID); ok && spell.IsCreature() {
+		g.endCreatureSpellCastDurationsLocked()
 	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
@@ -4057,7 +4111,11 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	}
 	// ADR 0150 §4: what an assist helper pays comes off the generic the
 	// caster owes. Only the parked cast's re-run carries an answer.
-	return params.assistPaid.lessFrom(cost, params.XValue), nil
+	cost = params.assistPaid.lessFrom(cost, params.XValue)
+	if err := cantSpendManaToCastLocked(card, cost, params.XValue); err != nil {
+		return ParsedCost{}, err
+	}
+	return cost, nil
 }
 
 // costAfterModifiersLocked is effectiveCostLocked's tail: the board's
@@ -4261,6 +4319,14 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
+	// #6202, CR 609.4b: North Star's "you may spend mana as though it
+	// were mana of any type to pay that spell's mana cost" widens the
+	// MANA COST alone, so it is applied here, before the commander tax
+	// and the additional costs below join it, and only to a cast paying
+	// that mana cost (no alternative cost, no permission's own price).
+	if alt == nil && chosen.Paid == chosen.Printed && g.manaCostAnyTypePromiseLocked(p.ID, card) {
+		cost = asAnyTypeCost(cost)
+	}
 	// #6151: a commander whose tax is paid in life adds no mana here
 	// (commanderTaxLocked); CastSpell charges the life.
 	taxMana, _ := commanderTaxLocked(p, card, params.FromZone)
@@ -4285,7 +4351,17 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if berr != nil {
 		mandatory = nil
 	}
-	cost, err = AdditionalCostMana(cost, mandatory, g.OptionalCostsForCastLocked(p.ID, card), params.OptionalCosts)
+	optional := g.OptionalCostsForCastLocked(p.ID, card)
+	// #6206, CR 118.7 / 118.8d: a cost change aimed at ONE component of
+	// the cost — Memory Crystal's "Buyback costs cost {2} less" — prices
+	// that component on its own, because once the component's mana has
+	// joined the total below there is no telling it from the spell's own
+	// (see component_cost_modifier.go). Nil for nearly every cast.
+	priced, err := g.pricedComponentsLocked(p, card, params, mandatory, optional)
+	if err != nil {
+		return ParsedCost{}, chosen, err
+	}
+	cost, err = AdditionalCostMana(cost, mandatory, optional, params.OptionalCosts, priced)
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
@@ -5978,7 +6054,13 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 					// The damage stays marked either way — see
 					// indestructible.go.
 					indestructible := IsIndestructible(&c)
-					if c.DamageMarked >= c.LethalDamageThreshold() && !indestructible {
+					// #6209: Ogre Enforcer's "unless lethal damage
+					// dealt by a single source is marked on it" is the
+					// one clause that reads WHO marked the damage
+					// rather than how much is marked
+					// (single_source_lethal.go); every other creature
+					// reads CR 704.5g's plain sum.
+					if lethalDamageDestroysLocked(&c) && !indestructible {
 						doom = true
 					}
 					// S18 sub-PR 3: CR 702.2c — a creature hit by any
@@ -6458,12 +6540,17 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	// holds priority; the departed seat is no longer waited for.
 	g.restartPassSuccessionLocked()
 	g.cleanupStackForEliminatedLocked(p.ID)
+	// #6164: Amount is the player's life total as the turn began, which
+	// "that player's life total as the turn began" (Sengir, the Dark
+	// Baron) reads off the event its trigger captured.
+	asBegan, _ := g.LifeAsTurnBeganForEffect(p.ID)
 	g.EmitEvent(Event{
 		Kind:   EventPlayerEliminated,
 		Actor:  p.ID,
 		Source: source,
 		CardID: source,
 		Label:  string(cause),
+		Amount: asBegan,
 	})
 	// #769 / CR 800.4a: everything they own leaves the game, their
 	// control effects end, and anything still controlled by them is
@@ -7411,7 +7498,8 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
-	// APNAP: active player first, then clockwise. Seq increases in
+	// APNAP: active player first, then in turn order (#6223: clockwise
+	// unless the turn order has been reversed). Seq increases in
 	// drain order, so the active player's triggers (placed first)
 	// resolve last — CR 603.3b stacking order. One scan mints the
 	// starting Seq; incrementing locally keeps the drain O(triggers)
@@ -7419,7 +7507,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	seq := g.nextStackSeqLocked()
 	var announce []*StackItem
 	for offset := 0; offset < numSeats; offset++ {
-		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		seat := g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, offset)
 		for _, t := range bySeat[seat] {
 			t.Seq = seq
 			seq++
@@ -7455,7 +7543,7 @@ func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeat
 		return
 	}
 	for offset := 0; offset < numSeats; offset++ {
-		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		seat := g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, offset)
 		for _, t := range bySeat[seat] {
 			if g.StackMeta[t.ID] != t {
 				// Gone already: an earlier placement's event set off
@@ -8540,7 +8628,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err != nil {
 		return err
 	}
-	if !g.CanPayLifeLocked(p, ab.LifeCost) {
+	if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) {
 		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. CR 119.8: a player whose life total can't change
@@ -8617,7 +8705,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Sentinel) has already spent the source, so naming it here
 	// would pay one of the N with a permanent that is tapping
 	// anyway.
-	if ab.TapCost && !ab.TapOthers.Empty() {
+	//
+	// #6208: the untap form is the one exception, as it is on the CR 602
+	// path. On a mana ability the only legal untap clause is the one that
+	// names an OPPONENT's permanent (effects.Register), so the source can
+	// never be among the candidates and the validator above has already
+	// refused it by its controller; this guard would only ever refuse it
+	// with the wrong reason.
+	if ab.TapCost && !ab.TapOthers.Empty() && !TapOthersUntaps(ab.TapOthers) {
 		for _, id := range params.TapIDs {
 			if id == cardID {
 				return ErrInvalidParam
@@ -8694,7 +8789,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if serr != nil {
 			return serr
 		}
-		if manaLife > 0 && !g.CanPayLifeLocked(p, manaLife+ab.LifeCost) {
+		if manaLife > 0 && !g.CanPayLifeForManaAbilityLocked(p, manaLife+ab.LifeCost) {
 			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
 		}
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
@@ -8879,7 +8974,20 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// #5447: what was tapped goes on the record, so an output that counts
 	// it ("Tap X untapped tokens you control: Add X mana", Hazel of the
 	// Rootbloom) reads the number the engine tapped.
-	paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	//
+	// #6208: and the UNTAP form (TapOthersCost.Untap) pays here too —
+	// Benthic Explorers' "Untap a tapped land an opponent controls" —
+	// through the same payer the CR 602 path uses, so a stun counter
+	// comes off instead and the cost is still paid (CR 122.1d,
+	// CR 118.11). What it untapped goes on UntappedOthers, read before
+	// the untap, because "one mana of any type THAT LAND could produce"
+	// is computed from the object a moment later (CR 400.7j).
+	if TapOthersUntaps(ab.TapOthers) {
+		paid.UntappedOthers = g.untappedRefsLocked(params.TapIDs)
+		g.payUntapOthersCostLocked(params.TapIDs, uuid.Nil)
+	} else {
+		paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	}
 	// Life after tap, before sacrifice — the same component order
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
@@ -9733,6 +9841,26 @@ func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilit
 		return PaidCost{}
 	}
 	paid := g.maxCounterPaymentLocked(playerID, sourceID, ab.RemoveCounters)
+	// #6208: the UNTAP form names the permanents whose own output the
+	// ability reads — Benthic Explorers' "one mana of any type THAT LAND
+	// could produce". Without them here, every reader that asks what the
+	// ability would add (the view's color_options, ManaAbilityAddsNoMana,
+	// CR 106.7's "could produce") would see an unpaid cost and answer "no
+	// mana", and the ability would never be offered. CR 106.7 says to
+	// ignore whether the cost could be paid, so the clause's first Count
+	// candidates stand in for the payment, exactly as the counter
+	// ceiling above stands in for a variable removal.
+	if TapOthersUntaps(ab.TapOthers) {
+		for _, id := range g.TapOthersOptionsForEffect(playerID, sourceID, ab.TapOthers) {
+			if len(paid.UntappedOthers) >= ab.TapOthers.Count {
+				break
+			}
+			if c := findBattlefieldCard(g, id); c != nil {
+				paid.UntappedOthers = append(paid.UntappedOthers, ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch})
+			}
+		}
+		return paid
+	}
 	if !TapOthersAnyNumber(ab.TapOthers) {
 		return paid
 	}
@@ -10303,7 +10431,7 @@ func (g *Game) passPriorityLocked() error {
 	if !g.allPassedInSuccessionLocked() {
 		next := g.Turn.PriorityHolder
 		for i := 0; i < numSeats; i++ {
-			next = (next + 1) % numSeats
+			next = g.SeatInTurnOrderForEffect(next, 1)
 			if s := g.Seats[next]; s != nil && !s.Eliminated {
 				g.Turn.PriorityHolder = next
 				return nil
@@ -12065,8 +12193,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByAction)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil
@@ -12208,7 +12335,7 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			}
 			// #4692: and one can't be put on a permanent that can't have
 			// counters put on it (cant_have_counters.go).
-			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCountersLocked(&z.Cards[i]) {
+			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCounterKindLocked(&z.Cards[i], name) {
 				return nil
 			}
 			hadCounters := len(z.Cards[i].Counters) > 0

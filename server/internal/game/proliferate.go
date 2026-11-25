@@ -86,6 +86,10 @@ func (g *Game) ProliferateCandidatesForEffect() (cards []uuid.UUID, players []uu
 		if p == nil || p.Eliminated || len(sortedCounterKinds(p.Counters)) == 0 {
 			continue
 		}
+		// #6241: a player who can't get counters would get nothing.
+		if g.playerCantGetCountersLocked(p.ID) {
+			continue
+		}
 		players = append(players, p.ID)
 	}
 	return cards, players

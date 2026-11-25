@@ -251,6 +251,13 @@ type EntryCardChoice struct {
 	// rebuild. Only meaningful with AnyNumber.
 	Devour int
 
+	// DevourX is "Devour X, where X is the number of creatures devoured
+	// this way" (Thromok the Insatiable, #6267): N is the number of
+	// creatures really sacrificed, so k creatures buy k*k +1/+1 counters
+	// (CR 702.82a). Data for Devour's reason; Devour is ignored beside
+	// it. Only meaningful with AnyNumber.
+	DevourX bool
+
 	// DevourDraw and DevourLife are what a creature's own "for each
 	// creature it devoured" ability pays per sacrificed creature
 	// (Skullmulcher draws one, Marrow Chomper gains two). They do
@@ -865,8 +872,18 @@ func (g *Game) runEntryThenLocked(spec *EntryCardChoice, ev *ReplacementEvent, m
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 		}
 	}
-	if spec.Devour > 0 && len(moved) > 0 {
+	if n := spec.devourPer(len(moved)); n > 0 && len(moved) > 0 {
 		ev.EntersDevoured += len(moved)
-		ev.AddCounterAtETB(CounterPlusOne, spec.Devour*len(moved))
+		ev.AddCounterAtETB(CounterPlusOne, n*len(moved))
 	}
+}
+
+// devourPer is CR 702.82a's N for a devour that sacrificed `k`
+// creatures: the declared N, or k itself for Devour X (#6267). Zero for
+// a choice that is not a devour.
+func (s *EntryCardChoice) devourPer(k int) int {
+	if s.DevourX {
+		return k
+	}
+	return s.Devour
 }

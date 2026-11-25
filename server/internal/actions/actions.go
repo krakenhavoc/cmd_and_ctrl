@@ -335,6 +335,17 @@ type attackTaxParams struct {
 	AutoTap       bool     `json:"auto_tap,omitempty"`
 	LockedSources []string `json:"locked_sources,omitempty"`
 	PhyrexianLife int      `json:"phyrexian_life,omitempty"`
+	// #6190: the permanents a NON-MANA cost to attack or block is paid
+	// with (CR 508.1h, 509.1d) — Exalted Dragon's sacrificed land,
+	// Hollow Warrior's tapped creature, Floodtide Serpent's returned
+	// enchantment. The same three field names a cast and an activation
+	// already send for the same three cost components, so a client that
+	// can pay one can pay this. Absent from every payload built before
+	// the cost existed, and refused rather than ignored for a
+	// declaration that owes nothing.
+	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	TapIDs       []string `json:"tap_ids,omitempty"`
+	ReturnIDs    []string `json:"return_ids,omitempty"`
 }
 
 // decode turns the wire form into the engine's params, naming the
@@ -352,6 +363,24 @@ func (p attackTaxParams) decode(action string) (game.DeclareAttackersParams, err
 				return game.DeclareAttackersParams{}, fmt.Errorf("%s locked_sources[%d]: %w", action, i, err)
 			}
 			out.LockedSources = append(out.LockedSources, id)
+		}
+	}
+	// #6190: the non-mana payment, one list per cost component.
+	for _, l := range []struct {
+		name string
+		raw  []string
+		dst  *[]uuid.UUID
+	}{
+		{"sacrifice_ids", p.SacrificeIDs, &out.Pay.SacrificeIDs},
+		{"tap_ids", p.TapIDs, &out.Pay.TapIDs},
+		{"return_ids", p.ReturnIDs, &out.Pay.ReturnIDs},
+	} {
+		for i, raw := range l.raw {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return game.DeclareAttackersParams{}, fmt.Errorf("%s %s[%d]: %w", action, l.name, i, err)
+			}
+			*l.dst = append(*l.dst, id)
 		}
 	}
 	return out, nil
@@ -794,6 +823,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 702.174a). Present exactly when optional_costs
 			// names the card's gift cost.
 			GiftOpponent string `json:"gift_opponent,omitempty"`
+			// #6256 — the opponent an alternative cost's "have an
+			// opponent gain N life" gives the life to (Invigorate).
+			// Present exactly when the claimed alternative_cost names
+			// that price.
+			AltCostOpponent string `json:"alt_cost_opponent,omitempty"`
 			// #1703 — the creatures tapped to pay an announced
 			// teamwork cost (CR 702.194a), and the one creature an
 			// announced blight cost puts its -1/-1 counters on
@@ -816,6 +850,9 @@ func dispatch(g *game.Game, a Action) error {
 			// then names the objects of that type. Absent unless the
 			// announced optional behold chooses its type.
 			BeholdType string `json:"behold_type,omitempty"`
+			// #6245 — the creature type a spell that chooses one as it
+			// is cast names (Selective Snare, CR 601.2c).
+			ChosenCreatureType string `json:"chosen_creature_type,omitempty"`
 			// #3402 — the permanents a mandatory exile-a-permanent
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
@@ -976,6 +1013,13 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			params.GiftOpponent = id
 		}
+		if p.AltCostOpponent != "" {
+			id, err := uuid.Parse(p.AltCostOpponent)
+			if err != nil {
+				return fmt.Errorf("cast_spell alt_cost_opponent: %w", err)
+			}
+			params.AltCostOpponent = id
+		}
 		if p.AssistPlayer != "" {
 			id, err := uuid.Parse(p.AssistPlayer)
 			if err != nil {
@@ -1031,6 +1075,7 @@ func dispatch(g *game.Game, a Action) error {
 		params.CounterKind = p.CounterKind
 		params.CounterKinds = p.CounterKinds
 		params.BeholdType = p.BeholdType
+		params.ChosenCreatureType = p.ChosenCreatureType
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {

@@ -170,7 +170,7 @@ func SeatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
 	}
 	var out []uuid.UUID
 	for i := 0; i < n; i++ {
-		if p := g.Seats[(start+i)%n]; p != nil && !p.Eliminated {
+		if p := g.Seats[g.SeatInTurnOrderForEffect(start, i)]; p != nil && !p.Eliminated {
 			out = append(out, p.ID)
 		}
 	}

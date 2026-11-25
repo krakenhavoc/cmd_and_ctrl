@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   canPayCards,
+  isPlayerPicks,
+  payCardPicksOf,
   payCardsOptions,
+  payCardsProgress,
   payCardsReady,
   payCardsVerb,
   togglePayCard,
@@ -95,5 +98,72 @@ describe("payCards", () => {
       card_ids: ["a", "b"],
     });
     expect(payUnlessAnswer(choice, false, [], ["a"])).toEqual({ choice_id: "c1", apply: false });
+  });
+});
+
+describe("#6187 payments", () => {
+  const dreadnought: PayCardsView = {
+    action: "sacrifice_total_power",
+    count: 0,
+    options: ["a", "b", "c"],
+    total_power: 12,
+    powers: { a: 7, b: 4, c: 1 },
+  };
+  it("a total-power sacrifice takes any number and is ready at the total", () => {
+    expect(canPayCards(dreadnought)).toBe(true);
+    expect(payCardsReady(dreadnought, [])).toBe(false);
+    expect(payCardsReady(dreadnought, ["a", "b"])).toBe(false);
+    expect(payCardsReady(dreadnought, ["a", "b", "c"])).toBe(true);
+    expect(togglePayCard(dreadnought, ["a", "b", "c"], "a")).toEqual(["b", "c"]);
+    expect(payCardsProgress(dreadnought, ["a", "b"])).toBe("power 11 / 12");
+    expect(payCardsVerb(dreadnought)).toContain("total power 12");
+  });
+  it("a total-power sacrifice short of the total cannot pay", () => {
+    expect(canPayCards({ ...dreadnought, powers: { a: 7, b: 4, c: 0 } })).toBe(false);
+  });
+  it("a hand-to-library payment picks from the hand", () => {
+    const specter: PayCardsView = { action: "hand_to_library_top", count: 1, options: ["h1"] };
+    const chooser = {
+      hand: { cards: [{ instance_id: "h1", name: "Island" }] },
+    } as unknown as PlayerView;
+    expect(payCardsOptions(specter, [], chooser).map((c) => c.name)).toEqual(["Island"]);
+    expect(payCardsVerb(specter)).toBe("Choose one card to put on top of your library.");
+  });
+});
+
+describe("#6189 cumulative-upkeep payments", () => {
+  const ancient: PayCardsView = {
+    action: "counter_opponent_creature",
+    count: 2,
+    options: ["c1", "c2"],
+    repeats: true,
+  };
+  const wall: PayCardsView = {
+    action: "opponent_gains_life",
+    count: 2,
+    options: ["p1", "p2"],
+    picks: "players",
+    repeats: true,
+  };
+  it("a repeatable payment may name one option twice", () => {
+    let picks = togglePayCard(ancient, [], "c1");
+    picks = togglePayCard(ancient, picks, "c1");
+    expect(picks).toEqual(["c1", "c1"]);
+    expect(payCardsReady(ancient, picks)).toBe(true);
+    expect(payCardPicksOf(picks, "c1")).toBe(2);
+    expect(togglePayCard(ancient, picks, "c1")).toEqual([]);
+  });
+  it("a payment that names players lists seats, not cards", () => {
+    expect(isPlayerPicks(wall)).toBe(true);
+    expect(isPlayerPicks(ancient)).toBe(false);
+    expect(payCardsOptions(wall, [], undefined)).toEqual([]);
+    expect(payCardsVerb(wall)).toContain("opponent");
+    expect(canPayCards(wall)).toBe(true);
+    expect(canPayCards({ ...wall, options: [] })).toBe(false);
+  });
+  it("a payment of a fixed count still refuses a repeat", () => {
+    const land: PayCardsView = { action: "gain_control_land", count: 2, options: ["l1", "l2"] };
+    expect(togglePayCard(land, ["l1"], "l1")).toEqual([]);
+    expect(payCardsReady(land, ["l1", "l2"])).toBe(true);
   });
 });

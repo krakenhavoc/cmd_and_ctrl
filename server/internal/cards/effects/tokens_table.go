@@ -199,6 +199,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"1/1 white Bird Soldier with flying":                               {Name: "Bird Soldier", TypeLine: "Token Creature — Bird Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}}, // #5586: Flurry of Wings
 	"3/3 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
+	"3/4 white Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 3, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}}, // S82 older sets batch 152: Wingmate Roc
 	"1/1 red Goblin Wizard with prowess":                               {Name: "Goblin Wizard", TypeLine: "Token Creature — Goblin Wizard", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 red Monk with prowess":                                        {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"prowess"}},
 	"1/1 white Monk with prowess":                                      {Name: "Monk", TypeLine: "Token Creature — Monk", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"prowess"}},
@@ -691,6 +692,8 @@ var TokenTable = map[string]game.Card{
 	// Devils' Alien Salamander.
 	"3/3 green Mutant with deathtouch":           {Name: "Mutant", TypeLine: "Token Creature — Mutant", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"deathtouch"}},
 	"2/2 green Alien Salamander with islandwalk": {Name: "Alien Salamander", TypeLine: "Token Creature — Alien Salamander", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"islandwalk"}},
+	// S82 OLD batch 153 (#5517): Gargoyle Castle's Gargoyle.
+	"3/4 colorless Gargoyle artifact with flying": {Name: "Gargoyle", TypeLine: "Token Artifact Creature — Gargoyle", Power: 3, Toughness: 4, Keywords: []string{"flying"}},
 	// S82 GAP2 batch 8 (#5948): Tasha, the Witch Queen's Demon.
 	"3/3 black Demon": {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 3, Toughness: 3, Colors: []string{"B"}},
 
@@ -720,4 +723,8 @@ var TokenTable = map[string]game.Card{
 	"0/1 red Elemental with trample and haste": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 0, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	// S82 OLD batch 136 (#5514): Alirios, Enraptured's Reflection.
 	"3/2 blue Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 3, Toughness: 2, Colors: []string{"U"}},
+	// S82 OLD batch 170 (#5520): Planewide Celebration's Citizen.
+	"2/2 white and blue and black and red and green Citizen": {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 2, Toughness: 2, Colors: []string{"W", "U", "B", "R", "G"}},
+	// S82 OLD batch 172 (#5520): Tolsimir, Friend to Wolves's Voja.
+	"3/3 green and white Legendary Wolf named Voja, Friend to Elves": {Name: "Voja, Friend to Elves", TypeLine: "Token Legendary Creature — Wolf", Power: 3, Toughness: 3, Colors: []string{"G", "W"}},
 }

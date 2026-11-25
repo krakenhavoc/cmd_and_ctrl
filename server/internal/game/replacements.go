@@ -354,6 +354,13 @@ type ReplacementEvent struct {
 	// applied to their parent, so two doublers still produce four cards
 	// while dredge and first-draw exceptions are evaluated per card.
 	DrawCount int
+	// DrawCycled is the card whose CYCLING ability is making this draw
+	// (#6169, CR 702.29a): stamped as the draw is made when the item
+	// resolving is a cycling ability (StackItem.Cycling) and the drawer is
+	// its controller, and uuid.Nil for every other draw. The card has been
+	// discarded by then (CR 702.29c), so it is read in the graveyard (or
+	// wherever a replacement put it). Unpredictable Cyclone reads it.
+	DrawCycled uuid.UUID
 	// DrawInstruction marks the synthetic event Quantum Riddler's kind of
 	// effect is asked about: the WHOLE "draw N cards" instruction, before
 	// any single draw opens its window (draw_instruction.go, CR 121.2).
@@ -617,6 +624,20 @@ type ReplacementEvent struct {
 	// reason: the permanent is not on the battlefield while the
 	// sacrifice is chosen.
 	EntersDevoured int
+
+	// TributeOpponent is the opponent chosen for this permanent's
+	// tribute (CR 702.104a, #6251): written by the tribute's
+	// "choose an opponent" (an EntryController effect with
+	// ControlForTribute), and the player its payment question is put
+	// to. uuid.Nil until chosen, and for every other entry.
+	TributeOpponent uuid.UUID
+
+	// EntersTributePaid is that opponent's "yes" (CR 702.104a): the
+	// payment's Replace sets it beside the N +1/+1 counters, and every
+	// battlefield landing copies it onto Card.TributePaid, which "if
+	// tribute wasn't paid" reads (CR 702.104b). Rides the event for
+	// EntersTapped's reason.
+	EntersTributePaid bool
 
 	// EntersWithHaste is riot's "if you don't, it gains haste" (CR
 	// 702.136a, ADR 0109 §10): set by the haste answer to an entry_riot

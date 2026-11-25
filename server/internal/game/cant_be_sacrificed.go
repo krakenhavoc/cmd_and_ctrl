@@ -127,7 +127,7 @@ func (g *Game) SacrificeCostCandidatesForEffect(playerID, sourceID uuid.UUID, sp
 	var out []uuid.UUID
 	for _, id := range g.costCandidatesLocked(playerID, sourceID, spec).Cards {
 		c := findBattlefieldCard(g, id)
-		if c == nil || c.Controller != playerID || g.permanentCantBeSacrificedLocked(c) {
+		if c == nil || c.Controller != playerID || g.sacrificeCostBarredLocked(c) {
 			continue
 		}
 		if spec != nil && spec.Different != nil {

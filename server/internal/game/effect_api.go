@@ -2470,6 +2470,28 @@ type SearchLibrarySpec struct {
 	// with ToTop is not supported.
 	AlsoGraveyard bool
 
+	// BothZones makes an AlsoGraveyard search "search your library AND
+	// graveyard" (#6156, Ecological Appreciation): both zones are named, so
+	// both are searched and no zone question is asked. The library is
+	// always searched (CR 701.23a), so EventSearchLibrary fires and an
+	// Opposition Agent sees it whatever is taken, and a take wholly out of
+	// the graveyard is still a library search. Ignored without
+	// AlsoGraveyard.
+	BothZones bool
+
+	// HoldFound is "search ... and reveal them" where the found cards stay
+	// where they were found until the rest of the effect sends them
+	// somewhere (#6156: Ecological Appreciation's "an opponent chooses two
+	// of those cards", Verdant Mastery's split between battlefields and
+	// hand). With Dest ZoneLibrary and ToTop unset, the found cards (in the
+	// library, or with AlsoGraveyard in the graveyard) are revealed, are
+	// not moved, and are handed to ThenTail as TailOutcome.IDs in the order
+	// taken; without it that "leave it where it is" search hands ThenTail
+	// nothing. CR 701.20a: a card revealed by an effect stays revealed for
+	// as long as the parts of the effect it is relevant to take. Ignored
+	// for any other Dest.
+	HoldFound bool
+
 	// AlsoGraveyardAndHand is "search <that player's> graveyard, hand,
 	// and library" (#3988, CR 701.23; Kotose, the Silent Spider, and the
 	// Surgical Extraction family): the library owner's graveyard and hand
@@ -2586,7 +2608,14 @@ func (spec SearchLibrarySpec) searchesHand() bool {
 // and/or library" (AlsoHand). "Graveyard, hand, and library" names all
 // three, so it asks nothing.
 func (spec SearchLibrarySpec) asksZones() bool {
-	return !spec.AlsoGraveyardAndHand && (spec.AlsoGraveyard || spec.AlsoHand)
+	return !spec.AlsoGraveyardAndHand && !spec.searchesLibraryAndGraveyard() && (spec.AlsoGraveyard || spec.AlsoHand)
+}
+
+// searchesLibraryAndGraveyard reports "search your library and graveyard"
+// (BothZones, #6156): both zones named, none asked, the library always
+// searched.
+func (spec SearchLibrarySpec) searchesLibraryAndGraveyard() bool {
+	return spec.BothZones && spec.AlsoGraveyard && !spec.AlsoHand
 }
 
 // otherZoneName is the zone an and/or search offers beside the library,
@@ -2610,6 +2639,11 @@ func (spec SearchLibrarySpec) otherZoneName() string {
 func (spec SearchLibrarySpec) initialZones() searchZones {
 	if spec.asksZones() {
 		return searchZonesAsking
+	}
+	if spec.searchesLibraryAndGraveyard() {
+		// #6156: both zones are named, so the library is searched, as if
+		// it had been chosen.
+		return searchZonesLibrary
 	}
 	return searchZonesUnasked
 }
@@ -2772,8 +2806,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	barred := g.TurnTally.LibrarySearchesBarred
 	if barred && !spec.searchesGraveyard() && !spec.searchesHand() {
 		if spec.Shuffle {
-			p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-			clearKnownInZoneLocked(p.Library)
+			g.shuffleLibraryLocked(p, ShuffleByEffect)
 		}
 		return g.runSearchThenLocked(spec, nil)
 	}
@@ -3082,7 +3115,7 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		// wholly out of the graveyard, or nothing, is a graveyard-only
 		// search, and a take wholly out of the hand is a hand-only one.
 		// Any library card taken is a library search.
-		fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand
+		fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand && !spec.searchesLibraryAndGraveyard()
 		spec.libraryUntouched = fromGraveyard || (spec.AlsoHand && len(ids) > 0)
 		for _, id := range ids {
 			if !(fromGraveyard && p.Graveyard.Contains(id)) && !(spec.AlsoHand && p.Hand.Contains(id)) {
@@ -3090,6 +3123,11 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 				break
 			}
 		}
+	}
+	if spec.searchesLibraryAndGraveyard() && g.TurnTally.LibrarySearchesBarred {
+		// #6156: "library and graveyard" while libraries can't be
+		// searched: only the graveyard was looked through.
+		spec.libraryUntouched = true
 	}
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
@@ -3104,7 +3142,9 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		if spec.Reveal {
 			g.revealLibraryCardsLocked(spec, p, ids)
 		}
-		if spec.ToTop {
+		if spec.ToTop || spec.HoldFound {
+			// #6156: HoldFound leaves the found cards where they were
+			// and names them to the rest of the effect.
 			return g.finishSearchLocked(spec, p, ids)
 		}
 		return g.finishSearchLocked(spec, p, nil)
@@ -3383,11 +3423,10 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		Amount: len(found),
 	})
 	if spec.Shuffle {
-		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 		// The shuffle is what un-knows the library again: whatever
 		// the searcher saw while looking, they no longer know where
-		// any of it is.
-		clearKnownInZoneLocked(p.Library)
+		// any of it is. #6215: and it is announced.
+		g.shuffleLibraryLocked(p, ShuffleByEffect)
 	}
 	// "... then shuffle and put that card on top." AFTER the shuffle,
 	// which is the whole clause — the tutored card is a known
@@ -3787,8 +3826,7 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	if p == nil || p.Library == nil {
 		return nil
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByEffect)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil

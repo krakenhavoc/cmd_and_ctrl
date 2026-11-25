@@ -25,19 +25,9 @@ func init() {
 		Name:         "Keral Keep Disciples",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventActivateAbility, keralKeepDisciplesActivated,
+			effects.On(game.EventActivateAbility, effects.YouActivateAChandraLoyaltyAbility,
 				"Keral Keep Disciples — it deals 1 damage to each opponent",
 				effects.Do(effects.DamageEachOpponent{N: 1})),
 		},
 	})
-}
-
-// keralKeepDisciplesActivated is "you activate a loyalty ability of a Chandra
-// planeswalker".
-func keralKeepDisciplesActivated(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventActivateAbility || !ev.Loyalty || ev.Actor != source.Controller {
-		return false
-	}
-	pw, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && pw.IsPlaneswalker() && pw.HasSubtype("Chandra")
 }

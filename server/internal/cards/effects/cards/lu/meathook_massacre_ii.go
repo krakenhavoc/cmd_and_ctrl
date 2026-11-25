@@ -85,7 +85,7 @@ func meathookMassacreIIEdict(g *game.Game, item *game.StackItem) error {
 	if n := len(g.Seats); n > 0 {
 		start := g.Turn.ActiveSeat
 		for i := 0; i < n; i++ {
-			p := g.Seats[(start+i)%n]
+			p := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 			if p == nil || p.Eliminated {
 				continue
 			}

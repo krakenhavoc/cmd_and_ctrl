@@ -498,6 +498,13 @@ type Spec struct {
 	// A card that reads the board at RESOLUTION does not belong here.
 	CastTimeValues []game.CastTimeValue
 
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): the caster names a
+	// creature type as they cast the spell (CR 601.2c), stamped on the
+	// spell as its chosen type, which OfTheChosenType target clauses read
+	// at announce and again at resolution (CR 608.2b).
+	ChoosesCreatureTypeAsCast bool
+
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered": "If X is 5 or more, this spell can't be countered"
 	// (Banefire), "Hellbent — If you have no cards in hand, this spell
@@ -738,6 +745,25 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// CantSpendMana is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; #6227, CR 106.1, CR 601.2h). Like
+	// Delve it adds no demand to the cost — it is a rule about the
+	// PAYMENT — so it is a bit and nothing else:
+	//
+	//	CantSpendMana: true, // Hogaak, Arisen Necropolis
+	//
+	// The engine does the rest: the mana half of the total cost has to
+	// be covered by the convoke taps (TapCost) and the delve exiles
+	// (Delve) the announcement makes, no mana in the pool may pay any
+	// of it, the auto-tapper plans nothing for it, the legal-move list
+	// offers no cast it could not pay that way, and a cast that leaves
+	// anything owed is refused for insufficient mana.
+	//
+	// Declare it only beside a TapCost or Delve: on its own it is a
+	// card nothing could ever cast, which is a card file's mistake and
+	// not a printed card (CheckCantSpendMana refuses it at boot).
+	CantSpendMana bool
+
 	// Splice is CR 702.47's "Splice onto [quality] [cost]" (#1989, ADR
 	// 0202). Declare it with SpliceOntoArcane / SpliceOntoInstantOrSorcery
 	// and write the rest of the card as usual: its Targets and OnResolve
@@ -939,6 +965,14 @@ type Spec struct {
 	// every card.
 	BlockTaxes []game.BlockTax
 
+	// SingleSourceLethalOnly is "This creature can't be destroyed by
+	// lethal damage unless lethal damage dealt by a single source is
+	// marked on it" (Ogre Enforcer, #6209, CR 704.5g): the one clause
+	// that reads WHICH source marked the damage rather than how much is
+	// marked. Build it with SingleSourceLethalOnly in
+	// single_source_lethal.go. Nil for nearly every card.
+	SingleSourceLethalOnly []game.SingleSourceLethalOnly
+
 	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
 	// cost of the first equip ability you activate each turn" (Kíli the
 	// Resourceful, #4475): a CR 118.9 alternative cost this permanent
@@ -971,6 +1005,24 @@ type Spec struct {
 	// Build the entries with OpponentsSpellsTargetingThisCostLife in
 	// target_tax.go. Nil for nearly every card.
 	TargetTaxes []game.TargetTax
+
+	// LifePerTarget is this spell's OWN per-target life surcharge:
+	// "This spell costs 3 life more to cast for each target"
+	// (Phyrexian Purge, #6206, CR 601.2f).
+	//
+	// The target tax one owner over: the same cost, keyed on the same
+	// thing — what the spell targets, read once the targets are
+	// announced (CR 601.2c) and paid with the other additional costs
+	// (CR 601.2h) — charged by the spell itself rather than by somebody's
+	// permanent. So it joins the same sum, and the cast's CR 119.4
+	// refusal, the enumerator's per-target-set pricing, the picker's note
+	// beside each candidate and the bot's move cost all read it at once.
+	//
+	// It counts TARGETS, not targeted permanents, so a clause that
+	// targets a player or a spell pays for those too. Build it with
+	// CostsLifePerTarget in target_tax.go. The zero value is every other
+	// card.
+	LifePerTarget game.LifePerTargetCost
 
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
@@ -1110,6 +1162,12 @@ type Spec struct {
 	// it with no CastableZones entry; Register refuses the pair. Additive.
 	CastsOnlyFromGraveyard bool
 
+	// CantSpendManaToCast is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis): the cast is refused, in every mode, while
+	// any mana remains in its total cost after convoke and delve, and the
+	// spell's price is the empty cost, so the pool is never charged. Additive.
+	CantSpendManaToCast bool
+
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers from its owner's hand — foretell (CR 702.143) and
 	// suspend (CR 702.62). A special action does NOT use the stack
@@ -1160,6 +1218,12 @@ type Spec struct {
 	// charges both, and a player with less life than that cannot cast
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
+
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148): N
+	// loyalty combined into the printed loyalty cost of every loyalty
+	// ability its controller activates (CR 606.5).
+	LoyaltyCostAdd int
 
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
@@ -1911,6 +1975,13 @@ type Spec struct {
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
 
+	// RevealsChosenPlayersDraws declares "The chosen player reveals each
+	// card they draw" (Booby Trap, #6238): every card the permanent's
+	// chosen player draws is revealed to the table as it is drawn
+	// (game.CardDef.RevealsChosenPlayersDraws). The player is the one
+	// its "as this enters, choose an opponent" stored.
+	RevealsChosenPlayersDraws bool
+
 	// AttackOnlyNearestOpponentInChosenDirection declares "each player
 	// may attack only the nearest opponent in the chosen direction and
 	// planeswalkers controlled by that opponent" (Pramikon, Sky
@@ -2000,6 +2071,15 @@ type Spec struct {
 	// Such a permanent joins the same prompt the caps raise, exempt
 	// from the rule that untapping is otherwise mandatory.
 	UntapOptOuts []game.UntapOptOut
+	// UntapTypeChoices declares "each player chooses artifact,
+	// creature, or land during their untap step. That player can untap
+	// only permanents of the chosen type this step" (Storage Matrix,
+	// #6218; game.UntapTypeChoice).
+	UntapTypeChoices []game.UntapTypeChoice
+	// TurnSkipOffers declares "If you would begin your turn while this
+	// artifact is tapped, you may skip that turn instead. If you do,
+	// untap this artifact" (Time Vault, #6226; game.TurnSkipOffer).
+	TurnSkipOffers []game.TurnSkipOffer
 
 	// DrawStep declares the printed clause "you draw a card during
 	// each opponent's draw step" — Teferi, Who Slows the Sunset's

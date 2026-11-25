@@ -510,6 +510,7 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
 	ch.SourceRingBearer = rec.RingBearer
 	ch.SourceIsPermanent = true
+	ch.SourceCastThisTurn = rec.CastThisTurn
 	ch.SourceCounters = copyCounterMap(rec.Counters)
 	return ch
 }
@@ -801,6 +802,20 @@ type TargetSpec struct {
 	// the client's walk and the bot's enumerator skip it the same way.
 	// Build it with effects.OfAnOpponentsChoice.
 	ChosenByOpponent bool
+
+	// ChosenByFirstTargetsController narrows a ChosenByOpponent clause's
+	// chooser to one player: the controller of the permanent picked for
+	// the first clause (slot 0) of the same mode. Mogg Assassin's "You
+	// choose target creature an opponent controls, and that opponent
+	// chooses target creature" (#6171): in a multiplayer game "that
+	// opponent" is not the controller's to name, so the engine names them
+	// (opponentChoosersForStepLocked) and asks no "which opponent"
+	// question. Everything else about the clause is ChosenByOpponent's:
+	// legality is judged for the ability's controller (CR 601.2c, CR
+	// 115.1). Meaningless without ChosenByOpponent; effects.Register
+	// refuses it alone and on the first clause. Build it with
+	// effects.OfTheFirstTargetsController.
+	ChosenByFirstTargetsController bool
 
 	// ChosenByTriggerActor is "target … that player controls of their
 	// choice" on a triggered ability (#1997, ADR 0019 amendment

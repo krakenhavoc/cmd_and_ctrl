@@ -806,6 +806,12 @@ type PendingChoice struct {
 	// candidate, in DiscardOptions order, taken as the pick was raised.
 	// Nil when the card measures nothing.
 	PickMeasures []int
+	// PickSlots is RevealedHandDiscard.EachOf's reading of each candidate,
+	// in DiscardOptions order: bit i set when the card passes EachOf[i]
+	// (#6271, Distended Mindbender). Nil for a pick with one filter. An
+	// answer must give each chosen card a different filter it passes
+	// (revealedPickSlotsFit).
+	PickSlots []int
 	// PickExiledWith is the source OBJECT a PickExile pick links its
 	// exiled card to (CR 607.2a, #3516): Null Summoner's "exile that
 	// card ... you may cast the exiled card". Captured when the pick
@@ -961,6 +967,14 @@ type PendingChoice struct {
 	// carries the payment without a frame (payUnlessFrameOf reads it
 	// back). Nil on every mana prompt.
 	PayActionClause *PayAction
+
+	// PaySpendPurpose is the ManaSpendPurpose a mana pay-unless pays
+	// under (#6189): SpendPurposeCumulativeUpkeep on a cumulative
+	// upkeep's prompt, so Snowfall's "spend this mana only to pay
+	// cumulative upkeep costs" can fund it. Empty on every other
+	// pay-unless, which restricted mana cannot pay at all (#352).
+	// Additive (#522).
+	PaySpendPurpose ManaSpendPurpose `json:",omitempty"`
 
 	// PayTap is a pay-unless's waterbend clause (#4264): the kind of tap
 	// clause and the part of the cost its taps may cover, which
@@ -3498,13 +3512,23 @@ type RevealedHandDiscard struct {
 	// links nothing. Refused with any other Destination: a discard or a
 	// card left in the hand is not exiled with anything.
 	ExiledWith ObjectRef
+	// EachOf is "You choose from it a <A> and a <B>" (#6271, Distended
+	// Mindbender: "a nonland card with mana value 3 or less and a card
+	// with mana value 4 or greater"): one pick, from one reveal, of a
+	// card for each filter, each card standing for a different filter.
+	// The candidates are the cards that pass any of them; Count is set
+	// from it (the most filters the hand can fill at once, so a hand
+	// with a card for only one of them yields one), and Filter must be
+	// nil. Like Filter, the funcs are never stored: each candidate's
+	// filters ride the prompt as bits (PendingChoice.PickSlots).
+	EachOf []func(Card) bool
 }
 
 // isVariant reports whether d needs the variant prompt rather than the
 // plain discard_from_hand.
 func (d RevealedHandDiscard) isVariant() bool {
 	return (d.Destination != "" && d.Destination != PickDiscard) ||
-		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil || d.Look
+		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil || d.Look || len(d.EachOf) > 0
 }
 
 // QueueDiscardFromRevealedHand is the revealed-hand pick (ADR 0116,
@@ -4674,8 +4698,9 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 			return ErrInvalidParam
 		}
 		if p := g.playerByIDLocked(chooserID); p != nil {
-			cost := g.costAsPaidByLocked(chooserID, ManaSpendContext{}, WaterbendReduced(frame.cost, 0, len(tapIDs)), 0)
-			_, life, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(choice.Source), cost, ManaSpendContext{}, phyrexianLife, nil)
+			spend := ManaSpendContext{Purpose: choice.PaySpendPurpose}
+			cost := g.costAsPaidByLocked(chooserID, spend, WaterbendReduced(frame.cost, 0, len(tapIDs)), 0)
+			_, life, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(choice.Source), cost, spend, phyrexianLife, nil)
 			if err != nil {
 				return err
 			}
@@ -4691,7 +4716,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
 		payable = g.payActionPayableLocked(chooserID, pays)
 	} else if apply && pays != nil {
-		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, pays)) >= pays.Count {
+		if len(cardIDs) > 0 || g.payActionCanPayLocked(chooserID, pays) {
 			if err := g.validatePayActionLocked(chooserID, pays, cardIDs); err != nil {
 				return err
 			}
@@ -4776,7 +4801,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
 			cost := WaterbendReduced(manaCost, 0, len(tapIDs))
-			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost)
+			paid = g.payCostWithLifeSpendLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost, ManaSpendContext{Purpose: choice.PaySpendPurpose})
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)
 				// #5276, CR 701.67c: a waterbend payment (a ward's
@@ -4906,13 +4931,21 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, exclu
 // claim was validated when the answer arrived; one that no longer holds
 // here is a decline.
 func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife, fixedLife int) bool {
+	return g.payCostWithLifeSpendLocked(p, cost, source, excluded, phyrexianLife, fixedLife, ManaSpendContext{})
+}
+
+// payCostWithLifeSpendLocked is payCostWithLifeLocked under a spend
+// context (#6189): a cumulative upkeep's payment names its purpose, so
+// mana restricted to one may fund it; every other pay-unless passes the
+// zero context, which no restricted mana may pay (#352).
+func (g *Game) payCostWithLifeSpendLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife, fixedLife int, spend ManaSpendContext) bool {
 	// #1600, CR 609.4b: Chromatic Orrery's "you may spend mana as
 	// though it were mana of any color" reaches a ward or a Rhystic
 	// Study tax too — every cost the player pays. A narrowed grant
 	// (Oath of Nissa's planeswalker spells) does not: the zero context
 	// names no spell.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendContext{}, cost, 0)
-	cost, lifeOwed, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(source), cost, ManaSpendContext{}, phyrexianLife, nil)
+	cost = g.costAsPaidByLocked(p.ID, spend, cost, 0)
+	cost, lifeOwed, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(source), cost, spend, phyrexianLife, nil)
 	if err != nil {
 		return false
 	}
@@ -4929,7 +4962,7 @@ func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUI
 		// ADR 0118 §1: plan only what the floating pool is missing.
 		// #2461: a plan that would not fund the cost taps nothing.
 		var ok bool
-		plan, short, ok = g.autoTapFundedLocked(p, cost, 0, ManaSpendContext{}, excluded, 0)
+		plan, short, ok = g.autoTapFundedLocked(p, cost, 0, spend, excluded, 0)
 		if !ok {
 			return false
 		}
@@ -4941,7 +4974,7 @@ func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUI
 	if tap {
 		g.materializePlanLocked(p, plan, short)
 	}
-	spent, ok := p.ManaPool.SpendManaFor(cost, 0, ManaSpendContext{})
+	spent, ok := p.ManaPool.SpendManaFor(cost, 0, spend)
 	if !ok {
 		return false
 	}

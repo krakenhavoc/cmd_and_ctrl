@@ -446,6 +446,7 @@ var replacementEventFields = map[string]replacementEventField{
 	// A draw.
 	"DrawPlayer":  repFieldCarried,
 	"DrawCount":   repFieldCarried,
+	"DrawCycled":  repFieldCarried,
 	"drawPending": repFieldCarried,
 	// The synthetic whole-instruction event (draw_instruction.go) is asked
 	// read-only and never pauses, so no frame holds it: if one ever did,
@@ -482,6 +483,8 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
+	"TributeOpponent":           repFieldCarried,
+	"EntersTributePaid":         repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
 	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
@@ -795,6 +798,7 @@ type replacementEventSnapshot struct {
 
 	DrawPlayer     *uuid.UUID            `json:"drawPlayer,omitempty"`
 	DrawCount      int                   `json:"drawCount,omitempty"`
+	DrawCycled     *uuid.UUID            `json:"drawCycled,omitempty"`
 	DrawPending    []pendingDrawSnapshot `json:"drawPending,omitempty"`
 	DrawInstead    *insteadRunSnapshot   `json:"drawInstead,omitempty"`
 	DrawTail       int                   `json:"drawTail,omitempty"`
@@ -820,6 +824,8 @@ type replacementEventSnapshot struct {
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
+	TributeOpponent           *uuid.UUID          `json:"tributeOpponent,omitempty"`
+	EntersTributePaid         bool                `json:"entersTributePaid,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
 	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
@@ -1280,6 +1286,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		MustSettleNow:             ev.mustSettleNow,
 		DrawPlayer:                uuidPtrOrNil(ev.DrawPlayer),
 		DrawCount:                 ev.DrawCount,
+		DrawCycled:                uuidPtrOrNil(ev.DrawCycled),
 		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source, 0),
 		DrawTail:                  ev.drawTail,
 		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source, ev.keywordInstead.n),
@@ -1301,6 +1308,8 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
+		TributeOpponent:           uuidPtrOrNil(ev.TributeOpponent),
+		EntersTributePaid:         ev.EntersTributePaid,
 		EntersWithHaste:           ev.EntersWithHaste,
 		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
@@ -1465,6 +1474,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		mustSettleNow:             s.MustSettleNow,
 		DrawPlayer:                uuidOrNil(s.DrawPlayer),
 		DrawCount:                 s.DrawCount,
+		DrawCycled:                uuidOrNil(s.DrawCycled),
 		drawTail:                  s.DrawTail,
 		KeywordAction:             s.KeywordAction,
 		KeywordActionCount:        s.KeywordActionCount,
@@ -1484,6 +1494,8 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
+		TributeOpponent:           uuidOrNil(s.TributeOpponent),
+		EntersTributePaid:         s.EntersTributePaid,
 		EntersWithHaste:           s.EntersWithHaste,
 		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,

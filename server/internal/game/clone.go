@@ -52,6 +52,7 @@ func (g *Game) cloneLocked() *Game {
 		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
+		TurnOrderReversed: g.TurnOrderReversed,
 		// ADR 0057: the result of an ended game (its own pointer, so an
 		// undo snapshot never shares it) and the deferred departure of
 		// an active player who lost mid-resolution.
@@ -159,6 +160,7 @@ func (g *Game) cloneLocked() *Game {
 			out.ForetoldThisTurn[k] = v
 		}
 	}
+	out.PilesOrGuessesThisTurn = copyUUIDs(g.PilesOrGuessesThisTurn)
 	if len(g.DilemmasFacedThisTurn) > 0 {
 		out.DilemmasFacedThisTurn = make(map[uuid.UUID]int, len(g.DilemmasFacedThisTurn))
 		for k, v := range g.DilemmasFacedThisTurn {
@@ -694,6 +696,10 @@ func deepenCard(out *Card) {
 		sheet := cloneStickerSheet(*out.StickerSheet)
 		out.StickerSheet = &sheet
 	}
+	// #6209: the per-source split of the marked damage.
+	if len(out.MarkedBySource) > 0 {
+		out.MarkedBySource = append([]SourceMark(nil), out.MarkedBySource...)
+	}
 	// #1706: a multi-blocker's further attackers.
 	if len(out.AlsoBlocking) > 0 {
 		out.AlsoBlocking = append([]uuid.UUID(nil), out.AlsoBlocking...)
@@ -797,6 +803,8 @@ func clonePlayer(p *Player) *Player {
 		Energy:                     p.Energy,
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -988,6 +996,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		CastOrdinal:      s.CastOrdinal,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -1341,6 +1350,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restore is a different path (restoreGame) and does restore them.
 	g.StartingSeat = src.StartingSeat
 	g.SplitSecondActive = src.SplitSecondActive
+	g.TurnOrderReversed = src.TurnOrderReversed
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.TurnChangePending = src.TurnChangePending
@@ -1369,6 +1379,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
+	g.PilesOrGuessesThisTurn = src.PilesOrGuessesThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
