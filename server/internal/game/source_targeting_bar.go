@@ -161,10 +161,14 @@ func (g *Game) attackedOrBlockedThisTurnLocked(c *Card) bool {
 	if g.AttackedThisTurn(c.InstanceID) {
 		return true
 	}
-	// A creature blocking right now was declared as a blocker this turn.
-	// The turn's record of past declarations is the block tally
-	// (TurnTally.Blocks); a blocker whose block the engine has since
-	// taken back is the one case the live read misses, and it reads
-	// STRICTER than printed (the bar stays up), never weaker.
+	// The BLOCK half is read off the creature's current block, because
+	// the turn keeps no record of past block declarations the way it
+	// keeps TurnTally.Attacks. So the bar comes back up when combat ends
+	// for a creature that blocked and did not attack — the one creature
+	// this matters to is Lurker, and that reading is STRICTER than
+	// printed. #6190 adds the block-side tally (TurnTally.Blocks, keyed
+	// by object and combat phase); this reader becomes a tally read in
+	// the same change that lands Lurker, so the card never ships with
+	// the gap.
 	return c.BlockingTarget != uuid.Nil || len(c.AlsoBlocking) > 0
 }
