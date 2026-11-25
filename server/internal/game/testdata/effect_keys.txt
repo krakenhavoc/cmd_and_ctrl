@@ -4375,6 +4375,7 @@ tail put-from-library/rest-on-bottom-in-any-order
 tail put-from-library/rest-on-bottom-in-any-order-s82-rpr-b15
 tail put-from-library/rest-on-bottom-in-random-order
 tail put-from-library/s82-old-b109-shuffle-the-rest
+tail put-from-library/s82-old-b112-parcelbeast-hand
 tail put-from-library/songbirds-blessing-hand-or-bottom
 tail q-stacking-the-deck/gains-copy-ability
 tail quag-feast/after-mill
