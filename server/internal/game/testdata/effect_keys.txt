@@ -1537,6 +1537,8 @@ choose choose-cards/s82-old-b161-shuffle-graveyard-into-library
 choose choose-cards/s82-old-b166-rank-officer-zombie
 choose choose-cards/s82-old-b170-deliver-unto-evil-return
 choose choose-cards/s82-old-b172-viviens-grizzly-take
+choose choose-cards/s82-old-b212-board-the-weatherlight-take
+choose choose-cards/s82-old-b212-urzas-tome-exile
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2975,6 +2977,7 @@ payunless pay-unless/s82-old-b022-leshracs-sigil
 payunless pay-unless/s82-old-b024-depala-reveal
 payunless pay-unless/s82-old-b046-lisette-counters
 payunless pay-unless/s82-old-b046-valentin-pest
+payunless pay-unless/s82-old-b212-lingering-phantom-return
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
