@@ -806,6 +806,12 @@ type PendingChoice struct {
 	// candidate, in DiscardOptions order, taken as the pick was raised.
 	// Nil when the card measures nothing.
 	PickMeasures []int
+	// PickSlots is RevealedHandDiscard.EachOf's reading of each candidate,
+	// in DiscardOptions order: bit i set when the card passes EachOf[i]
+	// (#6271, Distended Mindbender). Nil for a pick with one filter. An
+	// answer must give each chosen card a different filter it passes
+	// (revealedPickSlotsFit).
+	PickSlots []int
 	// PickExiledWith is the source OBJECT a PickExile pick links its
 	// exiled card to (CR 607.2a, #3516): Null Summoner's "exile that
 	// card ... you may cast the exiled card". Captured when the pick
@@ -3501,13 +3507,23 @@ type RevealedHandDiscard struct {
 	// links nothing. Refused with any other Destination: a discard or a
 	// card left in the hand is not exiled with anything.
 	ExiledWith ObjectRef
+	// EachOf is "You choose from it a <A> and a <B>" (#6271, Distended
+	// Mindbender: "a nonland card with mana value 3 or less and a card
+	// with mana value 4 or greater"): one pick, from one reveal, of a
+	// card for each filter, each card standing for a different filter.
+	// The candidates are the cards that pass any of them; Count is set
+	// from it (the most filters the hand can fill at once, so a hand
+	// with a card for only one of them yields one), and Filter must be
+	// nil. Like Filter, the funcs are never stored: each candidate's
+	// filters ride the prompt as bits (PendingChoice.PickSlots).
+	EachOf []func(Card) bool
 }
 
 // isVariant reports whether d needs the variant prompt rather than the
 // plain discard_from_hand.
 func (d RevealedHandDiscard) isVariant() bool {
 	return (d.Destination != "" && d.Destination != PickDiscard) ||
-		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil || d.Look
+		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil || d.Look || len(d.EachOf) > 0
 }
 
 // QueueDiscardFromRevealedHand is the revealed-hand pick (ADR 0116,
@@ -4694,7 +4710,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
 		payable = g.payActionPayableLocked(chooserID, pays)
 	} else if apply && pays != nil {
-		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, pays)) >= pays.Count {
+		if len(cardIDs) > 0 || g.payActionCanPayLocked(chooserID, pays) {
 			if err := g.validatePayActionLocked(chooserID, pays, cardIDs); err != nil {
 				return err
 			}

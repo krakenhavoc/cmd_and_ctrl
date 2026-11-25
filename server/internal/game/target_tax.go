@@ -52,6 +52,27 @@ import (
 // copy of a spell is not cast (CR 707.10), so it owes nothing. A source
 // taxes a given spell once however many of its targets name it (the
 // cost is added to the SPELL), and two sources each add their own.
+//
+// # A spell that taxes itself (#6206)
+//
+// "This spell costs 3 life more to cast for each target" (Phyrexian
+// Purge) is the same cost keyed on the same thing — what the spell
+// targets, read after CR 601.2c and before CR 601.2h — charged by the
+// spell instead of by somebody's permanent. So it is one more line in
+// the same sum (CardDef.LifePerTarget, LifePerTargetFor), and all four
+// askers above learn it at once: the cast's CR 119.4 refusal and
+// payment, the enumerator's per-target-set pricing, the picker's "3 life
+// to target this" beside each candidate, and the bot's MoveCost.
+//
+// What is NOT shared is the owner, and two things follow from it. The
+// line is read through CatalogKey, as a spell's own cost modifier is
+// (SelfCostModifiersFor), rather than through CatalogAbilityKey: a
+// spell on the stack is not a permanent, so no CR 613.1f
+// ability-removing effect on the battlefield reaches it. And it counts
+// TARGETS, not targeted permanents — "for each target" (CR 601.2c) is
+// RealTargetCount, the number Fireball's "{1} more for each target
+// beyond the first" counts, so a spell that targets a player or
+// another spell pays for those too.
 
 // TargetTaxQuery is everything a target tax may look at. Passed by
 // value, for CostQuery's reason: the tax is consulted inside the cast
@@ -141,6 +162,63 @@ type TargetTaxLine struct {
 	Label string
 	// Life is what this line charges.
 	Life int
+	// Self marks the line the SPELL charges itself — "This spell costs 3
+	// life more to cast for each target" (#6206) — rather than one a
+	// permanent charges it. Only the refusal's sentence reads it: naming
+	// the spell among the permanents "targeting" it would be nonsense.
+	Self bool
+}
+
+// LifePerTargetCost is "This spell costs N life more to cast for each
+// target" (Phyrexian Purge, CR 601.2f, 119.4): the spell's own
+// per-target life surcharge, declared on the card being cast and
+// charged with the rest of its additional costs. The zero value is
+// every card that prints no such clause.
+//
+// Data, not a hook: the count is the announced targets and the amount is
+// printed, so there is nothing for a card file to decide and the ADR
+// 0041 closure ratchet gains no route.
+type LifePerTargetCost struct {
+	// Life is the life each target adds. Register refuses a
+	// non-positive one beside a Label.
+	Life int
+	// Label is the clause as printed ("This spell costs 3 life more to
+	// cast for each target."), for the refusal and the move log.
+	Label string
+}
+
+// Empty reports whether the card prints no per-target life surcharge.
+func (c LifePerTargetCost) Empty() bool { return c.Life <= 0 }
+
+// LifePerTargetFor is the per-target life surcharge the card `card`
+// prints, read off its CardDef under CatalogKey so a multi-face card
+// answers for the face being cast (ADR 0034) — SelfCostModifiersFor's
+// rule, and for its reason: the clause changes what its own card costs
+// and nobody else's.
+func LifePerTargetFor(card Card) LifePerTargetCost {
+	return LifePerTargetForKey(CatalogKey(card))
+}
+
+// LifePerTargetForKey is LifePerTargetFor by catalog key, for a caller
+// that holds the key and not the card: the view, which knows which face
+// it is stamping and asks before it looks the live card up at all.
+func LifePerTargetForKey(key string) LifePerTargetCost {
+	if d := catalogDef(key); d != nil {
+		return d.LifePerTarget
+	}
+	return LifePerTargetCost{}
+}
+
+// CastLifePerTargetForEffect is the life `card` would charge its caster
+// for each target it names (#6206), on the *ForEffect surface for the
+// two callers that need to know BEFORE the targets are chosen whether
+// the price depends on them: the legal-move enumerator, which then
+// prices each target set on its own, and the view, which then stamps
+// each candidate. Zero for nearly every card.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CastLifePerTargetForEffect(card Card) int {
+	return LifePerTargetFor(card).Life
 }
 
 // castTargetTaxLinesLocked lists every tax charged to the spell `spell`
@@ -151,8 +229,28 @@ type TargetTaxLine struct {
 //
 // Caller must hold g.mu (read or write) with fresh layers. Reads only.
 func (g *Game) castTargetTaxLinesLocked(caster uuid.UUID, spell Card, targets []TargetRef) []TargetTaxLine {
-	if g == nil || g.Battlefield == nil || CatalogTargetTaxes == nil || len(targets) == 0 {
+	if g == nil || len(targets) == 0 {
 		return nil
+	}
+	var lines []TargetTaxLine
+	// #6206: the spell's own "costs 3 life more to cast for each target",
+	// first, because it is the card's own clause and a reader of the
+	// breakdown reads the spell before the board. One line for the whole
+	// surcharge: the cost is added to the SPELL (CR 601.2f), as a
+	// permanent's line is, and the per-target figure stays in the Label.
+	if per := LifePerTargetFor(spell); !per.Empty() {
+		if n := RealTargetCount(targets); n > 0 {
+			lines = append(lines, TargetTaxLine{
+				Source:     spell.InstanceID,
+				SourceName: spell.Name,
+				Label:      per.Label,
+				Life:       per.Life * n,
+				Self:       true,
+			})
+		}
+	}
+	if g.Battlefield == nil || CatalogTargetTaxes == nil {
+		return lines
 	}
 	var targeted []*Card
 	seen := make(map[uuid.UUID]bool, len(targets))
@@ -166,9 +264,8 @@ func (g *Game) castTargetTaxLinesLocked(caster uuid.UUID, spell Card, targets []
 		}
 	}
 	if len(targeted) == 0 {
-		return nil
+		return lines
 	}
-	var lines []TargetTaxLine
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
 		for _, tax := range targetTaxesOf(src) {
@@ -235,7 +332,16 @@ func (g *Game) TargetTaxesExistForEffect() bool {
 func targetTaxRefusal(lines []TargetTaxLine, total int) error {
 	names := make([]string, 0, len(lines))
 	for _, l := range lines {
+		// #6206: the spell's own "costs 3 life more to cast for each
+		// target" names no permanent, so it is not in the "targeting …"
+		// list; a cast refused for that alone gets the sentence below.
+		if l.Self {
+			continue
+		}
 		names = append(names, l.SourceName)
+	}
+	if len(names) == 0 {
+		return fmt.Errorf("%w: casting it at these targets costs %d more life", ErrCantPayTargetTax, total)
 	}
 	return fmt.Errorf("%w: targeting %s costs %d more life", ErrCantPayTargetTax, strings.Join(names, " and "), total)
 }

@@ -2806,8 +2806,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	barred := g.TurnTally.LibrarySearchesBarred
 	if barred && !spec.searchesGraveyard() && !spec.searchesHand() {
 		if spec.Shuffle {
-			p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-			clearKnownInZoneLocked(p.Library)
+			g.shuffleLibraryLocked(p, ShuffleByEffect)
 		}
 		return g.runSearchThenLocked(spec, nil)
 	}
@@ -3424,11 +3423,10 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		Amount: len(found),
 	})
 	if spec.Shuffle {
-		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 		// The shuffle is what un-knows the library again: whatever
 		// the searcher saw while looking, they no longer know where
-		// any of it is.
-		clearKnownInZoneLocked(p.Library)
+		// any of it is. #6215: and it is announced.
+		g.shuffleLibraryLocked(p, ShuffleByEffect)
 	}
 	// "... then shuffle and put that card on top." AFTER the shuffle,
 	// which is the whole clause — the tutored card is a known
@@ -3828,8 +3826,7 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	if p == nil || p.Library == nil {
 		return nil
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByEffect)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil

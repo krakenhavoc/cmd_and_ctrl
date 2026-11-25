@@ -125,6 +125,8 @@ type CastProvenance struct {
 	// for a permanent that was not cast.
 	CastOrdinal int `json:"castOrdinal,omitempty"`
 
+	// CastThisTurn is in the bool block at the end (Card layout).
+
 	// OptionalCosts are the optional additional costs paid for the
 	// spell (CR 601.2b, ADR 0073 §5), as positions in the card's
 	// OptionalCosts slice, one entry per payment — so multikicker's
@@ -263,6 +265,16 @@ type CastProvenance struct {
 	PaperMana int `json:"paperMana,omitempty"`
 
 	ManaOnPaper bool `json:"manaOnPaper,omitempty"`
+	// CastThisTurn is whether the spell that became this permanent was
+	// cast this turn (#6098): "protection from permanents that were cast
+	// this turn" (Emrakul, the World Anew) reads it. Stamped as the spell
+	// resolves into a permanent (a copy was never cast, CR 707.10) and
+	// cleared on every permanent as the next turn begins
+	// (clearCastThisTurnLocked). A spell resolves in the turn it was cast,
+	// because a step cannot end with an object on the stack (CR 500.2), so
+	// "cast this turn" and "entered this turn from a spell cast this turn"
+	// are the same fact. Additive: an older snapshot reads false.
+	CastThisTurn bool `json:"castThisTurn,omitempty"`
 }
 
 // Spent is what this permanent's cast paid, as the same view a
@@ -280,7 +292,7 @@ func (p CastProvenance) Spent() ManaSpent {
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || p.CastOrdinal != 0 || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.PaperMana != 0 || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
-		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.Convoked) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
+		p.Caster != uuid.Nil || p.CastThisTurn || len(p.Delved) > 0 || len(p.Convoked) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
 }
 
 // CastByItsController reports whether the permanent `c` was cast by
@@ -480,6 +492,8 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		if prov.Caster == uuid.Nil {
 			prov.Caster = item.Controller
 		}
+		// #6098: it was cast, and it resolves this turn (CR 500.2).
+		prov.CastThisTurn = true
 	}
 	prov.Mana = cloneManaTokens(item.Paid.Mana)
 	if !prov.Any() {

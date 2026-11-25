@@ -193,6 +193,16 @@ type RestrictUntilEOT struct {
 	// (game.CantCrew).
 	ExtraRestrictions game.ExtraRestriction
 
+	// Queries is the FILTER of the two query-filtered scopes (#6237,
+	// game.ScopeCreaturesMatching and ScopeOpponentsCreaturesMatching):
+	// Goblin Locksmith's "creatures with defender", Rumbling Ruin's
+	// "creatures your opponents control with power less than or equal to
+	// that number". Any of them matching is enough, and a number in a
+	// query is locked as the ability resolves while the SET stays live
+	// (CR 611.2c). Required with those scopes and refused with any
+	// other, so a filter can never be silently dropped.
+	Queries []game.PermanentQuery
+
 	// Label is attribution for logs and tests; defaults to a
 	// generic string when empty.
 	Label string
@@ -205,15 +215,48 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 	label := eotLabel(r.Label, "restriction until end of turn")
 	mod := game.AddRestrictionsMod(r.Restrictions)
 	mod.ExtraRestrictions = r.ExtraRestrictions
+	if len(r.Queries) > 0 {
+		mod = game.MatchingRestrictionMod(r.Restrictions, r.Queries)
+		mod.ExtraRestrictions = r.ExtraRestrictions
+	}
 	if r.Scope != game.ScopeNone {
 		if !game.KnownAffectedScope(r.Scope) {
 			return fmt.Errorf("effects: RestrictUntilEOT %q: unknown scope %q", label, r.Scope)
+		}
+		if game.ScopeFiltersByQueries(r.Scope) != (len(r.Queries) > 0) {
+			return fmt.Errorf("effects: RestrictUntilEOT %q: scope %q and %d queries do not go together", label, r.Scope, len(r.Queries))
 		}
 		ctx.Game.RegisterScopedRuleEffectForEffect(ctx.Source(), r.Scope, ctx.Controller(),
 			[]game.Mod{mod}, DurationUntilEndOfTurn(ctx), label)
 		return nil
 	}
+	if len(r.Queries) > 0 {
+		return fmt.Errorf("effects: RestrictUntilEOT %q: queries need a query-filtered scope", label)
+	}
 	return UntilEndOfTurn(ctx, r.Target, nil, label, mod)
+}
+
+// CantBlockThisTurnMatching is "creatures <matching> can't block this
+// turn" (#6237): Goblin Locksmith's "creatures with defender can't block
+// this turn", and — with the opponents' form —  Rumbling Ruin's
+// "creatures your opponents control with power less than or equal to
+// that number can't block this turn".
+//
+// The filter is data (game.PermanentQuery), so a number in it is locked
+// as the ability resolves while the SET stays live until cleanup: a
+// creature that arrives this turn and matches cannot block either
+// (CR 611.2c, 509.1b).
+func CantBlockThisTurnMatching(opponentsOnly bool, label string, queries ...game.PermanentQuery) RestrictUntilEOT {
+	scope := game.ScopeCreaturesMatching
+	if opponentsOnly {
+		scope = game.ScopeOpponentsCreaturesMatching
+	}
+	return RestrictUntilEOT{
+		Scope:        scope,
+		Restrictions: game.CantBlock,
+		Queries:      queries,
+		Label:        label,
+	}
 }
 
 // RestrictAttachedWhile is "During your turn, equipped creature can't

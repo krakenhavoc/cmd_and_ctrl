@@ -210,6 +210,45 @@ const (
 	// "sacrifice a creature" is no cost and is untouched. Absent from
 	// Names: it is no badge on the permanent that carries it.
 	PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate
+
+	// CantBeEnchanted is "~ can't be enchanted" (Tetravus's Tetravite
+	// tokens, #6203; CR 303.4). No Aura may become attached to the
+	// permanent, an Aura spell can't target it, and an Aura already
+	// attached is illegal and goes to the graveyard (CR 303.4c, 704.5m).
+	// Read by auraBarredFromHostLocked (cant_be_enchanted.go). Absent from
+	// Names: it is no wire token yet.
+	CantBeEnchanted
+
+	// CantBecomeEnchanted is CantBeEnchanted for NEW attachments only:
+	// Guardian Beast's "noncreature artifacts you control can't be
+	// enchanted … This effect doesn't remove Auras already attached to
+	// those artifacts." An Aura can't target or become attached to the
+	// permanent, and one already attached stays (#6203).
+	CantBecomeEnchanted
+
+	// EnchantedCantBeEnchantedByOthers is carried by an AURA on itself
+	// (RestrictSelfExtra): "Enchanted <permanent> … can't be enchanted by
+	// other Auras" (Anti-Magic Aura, Consecrate Land, #6203). The
+	// permanent it is attached to can't be enchanted by any Aura but
+	// this one: another Aura can't target it or become attached, and
+	// one already attached goes to the graveyard (CR 303.4c). An Aura
+	// that loses its abilities stops carrying it (CR 613.6).
+	EnchantedCantBeEnchantedByOthers
+
+	// OthersCantGainControl is "other players can't gain control of ~"
+	// (Guardian Beast, #6203): an effect that would give control of the
+	// permanent to a player other than its controller does nothing
+	// (GainControlForEffect, ExchangeControlForEffect). Absent from
+	// Names.
+	OthersCantGainControl
+	// PlayersCantGetCounters is "Players can't get counters." (Solemnity,
+	// #6241; CR 122.1). A world rule the SOURCE carries on itself
+	// (RestrictSelfExtra), like PermanentsCantPhaseIn: while any permanent
+	// on the battlefield has it, counterPlacementRefusedLocked refuses
+	// every counter placement onto a player, of every kind, and
+	// proliferate offers no player (cant_get_counters.go). Absent from
+	// Names: it is no badge on the permanent that carries it.
+	PlayersCantGetCounters
 )
 
 // Has reports whether every bit in `want` is set.

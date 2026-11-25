@@ -157,6 +157,7 @@ var gameFields = plan(
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973
+	"PilesOrGuessesThisTurn", carried, "", // #6175
 	"LandsPlayedThisTurn", carried, "",
 	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
@@ -381,6 +382,7 @@ var gameFields = plan(
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"layerPassing", dropped, "not game state: a re-entrancy guard for one layer pass, defer-cleared, so it is false between actions (#4909)",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
+	"phasingOut", dropped, "written and cleared inside one phaseOutLocked call (#6201); always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
 	// guard. Both are defer-cleared inside one mutation.
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
@@ -544,6 +546,11 @@ var cardFields = plan(
 	// that dropped it would take Q, Stacking the Deck's ability away.
 	"ExileGrants", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
+	// #6209: carried — the per-source split of the marked damage is what
+	// Ogre Enforcer's "lethal damage dealt by a single source" reads, and
+	// nothing rebuilds it from the battlefield (the turn's damage tally
+	// is damage DEALT, not marked).
+	"MarkedBySource", carried, "",
 	"damageInstance", dropped, "restores empty: which damage instance marked the latest damage on this creature (heal_damage.go, #4614). Only Wolverine, Fierce Fighter reads it, to keep damage dealt at the same time; a restore taken inside a damage step gives the rest of the step a new instance anyway (damage_instance.go), so the worst case is a later event of that step healing damage the same step marked before the restore",
 	"damageInstanceMarked", dropped, "restores empty: how much of DamageMarked damageInstance wrote; goes with damageInstance",
 	// #683: carried — a restore that dropped it would let a 0/0 that
@@ -1295,6 +1302,7 @@ var pendingChoiceFields = plan(
 	// Talara's Bane's toughness, read as the pick was raised: without
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
+	"PickSlots", carried, "",
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (Null Summoner): a restored pick that forgot it would exile the
 	// card unlinked, and no standing permission could ever name it.

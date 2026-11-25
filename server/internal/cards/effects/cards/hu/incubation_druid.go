@@ -66,11 +66,7 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    effects.ManaCost("{3}{G}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				src, ok := g.LookupCardForEffect(item.SourceCardID)
-				if !ok || src.Counters["+1/+1"] > 0 {
-					return nil
-				}
-				return effects.AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 3}.Apply(effects.NewContext(g, item))
+				return effects.AdaptN(g, item, 3)
 			},
 		}},
 	})

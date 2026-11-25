@@ -909,14 +909,17 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	// emits so listeners cannot observe a half-used step.
 	g.consumeUntapSkipsLocked(activePlayer)
 	g.consumePlayerUntapSkipsLocked(activePlayer)
-	if plan := g.untapChoicePlanLocked(activePlayer, ids); plan != nil {
-		g.queueUntapChoiceLocked(activePlayer, plan)
+	// #6218: "during your next untap step, as you untap your permanents,
+	// return this land to its owner's hand" (untap_return.go). Ahead of
+	// any pause, so it happens exactly once; a returned permanent is no
+	// longer on the battlefield and untaps nothing.
+	g.spendReturnsAtUntapLocked(activePlayer)
+	// #6218: Storage Matrix's type pick narrows the set before ADR
+	// 0070's determination (untap_type_choice.go).
+	if g.askUntapTypeChoiceLocked(activePlayer, g.liveUntapTypeChoiceSourcesLocked(), ids) {
 		return true
 	}
-	for _, id := range ids {
-		g.untapPermanentByIDLocked(id)
-	}
-	return false
+	return g.determineUntapLocked(activePlayer, ids)
 }
 
 // untapAllForLocked untaps every battlefield card controlled by the

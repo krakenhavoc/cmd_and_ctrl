@@ -74,6 +74,11 @@ const (
 	// the game; Source names the loop's repeating ability's source
 	// (loop_breaker.go, #2506).
 	OutcomeCauseMandatoryLoop = "mandatory_loop"
+	// OutcomeCauseDrawEffect — an effect stated that the game is a draw
+	// (CR 104.4c): Divine Intervention, or Celestial Convergence with a
+	// tie for the highest life total. A draw for every player still in
+	// the game; Source names the effect's source (#6198).
+	OutcomeCauseDrawEffect = "draw_effect"
 )
 
 // GameOutcome is the result of an ended game (ADR 0057 Decision 5).

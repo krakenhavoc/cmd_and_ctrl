@@ -35,6 +35,8 @@ func init() {
 		Name:         "Hostile Negotiations",
 		Completeness: effects.CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			// #6175: two face-down piles. One spell, counted once.
+			effects.NotePileOrGuess(ctx)
 			return ctx.Game.ExileTopFaceDownUnseenKeyedForEffect(ctx.Controller(), 3, ctx.ItemTail(hostileNegotiationsFirstPile))
 		},
 	})

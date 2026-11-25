@@ -82,6 +82,7 @@ var silentEventKinds = map[string]string{
 	"EventCumulativeUpkeepPaid":    "the payment itself is the line (the mana spent, or the non-mana payment); the event exists for \"whenever this permanent's cumulative upkeep is paid\", whose own LogTrigger line follows",
 	"EventCumulativeUpkeepNotPaid": "the sacrifice that follows is the line (CR 702.24a); the event exists for \"when a player doesn't pay this permanent's cumulative upkeep\", whose own LogTrigger line follows",
 	"EventDamagePrevented":         "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
+	"EventLibraryShuffled":         "the search line (\"searched … and shuffled\") or the plain shuffle's line is what the table sees (#6215); the event exists for \"whenever a player shuffles\" (Psychogenic Probe, Psychic Surgery, Cosi's Trickster), whose own LogTrigger line follows",
 	"EventConcede":                 "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
 	"EventETB":                     silentAlreadyToldAsAZoneMove,
 	// ADR 0207: opening an Attraction is the LogZone line of the card

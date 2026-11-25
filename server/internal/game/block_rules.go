@@ -57,9 +57,9 @@ import "github.com/google/uuid"
 // Decisions 11 and 12, and Decisions 43-45.
 
 // BlockRule is one printed block restriction with a parameter, as the
-// engine reads it. Exactly one of Pair, Count, Limit, NotAlone and the
-// landwalk waiver (IgnoreLandwalk / IgnoreAllLandwalk) is set; a rule
-// with none of them is inert.
+// engine reads it. Exactly one of Pair, Count, Limit, NotAlone, the
+// landwalk waiver (IgnoreLandwalk / IgnoreAllLandwalk) and the reach
+// waiver (ReachAgainst) is set; a rule with none of them is inert.
 //
 // The `source` argument is the permanent the rule was read from, so a
 // threshold that compares against its own source (Champion of
@@ -121,6 +121,16 @@ type BlockRule struct {
 	// own to be about.
 	NotAlone bool
 
+	// NotAloneMinOthers and NotAloneOthersPowerGreater widen NotAlone
+	// to the companion family (#6197, CR 509.1b): Orcish Conscripts'
+	// "can't block unless at least two other creatures block" is
+	// NotAloneMinOthers 2, and Okk's "can't block unless a creature with
+	// greater power also blocks" is NotAloneOthersPowerGreater. The other
+	// blockers counted are the same defending player's (CR 802.4b).
+	// Below 1 is 1; ignored without NotAlone. Plain data.
+	NotAloneMinOthers          int
+	NotAloneOthersPowerGreater bool
+
 	// IgnoreLandwalk is "creatures with swampwalk can be blocked as
 	// though they didn't have swampwalk" (Quagmire, Ur-Drago, Lord
 	// Magnus; #6195): the landwalk tokens this rule switches off for
@@ -135,6 +145,25 @@ type BlockRule struct {
 	// and every other evasion is untouched.
 	IgnoreLandwalk    []string
 	IgnoreAllLandwalk bool
+
+	// ReachAgainst waives the CR 702.9b flying restriction for this
+	// rule's OWN SOURCE when it blocks an attacker matching any of these
+	// queries: "This creature can block Dragons as though it had reach"
+	// (Dragon Hunter, #6250).
+	//
+	// Read only off the BLOCKER's own rules (blockerReachAgainstLocked),
+	// never off the battlefield walk the Pair rules take: the printed
+	// clause is a creature's own ability about its own blocks, and a
+	// waiver read off every permanent would hand the whole table reach.
+	// Keyed by CatalogAbilityKey like every other rule, so a creature
+	// that has lost its abilities loses the waiver too (CR 613.1f).
+	//
+	// It waives the flying restriction and nothing else: the creature
+	// does not gain reach (a card that counts creatures with reach does
+	// not see it), and every other evasion still refuses the block.
+	// CR 702.17b is the rule being bent — "A creature with flying can't
+	// be blocked except by creatures with flying and/or reach."
+	ReachAgainst []PermanentQuery `json:",omitempty"`
 
 	// Reason is the BlockReason a refused pair reports. Empty defaults
 	// to BlockReasonCantBeBlockedBy, which is the commonest shape.
@@ -453,4 +482,30 @@ func (g *Game) blockLimitTallyLocked(r BlockRule, source *Card, assign blockAssi
 		out[key] = t
 	}
 	return out
+}
+
+// blockerReachAgainstLocked reports whether `blocker`'s own rules let it
+// block `attacker` "as though it had reach" (BlockRule.ReachAgainst,
+// #6250): Dragon Hunter's Dragons. Read off the blocker's catalog entry
+// alone, so no other permanent's rule can grant it, and by
+// CatalogAbilityKey, so a creature that has lost all its abilities has
+// lost the waiver (CR 613.1f).
+//
+// Caller must hold g.mu with fresh layers. Reads only.
+func (g *Game) blockerReachAgainstLocked(blocker, attacker *Card) bool {
+	if blocker == nil || attacker == nil || CatalogBlockRules == nil {
+		return false
+	}
+	key := catalogAbilityKeyOf(blocker)
+	if key == "" {
+		return false
+	}
+	for _, r := range CatalogBlockRules(key) {
+		for _, q := range r.ReachAgainst {
+			if q.matchesLocked(g, attacker) {
+				return true
+			}
+		}
+	}
+	return false
 }
