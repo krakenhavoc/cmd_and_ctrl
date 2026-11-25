@@ -228,6 +228,7 @@ body fires-of-mount-doom/damage-each-player
 body flamethrower-sonata/damage
 body flanking/shrink
 body flash/cleanup-sacrifice
+body flaxen-intruder/destroy
 body flicker/return-exiled-creatures-tapped
 body flicker/return-exiled-lands-tapped
 body flicker/return-exiled-to-owners
@@ -1967,6 +1968,7 @@ confirm confirm/farrels-zealot-damage
 confirm confirm/fetid-gargantua-draw
 confirm confirm/firebender-ascension-copy
 confirm confirm/fishing-gear-put
+confirm confirm/flaxen-intruder-sacrifice
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
@@ -4910,6 +4912,7 @@ tail then/fact-or-fiction-take
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
+tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
