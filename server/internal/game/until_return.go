@@ -130,6 +130,15 @@ type UntilReturn struct {
 	// battlefield return.
 	ToHand bool
 
+	// ToGraveyard returns the card to its owner's GRAVEYARD, not the
+	// battlefield: CR 610.3 sends the object back to "its previous zone",
+	// and a card exiled out of a graveyard (Idol of Endurance's "exile all
+	// creature cards with mana value 3 or less from your graveyard until
+	// this artifact leaves the battlefield") came from there. Like ToHand
+	// it rides the record as Params.Name (untilToGraveyardWord), so no
+	// snapshot field is added. Not with ToHand.
+	ToGraveyard bool
+
 	// On, Condition and CondParams are "until <an event>", in the same
 	// vocabulary an event-conditioned delayed trigger uses.
 	On         []EventKind
@@ -196,6 +205,8 @@ func (g *Game) ScheduleUntilReturnForEffect(cardID uuid.UUID, u UntilReturn) uui
 	thenLabel := ""
 	if u.ToHand {
 		params.Name = untilToHandWord
+	} else if u.ToGraveyard {
+		params.Name = untilToGraveyardWord
 	} else if u.ThenEnters.key != "" {
 		if _, known := lookupBody(u.ThenEnters.key); !known {
 			effectKeyFault(fmt.Sprintf("game: until return %q names an unregistered follow-up body %q", u.Label, u.ThenEnters.key))
@@ -340,7 +351,7 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 		return false
 	}
 	var due []ObjectRef
-	var dueHand, dueThen []*DelayedTrigger
+	var dueHand, dueGrave, dueThen []*DelayedTrigger
 	changed := false
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
@@ -353,9 +364,12 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 			continue
 		}
 		if g.untilRecordDueLocked(dt) {
-			if dt.Params.Name == untilToHandWord {
+			switch dt.Params.Name {
+			case untilToHandWord:
 				dueHand = append(dueHand, dt)
-			} else {
+			case untilToGraveyardWord:
+				dueGrave = append(dueGrave, dt)
+			default:
 				due = append(due, dt.Params.Object)
 				if dt.UntilThen.key != "" {
 					dueThen = append(dueThen, dt)
@@ -377,7 +391,7 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 	// listener reading a queue that still held these records would see
 	// them twice.
 	g.DelayedTriggers = kept
-	if len(due) == 0 && len(dueHand) == 0 {
+	if len(due) == 0 && len(dueHand) == 0 && len(dueGrave) == 0 {
 		return false
 	}
 	// #5877: a follow-up is listening before the entry it answers.
@@ -394,6 +408,12 @@ func (g *Game) resolveUntilReturnsLocked() bool {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			ErrorMsg: "CR 610.3: an until return to a hand failed: " + err.Error(),
+		})
+	}
+	if err := g.returnUntilObjectsToGraveyardLocked(dueGrave); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			ErrorMsg: "CR 610.3: an until return to a graveyard failed: " + err.Error(),
 		})
 	}
 	return true
@@ -478,6 +498,31 @@ func (g *Game) followUntilThenLocked(oldID, newID uuid.UUID) {
 // untilToHandWord marks an "until" record whose card returns to its
 // owner's hand (UntilReturn.ToHand). An on-disk spelling: never renamed.
 const untilToHandWord = "to-hand"
+
+// untilToGraveyardWord marks an "until" record whose card returns to its
+// owner's graveyard (UntilReturn.ToGraveyard).
+const untilToGraveyardWord = "to-graveyard"
+
+// returnUntilObjectsToGraveyardLocked puts the card of every record in `dts`
+// that is still in exile as the object it exiled into its owner's graveyard
+// (CR 610.3: the previous zone of a card exiled from a graveyard). Like the
+// hand return, a token has nothing to return and an owner who has left the
+// game (CR 800.4a) takes their cards with them.
+//
+// Caller must hold g.mu (write).
+func (g *Game) returnUntilObjectsToGraveyardLocked(dts []*DelayedTrigger) error {
+	for _, dt := range dts {
+		ref := dt.Params.Object
+		c, ok := g.cardInZoneLocked(g.Exile, ref.ID)
+		if !ok || c.ObjectEpoch != ref.Epoch || c.IsToken() || !g.playerStillInLocked(c.Owner) {
+			continue
+		}
+		if err := g.PutIntoGraveyardForEffect(ref.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // returnUntilObjectsToHandLocked puts the card of every record in `dts`
 // that is still in exile as the object it exiled into its owner's hand
