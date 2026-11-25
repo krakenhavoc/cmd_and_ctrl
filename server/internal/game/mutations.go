@@ -3678,6 +3678,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				booked = append(booked, mana...)
 			}
 		}
+		// #6210: "mana of a color of your choice instead" makes the
+		// colour this cast still needs (mana_color_of_choice.go).
+		asked, booked = g.steerChosenColorLocked(p.ID, cardID, asked, booked, tapped, pending)
 		if len(asked) > 0 {
 			// #1222: through the one production body, which opens the
 			// CR 106.12b window on the amount. The plan already priced
@@ -9301,6 +9304,32 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			}
 			picks = append(picks, ManaPickSlot{Options: options, Different: n})
 			continue
+		}
+		// #6210: a production the window turns into "mana of a color
+		// of your choice" (Pulse of Llanowar, Harvest Mage) is a pick
+		// over the five colours, made as part of the tap (CR 605.3b:
+		// nothing can pause inside it). The picked colour is what the
+		// production asks for, and the window's chosen-colour mana
+		// resolves to it (mana_color_of_choice.go).
+		if len(options) > 0 {
+			first := options[0]
+			if _, ok := g.producesChosenColorLocked(playerID, cardID, repeatColor(first, slot.AmountFor(first)), ab.TapCost); ok {
+				base := slot.AmountFor(first)
+				if len(upfront) > 0 && containsColor(AllColors, upfront[0]) {
+					settled = append(settled, repeatColor(upfront[0], base)...)
+					upfront = upfront[1:]
+					continue
+				}
+				pick := ManaPickSlot{Options: append([]string(nil), AllColors...)}
+				if base > 1 {
+					pick.Amounts = make(map[string]int, len(AllColors))
+					for _, c := range AllColors {
+						pick.Amounts[c] = base
+					}
+				}
+				picks = append(picks, pick)
+				continue
+			}
 		}
 		// The PRINTED width decides whether this is a pick, not the
 		// narrowed one: Command Tower under a mono-green commander
