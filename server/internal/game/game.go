@@ -2269,6 +2269,12 @@ type CastTally struct {
 	// (CR 601.2f) before the spell is counted. Additive within the snapshot
 	// version.
 	DragonSpells int `json:"dragonSpells,omitempty"`
+	// FaceDownCreatureSpells counts the creature spells the player cast face
+	// down this turn (CR 708.4), read as each spell became cast like
+	// DragonSpells: Kadena, Slinking Sorcerer's "the first face-down
+	// creature spell you cast each turn costs {3} less" prices a spell
+	// while this is still 0. Additive within the snapshot version.
+	FaceDownCreatureSpells int `json:"faceDownCreatureSpells,omitempty"`
 	// InstantSorceryVillain counts the spells the player cast this turn that
 	// are an instant, a sorcery or a Villain (Lady Loki, Agent of Chaos's
 	// "your first instant, sorcery, or Villain spell each turn"), read as

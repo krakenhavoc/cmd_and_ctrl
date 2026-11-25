@@ -291,6 +291,9 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 	if err != nil {
 		return CastPrice{}, err
 	}
+	if err := cantSpendManaToCastLocked(card, total, params.XValue); err != nil {
+		return CastPrice{}, err
+	}
 	budget := 0
 	if g.DelveForLocked(playerID, card) {
 		noDelve := params
