@@ -85,3 +85,30 @@ func TestSpellsCostLessForPlayerModProblems(t *testing.T) {
 		t.Error("a sound reduction is refused")
 	}
 }
+
+func TestNamedSpellsCostLessReducesEveryPlayersSpellsWithThatName(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedRuleEffectForEffect(uuid.Nil, ScopeGame, me.ID,
+			[]Mod{NamedSpellsCostLessMod("Test Spell", 1)}, g.UntilEndOfTurnDuration(), "test reduction") {
+			t.Fatal("the reduction was not registered")
+		}
+	})
+	for _, who := range []uuid.UUID{me.ID, opp.ID} {
+		if got := reductionPrice(t, g, who, "Sorcery", "{2}{U}", ZoneHand); got != "{1}{U}" {
+			t.Errorf("the named spell costs %q, want {1}{U}", got)
+		}
+	}
+	other := Card{InstanceID: uuid.New(), Name: "Other Spell", TypeLine: "Sorcery", ManaCost: "{2}{U}", Owner: me.ID, Controller: me.ID}
+	base, _ := ParseCost("{2}{U}")
+	g.WithWriteLock(func() {
+		out, err := g.ApplyCostModifiersForEffect(base, CostQuery{Game: g, Card: other, Controller: me.ID, FromZone: ZoneHand})
+		if err != nil || out.String() != "{2}{U}" {
+			t.Errorf("a spell with another name costs %q (%v), want it unreduced", out.String(), err)
+		}
+	})
+	if scopedCostReductionModProblem(NamedSpellsCostLessMod("", 1)) == "" {
+		t.Error("a named reduction with no name was accepted")
+	}
+}
