@@ -53353,6 +53353,8 @@ pendingChoices[].pickOptions[].LifeCost	number:int
 pendingChoices[].pickOptions[].ManaCost	string
 pendingChoices[].pickOptions[].Player	custom(uuid.UUID)
 pendingChoices[].pickOptions[].Room	string
+pendingChoices[].pickSlots	array
+pendingChoices[].pickSlots[]	number:int
 pendingChoices[].pickTail	object
 pendingChoices[].pickTail.asked	object
 pendingChoices[].pickTail.asked.controller	custom(uuid.UUID)
