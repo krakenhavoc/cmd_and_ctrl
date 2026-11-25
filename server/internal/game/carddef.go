@@ -237,6 +237,10 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// CastWhileSearchingLibrary is the card's own "While you're searching
+	// your library, you may cast this card from your library." (Panglacial
+	// Wurm, CR 608.2g, #6216; search_cast.go).
+	CastWhileSearchingLibrary bool
 	// LifePerTarget is this card's OWN "This spell costs N life more to
 	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
 	// for the spell being cast, through LifePerTargetFor under
@@ -1120,6 +1124,10 @@ func init() {
 			return d.CyclingCostAlternatives
 		}
 		return nil
+	}
+	CatalogCastWhileSearchingLibrary = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.CastWhileSearchingLibrary
 	}
 	CatalogTargetTaxes = func(key string) []TargetTax {
 		if d := catalogDef(key); d != nil {

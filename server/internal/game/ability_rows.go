@@ -266,6 +266,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "EquipCostAlternatives", fallback: "Equip abilities may cost {0}", ownLabel: true},
 	{field: "CyclingCostAlternatives", fallback: "Cycling may cost {0}", ownLabel: true},
 	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
+	{field: "CastWhileSearchingLibrary", label: boolRow("While you're searching your library, you may cast this card from your library.")},
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},

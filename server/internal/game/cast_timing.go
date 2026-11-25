@@ -581,6 +581,11 @@ func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if g.ControlledPlayCardLocked(playerID, card.InstanceID) {
 		return true
 	}
+	// #6216, CR 608.2g: and so is a card cast while its owner searches
+	// their library (Panglacial Wurm, search_cast.go).
+	if zone == ZoneLibrary && g.searchCastOpenLocked(playerID, card) {
+		return true
+	}
 	// 0. A plotted card (CR 702.170d, #1318) is cast in its owner's
 	// main phase with the stack empty and at no other time: the window
 	// belongs to the permission, so neither the card's own flash nor a

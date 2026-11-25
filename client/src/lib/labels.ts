@@ -2601,6 +2601,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ChoicePromptModal.svelte`],
     doc: 'the primary of the question a "search your graveyard, hand, and/or library" prompt asks before it shows anything (#5408, CR 701.23): search all three zones. The library is shuffled afterwards',
   }),
+  castWhileSearching: dynamicLabel({
+    stem: " from your library",
+    match: "suffix",
+    shape: "Cast <name> from your library",
+    make: (name: string) => `Cast ${name} from your library`,
+    example: ["Panglacial Wurm"],
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: "a search prompt's cast of a card its owner may cast while searching their library (#6216, CR 608.2g, Panglacial Wurm): casts it, auto-tapping, and the search goes on",
+  }),
   searchGraveyardAndHand: label({
     name: "Graveyard and hand",
     kind: "text",

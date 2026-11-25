@@ -271,6 +271,29 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
+  it("search: a card castable while searching is cast from the sheet, naming the prompt (#6216)", () => {
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Rampant Growth — a basic land",
+        search_max: 1,
+        options: [card("f", "Forest")],
+        search_castable: [card("w", "Panglacial Wurm")],
+      }),
+    );
+    expectSheet("Rampant Growth — a basic land");
+    const cast = inSheet("button.search-cast-button");
+    expect(cast).toHaveLength(1);
+    expect(cast[0].textContent?.trim()).toBe(L.castWhileSearching("Panglacial Wurm"));
+    click(cast[0]);
+    expect(sent).toEqual([
+      {
+        type: "cast_spell",
+        params: { instance_id: "w", from_zone: "library", search_cast: "choice-1", auto_tap: true },
+      },
+    ]);
+  });
+
   it("search: a search that must find offers no Find nothing and waits for the pick (#3053)", () => {
     const opts = [card("a", "Bear"), card("b", "Elf")];
     const { sent } = mount(

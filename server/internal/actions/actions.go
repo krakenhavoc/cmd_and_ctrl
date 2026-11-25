@@ -763,15 +763,19 @@ func dispatch(g *game.Game, a Action) error {
 			// #2947, CR 608.2g: the resolution_cast prompt this cast
 			// answers. A copy cast during the resolution that made it
 			// needs no priority either.
-			ResolutionCast string           `json:"resolution_cast,omitempty"`
-			InstanceID     string           `json:"instance_id"`
-			FromZone       string           `json:"from_zone,omitempty"`
-			Targets        []castTargetWire `json:"targets,omitempty"`
-			Modes          []int            `json:"modes,omitempty"`
-			XValue         int              `json:"x_value,omitempty"`
-			Distribution   map[string]int   `json:"distribution,omitempty"`
-			HoldPriority   bool             `json:"hold_priority,omitempty"`
-			SplitSecond    bool             `json:"split_second,omitempty"`
+			ResolutionCast string `json:"resolution_cast,omitempty"`
+			// #6216, CR 608.2g: the search_library prompt this cast is
+			// made during (Panglacial Wurm's "while you're searching your
+			// library"). Nobody holds priority for it either.
+			SearchCast   string           `json:"search_cast,omitempty"`
+			InstanceID   string           `json:"instance_id"`
+			FromZone     string           `json:"from_zone,omitempty"`
+			Targets      []castTargetWire `json:"targets,omitempty"`
+			Modes        []int            `json:"modes,omitempty"`
+			XValue       int              `json:"x_value,omitempty"`
+			Distribution map[string]int   `json:"distribution,omitempty"`
+			HoldPriority bool             `json:"hold_priority,omitempty"`
+			SplitSecond  bool             `json:"split_second,omitempty"`
 			// S15 sub-PR 3 — strict-mode flag + override hatch.
 			// Strict comes from the client's gameplay.strictMana
 			// setting; ForceCast is set by the override toast that
@@ -928,7 +932,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		if p.ControlledPlay == "" && p.ResolutionCast == "" {
+		if p.ControlledPlay == "" && p.ResolutionCast == "" && p.SearchCast == "" {
 			// A controller casts as the player they control only to
 			// make the play the effect demands (ADR 0166), or while
 			// they play that player's whole turn (ADR 0167 §4) or one
@@ -1122,6 +1126,18 @@ func dispatch(g *game.Game, a Action) error {
 				return game.ErrPlayerControlled
 			}
 			return g.CastForResolutionChoice(a.Player, choiceID, instanceID, params)
+		}
+		if p.SearchCast != "" {
+			choiceID, err := uuid.Parse(p.SearchCast)
+			if err != nil {
+				return fmt.Errorf("cast_spell search_cast: %w", err)
+			}
+			// The searcher casts, as themselves (the resolution_cast
+			// rule above).
+			if a.Actor != a.Caller && !g.ControlUntilOfPlayer(a.Caller).PlaysForThem() {
+				return game.ErrPlayerControlled
+			}
+			return g.CastWhileSearching(a.Player, choiceID, instanceID, params)
 		}
 		return g.CastSpell(a.Player, instanceID, params)
 

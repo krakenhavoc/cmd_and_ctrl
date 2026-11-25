@@ -742,6 +742,11 @@ func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) err
 		if idx := g.resolutionCastChoiceForCardLocked(playerID, cardID); idx >= 0 {
 			return g.castForResolutionChoiceLocked(g.PendingChoices[idx].ID, playerID, cardID, params)
 		}
+		// #6216: a card cast while its owner searches their library is
+		// that search's cast (search_cast.go), however it arrives.
+		if g.searchCastChoiceForCardLocked(playerID, cardID) {
+			return g.castWhileSearchingLocked(playerID, cardID, params)
+		}
 	}
 	if err := g.castSpellLocked(playerID, cardID, params); err != nil {
 		return err
