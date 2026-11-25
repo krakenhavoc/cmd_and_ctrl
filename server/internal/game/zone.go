@@ -248,6 +248,8 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Aura (returned_aura.go) belongs to the object that returned. The
 	// card in its new zone is the card it prints.
 	c.ReturnedAura = false
+	c.AuraFormEndBy = uuid.Nil
+	c.AuraFormEndCost = ""
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.
@@ -356,6 +358,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.LinkedPermanent = ObjectRef{}
 		c.ChosenCard = ObjectRef{}
 		c.Notes = nil
+		c.PlayerNotes = nil
 		c.Devoured = 0
 		c.TributePaid = false
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact

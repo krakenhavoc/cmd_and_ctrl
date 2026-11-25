@@ -221,6 +221,10 @@ type PermanentInfo struct {
 	// the Saga has left in response to its own chapter (CR 608.2h).
 	Notes []string `json:"notes,omitempty"`
 
+	// PlayerNotes are the words its abilities had recorded for players
+	// (Card.PlayerNotes, #6097), as it last existed (CR 608.2h).
+	PlayerNotes []PlayerNote `json:"playerNotes,omitempty"`
+
 	// LinkedPermanent is the permanent a linked ability of it affected
 	// (Card.LinkedPermanent, CR 607.2e), as it last existed: The Best of
 	// Both Worlds' chapter III still names the Borg its chapter I
@@ -337,6 +341,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		NamedTribe:      c.NamedTribe,
 		ChosenNumber:    c.ChosenNumber,
 		Notes:           append([]string(nil), c.Notes...),
+		PlayerNotes:     copyPlayerNotes(c.PlayerNotes),
 		LinkedPermanent: objectRefPtr(c.LinkedPermanent),
 		ManaValue:       c.ManaValue(),
 		RingBearer:      IsRingBearerOf(*c, c.Controller),

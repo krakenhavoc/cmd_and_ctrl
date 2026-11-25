@@ -804,6 +804,12 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		}
 		return a.ReturnToHand, ZoneBattlefield, n
 	case a.ExileFromGraveyard != nil:
+		// #6122: "Exile X cards from your graveyard" (Summons of Saruman's
+		// flashback) has no printed count; it is the announced X, which
+		// the validator reads (AltCostCountFromX).
+		if a.ExileFromGraveyard.CountFromX {
+			return a.ExileFromGraveyard, ZoneGraveyard, 0
+		}
 		n := a.ExileFromGraveyard.Min
 		if n < 1 {
 			n = 1
@@ -855,11 +861,36 @@ func (a *AlternativeCost) Beholds() bool {
 // #5679: so is an offer that removes X counters (CountersDefineX), where
 // the number removed is the X.
 func (a *AlternativeCost) PaymentDefinesX() bool {
-	if a.CountersDefineX() {
+	if a.CountersDefineX() || a.CardCountFromX() {
 		return true
 	}
 	spec, _, _ := a.cardComponent()
 	return spec != nil && spec.ManaValueEqualsX
+}
+
+// CardCountFromX reports whether this offer's card component is "exile X
+// cards from your graveyard" (#6122, CR 107.3a): Summons of Saruman's
+// "Flashback—{3}{U}{R}, Exile X cards from your graveyard." The number of
+// cards named is the spell's X, announced with the cast (an alternative
+// cost that includes X, so CR 107.3b does not lock it at 0), and the
+// spell reads it with ctx.X(). X = 0 exiles nothing. Nil-safe.
+func (a *AlternativeCost) CardCountFromX() bool {
+	return a != nil && a.ExileFromGraveyard != nil && a.ExileFromGraveyard.CountFromX
+}
+
+// AltCostXCeilingForEffect is the largest X an offer whose card count is
+// the X (CardCountFromX) lets `playerID` announce for `castID`: every
+// card in their graveyard the clause accepts, the spell itself excluded
+// (CR 601.2a has moved it to the stack). 0 for every other offer. The
+// view and the bot enumerator read it, so neither offers an X the
+// validator refuses.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AltCostXCeilingForEffect(playerID, castID uuid.UUID, alt *AlternativeCost) int {
+	if !alt.CardCountFromX() {
+		return 0
+	}
+	return len(g.AltCostCandidatesLocked(playerID, castID, alt))
 }
 
 // CountersDefineX reports whether this offer removes X counters, X being
@@ -1212,6 +1243,10 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if spec == nil {
 		return true
 	}
+	// #6122: "exile X cards" is paid at X = 0 by exiling nothing.
+	if spec.CountFromX && alt.CardCountFromX() {
+		return true
+	}
 	// #3931: harmonize taps UP TO one creature, so naming none pays it
 	// and the board never withholds the offer.
 	if alt.TapOthers != nil && alt.TapOthers.UpTo {
@@ -1405,6 +1440,10 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// battlefield, and Register refuses ExcludeSource, so the
 		// "source" the validator is handed excludes nothing.
 		return g.validateTapOthersCostLocked(playerID, castID, alt.TapOthers, ids)
+	}
+	// #6122: "exile X cards" names exactly the announced X.
+	if alt.CardCountFromX() {
+		want = max(x, 0)
 	}
 	// Exactly `want`, not "at least": escape's five is a price, and
 	// a caster who named four has not paid it while one who named

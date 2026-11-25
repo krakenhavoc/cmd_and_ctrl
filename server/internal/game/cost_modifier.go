@@ -239,6 +239,17 @@ type CostQuery struct {
 	// for an activation or special action.
 	TappingToPay int
 
+	// RemovingCounters is how many counters the announcement removes to a
+	// cast's "remove any number of counters" additional cost (#6121,
+	// AdditionalCost.RemoveCounters) — Hierophant Bio-Titan's "This spell
+	// costs {2} less to cast for each counter removed this way". Announced
+	// at CR 601.2b, read at 601.2f, filled from the counts on
+	// CastSpellParams.CounterCounts by the one pricer
+	// (CastCountersAnnouncedForAdditionalCost). Zero for an activation or
+	// special action, and for a cast whose counters pay an alternative
+	// cost instead.
+	RemovingCounters int
+
 	// OptionalCosts is the announcement's optional-cost indices
 	// (CastSpellParams.OptionalCosts), settled at CR 601.2b and read at
 	// 601.2f by a modifier of the spell's own: Bite Down on Crime's "This

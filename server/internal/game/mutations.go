@@ -1136,7 +1136,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #5390, CR 601.2b / 118.3: the offer's "remove N counters from
 	// among creatures you control", through the activation's own
 	// validator. Paid below, first of the board costs.
-	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params), params.XValue)
+	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castAltCounterPayment(card, alt, params), params.XValue)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad counter-removal payment",
 			"card_name", card.Name,
@@ -1268,7 +1268,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		otherX := !g.tapCostForCastParamsLocked(playerID, card, params).Empty()
 		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
-			otherX = otherX || ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
+			otherX = otherX || ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) ||
+				ReturnToHandCountFromX(ac.ReturnToHand)
 		}
 		if err := validateOptionalCostX(optionalCosts, params.OptionalCosts, params.XValue, paidHasX, otherX); err != nil {
 			slog.Warn("cast_spell rejected: X does not fit the optional cost",
@@ -1750,6 +1751,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #3868: a mandatory "tap an untapped Vampire you control", on the
 	// same list, kept apart from the convoke / waterbend taps (CR 118.3).
+	// #6121: a mandatory "remove any number of counters from among
+	// creatures you control", through the activation's own validator.
+	// Paid below with the alternative cost's counters, first of the board
+	// costs.
+	addCounters, err := g.validateAdditionalCostCountersLocked(playerID, cardID, costPlan, alt, castCounterPayment(params))
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad additional counter-removal payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"counter_sources", len(params.CounterSourceIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateCastTapOthersLocked(playerID, cardID, costPlan, params.TeamworkIDs, params.TapIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad tap-a-permanent payment",
 			"card_name", card.Name,
@@ -1794,7 +1809,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #5247: and the return-a-permanent cost, with every permanent another
 	// component of this cast already takes off the battlefield (CR 118.3).
-	if err := g.validateCastReturnToHandLocked(playerID, cardID, costPlan, params.ReturnIDs, castReturnAlsoSpent(params)); err != nil {
+	if err := g.validateCastReturnToHandLocked(playerID, cardID, costPlan, params.ReturnIDs, castReturnAlsoSpent(params), params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad return-a-permanent payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -2506,6 +2521,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// that is also sacrificed to the cast pays its counters before it
 	// goes. Not a replaceable event (payCounterRemovalLocked), and the
 	// total is recorded as an activation's is.
+	// #6121: or the mandatory additional cost's counters, which ride the
+	// same lists; never both (validateAdditionalCostCountersLocked).
+	if len(addCounters.parts) > 0 {
+		altCounters = addCounters
+	}
 	if len(altCounters.parts) > 0 {
 		if err := g.payCounterRemovalLocked(altCounters); err != nil {
 			slog.Error("cast_spell: counter removal failed after validation",
@@ -4203,6 +4223,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #3961: and the announced tap count (Explosive Singularity's
 		// "{1} less for each creature tapped this way").
 		TappingToPay: len(params.TeamworkIDs),
+		// #6121: and the announced counter total (Hierophant Bio-Titan's
+		// "{2} less for each counter removed this way").
+		RemovingCounters: g.castCountersAnnouncedLocked(card, params),
 		// #5193: and the announced optional costs (Bite Down on Crime's
 		// "{2} less if evidence was collected").
 		OptionalCosts: params.OptionalCosts,
@@ -6559,6 +6582,10 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	// face-down exiled cards are revealed on the way out only when the
 	// departure does not end the game (the same test as below).
 	g.recordFinalBoardLocked(p, g.survivingSeatsLocked() > 1)
+	// #6123: and what they controlled, as copy sources with their
+	// last-known types, for a trigger on this loss that resolves after
+	// CR 800.4a has taken the objects out of the game.
+	g.recordDepartedPermanentsLocked(p)
 	// #2450: a player leaving the game is loop progress (ADR 0055's
 	// 2026-10-07 amendment, option B, owner decision 3a).
 	g.noteLoopProgressLocked()

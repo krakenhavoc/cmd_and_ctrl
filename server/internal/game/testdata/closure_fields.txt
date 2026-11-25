@@ -64,6 +64,7 @@
 # 2026-10-27 (#4361 S18): ChoiceResumeFrames 39 → 0 and its ceiling entry deleted (owner decision D8). The CR 616 frame and the tails under it to keyed (10 lines: replacementFrameKeyable writes them, rebuildReplacementResumeLocked rebuilds them); the gathered effects to rebuilt (11 lines, gathered again by ReplacementEffectID) and the token templates to rebuilt (3 lines, D1); activeReplacement.source, zoneRoute.simultaneousExit and Game.enteringTokens to census:IntrinsicAbilityCards (D1), and the 12 stack-clause lines too (P11, D2: their other route is Game.StackMeta). census:IntrinsicAbilityCards 59 → 74, the raise Ian approved for #4361 only.
 # 2026-11-04 (#4870, ADR 0216 slice 1): Game.PlanarDeck and Game.PlanarFaceUp, the Planechase communal planar deck and its face-up planes, to census:IntrinsicAbilityCards like Player.AttractionDeck. census:IntrinsicAbilityCards 74 → 76, the raise Ian approved on 2026-11-04 for these two routes.
 # 2026-11-05 (#4522, ADR 0178 amendment): a move parked behind its declared token creation (Game.movesAwaitingTokens, keyed: the creation's tail names it, GameSnapshot.MovesAwaitingTokens writes it) and the declared creation's token templates (rebuilt, as ReplacementEvent.TokenGroups). No counter moves.
+# 2026-11-25 (#6123): Player.DepartedPermanents, a departed player's permanents as copy sources, and DepartedPermanent.Source to rebuilt, as Card.MeldedFrom: written through the card snapshot and restored by restoreCard. No counter moves.
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
@@ -93,6 +94,7 @@ CopySelector.Except                          rebuilt                            
 CostModifier.Amount                          census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.Amount
 CostModifier.AppliesTo                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.AppliesTo
 CounterRemovalCost.From                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.RemoveCounters.From
+DepartedPermanent.Source                     rebuilt                            # Game.Seats.DepartedPermanents.Source
 DiscardCost.Match                            census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.DiscardCards.Match
 EntryCardChoice.Matches                      rebuilt                            # Game.BuiltinReplacements.EntryCardChoice.Matches
 EntryCardChoice.Then                         rebuilt                            # Game.BuiltinReplacements.EntryCardChoice.Then
@@ -145,6 +147,7 @@ PendingChoice.triggerResume                  keyed                              
 Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
 Player.Companion                             census:IntrinsicAbilityCards       # Game.Seats.Companion
+Player.DepartedPermanents                    rebuilt                            # Game.Seats.DepartedPermanents
 Player.Emblems                               census:IntrinsicAbilityCards       # Game.Seats.Emblems
 Player.Graveyard                             census:IntrinsicAbilityCards       # Game.Seats.Graveyard
 Player.Hand                                  census:IntrinsicAbilityCards       # Game.Seats.Hand

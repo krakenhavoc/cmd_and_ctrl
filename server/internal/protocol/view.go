@@ -1372,8 +1372,12 @@ type LegalTargetsView struct {
 	// says the X is not the one collected in the X prompt but the number
 	// of counters the activation's cost is removing (Simic Manipulator,
 	// Quillmane Baku). A card with no entry in its map meets no bound.
-	ManaValueEqualsX     bool           `json:"mana_value_equals_x,omitempty"`
-	PowerAtMostX         bool           `json:"power_at_most_x,omitempty"`
+	ManaValueEqualsX bool `json:"mana_value_equals_x,omitempty"`
+	PowerAtMostX     bool `json:"power_at_most_x,omitempty"`
+	// PowerEqualsX is "with power X" (#6122, Ent-Draught Basin), narrowed
+	// from Powers by an EXACT match, as ManaValueEqualsX is from
+	// ManaValues.
+	PowerEqualsX         bool           `json:"power_equals_x,omitempty"`
 	ToughnessAtMostX     bool           `json:"toughness_at_most_x,omitempty"`
 	XFromCountersRemoved bool           `json:"x_from_counters_removed,omitempty"`
 	Powers               map[string]int `json:"powers,omitempty"`
@@ -1862,6 +1866,14 @@ type AdditionalCostView struct {
 	// (CR 118.3) — the client shows it disabled. Mana is never asked
 	// (CR 601.2g lets the caster tap afterwards). Branches only.
 	Payable bool `json:"payable,omitempty"`
+	// CounterCostView is "remove any number of +1/+1 counters from among
+	// creatures you control" (#6121, Hierophant Bio-Titan): the activated
+	// ability's counter block, with the spell being cast as the source the
+	// option walk is asked about, the wire names an alternative cost's
+	// counters use (#5390), so the client opens the same picker. The picks
+	// ride cast_spell's counter_source_ids / counter_counts; none is a
+	// legal payment (counter_cost_variable with no counter_cost_n).
+	CounterCostView
 }
 
 // OptionalCostView is the wire shape of one optional additional cost
@@ -2439,6 +2451,11 @@ type PayCardsView struct {
 	// Powers is each option's power now, keyed by instance ID, for a
 	// "sacrifice_total_power" payment. Absent for every other.
 	Powers map[string]int `json:"powers,omitempty"`
+	// GroupSize is set for a "graveyard_library_bottom" payment (#6121,
+	// Jötun Grunt's "two cards from a single graveyard"): the Options are
+	// the cards in every graveyard, and the picks from each graveyard must
+	// number a multiple of GroupSize. Absent for every other payment.
+	GroupSize int `json:"group_size,omitempty"`
 }
 
 // PayStateView is a pay-unless payment that names nothing and is not
@@ -5602,6 +5619,12 @@ type ActivatedAbilityView struct {
 	// mana value is this or more. The engine refuses a pick below it; the
 	// client shows the running total.
 	ExileCostManaValueMin int `json:"exile_cost_mana_value_min,omitempty"`
+	// ExileCostToLibraryBottom marks "Put N cards from your graveyard on
+	// the bottom of your library" (#6121, Battlefield Scrounger): the
+	// same graveyard pick on `exile_ids`, but the cards go to the bottom
+	// of the library in the order picked (CR 401.4) instead of to exile,
+	// so the picker says so. Absent for every other clause.
+	ExileCostToLibraryBottom bool `json:"exile_cost_to_library_bottom,omitempty"`
 	// ReturnLabel / ReturnOptions describe a "Return a permanent you
 	// control to its owner's hand" cost component (#1213) — Quirion
 	// Ranger's Forest, Master Transmuter's artifact, Meloku's land.
@@ -8924,6 +8947,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 	v.ManaValueAtMostX = spec.ManaValueAtMostX
 	v.ManaValueEqualsX = spec.ManaValueEqualsX && spec.ManaValueEqualsXPlus == 0
 	v.PowerAtMostX = spec.PowerAtMostX
+	v.PowerEqualsX = spec.PowerEqualsX
 	v.ToughnessAtMostX = spec.ToughnessAtMostX
 	v.XFromCountersRemoved = spec.BoundByCountersRemoved
 	vals := g.BoundValuesForEffect(spec, cards)
@@ -9211,6 +9235,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
+			// #6122: "Exile X cards from your graveyard" (Summons of
+			// Saruman's flashback) — any number of the options, none
+			// included, and the number picked is the cast's x_value.
+			if ac.CardCountFromX() {
+				opts.CountFromX = true
+				opts.Min, opts.Max = 0, len(opts.Cards)
+			}
 			v.PayOptions = opts
 		} else if paySpec := ac.Sacrifice; paySpec != nil {
 			// #1727: the additional cost's sacrifice picker, verbatim —
@@ -9352,6 +9383,11 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		// the permanents the validator accepts (#544).
 		out.TapOthersLabel = tc.Label
 		out.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
+	}
+	if rc := ac.RemoveCounters; rc != nil {
+		// #6121: the activation's counter block, off the walk the
+		// validator reads, with the spell as the source.
+		out.CounterCostView = counterCostView(g, caster, castID, rc, nil)
 	}
 	if he := ac.ExileFromHand; he != nil {
 		// #3175: the engine's own walk, so the picker offers exactly the
@@ -11112,6 +11148,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PayCards.Picks = "players"
 			}
 			v.PayCards.Repeats = a.Repeats
+			if a.Kind == game.PayActionGraveyardToLibraryBottom {
+				v.PayCards.GroupSize = a.GroupSize
+			}
 			if a.Kind == game.PayActionSacrificeTotalPower {
 				// #6187: the total and what each option adds to it.
 				v.PayCards.TotalPower = a.TotalPower
@@ -14821,6 +14860,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.ExileCostLabel = ec.Label
 			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
 			v.ExileCostZone = string(ec.Zone())
+			v.ExileCostToLibraryBottom = ec.ToLibraryBottom
 		}
 		if ec := a.Cost.ExileCards; ec != nil && ec.AnyNumber {
 			v.ExileCostAnyNumber = true
@@ -15264,6 +15304,12 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 	}
 	ids := g.ReturnToHandOptionsForEffect(controller, sourceID, rc)
 	out := &LegalTargetsView{Min: rc.Count, Max: rc.Count}
+	// #6122: "return X <permanents>" (Infernal Harvest) — any number of
+	// the options, none included, and the number picked is the cast's
+	// x_value, as for "sacrifice X" (count_from_x).
+	if game.ReturnToHandCountFromX(rc) {
+		out = &LegalTargetsView{Min: 0, Max: len(ids), CountFromX: true}
+	}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
 		out.Cards = append(out.Cards, id.String())
 	}

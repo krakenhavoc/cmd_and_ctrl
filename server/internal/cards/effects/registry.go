@@ -243,6 +243,7 @@ func Register(spec Spec) {
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostReturnCount(spec.Name, ac)
 		CheckAltCostXBound(spec, ac)
+		checkAltCostExileX(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkAltCostRemoveCounters(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
@@ -344,6 +345,7 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	checkAdditionalCounterCost(spec)
 	// #5669: the untap form is an activated ability's alone.
 	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
@@ -763,7 +765,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, AbilityCostPaysBesideSacrifice(ab.Cost))
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
 		checkExileTotalManaValueX(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
@@ -1493,7 +1495,12 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 // card as something it does not print:
 //
 //   - a floor below one outside a cast: a cost that can be paid with
-//     nothing is free (#1213's guard, which stays for abilities).
+//     nothing is free (#1213's guard, which stays for abilities) —
+//     unless the ability pays something else beside it (#6121,
+//     AbilityCostPaysBesideSacrifice): Baba Lysaga's "{T}, Sacrifice up
+//     to three permanents" and Sword of the Ages' "{T}, Sacrifice this
+//     artifact and any number of creatures you control" print a floor
+//     of zero, and the {T} is what keeps them from being free.
 //   - a ceiling below the floor.
 //   - CountFromX where there is no X to announce — `allowX` is false
 //     for a mana ability, which has no stack item to carry one
@@ -1524,7 +1531,7 @@ func CheckSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !anyNumber && !allowOpen:
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but that variable count has no shape here — a cast's additional cost prints only \"sacrifice X\" (SacrificeXCost) or \"any number\" (SacrificeAnyNumberCost), ADR 0100 §3",
 			card, where, spec.Min, spec.Max))
-	case !spec.CountFromX && !anyNumber && spec.Min < 1:
+	case !spec.CountFromX && !anyNumber && spec.Min < 1 && !(allowZero && spec.Max >= 1):
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore)",
 			card, where, spec.Min, spec.Max))
 	case !spec.CountFromX && spec.Max != 0 && spec.Max < spec.Min:
@@ -1663,7 +1670,7 @@ func checkAltCostReturnCount(card string, ac game.AlternativeCost) {
 func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	where := fmt.Sprintf("alternative cost %q", ac.Key)
 	for _, s := range []*game.TargetSpec{ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
-		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX) {
+		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX) {
 			panic(fmt.Sprintf("effects.Register: %q %s bounds a component by X that does not read the bound — only a hand pitch (ExileFromHand) does", spec.Name, where))
 		}
 	}
@@ -1671,7 +1678,7 @@ func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	if s == nil {
 		return
 	}
-	if s.ManaValueAtMostX || s.PowerAtMostX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
+	if s.ManaValueAtMostX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
 		panic(fmt.Sprintf("effects.Register: %q %s bounds its pitch by a statistic other than \"mana value X\" — no printed pitch does", spec.Name, where))
 	}
 	if !s.ManaValueEqualsX {
@@ -2150,7 +2157,7 @@ func CheckFlatClauses(name string, spec *game.TargetSpec) {
 		// nothing without one.
 		c := spec.Clause(i)
 		stats := 0
-		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX} {
+		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX || c.PowerEqualsX, c.ToughnessAtMostX} {
 			if set {
 				stats++
 			}
@@ -2192,7 +2199,7 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 		// (Rampaging Yao Guai) counts none by X. A count of exactly X has no
 		// printed card.
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause counted exactly X — build it as Orcus, Prince of Undeath's (up to X) or leave the count open", name, i))
-	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
+	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.PowerEqualsX || c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
 	}
 }
@@ -2236,7 +2243,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	switch {
 	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
-	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
+	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.PowerEqualsX, c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))
 	case c.Min < 1:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice of \"up to\" targets — no printed card is", name, i))
@@ -2320,7 +2327,7 @@ func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
 func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable, countersAvailable bool) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.ToughnessAtMostX {
+		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.PowerEqualsX && !c.ToughnessAtMostX {
 			continue
 		}
 		if c.BoundByCountersRemoved {
@@ -2965,6 +2972,13 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
+	}
+	if ec.ToLibraryBottom && (!strings.HasPrefix(where, "ability ") || ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber ||
+		ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.TopOnly || ec.LinkToSource || ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0) {
+		// #6121: "Put N cards from your graveyard on the bottom of your
+		// library" is a CR 602 ability's printed count from the graveyard.
+		panic(fmt.Sprintf("effects.Register: %q %s puts cards on the bottom of a library — a CR 602 ability's printed count from the graveyard only (#6121)",
+			name, where))
 	}
 	if ec.TopOnly && (ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber || ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.Processes()) {
 		// #6194: "the top <kind> card of your graveyard" is a graveyard

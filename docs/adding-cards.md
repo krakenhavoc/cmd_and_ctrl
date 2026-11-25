@@ -817,6 +817,21 @@ unless the card prints one (The Deck of Many Things' "0 or less").
   (CR 706.7). "…and ignore one" with a chooser is Ichor Elixir's
   `ev.RollOneMoreAndIgnoreOne`.
 
+**"Whenever you discard one or more cards at random, select one or more
+targets at random, choose one or more modes at random"** (Chira, All In,
+#6101) watches three events the engine emits once per instruction where
+it makes the draw ([game/random_events.go](../server/internal/game/random_events.go)):
+`EventDiscardedAtRandom` (every effect discard at random, a "discard N
+cards at random" activation cost, a pay-unless random discard),
+`EventTargetsSelectedAtRandom` (`ChosenAtRandom` targets and
+`ReselectTargetsAtRandomForEffect`) and `EventModesChosenAtRandom`
+(`ChooseOneAtRandom`). `Actor` is the player who discards, selects or
+chooses. A card never emits them itself: route a random discard through
+`DiscardCards`, `DiscardRandomForEffect` or `DiscardAtRandom`, never a
+`ChooseAtRandomForEffect` over the hand followed by a discard. Coins and
+dice are one event per coin or die; "one or more" takes the first of the
+batch (`ev.Seq == ev.BatchSeq`).
+
 Two rolls are not an effect's, and each has its own declaration (#5682,
 [game/dice_cost.go](../server/internal/game/dice_cost.go)); both still go
 through the dice door, so a replacement of the roll and `WheneverYouRollDice`
@@ -4007,6 +4022,28 @@ copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
 Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
 fails anything else.
 
+### Licids: "becomes an Aura … You may pay {X} to end this effect" (#5781, CR 116.2c)
+
+A licid (Leeching Licid, Quickening Licid, …) is three declarations
+([ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md)
+amendment 2026-11-25):
+
+```go
+ReturnedAura: effects.EnchantCreature(),
+Static:       append(effects.LicidForm(0), <the Aura's own text>...),
+Activated:    []effects.ActivatedAbility{effects.LicidAbility("{B}", "{B}")},
+```
+
+`LicidAbility(cost, endCost)` is the printed ability, and it must be
+activated row 0, the row `LicidForm(0)` takes away while the licid is an
+Aura. The Aura's own text uses the ordinary Aura helpers ("Enchanted
+creature has haste", "At the beginning of the upkeep of enchanted
+creature's controller, …"), which find nothing while the licid is a
+creature. Paying to end the effect is the engine's `end_effect` special
+action, derived from the permanent and offered to the player who activated
+the ability: the card declares nothing for it. Test the end with
+`g.PerformSpecialAction(me, licid, game.SpecialActionEndEffect, game.SpecialActionParams{})`.
+
 ### "You may discard this card any time you could cast an instant" (#6224, CR 116.2e)
 
 Circling Vultures' clause is a special action, declared like foretell:
@@ -5437,6 +5474,28 @@ Triggered: []game.TriggeredAbility{
   a suppressor and a zero occurrence count all return before the claim.
 - `Register` refuses `OnlyOnce` on a row with no `Key` or on a state trigger.
   "Triggers only once each turn" is still `TriggersOnlyOnceEachTurn(t)`.
+
+### A word recorded per player: "each player chooses war or peace", "previously dealt damage by it" (#6097)
+
+`Card.Notes` (`game/notes.go`) is a list of words for one object. A word that
+belongs to one object AND one player is a player note, `Card.PlayerNotes`
+(`game/player_notes.go`), with the same lifecycle: per instance, cleared when
+the permanent leaves the battlefield (CR 400.7), not copiable (CR 707.2),
+carried by the snapshot and the last-known record (CR 608.2h).
+
+- **Write:** `g.SetPlayerNoteForEffect(id, player, word)` for a choice (one
+  answer per player, a new one replaces the old), `g.AddPlayerNoteForEffect(id,
+  player, word)` for a mark that accumulates (Diseased Vermin's "a player it
+  dealt damage to": call it from its combat damage trigger).
+- **Read:** `source.PlayerNoted(player, word)` in a static's `AppliesTo`
+  (Archangel of Strife: `c.IsCreature() && source.PlayerNoted(c.Controller,
+  "war")`), `source.PlayersNoted(word)` for the list (a target predicate:
+  "target opponent previously dealt damage by it"), and
+  `g.PlayerNotesForEffect(id)` from a resolving effect.
+- **"As this enters, each player chooses A or B"** is
+  `AsEnters: effects.EachPlayerChoosesAsEnters(name, "war", "peace")`: every
+  player is asked in APNAP order (CR 101.4), one keyed option pick after
+  another, and each answer is recorded as that player's note.
 
 ### Conjure, perpetual changes and boons (ADR 0099 amendment 2026-11-24, #5948)
 

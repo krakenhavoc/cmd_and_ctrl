@@ -36,3 +36,28 @@ func discardCardsForX(paying *game.AdditionalCost, pool []uuid.UUID, x int) []uu
 	}
 	return pool[:min(x, len(pool))]
 }
+
+// maxEnumeratedReturnX caps the X a "return X <permanents> you control"
+// move announces (#6122, Infernal Harvest): any X up to the board is
+// legal; the enumerator offers a small one so a bot never bounces every
+// land it has.
+const maxEnumeratedReturnX = 2
+
+// returnXCeiling is the largest X a "return X …" additional cost lets the
+// seat announce in a move: the engine's own ReturnToHandXCeilingForEffect,
+// capped at maxEnumeratedReturnX. noXCeiling for every other cost.
+func (e *enumerator) returnXCeiling(castID uuid.UUID, addCost *game.AdditionalCost) int {
+	if addCost == nil || !game.ReturnToHandCountFromX(addCost.ReturnToHand) {
+		return noXCeiling
+	}
+	return min(e.g.ReturnToHandXCeilingForEffect(e.seat, castID, addCost.ReturnToHand), maxEnumeratedReturnX)
+}
+
+// returnPermanentsForX is the return a move at X names for a "return X …"
+// cost: the first X of the pool. Nil for every other cost.
+func returnPermanentsForX(paying *game.AdditionalCost, pool []uuid.UUID, x int) []uuid.UUID {
+	if paying == nil || !game.ReturnToHandCountFromX(paying.ReturnToHand) || x <= 0 {
+		return nil
+	}
+	return pool[:min(x, len(pool))]
+}

@@ -184,6 +184,19 @@ const (
 	// one or more distinct options whose powers (as they are now, a
 	// negative one counting as itself) add up to TotalPower.
 	PayActionSacrificeTotalPower PayActionKind = "sacrifice_total_power"
+	// PayActionGraveyardToLibraryBottom puts Count cards from graveyards
+	// on the bottom of their owners' libraries (#6121): Jötun Grunt's
+	// "Cumulative upkeep—Put two cards from a single graveyard on the
+	// bottom of their owner's library". The options are the cards in
+	// every graveyard of a player still in the game, and GroupSize is the
+	// "single graveyard": the picks come in groups of that many, each
+	// group from one graveyard, so the picks from each graveyard number a
+	// multiple of GroupSize. A cumulative upkeep multiplies Count and keeps
+	// GroupSize, which is CR 702.24a's "each choice is made separately for
+	// each age counter" (one graveyard per age counter). A card pick, so it
+	// takes the {apply, card_ids} answer; graveyards are public, so the
+	// options go to every seat.
+	PayActionGraveyardToLibraryBottom PayActionKind = "graveyard_library_bottom"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -314,8 +327,36 @@ func (g *Game) payActionCanPayLocked(chooser uuid.UUID, a *PayAction) bool {
 	case a.Repeats:
 		// #6189: one option can pay every pick, so any option will do.
 		return a.Count > 0 && len(g.payActionOptionsLocked(chooser, a)) > 0
+	case a.Kind == PayActionGraveyardToLibraryBottom:
+		// #6121: only whole groups count — a graveyard of three pays one
+		// "two cards from a single graveyard", not one and a half.
+		return graveyardGroupsAvailableLocked(g, a) >= a.Count
 	}
 	return len(g.payActionOptionsLocked(chooser, a)) >= a.Count
+}
+
+// graveyardGroupSize is a PayActionGraveyardToLibraryBottom's GroupSize,
+// one when it is unset.
+func graveyardGroupSize(a *PayAction) int {
+	if a.GroupSize < 1 {
+		return 1
+	}
+	return a.GroupSize
+}
+
+// graveyardGroupsAvailableLocked is how many picks of `a` the graveyards
+// can supply in whole groups (#6121): each graveyard's size rounded down
+// to a multiple of the group size, summed. Caller must hold g.mu.
+func graveyardGroupsAvailableLocked(g *Game, a *PayAction) int {
+	size := graveyardGroupSize(a)
+	n := 0
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated || p.Graveyard == nil {
+			continue
+		}
+		n += p.Graveyard.Size() / size * size
+	}
+	return n
 }
 
 // PayActionCanPayForEffect is payActionCanPayLocked for callers already
@@ -411,6 +452,11 @@ type PayAction struct {
 	// sacrificed permanents must add up to at least (#6187). Unused by
 	// every other kind. Additive (#522).
 	TotalPower int `json:",omitempty"`
+	// GroupSize is how many picks of a PayActionGraveyardToLibraryBottom
+	// come from one graveyard (#6121): the "two cards from a single
+	// graveyard" of Jötun Grunt. Unused by every other kind. Additive
+	// (#522).
+	GroupSize int `json:",omitempty"`
 }
 
 // payActionOpponentLocked reports whether `other` is an opponent of
@@ -478,6 +524,8 @@ func PayActionPhrase(a PayAction) string {
 		return "pay " + a.Mana
 	case PayActionExileFromGraveyard:
 		return "exile " + n + " cards from your graveyard"
+	case PayActionGraveyardToLibraryBottom:
+		return "put " + n + " cards from graveyards on the bottom of their owners' libraries"
 	case PayActionCounterOnOpponentCreature:
 		if a.Count == 1 {
 			return "put a " + a.CounterKind + " counter on a creature an opponent controls"
@@ -676,6 +724,17 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 				out = append(out, c.InstanceID)
 			}
 		}
+	case PayActionGraveyardToLibraryBottom:
+		// #6121: every graveyard of a player still in the game, in seat
+		// order and then zone order. "A single graveyard" is any one.
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.Graveyard == nil {
+				continue
+			}
+			for _, c := range p.Graveyard.Cards {
+				out = append(out, c.InstanceID)
+			}
+		}
 	case PayActionOpponentGainsLife, PayActionOpponentCreatesToken:
 		// #6189: the picks are PLAYERS — the payer's opponents, in
 		// seat order.
@@ -737,6 +796,24 @@ func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked [
 			return ErrInvalidParam
 		}
 	}
+	if a.Kind == PayActionGraveyardToLibraryBottom {
+		// #6121, CR 702.24a: the picks split into groups of GroupSize, each
+		// from a single graveyard, which is possible exactly when each
+		// graveyard gives a multiple of GroupSize.
+		perOwner := map[uuid.UUID]int{}
+		for _, id := range picked {
+			c := g.findCardByIDLocked(id)
+			if c == nil {
+				return ErrInvalidParam
+			}
+			perOwner[c.Owner]++
+		}
+		for _, n := range perOwner {
+			if n%graveyardGroupSize(a) != 0 {
+				return ErrInvalidParam
+			}
+		}
+	}
 	return nil
 }
 
@@ -779,6 +856,18 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 			Source: source,
 			Cause:  MoveCause{Kind: MoveCauseCost, Controller: chooser},
 		}, picked, then)
+	case PayActionGraveyardToLibraryBottom:
+		// #6121: each card to the bottom of its owner's library, in the
+		// order named, through the exit primitive one card at a time as a
+		// graveyard exile's are, so a commander's CR 903.9b offer resumes
+		// into the rest and `then` runs once the last card has landed.
+		return g.routeAllKeyedLocked(zoneRoute{
+			Dst:      ZoneLibrary,
+			ToBottom: true,
+			Actor:    chooser,
+			Source:   source,
+			Cause:    MoveCause{Kind: MoveCauseCost, Controller: chooser},
+		}, picked, then)
 	case PayActionSacrifice, PayActionSacrificeTotalPower:
 		if err := g.payCostSacrificesLocked(picked, nil); err != nil {
 			return err
@@ -792,6 +881,7 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 			return ErrInvalidParam
 		}
 		ids := g.ChooseAtRandomForEffect(RandomDraw{Player: chooser, Source: source}, pool, a.Count)
+		g.emitChoseAtRandomLocked(EventDiscardedAtRandom, chooser, source, len(ids))
 		return g.discardCardsLocked(chooser, ids, discardOptions{
 			cause:  DiscardCauseCost,
 			source: source,

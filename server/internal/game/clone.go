@@ -818,6 +818,7 @@ func clonePlayer(p *Player) *Player {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  p.LossCause,
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         cloneDepartedPermanents(p.DepartedPermanents),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,

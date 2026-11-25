@@ -1081,6 +1081,19 @@ type Card struct {
 	// read with Game.NotesForEffect (notes.go).
 	Notes []string
 
+	// PlayerNotes are words this object's abilities have recorded for a
+	// PLAYER (#6097): Archangel of Strife's "each player chooses war or
+	// peace" (a choice per player, read by its statics), Diseased Vermin's
+	// "target opponent previously dealt damage by it" (a mark per damaged
+	// player). Notes' lifecycle: per INSTANCE, carried by the snapshot and
+	// by clone, cleared when this permanent leaves the battlefield
+	// (CR 400.7), NOT a copiable value (CR 707.2), always replaced and never
+	// changed in place (clone shares the backing array). Written by
+	// Game.AddPlayerNoteForEffect / SetPlayerNoteForEffect and read with
+	// Card.PlayerNoted, Card.PlayersNoted or Game.PlayerNotesForEffect
+	// (player_notes.go).
+	PlayerNotes []PlayerNote
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.
@@ -2248,6 +2261,17 @@ type Card struct {
 	// Last Voyage of the _____): the same Aura form, the same clause
 	// lookup, ended by the same zone change.
 	ReturnedAura bool
+
+	// AuraFormEndBy and AuraFormEndCost are a licid's "You may pay {X} to
+	// end this effect" (#5781, licid.go, ADR 0154 amendment 2026-11-25):
+	// the player who may end the effect that made this permanent an Aura
+	// (the controller of the ability that created it, CR 109.5) and the
+	// cost, in brace notation. Set with ReturnedAura by
+	// BecomeLicidAuraForEffect; both cleared when the effect ends
+	// (SpecialActionEndEffect) and at both CR 400.7 sites. Not copiable
+	// (CR 707.2). Carried by clone and the snapshot.
+	AuraFormEndBy   uuid.UUID
+	AuraFormEndCost string
 
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a
 	// battlefield host is judged by it (#3159; documented beside

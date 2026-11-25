@@ -124,6 +124,24 @@ func ExileFromGraveyardPayment(n int) UpkeepPayment {
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: n}, Words: words}
 }
 
+// GraveyardToLibraryBottomPayment is "Put N cards from a single graveyard
+// on the bottom of their owner's library" as a payment (#6121, Jötun
+// Grunt's cumulative upkeep): `group` cards from any one graveyard, `n`
+// cards in all. A cumulative upkeep multiplies n and keeps the group
+// (CR 702.24a: each age counter's choice of graveyard is its own), so two
+// age counters may take two cards from one graveyard and two from
+// another. The cards go to the bottom in the order named.
+func GraveyardToLibraryBottomPayment(n, group int) UpkeepPayment {
+	words := "Put a card from a graveyard on the bottom of its owner's library"
+	if n != 1 {
+		words = "Put " + NumberWord(n) + " cards from graveyards on the bottom of their owners' libraries"
+		if group == n {
+			words = "Put " + NumberWord(n) + " cards from a single graveyard on the bottom of their owner's library"
+		}
+	}
+	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionGraveyardToLibraryBottom, Count: n, GroupSize: group}, Words: words}
+}
+
 // EitherPayment is "<a> or <b>" as one payment (ADR 0187 §5): Worms of
 // the Earth's "any player may sacrifice two lands of their choice or
 // have this enchantment deal 5 damage to that player". It is ONE offer
