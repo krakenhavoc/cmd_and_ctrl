@@ -1243,6 +1243,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6160: Mystic Reflection's "the next time one or more creatures or
+	// planeswalkers enter this turn, they enter as copies".
+	ModNextEntersAsCopies: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1620,10 +1623,12 @@ func blockRequirementModProblem(m Mod) string {
 		// here (attackPermanentModProblem checks it).
 		// #6087: a creaturesExceptObjects restriction names the spared
 		// creatures here (exceptObjectsScopeProblem checks it).
+		// #6160: Mystic Reflection names the creature to copy and the
+		// entry that spent it (nextEntersAsCopiesModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
 			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
-			m.Kind != ModAddRestrictions {
+			m.Kind != ModAddRestrictions && m.Kind != ModNextEntersAsCopies {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
