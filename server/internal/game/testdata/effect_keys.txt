@@ -36,6 +36,7 @@ anyplayer any-player/rhystic-circle-shield
 anyplayer any-player/rhystic-scrying-discard
 anyplayer any-player/rhystic-shield-extra
 anyplayer any-player/rhystic-tutor-search
+anyplayer any-player/risk-factor-draw
 anyplayer any-player/sin-prodder-outcome
 anyplayer any-player/soul-strings-return
 anyplayer any-player/tuck-this-on-top-of-library
@@ -1530,6 +1531,7 @@ choose choose-cards/s82-old-b161-shuffle-graveyard-into-library
 choose choose-cards/s82-old-b166-rank-officer-zombie
 choose choose-cards/s82-old-b170-deliver-unto-evil-return
 choose choose-cards/s82-old-b172-viviens-grizzly-take
+choose choose-cards/s82-old-b190-ledev-champion-tap
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
