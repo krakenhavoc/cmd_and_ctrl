@@ -67,6 +67,8 @@ var abilityRowFieldsNotRows = map[string]string{
 	"MergedComponent":            "a flag on a mutated permanent's component part (ADR 0223); its rows are the slots it merges",
 	"XMatters":                   "an enumerator hint",
 	"MadnessLife":                "the life a madness cost charges, read when pricing the cast",
+	"LoyaltyCostAdd":             "a loyalty-cost addition, read when an ability's cost is determined (#6148); its row is the printed static text",
+	"CommanderTaxInLife":         "a commander tax paid in life, read when pricing the cast (#6151)",
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",
 	"IgnorableEffect":            "the escape of the CastRestrictions and LandPlayRestrictions that are the tile's rows (#1986, CR 116.2d); a special action on the player's own panel",
 	"WantsDistinctColors":        "an auto-tapper hint",

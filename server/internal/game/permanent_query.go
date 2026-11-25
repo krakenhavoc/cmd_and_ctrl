@@ -207,6 +207,29 @@ func (g *Game) controlsMatchingLocked(player uuid.UUID, qs []PermanentQuery) boo
 	return false
 }
 
+// controlsMatchingOtherThanLocked is controlsMatchingLocked without the
+// permanent `self`: "another" (CR 109.1) is a different object, not a different
+// name.
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) controlsMatchingOtherThanLocked(player, self uuid.UUID, qs []PermanentQuery) bool {
+	if player == uuid.Nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != player || c.InstanceID == self {
+			continue
+		}
+		for _, q := range qs {
+			if q.matchesLocked(g, c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // countMatchingLocked counts the permanents `player` controls on the
 // battlefield that match any of `qs`, each once: "you control more
 // creatures than defending player".

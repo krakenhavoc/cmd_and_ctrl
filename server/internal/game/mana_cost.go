@@ -198,6 +198,15 @@ type ColorRequirement struct {
 	// describe the printed symbol, so the price renders as printed and
 	// the mana value is unchanged (CR 202.3). PaysWithLife reads it.
 	LifeGranted bool
+	// SnowAny marks a coloured slot that also takes any mana a SNOW source
+	// produced, whatever its colour: "you may spend mana from snow sources
+	// as though it were mana of any color to cast those spells" (Draugr
+	// Necromancer, #6161, CR 609.4b). Set on a copy at the payment by a
+	// cast permission's AnyColorFromSnow (widenSnowAny); never by
+	// ParseCost. Options and String still describe the printed symbol.
+	// Unlike AnyMana it is paid in the coloured passes, because which
+	// mana pays it depends on the mana's source (PaidBy), as {S} does.
+	SnowAny bool
 }
 
 // Admits reports whether one mana of `color` ("W" … "G", or "C") can
@@ -227,14 +236,15 @@ func (r ColorRequirement) PaidBy(color string, snow bool) bool {
 	if r.Snow {
 		return snow
 	}
-	return matchColor(color, r.Options)
+	// #6161: a slot widened to snow mana of any colour.
+	return matchColor(color, r.Options) || (r.SnowAny && snow)
 }
 
 // sameAdmitted reports whether two slots are paid by exactly the same
 // mana (PaidBy): the same printed colours and the same snow bit. A {C}
 // and an {S} share their Options and are not the same slot.
 func sameAdmitted(a, b ColorRequirement) bool {
-	return a.Snow == b.Snow && slices.Equal(a.Options, b.Options)
+	return a.Snow == b.Snow && a.SnowAny == b.SnowAny && slices.Equal(a.Options, b.Options)
 }
 
 // width is how many kinds of mana can pay the slot — the "fewest
@@ -243,6 +253,10 @@ func sameAdmitted(a, b ColorRequirement) bool {
 func (r ColorRequirement) width() int {
 	if r.AnyMana || len(r.Options) == 0 {
 		return 6
+	}
+	if r.SnowAny {
+		// #6161: snow mana of any colour pays it too.
+		return len(r.Options) + 1
 	}
 	return len(r.Options)
 }

@@ -161,6 +161,13 @@ type AttackTargetRestriction struct {
 	// alone, read live at declaration, so it refuses every target while
 	// unmet.
 	ControllerMustControl []PermanentQuery `json:",omitempty"`
+	// ControllerMustControlAnother is ControllerMustControl for "another":
+	// the attacking creature itself does not count toward the clause, so
+	// "can't attack unless you control another creature with power 4 or
+	// greater" (Warden of the Chained, #5514, CR 508.1c, CR 109.1) is judged
+	// over the controller's other permanents. Read live at declaration, like
+	// every clause here.
+	ControllerMustControlAnother []PermanentQuery `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -243,6 +250,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
 		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
+		samePermanentQueries(r.ControllerMustControlAnother, o.ControllerMustControlAnother) &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
 		r.NotAnAbility == o.NotAnAbility && r.PowerAtMostHandOf == o.PowerAtMostHandOf
 }
@@ -267,7 +275,8 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0
+		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0 ||
+		len(r.ControllerMustControlAnother) > 0
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -277,7 +286,7 @@ func (r AttackTargetRestriction) asksOfTheDefender() bool {
 // "unless you control more creatures than defending player".
 //
 // Caller must hold g.mu with fresh layers.
-func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defender uuid.UUID) string {
+func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defender, self uuid.UUID) string {
 	name := g.playerNameLocked(defender)
 	if len(r.DefenderMustControl) > 0 && !g.controlsMatchingLocked(defender, r.DefenderMustControl) {
 		return name + " controls no " + PermanentQueriesNoun(r.DefenderMustControl)
@@ -310,6 +319,9 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	}
 	if qs := r.ControllerMustControl; len(qs) > 0 && !g.controlsMatchingLocked(you, qs) {
 		return g.playerNameLocked(you) + " controls no " + PermanentQueriesNoun(qs)
+	}
+	if qs := r.ControllerMustControlAnother; len(qs) > 0 && !g.controlsMatchingOtherThanLocked(you, self, qs) {
+		return g.playerNameLocked(you) + " controls no other " + PermanentQueriesNoun(qs)
 	}
 	return ""
 }
@@ -427,7 +439,7 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 		if defender == uuid.Nil {
 			return false, uuid.Nil, ""
 		}
-		if why := r.unmetDefenderClauseLocked(g, attacker.Controller, defender); why != "" {
+		if why := r.unmetDefenderClauseLocked(g, attacker.Controller, defender, attacker.InstanceID); why != "" {
 			return true, defender, why
 		}
 	}
@@ -630,7 +642,7 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 			if p == nil || p.Eliminated || p.ID == c.Controller {
 				continue
 			}
-			if why := r.unmetDefenderClauseLocked(g, c.Controller, p.ID); why != "" {
+			if why := r.unmetDefenderClauseLocked(g, c.Controller, p.ID, c.InstanceID); why != "" {
 				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r, Why: why})
 			}
 		}

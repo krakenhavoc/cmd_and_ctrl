@@ -53,6 +53,9 @@ type searchTailSpec struct {
 	OntoBattlefieldIfSubtype string `json:"ontoBattlefieldIfSubtype,omitempty"`
 	// FirstEntersUnderControlOf is SearchLibrarySpec's (#5507); nil when unset.
 	FirstEntersUnderControlOf *uuid.UUID `json:"firstEntersUnderControlOf,omitempty"`
+	// BothZones and HoldFound are SearchLibrarySpec's (#6156).
+	BothZones bool `json:"bothZones,omitempty"`
+	HoldFound bool `json:"holdFound,omitempty"`
 }
 
 // searchEntryRun is the rest of a battlefield search, riding the entry
@@ -77,6 +80,7 @@ func searchTailSpecOf(spec SearchLibrarySpec) searchTailSpec {
 		AlsoGraveyard: spec.AlsoGraveyard, AlsoGraveyardAndHand: spec.AlsoGraveyardAndHand, AlsoHand: spec.AlsoHand,
 		TakeAll: spec.TakeAll, LibraryUntouched: spec.libraryUntouched, ExileFoundFor: spec.exileFoundFor,
 		OntoBattlefieldIfSubtype: spec.OntoBattlefieldIfSubtype,
+		BothZones:                spec.BothZones, HoldFound: spec.HoldFound,
 	}
 	if spec.FirstEntersUnderControlOf != uuid.Nil {
 		f := spec.FirstEntersUnderControlOf
@@ -101,6 +105,7 @@ func (s searchTailSpec) searchSpec() SearchLibrarySpec {
 		AlsoGraveyard: s.AlsoGraveyard, AlsoGraveyardAndHand: s.AlsoGraveyardAndHand, AlsoHand: s.AlsoHand,
 		TakeAll: s.TakeAll, libraryUntouched: s.LibraryUntouched, exileFoundFor: s.ExileFoundFor,
 		OntoBattlefieldIfSubtype: s.OntoBattlefieldIfSubtype,
+		BothZones:                s.BothZones, HoldFound: s.HoldFound,
 	}
 	if s.FirstEntersUnderControlOf != nil {
 		out.FirstEntersUnderControlOf = *s.FirstEntersUnderControlOf

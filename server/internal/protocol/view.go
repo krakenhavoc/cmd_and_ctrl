@@ -524,7 +524,9 @@ type PendingChoiceView struct {
 	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
 	// what giving the entering permanent away does to the seat that
 	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
-	// Prosperity), game.ControlPurpose. Public for ColorPurpose's
+	// Prosperity), game.ControlPurpose — or "tribute" (CR 702.104a,
+	// #6251), where nobody is given it and the chosen opponent decides
+	// whether to pay its tribute. Public for ColorPurpose's
 	// reason: it is a reading of the card's own printed text. The
 	// seats themselves ride PickOptions, each with its Player set.
 	// Absent on every other kind.
@@ -4805,6 +4807,10 @@ type CastPriceView struct {
 	// Life is the life a Bolas's-Citadel-shaped price charges on top
 	// (CR 119.4). Absent for every exile price today.
 	Life int `json:"life,omitempty"`
+	// CommanderTaxLife is the part of Life that is a commander tax paid
+	// in life (#6151, Liesa, Shroud of Dusk): 2 per previous cast from
+	// the command zone, in place of {2} each. Absent for every other card.
+	CommanderTaxLife int `json:"commander_tax_life,omitempty"`
 	// Energy is the energy a price charges on top (ADR 0129 §5): Amped
 	// Raptor's "an amount of {E} equal to its mana value". Absent for
 	// every price that charges none.
@@ -5690,6 +5696,11 @@ type ActivatedAbilityView struct {
 	// digest's answer.
 	GrantorOnly bool   `json:"grantor_only,omitempty"`
 	Activator   string `json:"activator,omitempty"`
+	// DefendingPlayerOnly is "Only the player this creature is attacking
+	// may activate this ability" (Capricopian, #6170). The client opens
+	// the row to the viewer only while the permanent's attacking_target is
+	// the viewer's seat; whether it is live is still the digest's answer.
+	DefendingPlayerOnly bool `json:"defending_player_only,omitempty"`
 	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
 	// set by effects.EquipAbility and nothing else, #1208). Absent on
 	// every other row. Bot data (#2449): an equip that moves an
@@ -8405,6 +8416,10 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 			// refuse; showing a guess would be worse than no badge.
 			continue
 		}
+		// #6151: a commander tax paid in life (Liesa) rides the price's
+		// life, as an offer's own life does.
+		v.CommanderTaxLife = g.CommanderTaxLifeForEffect(caster, card, params.FromZone)
+		v.Life += v.CommanderTaxLife
 		v.Cost = price.Total.String()
 		if v.Cost == "" {
 			v.Cost = "{0}"
@@ -9561,7 +9576,7 @@ func (c CardView) ActivationSick() bool {
 // reachesAcross reports whether the row names an activator other than
 // the plain controller (any player, only opponents, only the owner).
 func (a ActivatedAbilityView) reachesAcross() bool {
-	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly || a.GrantorOnly
+	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly || a.GrantorOnly || a.DefendingPlayerOnly
 }
 
 // stampAnyPlayerOffers files, for every seat that does not control the
@@ -14174,6 +14189,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	}
 	var out []ActivatedAbilityView
 	for k, a := range rows {
+		// #6148, CR 606.5: the loyalty cost the controller would pay,
+		// combined with every addition on the board (Carth the Lion).
+		a.Cost = g.LoyaltyAdjustedCostForEffect(c.Controller, a.Cost)
 		i, wireIndex, wireRef := k, k, origins.Ref(k)
 		if k >= len(raw) {
 			tw := twins[k-len(raw)]
@@ -14191,30 +14209,31 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// ADR 0155 Decision 10: the lender of a borrowed row, and
 			// its label with the lender's name read as this card's
 			// (CR 201.5b).
-			BorrowedFrom:     borrowedFromView(g, origins.At(i)),
-			Label:            game.BorrowedLabel(a.Label, origins.At(i), c.Name),
-			TapCost:          a.Cost.Tap,
-			SacrificeSelf:    a.Cost.SacrificeSelf,
-			DiscardSelf:      a.Cost.DiscardSelf,
-			ExileSelf:        a.Cost.ExileSelf,
-			ReturnSelf:       a.Cost.ReturnSelf,
-			BottomSelf:       a.Cost.BottomSelf,
-			ExileGrantor:     a.Cost.ExileGrantor,
-			TapGrantor:       a.Cost.TapGrantor,
-			SacrificeGrantor: a.Cost.SacrificeGrantor,
-			Exert:            a.Cost.Exert,
-			ManaCost:         a.Cost.Mana,
-			LifeCost:         a.Cost.Life,
-			SorcerySpeed:     a.SorcerySpeed,
-			LoyaltyCost:      a.Cost.Loyalty,
-			LoyaltyCostX:     a.Cost.LoyaltyX,
-			AnyPlayer:        a.AnyPlayer,
-			OpponentsOnly:    a.OpponentsOnly,
-			OwnerOnly:        a.OwnerOnly,
-			GrantorOnly:      a.GrantorOnly,
-			Equip:            a.Equip,
-			Reconfigure:      a.Reconfigure,
-			UntapSelf:        a.UntapSelf,
+			BorrowedFrom:        borrowedFromView(g, origins.At(i)),
+			Label:               game.BorrowedLabel(a.Label, origins.At(i), c.Name),
+			TapCost:             a.Cost.Tap,
+			SacrificeSelf:       a.Cost.SacrificeSelf,
+			DiscardSelf:         a.Cost.DiscardSelf,
+			ExileSelf:           a.Cost.ExileSelf,
+			ReturnSelf:          a.Cost.ReturnSelf,
+			BottomSelf:          a.Cost.BottomSelf,
+			ExileGrantor:        a.Cost.ExileGrantor,
+			TapGrantor:          a.Cost.TapGrantor,
+			SacrificeGrantor:    a.Cost.SacrificeGrantor,
+			Exert:               a.Cost.Exert,
+			ManaCost:            a.Cost.Mana,
+			LifeCost:            a.Cost.Life,
+			SorcerySpeed:        a.SorcerySpeed,
+			LoyaltyCost:         a.Cost.Loyalty,
+			LoyaltyCostX:        a.Cost.LoyaltyX,
+			AnyPlayer:           a.AnyPlayer,
+			OpponentsOnly:       a.OpponentsOnly,
+			OwnerOnly:           a.OwnerOnly,
+			GrantorOnly:         a.GrantorOnly,
+			DefendingPlayerOnly: a.DefendingPlayerOnly,
+			Equip:               a.Equip,
+			Reconfigure:         a.Reconfigure,
+			UntapSelf:           a.UntapSelf,
 		}
 		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
 		// "Only you may activate" row is open to.

@@ -57,8 +57,9 @@ import "github.com/google/uuid"
 // Decisions 11 and 12, and Decisions 43-45.
 
 // BlockRule is one printed block restriction with a parameter, as the
-// engine reads it. Exactly one of Pair, Count, Limit and NotAlone is
-// set; a rule with none of them is inert.
+// engine reads it. Exactly one of Pair, Count, Limit, NotAlone and the
+// landwalk waiver (IgnoreLandwalk / IgnoreAllLandwalk) is set; a rule
+// with none of them is inert.
 //
 // The `source` argument is the permanent the rule was read from, so a
 // threshold that compares against its own source (Champion of
@@ -129,6 +130,21 @@ type BlockRule struct {
 	// Below 1 is 1; ignored without NotAlone. Plain data.
 	NotAloneMinOthers          int
 	NotAloneOthersPowerGreater bool
+
+	// IgnoreLandwalk is "creatures with swampwalk can be blocked as
+	// though they didn't have swampwalk" (Quagmire, Ur-Drago, Lord
+	// Magnus; #6195): the landwalk tokens this rule switches off for
+	// every attacking creature at the table, read by
+	// landwalkIgnoredLocked before CR 702.14c's evasion check.
+	// IgnoreAllLandwalk is Staff of the Ages' "creatures with landwalk
+	// abilities can be blocked as though they didn't have those
+	// abilities": every landwalk token, the parameterised snow family
+	// included. Plain data, so it adds no route to the closure census.
+	// Only the landwalk evasion is waived: the creature still has the
+	// keyword (a card that counts or copies landwalk still sees it),
+	// and every other evasion is untouched.
+	IgnoreLandwalk    []string
+	IgnoreAllLandwalk bool
 
 	// Reason is the BlockReason a refused pair reports. Empty defaults
 	// to BlockReasonCantBeBlockedBy, which is the commonest shape.

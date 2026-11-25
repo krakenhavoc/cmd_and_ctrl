@@ -31,7 +31,7 @@ func (g *Game) addSacrificeGrantorLocked(playerID uuid.UUID, cost AbilityCost, o
 	if c.Controller != playerID {
 		return nil, ErrCardCallerMismatch
 	}
-	if g.permanentCantBeSacrificedLocked(c) {
+	if g.sacrificeCostBarredLocked(c) {
 		return nil, ErrCantBeSacrificed
 	}
 	if slices.Contains(sacrifices, origin.GrantedBy) {

@@ -1,8 +1,6 @@
 package cardsw
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -26,20 +24,7 @@ import (
 //
 // No simplification.
 func init() {
-	const label = "Wildwood Mentor — another target attacking creature gets +X/+X until end of turn, where X is its power"
-	attack := effects.WheneverThisAttacks(label, func(g *game.Game, item *game.StackItem) error {
-		ctx := effects.NewContext(g, item)
-		target := effects.FirstLegalBattlefieldTarget(ctx)
-		if target == uuid.Nil {
-			return nil
-		}
-		x := max(effects.SourcePowerNow(ctx), 0)
-		if x == 0 {
-			return nil
-		}
-		return effects.BoostUntilEOT{Target: target, Power: x, Toughness: x, Label: "Wildwood Mentor — +X/+X until end of turn"}.Apply(ctx)
-	})
-	attack.Targets = effects.Another(effects.TargetCreature("another target attacking creature", effects.AttackingCreature()))
+	attack := effects.OldB147AnotherAttackerGetsXX("Wildwood Mentor — another target attacking creature gets +X/+X until end of turn, where X is its power")
 	effects.Register(effects.Spec{
 		OracleID:     "f4e61b03-e6c8-4751-9720-b91fdecd57da",
 		Name:         "Wildwood Mentor",

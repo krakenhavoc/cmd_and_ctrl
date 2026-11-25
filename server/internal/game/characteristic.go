@@ -92,6 +92,13 @@ type Characteristic struct {
 	// a copy of one) rather than an ability or a permanent: "protection from
 	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
 	SourceIsSpell bool
+	// SourceCounters are the counters on a permanent source (#6149):
+	// "protection from permanents with corruption counters on them" reads
+	// it. Written only by the source-snapshot builders, like the facts
+	// above, and never serialized: a source snapshot is built when a
+	// protection check is made and never stored, and a departed permanent's
+	// record keeps its counters in PermanentInfo.Counters.
+	SourceCounters map[string]int `json:"-"`
 
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless

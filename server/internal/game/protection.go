@@ -224,6 +224,18 @@ const (
 	// name is reached through the characteristic's own Name). Value is the
 	// name as chosen. Appended last so every earlier kind keeps its value.
 	ProtectionQualityCardName
+	// ProtectionQualityManaValue is "protection from mana value N"
+	// (CR 702.16a, #6149): the source's mana value is exactly N. Value is
+	// N. One of these per value is what "protection from each mana value
+	// among artifacts you control" (Rebbec, Architect of Ascension) grants,
+	// CR 702.16i's shorthand for separate protection abilities.
+	ProtectionQualityManaValue
+	// ProtectionQualityPermanentsWithCounter is "protection from
+	// permanents with <kind> counters on them" (CR 702.16a, #6149,
+	// Geyadrone Dihada): the source is a permanent with at least one
+	// counter of kind Value on it (Characteristic.SourceCounters). A spell
+	// or an ability's source off the battlefield has no counters.
+	ProtectionQualityPermanentsWithCounter
 )
 
 // protectionCardNamed heads the token of ProtectionQualityCardName,
@@ -292,6 +304,10 @@ func (k ProtectionQualityKind) String() string {
 	case ProtectionQualityCreatureSubtype:
 		// Same wire kind as a creature-type quality: the badge reads Value.
 		return "subtype"
+	case ProtectionQualityManaValue:
+		return "mana_value"
+	case ProtectionQualityPermanentsWithCounter:
+		return "permanents_with_counter"
 	}
 	return ""
 }
@@ -549,6 +565,17 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	if n, ok := parseManaValueAtLeast(lower); ok {
 		return ProtectionQuality{Kind: ProtectionQualityManaValueAtLeast, Value: strconv.Itoa(n), Printed: printed}, true
 	}
+	if n, ok := parseManaValueBound(lower, ""); ok {
+		return ProtectionQuality{Kind: ProtectionQualityManaValue, Value: strconv.Itoa(n), Printed: printed}, true
+	}
+	// "permanents with <kind> counters on them" (#6149). The kind is one
+	// word, as every printed counter name the quality could carry is.
+	if rest, ok := strings.CutPrefix(lower, protectionPermanentsWith); ok {
+		if kind, ok := strings.CutSuffix(rest, protectionCountersOnThem); ok && kind != "" && !strings.ContainsAny(kind, " ,") {
+			return ProtectionQuality{Kind: ProtectionQualityPermanentsWithCounter, Value: kind, Printed: printed}, true
+		}
+		return ProtectionQuality{}, false
+	}
 	// Mana value parity, and two qualities of an object that are not a
 	// single characteristic (#4307). Whole phrases, as printed: the grammar
 	// stays closed.
@@ -612,6 +639,23 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		}
 	}
 	return ProtectionQuality{}, false
+}
+
+// protectionPermanentsWith and protectionCountersOnThem frame the
+// counter quality, "permanents with <kind> counters on them" (#6149).
+const (
+	protectionPermanentsWith = "permanents with "
+	protectionCountersOnThem = " counters on them"
+)
+
+// ProtectionFromManaValue is the token of "protection from mana value N"
+// (#6149): one of the separate abilities CR 702.16i's "protection from
+// each mana value among …" stands for. "" for a negative N.
+func ProtectionFromManaValue(n int) string {
+	if n < 0 {
+		return ""
+	}
+	return "protection from mana value " + strconv.Itoa(n)
 }
 
 // protectionRingBearers is the printed quality of "protection from
@@ -999,6 +1043,11 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 	case ProtectionQualityManaValueAtLeast:
 		n, err := strconv.Atoi(q.Value)
 		return err == nil && src.SourceManaValueKnown && src.SourceManaValue >= n
+	case ProtectionQualityManaValue:
+		n, err := strconv.Atoi(q.Value)
+		return err == nil && src.SourceManaValueKnown && src.SourceManaValue == n
+	case ProtectionQualityPermanentsWithCounter:
+		return src.SourceIsPermanent && src.SourceCounters[q.Value] > 0
 	case ProtectionQualityManaValueOdd:
 		return src.SourceManaValueKnown && src.SourceManaValue%2 == 1
 	case ProtectionQualityManaValueEven:
@@ -1180,4 +1229,7 @@ func stampSourceFacts(ch *Characteristic, c *Card, x int) {
 	// A permanent has a layered characteristic; a spell on the stack, or a
 	// card anywhere else, has none (#4307).
 	ch.SourceIsPermanent = c.effective != nil
+	// The counters on the source (#6149). Only a permanent's are read
+	// (ProtectionQualityPermanentsWithCounter asks SourceIsPermanent too).
+	ch.SourceCounters = copyCounterMap(c.Counters)
 }
