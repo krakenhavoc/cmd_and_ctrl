@@ -1515,6 +1515,7 @@ choose choose-cards/s82-old-b113-counter-on-a-creature
 choose choose-cards/s82-old-b114-counter-pick-chain
 choose choose-cards/s82-old-b114-counter-pick-last
 choose choose-cards/s82-old-b117-return-to-hand
+choose choose-cards/s82-old-b172-viviens-grizzly-take
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
