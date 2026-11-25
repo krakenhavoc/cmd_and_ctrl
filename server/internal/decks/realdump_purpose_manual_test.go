@@ -329,6 +329,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 214 (#5530).
 	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
+
+	// S82 OLD batch 281 (#5542).
+	"Sengir Autocrat": "exiles only Serf tokens when it leaves the battlefield, the three it made and any others: a token cleanup of its own side effect, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
