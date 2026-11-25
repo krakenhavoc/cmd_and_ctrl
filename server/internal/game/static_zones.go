@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // static_zones.go — #1221: WHERE a static ability functions from.
 //
 // CR 113.6 again, and this is its third reader. The activated half is
@@ -60,7 +62,12 @@ var defaultStaticZones = []ZoneKind{ZoneBattlefield}
 // hand" is a real printed clause — and it is one entry here plus one
 // line in zonesOfKindLocked's existing switch on the day a card needs
 // it.
-var supportedStaticZones = []ZoneKind{ZoneGraveyard}
+//
+// #6222 adds the STACK (CR 113.6b): Torrent of Lava's "As long as
+// Torrent of Lava is on the stack, each creature has '{T}: Prevent the
+// next 1 damage …'". A spell on the stack is bound with its controller
+// as "you" (CR 108.4), not its owner.
+var supportedStaticZones = []ZoneKind{ZoneGraveyard, ZoneStack}
 
 // StaticZones is the zones a static ability functions from. Never
 // empty.
@@ -194,6 +201,17 @@ func (ix *staticZoneIndex) add(zone ZoneKind) {
 // have to be gathered at all. Nil for almost every game.
 func (ix *staticZoneIndex) zones() []ZoneKind { return ix.zoneList }
 
+// hasZone reports whether some registered card declares a static from
+// `zone`.
+func (ix *staticZoneIndex) hasZone(zone ZoneKind) bool {
+	for _, z := range ix.zoneList {
+		if z == zone {
+			return true
+		}
+	}
+	return false
+}
+
 // declares reports whether a catalog key has any non-battlefield
 // static, so a walked zone can skip the catalog lookup for the cards
 // that do not.
@@ -256,6 +274,15 @@ func (g *Game) declaredZoneStaticsLocked() []ContinuousEffect {
 				}
 				src := z.Cards[i]
 				src.Controller = src.Owner
+				// CR 108.4: a spell on the stack has a controller, and
+				// it is the "you" of its abilities (#6222).
+				if kind == ZoneStack {
+					if item := g.StackMeta[src.InstanceID]; item != nil && item.Controller != uuid.Nil {
+						src.Controller = item.Controller
+					} else if z.Cards[i].Controller != uuid.Nil {
+						src.Controller = z.Cards[i].Controller
+					}
+				}
 				// StaticAbilitiesForCard, not the raw hook: this is
 				// the second place an object becomes statics and it
 				// goes through the same accessor (ADR 0071), so a

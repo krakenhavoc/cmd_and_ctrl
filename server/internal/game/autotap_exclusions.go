@@ -318,10 +318,10 @@ func (g *Game) excludeNonQualifyingSourcesLocked(controller uuid.UUID, excluded 
 		}
 	}
 	if g.Battlefield != nil {
+		// Every permanent, not only the controller's: under a Piracy
+		// permission (#6204) another player's land is a source too.
 		for _, c := range g.Battlefield.Cards {
-			if c.Controller == controller {
-				skip(c)
-			}
+			skip(c)
 		}
 	}
 	if p := g.playerByIDLocked(controller); p != nil {

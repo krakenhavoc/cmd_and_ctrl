@@ -458,6 +458,11 @@ type GameSnapshot struct {
 	// abilities twice this turn. Additive.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
 
+	// TapForeignLandsThisTurn is Game's (#6204, ADR 0106 §1 amendment
+	// 2026-11-25): the players who may tap lands they don't control for
+	// mana this turn. Additive.
+	TapForeignLandsThisTurn map[uuid.UUID]bool `json:"tapForeignLandsThisTurn,omitempty"`
+
 	// LoyaltyPermanentTwiceThisTurn is Game's (#5479): the permanents
 	// whose loyalty abilities may be activated twice this turn. Additive.
 	LoyaltyPermanentTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyPermanentTwiceThisTurn,omitempty"`
@@ -2096,6 +2101,11 @@ type delayedTriggerSnapshot struct {
 	// body, which that binary lacks, so it refuses the file
 	// (ErrUnknownEffectKey) rather than firing a copy of nothing.
 	CopiesSpell *EpicSpell `json:"copiesSpell,omitempty"`
+	// #6221, CR 603.4: "if that card is exiled" (delayed_recast.go).
+	// Additive: an older binary drops the key, but the record names the
+	// "meddling/delay" body, which that binary lacks, so it refuses the
+	// file rather than firing without the gate.
+	WhileExiled *ObjectRef `json:"whileExiled,omitempty"`
 
 	// #6247, CR 116.2c: who may pay what to stop the trigger. Additive:
 	// an older binary drops the key, and the trigger fires as if nobody
@@ -2847,6 +2857,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	s.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
@@ -3729,6 +3740,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.stamped(),
 		Stop:                  cloneDelayedTriggerStop(d.Stop),
 	}
 	if d.Duration != nil {
@@ -4245,6 +4257,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
+	g.TapForeignLandsThisTurn = copyBoolMap(s.TapForeignLandsThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
 	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
 	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)
@@ -4923,6 +4936,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.value(),
 		Stop:                  cloneDelayedTriggerStop(d.Stop),
 	}
 	if d.Duration != nil {

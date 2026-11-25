@@ -360,6 +360,7 @@ body matt-murdock-justice-seeker/counter
 body meandering-towershell/return
 body meanders-guide/return
 body mechtitan-core/return-exiled
+body meddling/delay
 body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
@@ -746,6 +747,7 @@ choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bitter-revelation-take
 choose choose-cards/black-suns-twilight-return
+choose choose-cards/blocks-by-piles
 choose choose-cards/blood-for-bones-first
 choose choose-cards/blood-for-bones-second
 choose choose-cards/blossom-prancer-take
@@ -1079,6 +1081,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/left-right-piles
 choose choose-cards/legion-angel-take
 choose choose-cards/leonardo-da-vinci-discarded
 choose choose-cards/leyline-dowser-milled
@@ -2342,6 +2345,8 @@ number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
+number number/life-bidding-opening-bid
+number number/life-bidding-raise
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
@@ -2511,7 +2516,9 @@ option option-pick/land-mana-each
 option option-pick/lantern-of-revealing-bottom
 option option-pick/lavabrink-floodgates-doom
 option option-pick/leatherhead-remove-a-counter
+option option-pick/left-right-piles-label
 option option-pick/leori-sparktouched-hunter-planeswalker-type
+option option-pick/life-bidding-top-or-stand
 option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
 option option-pick/linvala-shield-of-sea-gate-keyword
@@ -3187,6 +3194,7 @@ run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
 run prompt-run/duneblast-destroy-the-rest
 run prompt-run/dusk-mangler-discard-and-life
+run prompt-run/each-player-exiles-board-and-hand
 run prompt-run/eldrazi-monument-sacrificed
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
@@ -3980,6 +3988,7 @@ tail engine/investigated
 tail engine/library-order-leg-landed
 tail engine/manifest-dread-entered
 tail engine/manifest-dread-finished
+tail engine/meddling-exiled
 tail engine/meld-entered
 tail engine/meld-exiled
 tail engine/move-tokens-created

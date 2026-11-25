@@ -366,6 +366,13 @@ type DelayedTrigger struct {
 	// trigger. Plain data, never mutated once scheduled.
 	CopiesSpell *EpicSpell
 
+	// WhileExiled is CR 603.4's intervening "if that card is exiled" on
+	// a step-conditioned trigger (Ertai's Meddling, #6221;
+	// delayed_recast.go): the trigger triggers only while this object
+	// (instance AND CR 400.7 epoch) is in exile, and once it is not it is
+	// a new object the trigger can never name again, so the trigger is
+	// dropped. Zero for every other trigger.
+	WhileExiled ObjectRef
 	// Stop is CR 116.2c's escape: a player who may pay to stop this
 	// trigger before it triggers (Quenchable Fire's "unless that player
 	// … pays {U} before that step", #6247, delayed_stop.go). Nil for
@@ -528,6 +535,12 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 			dropped = true
 			continue
 		}
+		if dt.WhileExiled.ID != uuid.Nil && !g.objectInExileLocked(dt.WhileExiled) {
+			// #6221, CR 603.4 / 400.7: "if that card is exiled" can
+			// never be true again.
+			dropped = true
+			continue
+		}
 		if dt.At == step && g.Turn.Seq >= dt.NotBeforeSeq && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) &&
@@ -628,6 +641,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
+		WhileExiled:           dt.WhileExiled,
 		Stop:                  cloneDelayedTriggerStop(dt.Stop),
 	}
 	if dt.Duration != nil {
