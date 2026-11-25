@@ -2480,6 +2480,7 @@ option option-pick/faramir-prince-of-ithilien-opponent
 option option-pick/fateful-handoff-opponent
 option option-pick/fervent-mastery-opponent
 option option-pick/flicker-return-under-an-opponent
+option option-pick/galloping-lizrog-how-many
 option option-pick/gap-b82-indoraptor-answer
 option option-pick/gap-b82-owen-grady-counter
 option option-pick/gap-caves-of-androzani-counter
@@ -3429,6 +3430,7 @@ run prompt-run/tomb-of-annihilation-sandfall-sacrificed
 run prompt-run/tovolar-dire-overlord-transform
 run prompt-run/tragic-arrogance-sacrifice-the-rest
 run prompt-run/undercity-eliminator-sacrificed
+run prompt-run/undercity-scavenger-counters-and-scry
 run prompt-run/unexpected-request-attach
 run prompt-run/unscrupulous-contractor-sacrifice
 run prompt-run/unstable-glyphbridge-destroy
@@ -3756,6 +3758,7 @@ tail coalstoke-gearhulk/entered
 tail coffin-queen/link
 tail cogwork-assembler/haste-and-exile-copy
 tail colfenors-urn/return
+tail combine-guildmage/take-one
 tail combustible-gearhulk/burn-total-mana-value
 tail compelling-deterrence/discard
 tail condemn/gain-life
@@ -4688,6 +4691,7 @@ tail sacrificed-one/prompt-run/three-dog-sacrificed-aura
 tail sacrificed-one/prompt-run/tiger-tribe-hunter-sacrifice
 tail sacrificed-one/prompt-run/tip-the-scales-sacrifice
 tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
+tail sacrificed-one/prompt-run/undercity-scavenger-counters-and-scry
 tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
