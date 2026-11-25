@@ -28,7 +28,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(
-				effects.WhenThisEnters("Overgrowth Elemental — put a +1/+1 counter on another target Elemental you control", effects.OldB156CountersOnTheTarget(1)),
+				effects.WhenThisEnters("Overgrowth Elemental — put a +1/+1 counter on another target Elemental you control", effects.OldB155CountersOnTheTarget(1)),
 				effects.Another(effects.TargetCreature("another target Elemental you control", effects.YouControl(), effects.OfSubtype("Elemental")))),
 			effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return effects.AnotherCreatureYouControlDied(ev, source, g)

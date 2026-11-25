@@ -135,16 +135,3 @@ func OldB156ElementalDied(g *game.Game, item *game.StackItem) error {
 	}
 	return CounterOnThis{Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 }
-
-// OldB156CountersOnTheTarget is "put N +1/+1 counters on <the> target creature"
-// as a whole effect, on the first legal target.
-func OldB156CountersOnTheTarget(n int) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id, ok := B16FirstLegalTargetCard(ctx)
-		if !ok {
-			return nil
-		}
-		return AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}.Apply(ctx)
-	}
-}
