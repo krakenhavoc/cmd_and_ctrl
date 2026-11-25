@@ -768,6 +768,14 @@ type CastPermission struct {
 	// exception it would be.
 	TopOfLibraryOnly bool `json:"topOfLibraryOnly,omitempty"`
 
+	// TopOfGraveyardOnly restricts a ZoneGraveyard permission to the card
+	// currently on top of its owner's graveyard (#6194, CR 404.2: the pile
+	// keeps its order): Bösium Strip's "you may cast instant and sorcery
+	// spells from the top of your graveyard". A card below the top, even
+	// one the filter accepts, is not opened. Graveyards are public, so
+	// there is no visibility half as there is for a library. Additive.
+	TopOfGraveyardOnly bool `json:"topOfGraveyardOnly,omitempty"`
+
 	// SeesLibraryTop is CR 401.5's other half, carried by the grant
 	// rather than by a permanent: "you may LOOK at the top card of
 	// their library any time" (Xanathar, Guild Kingpin), which is
@@ -2886,6 +2894,14 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 //
 // Caller must hold g.mu.
 func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission, card Card) bool {
+	if perm.TopOfGraveyardOnly {
+		// #6194: the top of the graveyard the card is in (CR 404.2).
+		owner := g.playerByIDLocked(card.Owner)
+		if owner == nil || owner.Graveyard == nil || len(owner.Graveyard.Cards) == 0 ||
+			owner.Graveyard.Cards[len(owner.Graveyard.Cards)-1].InstanceID != card.InstanceID {
+			return false
+		}
+	}
 	if !perm.TopOfLibraryOnly {
 		return true
 	}

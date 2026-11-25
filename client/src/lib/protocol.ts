@@ -1907,7 +1907,9 @@ export interface PendingChoiceView {
     // opponents ride pick_options, one per seat with `player` set, and
     // the answer is {option_index: N} as for option_pick.
     // control_purpose says whether the permanent hurts or helps the
-    // seat that receives it.
+    // seat that receives it, or is "tribute" (CR 702.104a, #6251): the
+    // chosen opponent decides whether to pay the tribute, and the
+    // control does not change.
     | "entry_controller"
     // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
     // asked before the permanent enters. The {choice_id, apply} payload
@@ -2104,7 +2106,7 @@ export interface PendingChoiceView {
   // ADR 0102: populated for kind "entry_controller" — what giving the
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
-  control_purpose?: "harm" | "benefit" | string;
+  control_purpose?: "harm" | "benefit" | "tribute" | string;
   // #3309: populated for kind "aura_host" — what the entering Aura does
   // to the permanent it enchants. Absent when the card declares none.
   // The bot reads it; the client ignores it.
