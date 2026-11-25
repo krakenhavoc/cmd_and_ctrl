@@ -2720,6 +2720,7 @@ payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
 payunless pay-unless/elven-bow-token-and-attach
+payunless pay-unless/embereth-skyblazer-pump
 payunless pay-unless/emiel-the-blessed-counters
 payunless pay-unless/endless-ranks-of-hydra-return
 payunless pay-unless/energy-create-servo
