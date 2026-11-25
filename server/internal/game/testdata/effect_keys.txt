@@ -35,6 +35,7 @@ anyplayer any-player/rhystic-circle-shield
 anyplayer any-player/rhystic-scrying-discard
 anyplayer any-player/rhystic-shield-extra
 anyplayer any-player/rhystic-tutor-search
+anyplayer any-player/sin-prodder-outcome
 anyplayer any-player/soul-strings-return
 anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/vexing-devil-sacrifice
