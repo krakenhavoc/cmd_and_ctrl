@@ -189,7 +189,7 @@ func lifeBidOpen(ctx *Context, r game.NumberAnswer) error {
 		return fmt.Errorf("%w: a life bid with no state", game.ErrInvalidParam)
 	}
 	nums[bidHigh] = r.Number
-	return lifeBidStep(ctx, r.Carry, r.Words, nums)
+	return lifeBids.step(ctx, r.Carry, r.Words, nums)
 }
 
 // lifeBidPicked is a bidder's answer: let it stand (or no answer: the
@@ -202,7 +202,7 @@ func lifeBidAnswer(ctx *Context, r game.OptionPicked) error {
 	}
 	if r.Index != 1 {
 		nums[bidAsking] = (nums[bidAsking] + 1) % len(r.Carry)
-		return lifeBidStep(ctx, r.Carry, r.Words, nums)
+		return lifeBids.step(ctx, r.Carry, r.Words, nums)
 	}
 	return ChooseNumber{
 		Chooser:    r.Chooser,
@@ -229,19 +229,27 @@ func lifeBidRaise(ctx *Context, r game.NumberAnswer) error {
 	nums[bidHigh] = r.Number
 	nums[bidHighAt] = nums[bidAsking] % len(r.Carry)
 	nums[bidAsking] = (nums[bidHighAt] + 1) % len(r.Carry)
-	return lifeBidStep(ctx, r.Carry, r.Words, nums)
+	return lifeBids.step(ctx, r.Carry, r.Words, nums)
 }
 
-// The three hops' on-disk keys. Registered in init, not var initialisers,
-// because each hop refers to the step and the step refers to them.
+// The three hops' on-disk keys. Each hop goes on through lifeBids, an
+// interface, rather than calling lifeBidStep: a call through an interface
+// is not an initialisation reference, so the keys can be var initialisers
+// (a core file holds no init()) though the step refers to them.
 var (
-	lifeBidOpened game.NumberThen
-	lifeBidPicked game.OptionPickThen
-	lifeBidRaised game.NumberThen
-)
-
-func init() {
 	lifeBidOpened = NumberThen("number/life-bidding-opening-bid", lifeBidOpen)
 	lifeBidPicked = OptionPickThen("option-pick/life-bidding-top-or-stand", lifeBidAnswer)
 	lifeBidRaised = NumberThen("number/life-bidding-raise", lifeBidRaise)
+)
+
+type lifeBidStepper interface {
+	step(ctx *Context, bidders []uuid.UUID, words []string, nums []int) error
 }
+
+type lifeBidSteps struct{}
+
+func (lifeBidSteps) step(ctx *Context, bidders []uuid.UUID, words []string, nums []int) error {
+	return lifeBidStep(ctx, bidders, words, nums)
+}
+
+var lifeBids lifeBidStepper = lifeBidSteps{}
