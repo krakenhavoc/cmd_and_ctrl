@@ -303,6 +303,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
 	{field: "YourPlaneswalkersLoyaltyTwiceEachTurn", label: boolRow("You may activate the loyalty abilities of planeswalkers you control twice each turn rather than only once.")},
+	{field: "YouAssignAttackersDamage", label: boolRow("Rather than the attacking player, you assign the combat damage of each creature attacking you. You can divide that creature's combat damage as you choose among any of the creatures blocking it.")},
+	{field: "UnblockedAssignsToACreature", label: boolRow("If this creature is unblocked, you may have it assign its combat damage to a creature defending player controls.")},
 	{field: "ActivateAsThoughHaste", label: boolRow("You may activate abilities of creatures you control as though those creatures had haste.")},
 	{field: "ActivateAsThoughHasteOthers", label: boolRow("You may activate abilities of other creatures you control as though those creatures had haste.")},
 	{field: "FullTextOfTopGraveyardCreature", label: fullTextRows},
