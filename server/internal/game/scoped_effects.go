@@ -726,6 +726,15 @@ const (
 	// A creature whose cost the engine cannot read is in neither set.
 	ScopeCreaturesOddManaValue  AffectedScope = "creaturesOddManaValue"
 	ScopeCreaturesEvenManaValue AffectedScope = "creaturesEvenManaValue"
+	// ScopeCreaturesPowerThreeOrLess is "creatures with power 3 or less",
+	// every player's, read live (S82 OLD, Temur Charm's "creatures with
+	// power 3 or less can't block this turn"). "Can't block" changes no
+	// characteristic, so CR 611.2c does not lock the set: a creature that
+	// arrives later, or whose power falls or rises, is judged as blockers
+	// are declared (CR 509.1b). Power is a layer-7 result, so, like
+	// ScopeCreaturesWithoutFlying, a record with this scope carries only
+	// mods read after the layer pass is finished (scopeReadsLayerResult).
+	ScopeCreaturesPowerThreeOrLess AffectedScope = "creaturesPowerThreeOrLess"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -735,7 +744,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesExceptObjects:
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects:
 		return true
 	}
 	return false
@@ -748,7 +757,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 // half-way through the pass (#1650).
 func scopeReadsLayerResult(scope AffectedScope) bool {
 	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands ||
-		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue
+		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue ||
+		scope == ScopeCreaturesPowerThreeOrLess
 }
 
 // panicOnLayerModUnderLayerScope refuses, at registration, a layer mod on
@@ -1332,6 +1342,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
+	// #5514: Elspeth Conquers Death's chapter II, the same increase for
+	// noncreature spells only (scoped_cost_tax.go).
+	ModNoncreatureSpellsCostMoreForOpponents: {reader: readerRule},
 	// #6093: Commander Liara Portyr's and Will Kenrith's timed reduction
 	// (scoped_cost_reduction.go).
 	ModSpellsCostLessForPlayer:       {reader: readerRule},
@@ -2298,6 +2311,10 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 	case ScopeCreaturesThatArentLands:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !target.IsLand()
+		}
+	case ScopeCreaturesPowerThreeOrLess:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && target.CurrentPower() <= 3
 		}
 	case ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
 		wantOdd := scope == ScopeCreaturesOddManaValue

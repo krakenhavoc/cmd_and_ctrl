@@ -426,6 +426,12 @@ type AbilityCostSubject struct {
 	// with the ability is (CR 113.6).
 	Ninjutsu bool
 
+	// Cycling is the CR 702.29 cycling bit (ActivatedAbilityShape.Cycling,
+	// typecycling included, CR 702.29e): "Cycling abilities you activate
+	// cost {2} less to activate" (Fluctuator). The query's FromZone is the
+	// hand, where the card being cycled is (CR 113.6).
+	Cycling bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation — set by manaAbilityCostQueryLocked (#1191), so a
 	// predicate says which kind it means. CR 605.1a makes both
@@ -1163,6 +1169,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			Equip:    ab.Equip,
 			PowerUp:  ab.PowerUp,
 			Ninjutsu: ab.Ninjutsu,
+			Cycling:  ab.Cycling,
 			own:      ab.CostModifiers,
 		},
 		Targets: targets,

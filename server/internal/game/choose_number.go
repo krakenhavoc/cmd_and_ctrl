@@ -184,13 +184,18 @@ func (g *Game) lifePayableLocked(p *Player) int {
 
 // SetChosenNumberForEffect stores n on the battlefield permanent `id`
 // as its Card.ChosenNumber: the number chosen as it entered. A
-// permanent that has left stores nothing. Not a characteristic, so no
-// layer version moves.
+// permanent that has left stores nothing. Not a characteristic, but a
+// static ability may read it through AppliesTo or Apply (Haktos the
+// Unscarred's protection from the mana values other than the chosen one),
+// and the layer cache resolves those until something invalidates it, so the
+// layer version moves, as it does for a chosen creature type
+// (SetNamedTribeForEffect).
 //
 // Caller must hold g.mu.
 func (g *Game) SetChosenNumberForEffect(id uuid.UUID, n int) {
 	if c := findBattlefieldCard(g, id); c != nil {
 		c.ChosenNumber = max(n, 0)
+		g.layerVersion.Add(1)
 	}
 }
 

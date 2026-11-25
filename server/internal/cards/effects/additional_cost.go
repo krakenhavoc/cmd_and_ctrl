@@ -744,8 +744,10 @@ func CheckEitherCost(spec Spec) {
 			} else if rc.Chosen {
 				// Monstrous Emergence's "choose a creature you control or reveal a
 				// creature card from your hand" (ChooseOrRevealCost): a behold of a
-				// card type that records its pick, alone on the slot.
-				if (!rc.Behold && !rc.Colorless) || rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+				// card type that records its pick, alone on the slot. Without
+				// Behold it is a plain reveal from the hand (Charge of the
+				// Forever-Beast, S82OldB116RevealACreatureCardCost).
+				if rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
 					panic(fmt.Sprintf("effects.Register: %q declares a malformed choose-or-reveal cost — build it with ChooseOrRevealCost, alone on the mandatory slot", spec.Name))
 				}
 			} else if !rc.Exile {

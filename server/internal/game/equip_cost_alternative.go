@@ -61,6 +61,11 @@ type EquipCostAlternative struct {
 // key, wired by the effects package. Nil in a game without a catalog.
 var CatalogEquipCostAlternatives func(key string) []EquipCostAlternative
 
+// CatalogCyclingCostAlternatives is CatalogEquipCostAlternatives for "you may
+// pay {0} rather than pay cycling costs" (New Perspectives). Nil in a game
+// without a catalog.
+var CatalogCyclingCostAlternatives func(key string) []EquipCostAlternative
+
 // AltEquipIndexBase is added to a mirrored row's index to address its
 // twin. Far beyond any real row count.
 const AltEquipIndexBase = 1 << 20
@@ -112,6 +117,35 @@ func (g *Game) EquipCostAlternativeLocked(activator uuid.UUID) (EquipCostAlterna
 	return EquipCostAlternative{}, "", false
 }
 
+// CyclingCostAlternativeLocked is the alternative open to `activator` for a
+// cycling or typecycling ability right now (CR 118.9, CR 702.29): a clause of
+// a permanent they control whose condition holds, with the name of that
+// permanent. The first in battlefield order when several are open.
+//
+// Caller must hold g.mu.
+func (g *Game) CyclingCostAlternativeLocked(activator uuid.UUID) (EquipCostAlternative, string, bool) {
+	if g.Battlefield == nil || activator == uuid.Nil || CatalogCyclingCostAlternatives == nil {
+		return EquipCostAlternative{}, "", false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != activator {
+			continue
+		}
+		key := catalogAbilityKeyOf(c)
+		if key == "" {
+			continue
+		}
+		for _, alt := range CatalogCyclingCostAlternatives(key) {
+			if alt.Condition != nil && !alt.Condition(g, activator) {
+				continue
+			}
+			return alt, c.Name, true
+		}
+	}
+	return EquipCostAlternative{}, "", false
+}
+
 // EquipTwin is one derived row: the shape to price, validate and pay, and
 // the wire index and ref that address it.
 type EquipTwin struct {
@@ -130,22 +164,35 @@ type EquipTwin struct {
 // Caller must hold g.mu.
 func (g *Game) EquipTwinsLocked(activator uuid.UUID, source Card, rows []ActivatedAbilityShape, origins AbilityOrigins) []EquipTwin {
 	var out []EquipTwin
-	var alt EquipCostAlternative
-	var from string
-	asked := false
+	var equipAlt, cycleAlt EquipCostAlternative
+	var equipFrom, cycleFrom string
+	var equipAsked, cycleAsked, equipOK, cycleOK bool
 	for i, ab := range rows {
-		if !ab.Equip {
+		var shape ActivatedAbilityShape
+		switch {
+		case ab.Equip:
+			if !equipAsked {
+				equipAlt, equipFrom, equipOK = g.EquipCostAlternativeLocked(activator)
+				equipAsked = true
+			}
+			if !equipOK {
+				continue
+			}
+			shape = equipTwinShape(ab, equipAlt, equipFrom)
+		case ab.Cycling:
+			if !cycleAsked {
+				cycleAlt, cycleFrom, cycleOK = g.CyclingCostAlternativeLocked(activator)
+				cycleAsked = true
+			}
+			if !cycleOK {
+				continue
+			}
+			shape = cyclingTwinShape(ab, cycleAlt, cycleFrom)
+		default:
 			continue
 		}
-		if !asked {
-			var ok bool
-			if alt, from, ok = g.EquipCostAlternativeLocked(activator); !ok {
-				return nil
-			}
-			asked = true
-		}
 		out = append(out, EquipTwin{
-			Shape: equipTwinShape(ab, alt, from),
+			Shape: shape,
 			Of:    i,
 			Index: AltEquipIndexBase + i,
 			Ref:   AltEquipRefPrefix + origins.Ref(i),
@@ -161,6 +208,33 @@ func equipTwinShape(ab ActivatedAbilityShape, alt EquipCostAlternative, from str
 	twin.Cost = AbilityCost{Mana: alt.Cost}
 	twin.Label = ab.Label + " — pay " + alt.Cost + " instead (" + from + ")"
 	return twin
+}
+
+// cyclingTwinShape is the mirrored cycling row with the alternative as its
+// mana cost: "rather than pay cycling costs" replaces the cycling cost (its
+// mana, CR 702.29a), and the discard of the card stays (CR 118.9a: other costs
+// are unchanged).
+func cyclingTwinShape(ab ActivatedAbilityShape, alt EquipCostAlternative, from string) ActivatedAbilityShape {
+	twin := ab
+	twin.Cost.Mana = alt.Cost
+	twin.Label = ab.Label + " — pay " + alt.Cost + " instead (" + from + ")"
+	return twin
+}
+
+// twinShapeFor is the shape a twin row pays for the mirrored row `ab`: the
+// equip alternative for an equip ability, the cycling alternative for a
+// cycling one. ok is false when the row has no twin or its alternative is no
+// longer open.
+func (g *Game) twinShapeFor(activator uuid.UUID, ab ActivatedAbilityShape) (ActivatedAbilityShape, bool) {
+	switch {
+	case ab.Equip:
+		alt, from, ok := g.EquipCostAlternativeLocked(activator)
+		return equipTwinShape(ab, alt, from), ok
+	case ab.Cycling:
+		alt, from, ok := g.CyclingCostAlternativeLocked(activator)
+		return cyclingTwinShape(ab, alt, from), ok
+	}
+	return ab, false
 }
 
 // decodeEquipTwin splits a wire index and ref into the mirrored row's and

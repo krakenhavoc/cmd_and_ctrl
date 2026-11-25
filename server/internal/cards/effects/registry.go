@@ -2768,7 +2768,7 @@ func CheckPlayerKeywords(spec Spec) {
 // placeholder, or a protection or hexproof-from token the closed
 // grammar parses.
 func playerKeywordHonoured(kw string) bool {
-	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType {
+	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType || kw == game.ProtectionFromTheChosenCardName {
 		return true
 	}
 	if _, ok := game.ParseProtectionQuality(kw); ok {

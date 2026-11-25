@@ -3740,7 +3740,7 @@ func (g *Game) ResolveDamageAssignment(
 			case !frame.HasDeathtouch:
 				// #3665: and the damage other creatures have been
 				// assigned to it in this step, held until it is dealt.
-				lethal = max(blk.CurrentToughness()-blk.DamageMarked-g.heldCombatDamageToLocked(blk.InstanceID), 0)
+				lethal = max(blk.LethalDamageThreshold()-blk.DamageMarked-g.heldCombatDamageToLocked(blk.InstanceID), 0)
 				if lethal == 0 {
 					break
 				}
