@@ -570,6 +570,7 @@ const SPECIAL_ACTION_NAMES: Readonly<Record<string, string>> = Object.freeze({
   turn_face_up: "turn face up",
   unlock: "unlock a door",
   ignore_effect: "ignore its effect",
+  discard: "discard",
 });
 
 /** The generic name of a special action, and of the star pip. */

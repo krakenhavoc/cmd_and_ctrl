@@ -2478,6 +2478,27 @@ holds every catalog card whose printed text says "pile" or "guess" to one
 of those two: it fails on a new one until it either notes itself or is
 listed with the reason it does not.
 
+### Each player separates their permanents into piles (#6248, CR 700.3)
+
+"Starting with you, each player separates all permanents they control into
+three piles. Then each player chooses one of their piles at random and
+sacrifices those permanents." (Whims of the Fates) is
+`effects.SeparateIntoPiles{Piles: 3, Then: effects.SacrificeARandomPileEach}.Apply(ctx)`
+([separate_into_piles.go](../server/internal/cards/effects/separate_into_piles.go)).
+Each player, from the controller in turn order (CR 101.4), is asked for
+`Piles - 1` piles of their own permanents, each a keyed `reveal_pick` over
+what is left that may take none (CR 700.3d); the last pile is the rest. A
+player with nothing left is asked nothing. Every split is made before
+anything happens to any pile, and the split notes the spell for the pile
+and guess tally. A different "then" is a `RegisterPilesThen(key, body)`,
+handed each player's piles in order. `SacrificeARandomPileEach` draws
+each player's pile from the seeded pick stream
+(`Game.ChooseIndexAtRandomForEffect`, which an undo rewinds) and
+sacrifices the chosen piles together, one event (CR 701.21a). No prompt
+holds a closure, so a table waiting on a split is a restore point. A bot
+answers each pile pick from the enumerator's legal answers, as it answers
+any `reveal_pick`.
+
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
 "Players can't pay life to cast spells or to activate abilities that
@@ -3852,6 +3873,25 @@ OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
 Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
 Ideal's.
 
+### Illusionary Mask: a face-down cast paid with {X} (#6219, CR 708.2)
+
+The Mask's `{X}` ability resolves with two calls:
+
+```go
+cands := g.MaskCandidatesForEffect(item.Controller, item.Paid.Mana)
+g.OfferMaskCastForEffect(item.Controller, item.SourceCardID, "Illusionary Mask", cands)
+```
+
+The candidates are the creature cards in hand whose mana cost the mana
+spent on X could pay (some or all of it). The offer is a resolution cast
+(CR 608.2g) of one of them face down as a 2/2 without paying its mana cost,
+under `game.AltCostKeyGrantedFaceDownFree`; the spell and the permanent are
+the new face-down kind `game.FaceDownMasked`. A masked permanent is turned
+face up instead of being tapped (any `EventTapCard`, and an attack as the
+declaration locks in), dealing or being dealt damage (every damage event),
+or assigning combat damage; only its card's own morph or disguise turns it
+up otherwise (CR 708.7). "Activate only as a sorcery" is the ability's own
+timing.
 ### "Exiles it with X delay counters … puts it onto the stack as a copy" (#6221, CR 707.10)
 
 Ertai's Meddling's resolution is one call on the target spell:
@@ -3966,6 +4006,20 @@ template as `ctx.TextToken(t)` for a description, as `copiedToken(t)` for a
 copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
 Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
 fails anything else.
+
+### "You may discard this card any time you could cast an instant" (#6224, CR 116.2e)
+
+Circling Vultures' clause is a special action, declared like foretell:
+
+```go
+SpecialActions: []game.SpecialAction{DiscardAnyTimeYouCouldCastAnInstant()},
+```
+
+The player discards the card from their hand with priority, on any turn,
+outside split second; nothing goes on the stack and they keep priority.
+The discard's cause is `game.DiscardCauseSpecialAction`, so discard
+triggers and madness see it and "if an effect causes you to discard" does
+not. The bot never takes it on its own.
 
 ### Adding a combat-keyword card (S18+)
 
@@ -5533,6 +5587,12 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
+cast your commander from the command zone without paying its mana cost" is
+`OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a
+`resolution_cast` prompt over the caster's own commanders in the command
+zone (`game.FreeCastFromCommandPermission`). The commander tax is still
+paid, and the cast counts toward it.
 **Colourless sources of damage (#6230, CR 105.2c, CR 120.2).** Ghostly
 Flame's "Black and/or red permanents and spells are colorless sources of
 damage" is `Static: []game.StaticAbility{ColorlessDamageSources("BR", label)}`,
@@ -5815,6 +5875,21 @@ the card. Read "that player" off the trigger (`item.Trigger.Event.Actor` for an
 upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
 library.
 
+
+### Who assigns combat damage, and to what (#6192, ADR 0224 amendment 2026-11-25)
+
+- "Rather than the attacking player, you assign the combat damage of each
+  creature attacking you. You can divide that creature's combat damage as
+  you choose among any of the creatures blocking it." (Defensive
+  Formation) is `Spec{YouAssignAttackersDamage: true}`: banding's
+  division (CR 702.22j), handed to this permanent's controller.
+- "If this creature is unblocked, you may have it assign its combat damage
+  to a creature defending player controls." (Cunning Giant) is
+  `Spec{UnblockedAssignsToACreature: true}`: its controller is asked in the
+  combat damage step for one such creature or the player.
+
+Both are read live through `CatalogAbilityKey`, so a permanent that has
+lost its abilities changes nothing.
 
 ### Adding a block-rule card (S37+, #750)
 

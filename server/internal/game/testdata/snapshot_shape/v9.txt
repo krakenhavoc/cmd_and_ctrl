@@ -23693,8 +23693,10 @@ heldCombatDamage.answers[].frame.BlockerDivides	bool
 heldCombatDamage.answers[].frame.BlockerIDs	array
 heldCombatDamage.answers[].frame.BlockerIDs[]	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.CombatStep	string
+heldCombatDamage.answers[].frame.DefenderAssignsBy	string
 heldCombatDamage.answers[].frame.FirstStrike	bool
 heldCombatDamage.answers[].frame.HasDeathtouch	bool
+heldCombatDamage.answers[].frame.OneCreature	bool
 heldCombatDamage.answers[].frame.SourceController	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceInfect	bool
 heldCombatDamage.answers[].frame.SourceIsCommander	bool
@@ -52041,8 +52043,10 @@ pendingChoices[].damageAssignment.BlockerDivides	bool
 pendingChoices[].damageAssignment.BlockerIDs	array
 pendingChoices[].damageAssignment.BlockerIDs[]	custom(uuid.UUID)
 pendingChoices[].damageAssignment.CombatStep	string
+pendingChoices[].damageAssignment.DefenderAssignsBy	string
 pendingChoices[].damageAssignment.FirstStrike	bool
 pendingChoices[].damageAssignment.HasDeathtouch	bool
+pendingChoices[].damageAssignment.OneCreature	bool
 pendingChoices[].damageAssignment.SourceController	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceInfect	bool
 pendingChoices[].damageAssignment.SourceIsCommander	bool

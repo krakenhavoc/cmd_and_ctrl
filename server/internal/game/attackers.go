@@ -126,6 +126,15 @@ func (g *Game) commitAttackDeclarationLocked() {
 	for _, d := range fresh {
 		g.noteAttackAnnouncedLocked(d.attacker)
 	}
+	// #6219: a masked attacker the declaration tapped (CR 508.1f) is
+	// turned face up as it becomes tapped (Illusionary Mask,
+	// illusionary_mask.go). Here, as the declaration is locked in, and not
+	// at staging, which a player may still take back.
+	for _, d := range fresh {
+		if c := findBattlefieldCard(g, d.attacker); c != nil && c.Tapped {
+			g.unmaskLocked(d.attacker)
+		}
+	}
 	// ADR 0130 §2 (owner decision 2): the optional costs to attack the
 	// player chose (CR 508.1g) are paid now (CR 508.1j), before the
 	// creatures become attacking creatures (CR 508.1k) and in the same

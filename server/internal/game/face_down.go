@@ -203,7 +203,7 @@ func (l *FaceDownListing) characteristic() Characteristic {
 // because the cast out of exile needs it.
 func (k FaceDownKind) IsPermanentState() bool {
 	switch k {
-	case FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked, FaceDownTurned:
+	case FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked, FaceDownTurned, FaceDownMasked:
 		return true
 	}
 	return false
@@ -568,7 +568,11 @@ func TurnFaceUpOffers(c Card) []SpecialAction {
 			return nil
 		}
 		return []SpecialAction{keywordOffer(alt)}
-	case FaceDownTurned:
+	case FaceDownTurned, FaceDownMasked:
+		// #6219: a masked permanent (Illusionary Mask) is one an effect
+		// put face down too, and only its card's own morph or disguise
+		// turns it up voluntarily.
+		//
 		// CR 708.2a put it here, and CR 708.7 says the rules that did
 		// so "may also allow the permanent's controller to turn it
 		// face up" — Ixidron's and Cyber Conversion's do not, and

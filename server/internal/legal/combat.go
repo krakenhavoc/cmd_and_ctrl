@@ -354,7 +354,7 @@ func (e *enumerator) combatMoves() {
 			// block it has staged plus this one — a bot is never left
 			// holding blocks its finish_blocks cannot pay for (#544).
 			// The move carries what it ADDS to the price.
-			taxMana, affordable := e.blockTaxAddition(opt)
+			taxMana, taxLife, affordable := e.blockTaxAddition(opt)
 			if !affordable {
 				continue
 			}
@@ -367,9 +367,9 @@ func (e *enumerator) combatMoves() {
 					Type:   TypeDeclareBlocker,
 					Player: e.seat,
 					Kind:   KindBlock,
-					Label:  "Block " + atk.Name + " with " + blk.Name + blockTaxLabel(taxMana),
+					Label:  "Block " + atk.Name + " with " + blk.Name + blockTaxLabel(taxMana, taxLife),
 					Source: blk.InstanceID,
-					Cost:   blockTaxCost(taxMana),
+					Cost:   blockTaxCost(taxMana, taxLife),
 					Params: mustJSON(blockParams{Blocker: blk.InstanceID.String(), Attacker: atk.InstanceID.String()}),
 				})
 				continue
@@ -396,9 +396,9 @@ func (e *enumerator) combatMoves() {
 				Type:   TypeDeclareBlockers,
 				Player: e.seat,
 				Kind:   KindBlock,
-				Label:  "Block " + atk.Name + " with " + joinNames(names) + blockTaxLabel(taxMana),
+				Label:  "Block " + atk.Name + " with " + joinNames(names) + blockTaxLabel(taxMana, taxLife),
 				Source: opt.Blocks[0].Blocker,
-				Cost:   blockTaxCost(taxMana),
+				Cost:   blockTaxCost(taxMana, taxLife),
 				Params: mustJSON(set),
 			})
 		}
@@ -464,8 +464,8 @@ func (e *enumerator) finishBlocksMove() (Move, bool) {
 		}
 		total := g.CostAsPaidByForEffect(seat, game.ManaSpendContext{}, price.Total, 0)
 		autoTap, phyLife, _ := e.attackTaxPayment(total)
-		m.Label += blockTaxLabel(price.Cost) + attackLifeLabel(phyLife)
-		m.Cost = withPhyrexianLife(blockTaxCost(price.Cost), phyLife)
+		m.Label += blockTaxLabel(price.Cost, price.Life) + attackLifeLabel(phyLife)
+		m.Cost = withPhyrexianLife(blockTaxCost(price.Cost, price.Life), phyLife)
 		if autoTap || phyLife > 0 {
 			m.Params = mustJSON(finishBlocksParams{AutoTap: autoTap, PhyrexianLife: phyLife})
 		}
@@ -481,61 +481,67 @@ type finishBlocksParams struct {
 }
 
 // blockTaxAddition is what declaring `opt` would add to the seat's
-// CR 509.1d block tax, and whether the seat could pay the staged
-// blocks' price and that addition together (pool, then the tapper,
-// then life for Phyrexian symbols — attackTaxPayment's test, which
-// mirrors the engine's payer). A creature already blocking adds
-// nothing: the tax is per blocking creature, not per block.
+// CR 509.1d block tax, in mana and (#6191) life, and whether the seat
+// could pay the staged blocks' price and that addition together (pool,
+// then the tapper, then life for Phyrexian symbols — attackTaxPayment's
+// test, which mirrors the engine's payer — and the life total for the
+// life, CR 119.4). A per-blocker tax a creature already blocking pays
+// adds nothing; a per-attacker tax (Hipparion) adds a line per new pair
+// (game.PriceBlockAdditionForEffect).
 //
 // Caller holds the enumerator's read lock.
-func (e *enumerator) blockTaxAddition(opt game.BlockOption) (mana string, ok bool) {
+func (e *enumerator) blockTaxAddition(opt game.BlockOption) (mana string, life int, ok bool) {
 	g := e.g
-	var fresh []uuid.UUID
-	for _, d := range opt.Blocks {
-		b := cardByID(g, d.Blocker)
-		if b == nil || b.BlockingTarget != uuid.Nil || slices.Contains(fresh, d.Blocker) {
-			continue
-		}
-		fresh = append(fresh, d.Blocker)
-	}
-	add := g.PriceBlockersForEffect(fresh)
+	add := g.PriceBlockAdditionForEffect(e.seat, opt.Blocks)
 	// #6190, CR 509.1c: a block whose cost is paid in permanents is
 	// never offered, for the reason an attack that owes one is not —
 	// which permanent to tap is the defender's decision, and they are
 	// not required to pay at all.
 	if len(add.NonMana) > 0 {
-		return "", false
+		return "", 0, false
 	}
 	if add.IsFree() {
-		return "", true
+		return "", 0, true
 	}
 	staged := g.PriceBlockDeclarationForEffect(e.seat)
+	if add.Life > 0 && !g.CanPayLifeLocked(e.p, staged.Life+add.Life) {
+		return "", 0, false
+	}
+	if add.Cost == "" && staged.Cost == "" {
+		return "", add.Life, true
+	}
 	total, err := game.ParseCost(staged.Cost + add.Cost)
 	if err != nil {
-		return "", false
+		return "", 0, false
 	}
 	total = g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, total, 0)
 	if _, _, ok := e.attackTaxPayment(total); !ok {
-		return "", false
+		return "", 0, false
 	}
-	return add.Cost, true
+	return add.Cost, add.Life, true
 }
 
 // blockTaxCost is a block move's MoveCost under a block tax: the mana
-// it adds, nil when it adds none.
-func blockTaxCost(mana string) *MoveCost {
-	if mana == "" {
+// and life it adds, nil when it adds none.
+func blockTaxCost(mana string, life int) *MoveCost {
+	if mana == "" && life <= 0 {
 		return nil
 	}
-	return &MoveCost{Mana: mana}
+	return &MoveCost{Mana: mana, Life: max(life, 0)}
 }
 
 // blockTaxLabel is a block move's label suffix under a block tax.
-func blockTaxLabel(mana string) string {
-	if mana == "" {
+func blockTaxLabel(mana string, life int) string {
+	switch {
+	case mana == "" && life <= 0:
 		return ""
+	case life <= 0:
+		return " (pay " + mana + ")"
+	case mana == "":
+		return fmt.Sprintf(" (pay %d life)", life)
+	default:
+		return fmt.Sprintf(" (pay %s and %d life)", mana, life)
 	}
-	return " (pay " + mana + ")"
 }
 
 // attackRequirementOwed reports whether `seat` is the active player in
