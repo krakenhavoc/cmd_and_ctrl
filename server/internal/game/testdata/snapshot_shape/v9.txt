@@ -87431,6 +87431,8 @@ seats[].departedPermanents[].source.attachedTo.splice	number:int
 seats[].departedPermanents[].source.attackingTarget	custom(uuid.UUID)
 seats[].departedPermanents[].source.attractionLights	array
 seats[].departedPermanents[].source.attractionLights[]	number:int
+seats[].departedPermanents[].source.auraFormEndBy	custom(uuid.UUID)
+seats[].departedPermanents[].source.auraFormEndCost	string
 seats[].departedPermanents[].source.baseController	custom(uuid.UUID)
 seats[].departedPermanents[].source.battleX	number:float64
 seats[].departedPermanents[].source.battleY	number:float64
