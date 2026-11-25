@@ -2752,6 +2752,7 @@ payunless champions-of-minas-tirith/cant-attack
 payunless evereth-viceroy-of-plunder/paid
 payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
+payunless pay-unless/adrianas-valor-indestructible
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/agrus-kos-copy-ability
@@ -2962,6 +2963,7 @@ payunless pay-unless/mtenda-lion-prevent-combat-damage
 payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
+payunless pay-unless/natural-unity-counter
 payunless pay-unless/neo-go-shintai-ancient-wars
 payunless pay-unless/neo-go-shintai-boundless-vigor
 payunless pay-unless/neo-go-shintai-hidden-cruelty
