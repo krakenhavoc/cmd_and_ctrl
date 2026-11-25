@@ -26,6 +26,8 @@ func init() {
 		Targets:          effects.TargetAny(),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{effects.Flashback("{X}{R}{R}{R}")},
-		OnResolve:        effects.DealXToTarget,
+		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
+			return effects.DealXToTarget(item, ctx)
+		},
 	})
 }
