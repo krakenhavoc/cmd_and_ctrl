@@ -1371,6 +1371,7 @@ choose choose-cards/old-b071-kaya-emblem-cast
 choose choose-cards/old-b071-valki-exile
 choose choose-cards/old-b072-in-search-of-greatness-answer
 choose choose-cards/old-b072-reckless-crew-attach
+choose choose-cards/old-b178-scrabbling-claws-exile
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -3262,6 +3263,7 @@ run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
+run prompt-run/old-b178-consume-gain-power
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
