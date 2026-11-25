@@ -3411,6 +3411,7 @@ run prompt-run/s82-old-b108-lilianas-scrounger-loyalty
 run prompt-run/s82-old-b166-cabal-therapist-sacrifice
 run prompt-run/s82-old-b167-the-elderspell-loyalty
 run prompt-run/s82-old-b198-fraying-omnipotence-sacrifice
+run prompt-run/s82-old-b244-cruel-reality-lose
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
