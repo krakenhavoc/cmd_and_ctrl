@@ -221,6 +221,11 @@ type CardDef struct {
 	// #4475, Kíli the Resourceful). Read from the battlefield through
 	// Game.EquipCostAlternativeLocked.
 	EquipCostAlternatives []EquipCostAlternative
+	// CyclingCostAlternatives are the "you may pay {0} rather than pay
+	// cycling costs" clauses this permanent contributes to its controller
+	// (CR 118.9, CR 702.29, New Perspectives). Read from the battlefield
+	// through Game.CyclingCostAlternativeLocked.
+	CyclingCostAlternatives []EquipCostAlternative
 	// TargetTaxes are the "spells <whom> cast that target <what> cost an
 	// additional N life" statics this permanent contributes (CR 601.2f,
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
@@ -1050,6 +1055,12 @@ func init() {
 	CatalogEquipCostAlternatives = func(key string) []EquipCostAlternative {
 		if d := catalogDef(key); d != nil {
 			return d.EquipCostAlternatives
+		}
+		return nil
+	}
+	CatalogCyclingCostAlternatives = func(key string) []EquipCostAlternative {
+		if d := catalogDef(key); d != nil {
+			return d.CyclingCostAlternatives
 		}
 		return nil
 	}

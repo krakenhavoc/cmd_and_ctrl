@@ -1518,6 +1518,8 @@ choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/seasoned-pyromancer-discarded
 choose choose-cards/seasons-past-different-mana-values
 choose choose-cards/seed-of-hope-permanent
+choose choose-cards/selective-adaptation-battlefield
+choose choose-cards/selective-adaptation-keyword
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
@@ -2692,6 +2694,7 @@ payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/drainpipe-vermin-discard
+payunless pay-unless/drake-haven-drake
 payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
@@ -2895,6 +2898,7 @@ payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/spined-tyrranax-counter
+payunless pay-unless/spirit-cairn-spirit
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
 payunless pay-unless/subway-train-basic-land

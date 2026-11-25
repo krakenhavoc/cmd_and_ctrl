@@ -704,4 +704,8 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 083: Profane Transfusion's X/X Horror (printed */*; a 0/0 placeholder, set to the
 	// difference between the life totals as it is created).
 	"0/0 colorless Horror artifact": {Name: "Horror", TypeLine: "Token Artifact Creature — Horror", PrintedPTKnown: true},
+
+	// S82 OLD batch 124 (#5513): Wort, the Raidmother's Goblin Warrior and Gavi, Nest Warden's Dinosaur Cat.
+	"1/1 red and green Goblin Warrior": {Name: "Goblin Warrior", TypeLine: "Token Creature — Goblin Warrior", Power: 1, Toughness: 1, Colors: []string{"R", "G"}},
+	"2/2 red and white Dinosaur Cat":   {Name: "Dinosaur Cat", TypeLine: "Token Creature — Dinosaur Cat", Power: 2, Toughness: 2, Colors: []string{"R", "W"}},
 }
