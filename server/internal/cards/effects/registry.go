@@ -902,7 +902,7 @@ func Register(spec Spec) {
 		// #4896: the mana payer solves its discard as the cheapest N,
 		// with no set rule, and no printed mana ability says "with
 		// different names".
-		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) || game.DiscardCostSameName(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
 				spec.Name, i))
 		}

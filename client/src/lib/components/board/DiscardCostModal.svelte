@@ -26,6 +26,9 @@
     canPickDifferentNames,
     discardNameRepeats,
     discardNamesDiffer,
+    discardNamesShared,
+    canPickSameName,
+    discardNameJoins,
   } from "../../discardNames";
 
   interface Props {
@@ -76,6 +79,11 @@
     // waits for a set whose names differ, and a hand without enough names
     // is short however many cards it holds.
     differentNames?: boolean;
+    // #6264: "Discard two nonland cards with the same name" (Sphinx of
+    // the Chimes): a card that shares no name with those already picked is
+    // greyed, the confirm waits for a set that shares one, and a hand with
+    // no name held often enough is short.
+    sameName?: boolean;
   }
 
   const {
@@ -93,6 +101,7 @@
     symbolMin,
     manaValueMin,
     differentNames = false,
+    sameName = false,
   }: Props = $props();
 
   const need = $derived(needOverride ?? card?.additional_cost?.discard_cards ?? 0);
@@ -123,11 +132,14 @@
       ? floorMet
       : need > 0 &&
           chosen.length === need &&
-          (!differentNames || discardNamesDiffer(options, chosen)),
+          (!differentNames || discardNamesDiffer(options, chosen)) &&
+          (!sameName || discardNamesShared(options, chosen)),
   );
   const short = $derived(
     !variable &&
-      (options.length < need || (differentNames && !canPickDifferentNames(options, need))),
+      (options.length < need ||
+        (differentNames && !canPickDifferentNames(options, need)) ||
+        (sameName && !canPickSameName(options, need))),
   );
 
   function toggle(id: string): void {
@@ -137,6 +149,7 @@
     }
     if (!variable && chosen.length >= need) return;
     if (differentNames && discardNameRepeats(options, chosen, id)) return;
+    if (sameName && !discardNameJoins(options, chosen, id)) return;
     chosen = [...chosen, id];
   }
 
@@ -170,10 +183,15 @@
     {#if differentNames}
       <p class="prompt-hint">The ones you pick must have different names.</p>
     {/if}
+    {#if sameName}
+      <p class="prompt-hint">The ones you pick must have the same name.</p>
+    {/if}
     {#if short}
       <p class="prompt-hint error">
         {#if differentNames && options.length >= need}
           You don't have {need} cards with different names {where}.
+        {:else if sameName && options.length >= need}
+          You don't have {need} cards with the same name {where}.
         {:else}
           You need {need} card{need === 1 ? "" : "s"}
           {where} to pay this cost.
@@ -188,7 +206,8 @@
               class="prompt-opt"
               class:on={chosen.includes(c.instance_id)}
               aria-pressed={chosen.includes(c.instance_id)}
-              disabled={differentNames && discardNameRepeats(options, chosen, c.instance_id)}
+              disabled={(differentNames && discardNameRepeats(options, chosen, c.instance_id)) ||
+                (sameName && !discardNameJoins(options, chosen, c.instance_id))}
               onclick={() => toggle(c.instance_id)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>

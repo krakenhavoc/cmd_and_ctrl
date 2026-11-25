@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   canPickDifferentNames,
+  canPickSameName,
   cardNameKeys,
+  discardNameJoins,
   discardNameRepeats,
   discardNamesDiffer,
+  discardNamesShared,
 } from "./discardNames";
 
 const card = (instance_id: string, name: string) => ({ instance_id, name });
@@ -45,5 +48,37 @@ describe("discard with different names (#4896)", () => {
     expect(discardNamesDiffer(hand, ["a", "c", "e"])).toBe(true);
     expect(discardNamesDiffer(hand, ["a", "b", "c"])).toBe(false);
     expect(discardNamesDiffer(hand, ["c", "d", "e"])).toBe(false);
+  });
+});
+
+describe("discard with the same name (#6264)", () => {
+  const hand = [
+    card("a", "Opt"),
+    card("b", "Opt"),
+    card("c", "Shock"),
+    card("d", "Fire // Ice"),
+    card("e", "Ice"),
+    card("x", ""),
+  ];
+
+  it("greys a card that shares no name with the picks, and never the pick itself", () => {
+    expect(discardNameJoins(hand, ["a"], "b")).toBe(true);
+    expect(discardNameJoins(hand, ["a"], "c")).toBe(false);
+    expect(discardNameJoins(hand, ["a"], "a")).toBe(true);
+    expect(discardNameJoins(hand, ["d"], "e")).toBe(true);
+    expect(discardNameJoins(hand, [], "x")).toBe(false);
+  });
+
+  it("counts whether a hand can pay", () => {
+    expect(canPickSameName(hand, 2)).toBe(true);
+    expect(canPickSameName(hand, 3)).toBe(false);
+    expect(canPickSameName([card("c", "Shock"), card("f", "Fire")], 2)).toBe(false);
+  });
+
+  it("checks a whole pick", () => {
+    expect(discardNamesShared(hand, ["a", "b"])).toBe(true);
+    expect(discardNamesShared(hand, ["d", "e"])).toBe(true);
+    expect(discardNamesShared(hand, ["a", "c"])).toBe(false);
+    expect(discardNamesShared(hand, [])).toBe(false);
   });
 });
