@@ -613,6 +613,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedOldB207BelzenlokDemonToken,
 	// S82 OLD batch 228: Jace, Cunning Castaway's Illusion (sacrificed when targeted by a spell).
 	printedOldB228IllusionToken,
+	// S82 OLD batch 276: Make Mischief's Devil.
+	printedS82OldB276DevilToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
