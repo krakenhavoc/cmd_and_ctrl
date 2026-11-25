@@ -531,6 +531,7 @@ body s82-old-b166/cabal-therapist-name
 body s82-old-b198/viviens-invocation-damage
 body s82-old-b199/skyrider-patrol-counter-and-flying
 body s82-old-b214/destroy-attached-equipment
+body s82-old-b321/its-controller-loses-2
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1579,6 +1580,7 @@ choose choose-cards/s82-old-b209-aim-counters
 choose choose-cards/s82-old-b212-board-the-weatherlight-take
 choose choose-cards/s82-old-b212-urzas-tome-exile
 choose choose-cards/s82-old-b247-benefaction-of-rhonas-take
+choose choose-cards/s82-old-b321-erebos-titan-return
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1929,6 +1931,7 @@ condition dies/another-creature-than-the-source
 condition dies/each-creature
 condition dies/nontoken-creature-you-control-this-turn
 condition dies/reckless-blaze-that-creature-under-your-control
+condition dies/s82-old-b321-dealt-damage-by
 condition dies/that-creature
 condition dies/that-creature-under-your-control
 condition dies/that-creature-with-an-egg-counter
@@ -3794,6 +3797,7 @@ tail cant-stay-away/entered
 tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
 tail card-name/day-of-the-moon-goad
+tail card-name/s82-old-b321-infinite-obliteration
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
