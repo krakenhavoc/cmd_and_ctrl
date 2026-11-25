@@ -1496,6 +1496,8 @@ choose choose-cards/s82-old-b103-settle-the-score
 choose choose-cards/s82-old-b103-silhana-wayfinder-place
 choose choose-cards/s82-old-b106-siege-striker-tap
 choose choose-cards/s82-old-b113-counter-on-a-creature
+choose choose-cards/s82-old-b114-counter-pick-chain
+choose choose-cards/s82-old-b114-counter-pick-last
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2520,6 +2522,7 @@ option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-old-b113-enters-with-counters
+option option-pick/s82-old-b114-enters-with-counters
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3586,6 +3589,7 @@ tail burn-down-the-house/haste
 tail cait-sith-fortune-teller/impulse-exile
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
+tail call-of-the-death-dweller/counters
 tail campfire/shuffle-graveyard
 tail canoptek-wraith/sacrificed
 tail cant-stay-away/entered
