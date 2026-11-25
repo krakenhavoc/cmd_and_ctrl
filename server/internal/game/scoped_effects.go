@@ -1491,6 +1491,13 @@ func RemoveTypesMod(types ...string) Mod {
 	return Mod{Kind: ModRemoveTypes, Types: copyStrings(types)}
 }
 
+// RemoveSubtypesMod removes subtypes and leaves the card types alone
+// (layer 4): Takklemaggot's return "as a non-Aura enchantment" (#6235).
+// The removeTypes kind, reading Subtypes. Reads Subtypes.
+func RemoveSubtypesMod(subtypes ...string) Mod {
+	return Mod{Kind: ModRemoveTypes, Subtypes: copyStrings(subtypes)}
+}
+
 // AddSubtypesMod adds subtypes in addition to the object's others
 // (layer 4) — amass's "it's also an Orc", Kyoshi's Island. Reads
 // Subtypes.
@@ -2520,7 +2527,7 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 			}
 		}
 	case ModRemoveTypes:
-		types := m.Types
+		types, subtypes := m.Types, m.Subtypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			kept := make([]string, 0, len(ch.Types))
 			for _, t := range ch.Types {
@@ -2529,6 +2536,17 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				}
 			}
 			ch.Types = kept
+			if len(subtypes) == 0 {
+				return
+			}
+			// #6235: "it's no longer an Aura" removes the subtype alone.
+			keptSub := make([]string, 0, len(ch.Subtypes))
+			for _, s := range ch.Subtypes {
+				if !typeListHas(subtypes, s) {
+					keptSub = append(keptSub, s)
+				}
+			}
+			ch.SetSubtypes(keptSub)
 		}
 	case ModAddSubtypes:
 		subtypes := m.Subtypes

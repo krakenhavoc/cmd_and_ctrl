@@ -99,6 +99,28 @@ type EntersAs struct {
 	// replacement and an "as this enters" clause of the card never apply
 	// (the Xu-Ifit rulings). An ability granted after it lands is kept.
 	LoseAllAbilities bool `json:"loseAllAbilities,omitempty"`
+	// RemoveSubtypes are subtypes the permanent does not have (layer 4),
+	// its card types left alone: Takklemaggot's "return this card to the
+	// battlefield … as a non-Aura enchantment" is RemoveSubtypes ["Aura"]
+	// (#6235). An entering card this leaves no Aura is not asked what it
+	// enchants (CR 303.4f) and is not held to an enchant clause.
+	RemoveSubtypes []string `json:"removeSubtypes,omitempty"`
+	// ChosenPlayer, when set, is the player the effect names for the
+	// permanent as it enters (Card.ChosenPlayer): Takklemaggot's "that
+	// player", which the ability it gains reads (#6235).
+	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
+}
+
+// notAura reports whether the overwrite leaves the entering card no
+// Aura: it removes the subtype, or sets card types without Enchantment.
+func (e *EntersAs) notAura() bool {
+	if e == nil {
+		return false
+	}
+	if typeListHas(e.RemoveSubtypes, "Aura") {
+		return true
+	}
+	return len(e.Types) > 0 && !typeListHas(e.Types, "Enchantment")
 }
 
 // EntersAsPT is an entry overwrite's base power and toughness.
@@ -122,6 +144,9 @@ func (e *EntersAs) mods() []Mod {
 	}
 	if len(e.AddSubtypes) > 0 {
 		mods = append(mods, AddSubtypesMod(e.AddSubtypes...))
+	}
+	if len(e.RemoveSubtypes) > 0 {
+		mods = append(mods, RemoveSubtypesMod(e.RemoveSubtypes...))
 	}
 	if len(e.CreatureTypes) > 0 {
 		mods = append(mods, SetCreatureTypesMod(e.CreatureTypes...))
@@ -147,7 +172,7 @@ func (e *EntersAs) Problem() string {
 	if e == nil {
 		return ""
 	}
-	if len(e.Types) == 0 && len(e.AddTypes) == 0 && len(e.AddSubtypes) == 0 && !e.LoseAllAbilities {
+	if len(e.Types) == 0 && len(e.AddTypes) == 0 && len(e.AddSubtypes) == 0 && len(e.RemoveSubtypes) == 0 && !e.LoseAllAbilities {
 		return "an entry overwrite names no card type"
 	}
 	if len(e.Types) > 0 && (len(e.AddTypes) > 0 || len(e.AddSubtypes) > 0 || len(e.CreatureTypes) > 0) {
@@ -176,7 +201,8 @@ func copyEntersAs(e *EntersAs) *EntersAs {
 	}
 	out := &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label,
 		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords),
-		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name, LoseAllAbilities: e.LoseAllAbilities}
+		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name, LoseAllAbilities: e.LoseAllAbilities,
+		RemoveSubtypes: copyStrings(e.RemoveSubtypes), ChosenPlayer: e.ChosenPlayer}
 	if e.BasePT != nil {
 		pt := *e.BasePT
 		out.BasePT = &pt
@@ -221,6 +247,9 @@ func (g *Game) applyEntryOverwriteLocked(entered uuid.UUID, ev *ReplacementEvent
 		e.mods(),
 		g.PinnedToEpoch(IndefiniteDuration(), entered),
 		e.Label, timeNowUnixNano())
+	if e.ChosenPlayer != uuid.Nil {
+		perm.ChosenPlayer = e.ChosenPlayer
+	}
 	perm.effective = nil
 }
 

@@ -158,6 +158,10 @@ func (g *Game) enteringAuraLocked(ev *ReplacementEvent) (Card, *TargetSpec, bool
 	if found && ev.EntersAsCopyOf != nil {
 		card.applyCopy(*ev.EntersAsCopyOf, Card{})
 	}
+	if ev.entersAs.notAura() {
+		// #6235: it enters as something that is no Aura.
+		return Card{}, nil, false
+	}
 	if !found || !card.IsAura() || card.IsRole() || card.IsCreature() {
 		return Card{}, nil, false
 	}
@@ -470,4 +474,29 @@ func (g *Game) attachEnteringAuraLocked(entered uuid.UUID, ev *ReplacementEvent)
 		return
 	}
 	_ = g.AttachForEffect(entered, ev.auraHost)
+}
+
+// CreaturesAuraCouldEnchantForEffect is every creature on the battlefield
+// the Aura card `auraID`, wherever it is now, could enchant if it entered
+// the battlefield under `controller`'s control: its catalogued enchant
+// clause, judged without the targeting gate (choosing what an Aura
+// enchants is not targeting, CR 115.1), protection and "can't be
+// enchanted" included (CR 303.4f's legal choice). Takklemaggot's "chooses a
+// creature that this card could enchant" (#6235). Nil for a card the
+// catalog knows no enchant clause for.
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesAuraCouldEnchantForEffect(auraID, controller uuid.UUID) []uuid.UUID {
+	aura, _ := g.findCardAndZoneLocked(auraID)
+	if aura == nil {
+		return nil
+	}
+	spec := TargetSpecFor(catalogKeyOf(aura))
+	if spec == nil {
+		return nil
+	}
+	c := *aura
+	c.Controller = controller
+	ev := &ReplacementEvent{Actor: controller, auraHostCreaturesOnly: true}
+	return g.auraHostCandidatesLocked(ev, c, spec).Cards
 }
