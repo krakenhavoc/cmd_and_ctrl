@@ -220,6 +220,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		AlternativeCosts:                    spec.AlternativeCosts,
 		TapCost:                             spec.TapCost,
 		Delve:                               spec.Delve,
+		CantSpendMana:                       spec.CantSpendMana,
 		Splice:                              spec.Splice,
 		SpendOnly:                           spec.SpendOnly,
 		SpendOnlySources:                    spec.SpendOnlySources,

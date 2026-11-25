@@ -474,6 +474,9 @@ func Register(spec Spec) {
 		}
 	}
 	CheckSpellSpendOnly(spec)
+	// #6227: "You can't spend mana to cast this spell" needs something
+	// that is not mana to pay with.
+	CheckCantSpendMana(spec)
 	// ADR 0073 §7: a cast condition with no printed clause produces a
 	// refusal the client cannot explain, and a clause with no
 	// condition refuses nothing while claiming to. Same for a

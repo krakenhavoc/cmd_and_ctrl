@@ -745,6 +745,25 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// CantSpendMana is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; #6227, CR 106.1, CR 601.2h). Like
+	// Delve it adds no demand to the cost — it is a rule about the
+	// PAYMENT — so it is a bit and nothing else:
+	//
+	//	CantSpendMana: true, // Hogaak, Arisen Necropolis
+	//
+	// The engine does the rest: the mana half of the total cost has to
+	// be covered by the convoke taps (TapCost) and the delve exiles
+	// (Delve) the announcement makes, no mana in the pool may pay any
+	// of it, the auto-tapper plans nothing for it, the legal-move list
+	// offers no cast it could not pay that way, and a cast that leaves
+	// anything owed is refused for insufficient mana.
+	//
+	// Declare it only beside a TapCost or Delve: on its own it is a
+	// card nothing could ever cast, which is a card file's mistake and
+	// not a printed card (CheckCantSpendMana refuses it at boot).
+	CantSpendMana bool
+
 	// Splice is CR 702.47's "Splice onto [quality] [cost]" (#1989, ADR
 	// 0202). Declare it with SpliceOntoArcane / SpliceOntoInstantOrSorcery
 	// and write the rest of the card as usual: its Targets and OnResolve
