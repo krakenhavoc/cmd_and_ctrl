@@ -2768,6 +2768,7 @@ payunless najal-the-storm-runner/paid
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/agrus-kos-copy-ability
+payunless pay-unless/akoum-stonewaker-token
 payunless pay-unless/alesha-who-smiles-at-death-return
 payunless pay-unless/alistair-the-brigadier-pump
 payunless pay-unless/ancestral-katana-attach
@@ -3636,6 +3637,7 @@ tail airbend/grant-and-announce
 tail ajani-nacatl-avenger/token-made
 tail ajani-outland-chaperone/shuffle
 tail ajanis-chosen/offer-attach
+tail akoum-stonewaker/exile-the-elemental
 tail alien-invasion/grow
 tail altair-ibn-la-ahad/after-exile
 tail aminatous-augury/after-mill
