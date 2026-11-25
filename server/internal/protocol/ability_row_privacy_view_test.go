@@ -127,6 +127,8 @@ var activatedRowScopes = map[string]rowScope{
 	// #1297's exile-N-cards clause: its printed count and words, and
 	// the pile it names.
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	// #6121: where the graveyard pick goes, a printed fact of the clause.
+	"ExileCostToLibraryBottom": rowPublic,
 	// #4455's any-number form (Baron Helmut Zemo): the printed flag and
 	// the printed symbol floor.
 	"ExileCostAnyNumber": rowPublic, "ExileCostSymbolColor": rowPublic, "ExileCostSymbolMin": rowPublic,

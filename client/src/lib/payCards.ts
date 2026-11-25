@@ -19,19 +19,60 @@ export function pickedPower(pc: PayCardsView, ids: string[]): number {
   return ids.reduce((sum, id) => sum + (pc.powers?.[id] ?? 0), 0);
 }
 
-// canPayCards reports whether the chooser has enough to pay with.
-export function canPayCards(pc: PayCardsView): boolean {
+// isGraveyardGroups reports whether `pc` is a "cards from a single
+// graveyard" payment (#6121, Jötun Grunt): picks from every seat's
+// graveyard, in whole groups of `group_size` per graveyard.
+export function isGraveyardGroups(pc: PayCardsView): boolean {
+  return pc.action === "graveyard_library_bottom";
+}
+
+// graveyardOwners maps each card in a seat's graveyard to that seat.
+function graveyardOwners(seats: PlayerView[] | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const seat of seats ?? []) {
+    for (const c of seat.graveyard?.cards ?? []) out.set(c.instance_id, seat.id);
+  }
+  return out;
+}
+
+// graveyardCounts is how many of `ids` each graveyard holds.
+function graveyardCounts(ids: string[], seats: PlayerView[] | undefined): Map<string, number> {
+  const owners = graveyardOwners(seats);
+  const counts = new Map<string, number>();
+  for (const id of ids) {
+    const owner = owners.get(id) ?? "";
+    counts.set(owner, (counts.get(owner) ?? 0) + 1);
+  }
+  return counts;
+}
+
+// canPayCards reports whether the chooser has enough to pay with. A
+// grouped graveyard payment counts whole groups only, when the seats are
+// known.
+export function canPayCards(pc: PayCardsView, seats?: PlayerView[]): boolean {
   if (isTotalPower(pc)) {
     const best = pc.options.filter((id) => (pc.powers?.[id] ?? 0) > 0);
     return pickedPower(pc, best) >= (pc.total_power ?? 0);
   }
+  if (isGraveyardGroups(pc) && seats) {
+    const g = Math.max(1, pc.group_size ?? 1);
+    let whole = 0;
+    for (const n of graveyardCounts(pc.options, seats).values()) whole += Math.floor(n / g) * g;
+    return whole >= pc.count;
+  }
   return pc.options.length >= pc.count;
 }
 
-// payCardsReady reports whether `picks` is a whole payment.
-export function payCardsReady(pc: PayCardsView, picks: string[]): boolean {
+// payCardsReady reports whether `picks` is a whole payment. A grouped
+// graveyard payment also needs each graveyard's picks to be whole groups,
+// when the seats are known (the server checks it either way).
+export function payCardsReady(pc: PayCardsView, picks: string[], seats?: PlayerView[]): boolean {
   if (isTotalPower(pc)) {
     return picks.length > 0 && pickedPower(pc, picks) >= (pc.total_power ?? 0);
+  }
+  if (isGraveyardGroups(pc) && seats) {
+    const g = Math.max(1, pc.group_size ?? 1);
+    for (const n of graveyardCounts(picks, seats).values()) if (n % g !== 0) return false;
   }
   return picks.length === pc.count;
 }
@@ -77,15 +118,23 @@ export function togglePayCard(pc: PayCardsView, picks: string[], id: string): st
 
 // payCardsOptions resolves the option IDs to the cards they name: the
 // chooser's hand for a discard, their own graveyard for an exile (ADR
-// 0187 §3), the battlefield for a sacrifice, a tap or a -1/-1 counter
+// 0187 §3), every seat's graveyard for a grouped graveyard payment
+// (#6121), the battlefield for a sacrifice, a tap or a -1/-1 counter
 // (#5746), in the server's order.
 export function payCardsOptions(
   pc: PayCardsView,
   battlefield: CardView[] | undefined,
   chooser: PlayerView | undefined,
+  seats?: PlayerView[],
 ): CardView[] {
   // #6189: a player payment names seats, which are not cards at all.
   if (isPlayerPicks(pc)) return [];
+  // #6121: a grouped graveyard payment picks out of every seat's graveyard.
+  if (isGraveyardGroups(pc)) {
+    const all = (seats ?? []).flatMap((seat) => seat.graveyard?.cards ?? []);
+    const byID = new Map(all.map((c) => [c.instance_id, c]));
+    return pc.options.map((id) => byID.get(id)).filter((c): c is CardView => c !== undefined);
+  }
   const pool =
     pc.action === "discard" || pc.action === "hand_to_library_top"
       ? (chooser?.hand?.cards ?? [])
@@ -101,6 +150,12 @@ export function payCardsVerb(pc: PayCardsView): string {
   const n = pc.count === 1 ? "one card" : `${pc.count} cards`;
   if (pc.action === "discard") return `Choose ${n} to discard.`;
   if (pc.action === "exile_graveyard") return `Choose ${n} from your graveyard to exile.`;
+  if (isGraveyardGroups(pc)) {
+    const g = pc.group_size ?? 1;
+    return g > 1
+      ? `Choose ${n} from graveyards, ${g} at a time from a single graveyard, to put on the bottom of their owners' libraries.`
+      : `Choose ${n} from graveyards to put on the bottom of their owners' libraries.`;
+  }
   if (pc.action === "tap") return `Choose ${n} to tap.`;
   if (pc.action === "minus_one_counter") return `Choose ${n} to put a -1/-1 counter on.`;
   if (pc.action === "hand_to_library_top") return `Choose ${n} to put on top of your library.`;

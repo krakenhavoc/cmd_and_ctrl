@@ -1856,6 +1856,14 @@ type AdditionalCostView struct {
 	// (CR 118.3) — the client shows it disabled. Mana is never asked
 	// (CR 601.2g lets the caster tap afterwards). Branches only.
 	Payable bool `json:"payable,omitempty"`
+	// CounterCostView is "remove any number of +1/+1 counters from among
+	// creatures you control" (#6121, Hierophant Bio-Titan): the activated
+	// ability's counter block, with the spell being cast as the source the
+	// option walk is asked about, the wire names an alternative cost's
+	// counters use (#5390), so the client opens the same picker. The picks
+	// ride cast_spell's counter_source_ids / counter_counts; none is a
+	// legal payment (counter_cost_variable with no counter_cost_n).
+	CounterCostView
 }
 
 // OptionalCostView is the wire shape of one optional additional cost
@@ -2433,6 +2441,11 @@ type PayCardsView struct {
 	// Powers is each option's power now, keyed by instance ID, for a
 	// "sacrifice_total_power" payment. Absent for every other.
 	Powers map[string]int `json:"powers,omitempty"`
+	// GroupSize is set for a "graveyard_library_bottom" payment (#6121,
+	// Jötun Grunt's "two cards from a single graveyard"): the Options are
+	// the cards in every graveyard, and the picks from each graveyard must
+	// number a multiple of GroupSize. Absent for every other payment.
+	GroupSize int `json:"group_size,omitempty"`
 }
 
 // PayStateView is a pay-unless payment that names nothing and is not
@@ -5596,6 +5609,12 @@ type ActivatedAbilityView struct {
 	// mana value is this or more. The engine refuses a pick below it; the
 	// client shows the running total.
 	ExileCostManaValueMin int `json:"exile_cost_mana_value_min,omitempty"`
+	// ExileCostToLibraryBottom marks "Put N cards from your graveyard on
+	// the bottom of your library" (#6121, Battlefield Scrounger): the
+	// same graveyard pick on `exile_ids`, but the cards go to the bottom
+	// of the library in the order picked (CR 401.4) instead of to exile,
+	// so the picker says so. Absent for every other clause.
+	ExileCostToLibraryBottom bool `json:"exile_cost_to_library_bottom,omitempty"`
 	// ReturnLabel / ReturnOptions describe a "Return a permanent you
 	// control to its owner's hand" cost component (#1213) — Quirion
 	// Ranger's Forest, Master Transmuter's artifact, Meloku's land.
@@ -9339,6 +9358,11 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		out.TapOthersLabel = tc.Label
 		out.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
 	}
+	if rc := ac.RemoveCounters; rc != nil {
+		// #6121: the activation's counter block, off the walk the
+		// validator reads, with the spell as the source.
+		out.CounterCostView = counterCostView(g, caster, castID, rc, nil)
+	}
 	if he := ac.ExileFromHand; he != nil {
 		// #3175: the engine's own walk, so the picker offers exactly the
 		// cards the validator accepts (#544). Any number, none included.
@@ -11095,6 +11119,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PayCards.Picks = "players"
 			}
 			v.PayCards.Repeats = a.Repeats
+			if a.Kind == game.PayActionGraveyardToLibraryBottom {
+				v.PayCards.GroupSize = a.GroupSize
+			}
 			if a.Kind == game.PayActionSacrificeTotalPower {
 				// #6187: the total and what each option adds to it.
 				v.PayCards.TotalPower = a.TotalPower
@@ -14804,6 +14831,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.ExileCostLabel = ec.Label
 			v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, c.InstanceID, ec))
 			v.ExileCostZone = string(ec.Zone())
+			v.ExileCostToLibraryBottom = ec.ToLibraryBottom
 		}
 		if ec := a.Cost.ExileCards; ec != nil && ec.AnyNumber {
 			v.ExileCostAnyNumber = true

@@ -65,6 +65,19 @@ describe("exileCost", () => {
     expect(exileCostWhere(clause)).toBe("in exile");
   });
 
+  // #6121: Battlefield Scrounger's graveyard pick goes to the library
+  // bottom, and the picker says so instead of "Exile".
+  it("names a library-bottom clause's destination", () => {
+    const clause = {
+      exile_cost_options: ["g1"],
+      exile_cost_zone: "graveyard" as const,
+      exile_cost_to_library_bottom: true,
+    };
+    expect(exileCostVerb(clause)).toBe("Put on library bottom");
+    expect(exileCostNote(clause)).toContain("bottom of your library");
+    expect(exileCostWhere(clause)).toBe("in your graveyard");
+  });
+
   // #5655: Synthesis Pod's options are the viewer's spells on the
   // shared stack.
   it("resolves an exile-a-spell clause's options out of the stack", () => {

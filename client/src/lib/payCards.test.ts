@@ -167,3 +167,38 @@ describe("#6189 cumulative-upkeep payments", () => {
     expect(payCardsReady(land, ["l1", "l2"])).toBe(true);
   });
 });
+
+// #6121: Jötun Grunt's "Put two cards from a single graveyard on the
+// bottom of their owner's library", for two age counters: four cards,
+// two at a time from one graveyard.
+describe("a grouped graveyard payment", () => {
+  const gy = (id: string, cards: string[]): PlayerView =>
+    ({
+      id,
+      graveyard: { cards: cards.map((c) => ({ instance_id: c, name: c }) as CardView) },
+    }) as unknown as PlayerView;
+  const seats = [gy("me", ["m1", "m2", "m3"]), gy("opp", ["o1", "o2"])];
+  const grunt: PayCardsView = {
+    action: "graveyard_library_bottom",
+    count: 4,
+    group_size: 2,
+    options: ["m1", "m2", "m3", "o1", "o2"],
+  };
+
+  it("lists every seat's graveyard", () => {
+    expect(payCardsOptions(grunt, [], seats[0], seats).map((c) => c.instance_id)).toEqual(
+      grunt.options,
+    );
+  });
+
+  it("counts whole groups only", () => {
+    expect(canPayCards(grunt, seats)).toBe(true);
+    expect(canPayCards({ ...grunt, count: 6 }, seats)).toBe(false);
+  });
+
+  it("needs each graveyard's picks in whole groups", () => {
+    expect(payCardsReady(grunt, ["m1", "m2", "o1", "o2"], seats)).toBe(true);
+    expect(payCardsReady(grunt, ["m1", "m2", "m3", "o1"], seats)).toBe(false);
+    expect(payCardsVerb(grunt)).toContain("2 at a time from a single graveyard");
+  });
+});

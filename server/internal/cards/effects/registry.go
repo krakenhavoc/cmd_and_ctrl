@@ -341,6 +341,7 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	checkAdditionalCounterCost(spec)
 	// #5669: the untap form is an activated ability's alone.
 	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
@@ -760,7 +761,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, AbilityCostPaysBesideSacrifice(ab.Cost))
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
 		checkExileTotalManaValueX(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
@@ -1489,7 +1490,12 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 // card as something it does not print:
 //
 //   - a floor below one outside a cast: a cost that can be paid with
-//     nothing is free (#1213's guard, which stays for abilities).
+//     nothing is free (#1213's guard, which stays for abilities) —
+//     unless the ability pays something else beside it (#6121,
+//     AbilityCostPaysBesideSacrifice): Baba Lysaga's "{T}, Sacrifice up
+//     to three permanents" and Sword of the Ages' "{T}, Sacrifice this
+//     artifact and any number of creatures you control" print a floor
+//     of zero, and the {T} is what keeps them from being free.
 //   - a ceiling below the floor.
 //   - CountFromX where there is no X to announce — `allowX` is false
 //     for a mana ability, which has no stack item to carry one
@@ -1520,7 +1526,7 @@ func CheckSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !anyNumber && !allowOpen:
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but that variable count has no shape here — a cast's additional cost prints only \"sacrifice X\" (SacrificeXCost) or \"any number\" (SacrificeAnyNumberCost), ADR 0100 §3",
 			card, where, spec.Min, spec.Max))
-	case !spec.CountFromX && !anyNumber && spec.Min < 1:
+	case !spec.CountFromX && !anyNumber && spec.Min < 1 && !(allowZero && spec.Max >= 1):
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore)",
 			card, where, spec.Min, spec.Max))
 	case !spec.CountFromX && spec.Max != 0 && spec.Max < spec.Min:
@@ -2961,6 +2967,13 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
+	}
+	if ec.ToLibraryBottom && (!strings.HasPrefix(where, "ability ") || ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber ||
+		ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.TopOnly || ec.LinkToSource || ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0) {
+		// #6121: "Put N cards from your graveyard on the bottom of your
+		// library" is a CR 602 ability's printed count from the graveyard.
+		panic(fmt.Sprintf("effects.Register: %q %s puts cards on the bottom of a library — a CR 602 ability's printed count from the graveyard only (#6121)",
+			name, where))
 	}
 	if ec.TopOnly && (ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber || ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.Processes()) {
 		// #6194: "the top <kind> card of your graveyard" is a graveyard

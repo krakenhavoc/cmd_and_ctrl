@@ -3197,6 +3197,7 @@ followUpParks[].then.paid.action.Either	array
 followUpParks[].then.paid.action.Either[]	recursive(game.PayAction)
 followUpParks[].then.paid.action.Except	custom(uuid.UUID)
 followUpParks[].then.paid.action.Forage	bool
+followUpParks[].then.paid.action.GroupSize	number:int
 followUpParks[].then.paid.action.Kind	string
 followUpParks[].then.paid.action.Mana	string
 followUpParks[].then.paid.action.Nonland	bool
@@ -3952,6 +3953,7 @@ frozenEntries[].event.counterTail.then.paid.action.Either	array
 frozenEntries[].event.counterTail.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.counterTail.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.paid.action.Forage	bool
+frozenEntries[].event.counterTail.then.paid.action.GroupSize	number:int
 frozenEntries[].event.counterTail.then.paid.action.Kind	string
 frozenEntries[].event.counterTail.then.paid.action.Mana	string
 frozenEntries[].event.counterTail.then.paid.action.Nonland	bool
@@ -4684,6 +4686,7 @@ frozenEntries[].event.damageTail.each.each.paid.action.Either	array
 frozenEntries[].event.damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.damageTail.each.each.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.paid.action.Forage	bool
+frozenEntries[].event.damageTail.each.each.paid.action.GroupSize	number:int
 frozenEntries[].event.damageTail.each.each.paid.action.Kind	string
 frozenEntries[].event.damageTail.each.each.paid.action.Mana	string
 frozenEntries[].event.damageTail.each.each.paid.action.Nonland	bool
@@ -5407,6 +5410,7 @@ frozenEntries[].event.damageTail.each.then.paid.action.Either	array
 frozenEntries[].event.damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.damageTail.each.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.paid.action.Forage	bool
+frozenEntries[].event.damageTail.each.then.paid.action.GroupSize	number:int
 frozenEntries[].event.damageTail.each.then.paid.action.Kind	string
 frozenEntries[].event.damageTail.each.then.paid.action.Mana	string
 frozenEntries[].event.damageTail.each.then.paid.action.Nonland	bool
@@ -6429,6 +6433,7 @@ frozenEntries[].event.damageTail.then.paid.action.Either	array
 frozenEntries[].event.damageTail.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.damageTail.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.paid.action.Forage	bool
+frozenEntries[].event.damageTail.then.paid.action.GroupSize	number:int
 frozenEntries[].event.damageTail.then.paid.action.Kind	string
 frozenEntries[].event.damageTail.then.paid.action.Mana	string
 frozenEntries[].event.damageTail.then.paid.action.Nonland	bool
@@ -7284,6 +7289,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Either	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Forage	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.GroupSize	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Mana	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Nonland	bool
@@ -8088,6 +8094,7 @@ frozenEntries[].event.entryTail.batch.then.paid.action.Either	array
 frozenEntries[].event.entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.entryTail.batch.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.paid.action.Forage	bool
+frozenEntries[].event.entryTail.batch.then.paid.action.GroupSize	number:int
 frozenEntries[].event.entryTail.batch.then.paid.action.Kind	string
 frozenEntries[].event.entryTail.batch.then.paid.action.Mana	string
 frozenEntries[].event.entryTail.batch.then.paid.action.Nonland	bool
@@ -8811,6 +8818,7 @@ frozenEntries[].event.entryTail.keyed.paid.action.Either	array
 frozenEntries[].event.entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.entryTail.keyed.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.paid.action.Forage	bool
+frozenEntries[].event.entryTail.keyed.paid.action.GroupSize	number:int
 frozenEntries[].event.entryTail.keyed.paid.action.Kind	string
 frozenEntries[].event.entryTail.keyed.paid.action.Mana	string
 frozenEntries[].event.entryTail.keyed.paid.action.Nonland	bool
@@ -9570,6 +9578,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Either	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Forage	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.GroupSize	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Mana	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Nonland	bool
@@ -10315,6 +10324,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.action.Either	array
 frozenEntries[].event.entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.entryTail.tokens.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.paid.action.Forage	bool
+frozenEntries[].event.entryTail.tokens.then.paid.action.GroupSize	number:int
 frozenEntries[].event.entryTail.tokens.then.paid.action.Kind	string
 frozenEntries[].event.entryTail.tokens.then.paid.action.Mana	string
 frozenEntries[].event.entryTail.tokens.then.paid.action.Nonland	bool
@@ -11561,6 +11571,7 @@ frozenEntries[].event.keywordActionTail.then.paid.action.Either	array
 frozenEntries[].event.keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.keywordActionTail.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.paid.action.Forage	bool
+frozenEntries[].event.keywordActionTail.then.paid.action.GroupSize	number:int
 frozenEntries[].event.keywordActionTail.then.paid.action.Kind	string
 frozenEntries[].event.keywordActionTail.then.paid.action.Mana	string
 frozenEntries[].event.keywordActionTail.then.paid.action.Nonland	bool
@@ -12310,6 +12321,7 @@ frozenEntries[].event.lifeTail.each.then.paid.action.Either	array
 frozenEntries[].event.lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.lifeTail.each.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.paid.action.Forage	bool
+frozenEntries[].event.lifeTail.each.then.paid.action.GroupSize	number:int
 frozenEntries[].event.lifeTail.each.then.paid.action.Kind	string
 frozenEntries[].event.lifeTail.each.then.paid.action.Mana	string
 frozenEntries[].event.lifeTail.each.then.paid.action.Nonland	bool
@@ -13036,6 +13048,7 @@ frozenEntries[].event.lifeTail.then.paid.action.Either	array
 frozenEntries[].event.lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.lifeTail.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.paid.action.Forage	bool
+frozenEntries[].event.lifeTail.then.paid.action.GroupSize	number:int
 frozenEntries[].event.lifeTail.then.paid.action.Kind	string
 frozenEntries[].event.lifeTail.then.paid.action.Mana	string
 frozenEntries[].event.lifeTail.then.paid.action.Nonland	bool
@@ -14762,6 +14775,7 @@ frozenEntries[].event.millTail.run.then.paid.action.Either	array
 frozenEntries[].event.millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.millTail.run.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.paid.action.Forage	bool
+frozenEntries[].event.millTail.run.then.paid.action.GroupSize	number:int
 frozenEntries[].event.millTail.run.then.paid.action.Kind	string
 frozenEntries[].event.millTail.run.then.paid.action.Mana	string
 frozenEntries[].event.millTail.run.then.paid.action.Nonland	bool
@@ -15483,6 +15497,7 @@ frozenEntries[].event.millTail.then.paid.action.Either	array
 frozenEntries[].event.millTail.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.millTail.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.paid.action.Forage	bool
+frozenEntries[].event.millTail.then.paid.action.GroupSize	number:int
 frozenEntries[].event.millTail.then.paid.action.Kind	string
 frozenEntries[].event.millTail.then.paid.action.Mana	string
 frozenEntries[].event.millTail.then.paid.action.Nonland	bool
@@ -17437,6 +17452,7 @@ frozenEntries[].event.tokenTail.then.paid.action.Either	array
 frozenEntries[].event.tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.tokenTail.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.paid.action.Forage	bool
+frozenEntries[].event.tokenTail.then.paid.action.GroupSize	number:int
 frozenEntries[].event.tokenTail.then.paid.action.Kind	string
 frozenEntries[].event.tokenTail.then.paid.action.Mana	string
 frozenEntries[].event.tokenTail.then.paid.action.Nonland	bool
@@ -19690,6 +19706,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Forage	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.GroupSize	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Nonland	bool
@@ -20449,6 +20466,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Either	arr
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Forage	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.GroupSize	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Nonland	bool
@@ -21170,6 +21188,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Forage	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.GroupSize	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Nonland	bool
@@ -21911,6 +21930,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Forage	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.GroupSize	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Nonland	bool
@@ -22721,6 +22741,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Either	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Except	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Forage	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.GroupSize	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Mana	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Nonland	bool
@@ -27514,6 +27535,7 @@ movesAwaitingTokens[].counterTail.then.paid.action.Either	array
 movesAwaitingTokens[].counterTail.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].counterTail.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.paid.action.Forage	bool
+movesAwaitingTokens[].counterTail.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].counterTail.then.paid.action.Kind	string
 movesAwaitingTokens[].counterTail.then.paid.action.Mana	string
 movesAwaitingTokens[].counterTail.then.paid.action.Nonland	bool
@@ -28246,6 +28268,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.action.Either	array
 movesAwaitingTokens[].damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].damageTail.each.each.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.paid.action.Forage	bool
+movesAwaitingTokens[].damageTail.each.each.paid.action.GroupSize	number:int
 movesAwaitingTokens[].damageTail.each.each.paid.action.Kind	string
 movesAwaitingTokens[].damageTail.each.each.paid.action.Mana	string
 movesAwaitingTokens[].damageTail.each.each.paid.action.Nonland	bool
@@ -28969,6 +28992,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.action.Either	array
 movesAwaitingTokens[].damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].damageTail.each.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.paid.action.Forage	bool
+movesAwaitingTokens[].damageTail.each.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].damageTail.each.then.paid.action.Kind	string
 movesAwaitingTokens[].damageTail.each.then.paid.action.Mana	string
 movesAwaitingTokens[].damageTail.each.then.paid.action.Nonland	bool
@@ -29991,6 +30015,7 @@ movesAwaitingTokens[].damageTail.then.paid.action.Either	array
 movesAwaitingTokens[].damageTail.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].damageTail.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.paid.action.Forage	bool
+movesAwaitingTokens[].damageTail.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].damageTail.then.paid.action.Kind	string
 movesAwaitingTokens[].damageTail.then.paid.action.Mana	string
 movesAwaitingTokens[].damageTail.then.paid.action.Nonland	bool
@@ -30846,6 +30871,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Forage	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Nonland	bool
@@ -31650,6 +31676,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Forage	bool
+movesAwaitingTokens[].entryTail.batch.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Nonland	bool
@@ -32373,6 +32400,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.action.Either	array
 movesAwaitingTokens[].entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].entryTail.keyed.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.paid.action.Forage	bool
+movesAwaitingTokens[].entryTail.keyed.paid.action.GroupSize	number:int
 movesAwaitingTokens[].entryTail.keyed.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.keyed.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.keyed.paid.action.Nonland	bool
@@ -33132,6 +33160,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Either	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Forage	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.GroupSize	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Nonland	bool
@@ -33877,6 +33906,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.action.Either	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Forage	bool
+movesAwaitingTokens[].entryTail.tokens.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Kind	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Mana	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Nonland	bool
@@ -35123,6 +35153,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.action.Either	array
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Forage	bool
+movesAwaitingTokens[].keywordActionTail.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Kind	string
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Mana	string
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Nonland	bool
@@ -35872,6 +35903,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.action.Either	array
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Forage	bool
+movesAwaitingTokens[].lifeTail.each.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Kind	string
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Mana	string
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Nonland	bool
@@ -36598,6 +36630,7 @@ movesAwaitingTokens[].lifeTail.then.paid.action.Either	array
 movesAwaitingTokens[].lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].lifeTail.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.paid.action.Forage	bool
+movesAwaitingTokens[].lifeTail.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].lifeTail.then.paid.action.Kind	string
 movesAwaitingTokens[].lifeTail.then.paid.action.Mana	string
 movesAwaitingTokens[].lifeTail.then.paid.action.Nonland	bool
@@ -38324,6 +38357,7 @@ movesAwaitingTokens[].millTail.run.then.paid.action.Either	array
 movesAwaitingTokens[].millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].millTail.run.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.paid.action.Forage	bool
+movesAwaitingTokens[].millTail.run.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].millTail.run.then.paid.action.Kind	string
 movesAwaitingTokens[].millTail.run.then.paid.action.Mana	string
 movesAwaitingTokens[].millTail.run.then.paid.action.Nonland	bool
@@ -39045,6 +39079,7 @@ movesAwaitingTokens[].millTail.then.paid.action.Either	array
 movesAwaitingTokens[].millTail.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].millTail.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.paid.action.Forage	bool
+movesAwaitingTokens[].millTail.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].millTail.then.paid.action.Kind	string
 movesAwaitingTokens[].millTail.then.paid.action.Mana	string
 movesAwaitingTokens[].millTail.then.paid.action.Nonland	bool
@@ -40999,6 +41034,7 @@ movesAwaitingTokens[].tokenTail.then.paid.action.Either	array
 movesAwaitingTokens[].tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].tokenTail.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.paid.action.Forage	bool
+movesAwaitingTokens[].tokenTail.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].tokenTail.then.paid.action.Kind	string
 movesAwaitingTokens[].tokenTail.then.paid.action.Mana	string
 movesAwaitingTokens[].tokenTail.then.paid.action.Nonland	bool
@@ -43252,6 +43288,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Forage	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Nonland	bool
@@ -44011,6 +44048,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Either	arr
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Forage	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.GroupSize	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Nonland	bool
@@ -44732,6 +44770,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Forage	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Nonland	bool
@@ -45473,6 +45512,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Forage	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Nonland	bool
@@ -46283,6 +46323,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Either	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Except	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Forage	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.GroupSize	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Mana	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Nonland	bool
@@ -50169,6 +50210,7 @@ pendingChoices[].attackSplit.tail.paid.action.Either	array
 pendingChoices[].attackSplit.tail.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].attackSplit.tail.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.paid.action.Forage	bool
+pendingChoices[].attackSplit.tail.paid.action.GroupSize	number:int
 pendingChoices[].attackSplit.tail.paid.action.Kind	string
 pendingChoices[].attackSplit.tail.paid.action.Mana	string
 pendingChoices[].attackSplit.tail.paid.action.Nonland	bool
@@ -52725,6 +52767,7 @@ pendingChoices[].diceRoll.then.paid.action.Either	array
 pendingChoices[].diceRoll.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].diceRoll.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.paid.action.Forage	bool
+pendingChoices[].diceRoll.then.paid.action.GroupSize	number:int
 pendingChoices[].diceRoll.then.paid.action.Kind	string
 pendingChoices[].diceRoll.then.paid.action.Mana	string
 pendingChoices[].diceRoll.then.paid.action.Nonland	bool
@@ -54081,6 +54124,7 @@ pendingChoices[].divideShield.walk.each.paid.action.Either	array
 pendingChoices[].divideShield.walk.each.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].divideShield.walk.each.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.paid.action.Forage	bool
+pendingChoices[].divideShield.walk.each.paid.action.GroupSize	number:int
 pendingChoices[].divideShield.walk.each.paid.action.Kind	string
 pendingChoices[].divideShield.walk.each.paid.action.Mana	string
 pendingChoices[].divideShield.walk.each.paid.action.Nonland	bool
@@ -54804,6 +54848,7 @@ pendingChoices[].divideShield.walk.then.paid.action.Either	array
 pendingChoices[].divideShield.walk.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].divideShield.walk.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.paid.action.Forage	bool
+pendingChoices[].divideShield.walk.then.paid.action.GroupSize	number:int
 pendingChoices[].divideShield.walk.then.paid.action.Kind	string
 pendingChoices[].divideShield.walk.then.paid.action.Mana	string
 pendingChoices[].divideShield.walk.then.paid.action.Nonland	bool
@@ -55533,6 +55578,7 @@ pendingChoices[].libraryOrder.then.paid.action.Either	array
 pendingChoices[].libraryOrder.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].libraryOrder.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.paid.action.Forage	bool
+pendingChoices[].libraryOrder.then.paid.action.GroupSize	number:int
 pendingChoices[].libraryOrder.then.paid.action.Kind	string
 pendingChoices[].libraryOrder.then.paid.action.Mana	string
 pendingChoices[].libraryOrder.then.paid.action.Nonland	bool
@@ -56317,6 +56363,7 @@ pendingChoices[].nameThen.paid.action.Either	array
 pendingChoices[].nameThen.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].nameThen.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].nameThen.paid.action.Forage	bool
+pendingChoices[].nameThen.paid.action.GroupSize	number:int
 pendingChoices[].nameThen.paid.action.Kind	string
 pendingChoices[].nameThen.paid.action.Mana	string
 pendingChoices[].nameThen.paid.action.Nonland	bool
@@ -57292,6 +57339,7 @@ pendingChoices[].payActionClause.Either	array
 pendingChoices[].payActionClause.Either[]	recursive(game.PayAction)
 pendingChoices[].payActionClause.Except	custom(uuid.UUID)
 pendingChoices[].payActionClause.Forage	bool
+pendingChoices[].payActionClause.GroupSize	number:int
 pendingChoices[].payActionClause.Kind	string
 pendingChoices[].payActionClause.Mana	string
 pendingChoices[].payActionClause.Nonland	bool
@@ -57570,6 +57618,7 @@ pendingChoices[].pickTail.paid.action.Either	array
 pendingChoices[].pickTail.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].pickTail.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].pickTail.paid.action.Forage	bool
+pendingChoices[].pickTail.paid.action.GroupSize	number:int
 pendingChoices[].pickTail.paid.action.Kind	string
 pendingChoices[].pickTail.paid.action.Mana	string
 pendingChoices[].pickTail.paid.action.Nonland	bool
@@ -58339,6 +58388,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.action.Either	arr
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.counterTail.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Nonland	bool
@@ -59071,6 +59121,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Either
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Mana	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Nonland	bool
@@ -59794,6 +59845,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Either
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Nonland	bool
@@ -60816,6 +60868,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.action.Either	arra
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.damageTail.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Nonland	bool
@@ -61671,6 +61724,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Nonland	bool
@@ -62475,6 +62529,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Either
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Nonland	bool
@@ -63198,6 +63253,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Either	arra
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Nonland	bool
@@ -63957,6 +64013,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.act
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Nonland	bool
@@ -64702,6 +64759,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Eithe
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Nonland	bool
@@ -65948,6 +66006,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Eith
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Nonland	bool
@@ -66697,6 +66756,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Either	a
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Nonland	bool
@@ -67423,6 +67483,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.lifeTail.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Nonland	bool
@@ -69149,6 +69210,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Either	ar
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.millTail.run.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Nonland	bool
@@ -69870,6 +69932,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.millTail.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Nonland	bool
@@ -71824,6 +71887,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Either	array
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.tokenTail.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Nonland	bool
@@ -74077,6 +74141,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.acti
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Nonland	bool
@@ -74836,6 +74901,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Nonland	bool
@@ -75557,6 +75623,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Ei
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Nonland	bool
@@ -76298,6 +76365,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Nonland	bool
@@ -77108,6 +77176,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Forage	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.GroupSize	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Mana	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Nonland	bool
@@ -78360,6 +78429,7 @@ pendingChoices[].scryThen.paid.action.Either	array
 pendingChoices[].scryThen.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].scryThen.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].scryThen.paid.action.Forage	bool
+pendingChoices[].scryThen.paid.action.GroupSize	number:int
 pendingChoices[].scryThen.paid.action.Kind	string
 pendingChoices[].scryThen.paid.action.Mana	string
 pendingChoices[].scryThen.paid.action.Nonland	bool
@@ -79132,6 +79202,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.action.Either	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Either[]	recursive(game.PayAction)
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Except	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Forage	bool
+pendingChoices[].searchPrompt.spec.thenTail.paid.action.GroupSize	number:int
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Kind	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Mana	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Nonland	bool

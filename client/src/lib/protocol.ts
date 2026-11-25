@@ -3529,6 +3529,20 @@ export interface AdditionalCostView {
   exile_cost_from_targets?: boolean;
   exile_cost_target_mana_values?: Record<string, number>;
   payable?: boolean;
+  // #6121: "you may remove any number of +1/+1 counters from among
+  // creatures you control" (Hierophant Bio-Titan) carries the activated
+  // ability's counter block, under the names an alternative cost's
+  // counters use (#5390), so the counter picker reads it as it reads an
+  // ability. The payment rides cast_spell as `counter_source_ids` and
+  // `counter_counts`; none is a payment (a variable count, floor zero).
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
+  counter_cost_options?: CounterCostOptionView[];
 }
 
 // SpliceOfferView is one card in the viewer's hand that may be spliced
@@ -3927,7 +3941,11 @@ export interface PayCardsView {
     | "counter_opponent_creature"
     | "opponent_gains_life"
     | "opponent_creates_token"
-    | "gain_control_land";
+    | "gain_control_land"
+    // #6121: Jötun Grunt's "two cards from a single graveyard": options
+    // are the cards in every seat's graveyard; the picks from each one
+    // number a multiple of `group_size`.
+    | "graveyard_library_bottom";
   count: number;
   options: string[];
   // #6189: `picks: "players"` means the options are SEAT ids, not
@@ -3937,6 +3955,7 @@ export interface PayCardsView {
   repeats?: boolean;
   total_power?: number;
   powers?: Record<string, number>;
+  group_size?: number;
 }
 
 // A pay-unless payment that names nothing and is not mana (#6189).
@@ -4486,6 +4505,10 @@ export interface ActivatedAbilityView {
   // `exile_cost_symbol_min` symbols of the colour letter
   // `exile_cost_symbol_color`. The server refuses a pick below the floor.
   exile_cost_any_number?: boolean;
+  // #6121: "Put N cards from your graveyard on the bottom of your library"
+  // (Battlefield Scrounger): the graveyard pick on `exile_ids`, but the
+  // cards go to the bottom of the library in the order picked, not to exile.
+  exile_cost_to_library_bottom?: boolean;
   exile_cost_symbol_color?: string;
   exile_cost_symbol_min?: number;
   // #5193: collect evidence N's floor — an `exile_cost_any_number` pick is

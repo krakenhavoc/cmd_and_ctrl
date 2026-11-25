@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { AlternativeCostView } from "./protocol";
+import type { AdditionalCostView, AlternativeCostView } from "./protocol";
 import {
+  additionalCostAsksCounters,
   counterChoices,
   counterCostBlocked,
   counterPaymentParams,
@@ -107,5 +108,32 @@ describe("a cast's counter-removal offer", () => {
     const params: Record<string, unknown> = {};
     applyCastChoices(params, { altCost: "flashback" });
     expect(params).toEqual({ alternative_cost: "flashback" });
+  });
+});
+
+// #6121: Hierophant Bio-Titan's additional cost — "you may remove any
+// number of +1/+1 counters from among creatures you control" — rides the
+// same counter block on the cast's additional_cost, with a floor of zero.
+describe("a cast's additional counter-removal cost", () => {
+  const titan: AdditionalCostView = {
+    counter_cost_kind: "+1/+1",
+    counter_cost_among: true,
+    counter_cost_variable: true,
+    counter_cost_label: "creatures you control",
+    counter_cost_options: [{ card_id: "bear", kinds: [{ kind: "+1/+1", count: 3 }] }],
+  };
+
+  it("asks only while a counter is there to remove", () => {
+    expect(additionalCostAsksCounters(titan)).toBe(true);
+    expect(additionalCostAsksCounters({ ...titan, counter_cost_options: [] })).toBe(false);
+    expect(additionalCostAsksCounters({})).toBe(false);
+    expect(additionalCostAsksCounters(undefined)).toBe(false);
+  });
+
+  it("accepts removing none, and any number up to what is there", () => {
+    expect(counterPaymentReady(titan, [])).toBe(true);
+    const picks = counterChoices(titan).map((c) => ({ ...c, n: 2 }));
+    expect(counterPaymentReady(titan, picks)).toBe(true);
+    expect(counterPaymentParams(titan, picks).counter_counts).toEqual([2]);
   });
 });

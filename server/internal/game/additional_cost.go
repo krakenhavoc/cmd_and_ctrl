@@ -475,6 +475,28 @@ type AdditionalCost struct {
 	// Stoneglider's "exile two cards from your graveyard or pay {1}{W}").
 	ExileCards *ExileCost
 
+	// RemoveCounters is "As an additional cost to cast this spell, you may
+	// remove any number of <kind> counters from among <permanents> you
+	// control" (#6121, Hierophant Bio-Titan's Frenzied Metabolism). The
+	// activated ability's counter component (CounterRemovalCost, #625,
+	// #789), carried by a cast's mandatory slot the way an alternative
+	// cost carries it (#5390): the same option walk, validator and payer,
+	// with the spell being cast as the "source" the walk is asked about.
+	// Register holds it to the among form with a "from" clause, a printed
+	// kind and a variable count with a floor of zero ("you may … any
+	// number" is one reading: removing none is not paying, CR 601.2b).
+	//
+	// The payment rides cast_spell's counter_source_ids / counter_counts
+	// (CastSpellParams.CounterSourceIDs, CounterCounts), the names an
+	// alternative cost's counters ride, so a cast that claims an offer
+	// with its own counter component can't pay this one too: the
+	// announcement is refused. The total is CostQuery.RemovingCounters,
+	// which the spell's own cost modifier reads at CR 601.2f
+	// (effects.CostsLessPerCounterRemoved, "{2} less for each counter
+	// removed this way"), and it is recorded on PaidCost.CountersRemoved.
+	// Nil is every cost before it, additive.
+	RemoveCounters *CounterRemovalCost
+
 	// Waterbend is an optional "you may waterbend {N}" additional cost
 	// (CR 701.67, #3999, Secret of Bloodbending): ManaCost is the {N},
 	// and this is the tap clause that may help pay it (effects.Waterbend),
@@ -563,7 +585,7 @@ func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && !c.DiscardX && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
 		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty() &&
-		c.ReturnToHand.Empty())
+		c.ReturnToHand.Empty() && c.RemoveCounters == nil)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -576,7 +598,7 @@ func (c *AdditionalCost) Empty() bool {
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.DiscardX || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
 		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil ||
-		!c.TapOthers.Empty() || !c.ReturnToHand.Empty())
+		!c.TapOthers.Empty() || !c.ReturnToHand.Empty() || c.RemoveCounters != nil)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
