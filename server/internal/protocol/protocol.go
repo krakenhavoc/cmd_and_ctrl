@@ -111,6 +111,20 @@ const (
 	// the declaration is still open with its blocks staged; there is no
 	// override. ADR 0221 (#5375).
 	CodeBlockTaxUnpaid = "block_tax_unpaid"
+	// CodeCombatCostUnpaid — a declare_attacker, declare_attackers or
+	// finish_blocks was refused because a NON-MANA cost to attack or
+	// block was not paid (#6190, CR 508.1h / 509.1d): Exalted Dragon's
+	// "unless you sacrifice a land", Hollow Warrior's "unless you tap
+	// an untapped creature you control", Floodtide Serpent's "unless
+	// you return an enchantment you control to its owner's hand".
+	//
+	// ErrorPayload.Reason is the clause as the card prints it ("a
+	// land"), so the client can open the right picker and say what it
+	// is for; CardID is the creature the clause is about. Nothing was
+	// staged, tapped, sacrificed or returned, and there is no override.
+	// The permanents are named on the declaration itself, as
+	// `sacrifice_ids` / `tap_ids` / `return_ids`.
+	CodeCombatCostUnpaid = "combat_cost_unpaid"
 	// CodeIllegalAttack — a declare_attacker or declare_attackers was
 	// refused because the declaration breaks a CR 508.1c restriction
 	// on the whole declaration: today only a count limit (Silent

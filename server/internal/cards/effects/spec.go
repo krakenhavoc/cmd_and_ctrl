@@ -1162,6 +1162,12 @@ type Spec struct {
 	// it with no CastableZones entry; Register refuses the pair. Additive.
 	CastsOnlyFromGraveyard bool
 
+	// CantSpendManaToCast is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis): the cast is refused, in every mode, while
+	// any mana remains in its total cost after convoke and delve, and the
+	// spell's price is the empty cost, so the pool is never charged. Additive.
+	CantSpendManaToCast bool
+
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers from its owner's hand — foretell (CR 702.143) and
 	// suspend (CR 702.62). A special action does NOT use the stack

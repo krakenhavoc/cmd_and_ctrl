@@ -124,7 +124,7 @@ var (
 // several cards) share one. Call it once per ability, from a card's init.
 func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string) game.TailRef {
 	key := "cumulative-upkeep/" + wardSlug(label)
-	fp := fmt.Sprintf("%s|%s|%d|%t|%s|%s", each.Mana, each.Words, each.Flips, each.Action != nil, noun, plural)
+	fp := fmt.Sprintf("%s|%s|%d|%t|%s|%s|%d", each.Mana, each.Words, each.Flips, each.Action != nil, noun, plural, each.Life)
 	cumulativeUpkeepMu.Lock()
 	if prev, ok := cumulativeUpkeepPrints[key]; ok {
 		if prev != fp {
@@ -146,6 +146,19 @@ func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string)
 			Cost:     cost,
 			Action:   action,
 			Question: label,
+			// #6189: "Pay {B} and 1 life" is one payment, both halves
+			// multiplied by the age counters.
+			LifeCost: owed.Life,
+			// #6189, CR 106.6: mana restricted to cumulative upkeep
+			// costs (Snowfall, Adarkar Unicorn) may pay this one.
+			SpendPurpose: game.SpendPurposeCumulativeUpkeep,
+		}
+		if action != nil && action.Kind == game.PayActionCountersOnSource {
+			// #6189: Aboroth's counters go on the asking permanent,
+			// read as the trigger resolves.
+			a := *action
+			a.OnSource = source
+			prompt.Action = &a
 		}
 		if owed.Flips > 0 {
 			// The flips are the payment, queued once it is made

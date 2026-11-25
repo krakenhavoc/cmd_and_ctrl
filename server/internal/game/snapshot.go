@@ -2245,6 +2245,12 @@ type pendingChoiceSnapshot struct {
 	// non-mana payment, plain data. A pointer so a mana prompt writes
 	// nothing; additive within the version.
 	PayActionClause *PayAction `json:"payActionClause,omitempty"`
+	// PaySpendPurpose is PendingChoice's (#6189): the mana spend purpose
+	// a pay-unless pays under, "cumulative_upkeep" on a cumulative
+	// upkeep's prompt and empty on every other. Additive within the
+	// version; a file without it restores the zero purpose, which is
+	// what every pay-unless but a cumulative upkeep's has.
+	PaySpendPurpose ManaSpendPurpose `json:"paySpendPurpose,omitempty"`
 	// PayTap is PendingChoice's (#4264): a keyed pay-unless's waterbend
 	// clause as its kind and extra cost. Additive within the version.
 	PayTap *PayTapSpec `json:"payTap,omitempty"`
@@ -3836,6 +3842,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
+		PaySpendPurpose:       c.PaySpendPurpose,
 		Asked:                 copyAskedItem(c.Asked),
 		PayTap:                copyPayTapSpec(c.PayTap),
 		PayAmount:             copyPayAmountPrompt(c.PayAmount),
@@ -5010,6 +5017,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
+		PaySpendPurpose:       c.PaySpendPurpose,
 		Asked:                 copyAskedItem(c.Asked),
 		PayTap:                copyPayTapSpec(c.PayTap),
 		PayAmount:             copyPayAmountPrompt(c.PayAmount),

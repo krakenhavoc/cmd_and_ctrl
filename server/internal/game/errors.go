@@ -323,6 +323,12 @@ var (
 	// client-facing message.
 	ErrUnparseableCost = errors.New("game: unparseable mana cost")
 
+	// ErrCantSpendMana is returned by CastSpell and the pricer for a spell
+	// that says "You can't spend mana to cast this spell" (Hogaak, Arisen
+	// Necropolis) when convoke, delve and the other non-mana payments leave
+	// any mana in its cost.
+	ErrCantSpendMana = errors.New("game: mana can't be spent to cast this spell")
+
 	// ErrCostModifier is returned by CastSpell when a cost modifier
 	// (CR 601.2f — "spells cost {1} more / {2} less to cast")
 	// produces an amount the engine won't price: a negative
@@ -538,6 +544,20 @@ var (
 	// Nothing is spent and the declaration stays pending, blocks
 	// staged: the defender takes blocks back or makes more mana.
 	ErrBlockTaxUnpaid = errors.New("game: the block tax for this declaration was not paid")
+
+	// ErrCombatCostUnpaid is returned by the declaration verbs, and by
+	// finish_blocks, when a NON-MANA cost to attack or block was not
+	// paid — Exalted Dragon's "unless you sacrifice a land", Hollow
+	// Warrior's "unless you tap an untapped creature you control",
+	// Floodtide Serpent's "unless you return an enchantment you
+	// control to its owner's hand" (#6190, CR 508.1h, 509.1d). The
+	// error actually returned is a *CombatCostUnpaidError naming the
+	// clause and which picker the client should open; test with
+	// errors.Is. ALL OR NOTHING, like ErrAttackTaxUnpaid: nothing is
+	// staged, tapped, sacrificed or returned. Which attacks to drop
+	// when the board cannot pay for all of them is the player's
+	// choice, made by declaring fewer.
+	ErrCombatCostUnpaid = errors.New("game: a non-mana cost to attack or block was not paid")
 
 	// ErrAttackLimit is returned by the declaration verbs when the
 	// declaration would put more creatures into the attack than a

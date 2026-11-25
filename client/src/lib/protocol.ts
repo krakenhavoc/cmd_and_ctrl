@@ -67,6 +67,15 @@ export const ErrorCode = {
   // `reason` is the whole price ("{1}{1}"), `missing` the shortfall.
   // Nothing was spent; the declaration is still open, blocks staged.
   BlockTaxUnpaid: "block_tax_unpaid",
+  // #6190 (CR 508.1h / 509.1d): a declare_attacker, declare_attackers or
+  // finish_blocks refused because a NON-MANA cost to attack or block was
+  // not paid — Exalted Dragon's "unless you sacrifice a land", Hollow
+  // Warrior's tapped creature, Floodtide Serpent's returned enchantment.
+  // `reason` is the clause as the card prints it and `card_id` the
+  // creature it is about, so the dock can open the picker that pays it;
+  // the permanents ride the declaration as `sacrifice_ids` / `tap_ids` /
+  // `return_ids`. Nothing was staged and there is no override.
+  CombatCostUnpaid: "combat_cost_unpaid",
   // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
   // refused because the declaration breaks a CR 508.1c count limit
   // (Silent Arbiter's "no more than one creature can attack each
@@ -2254,6 +2263,11 @@ export interface PendingChoiceView {
   // #6187: "discard N cards at random" (CR 701.9b). A yes or no; the
   // server picks the cards. "Yes" pays only with N cards in hand.
   pay_random_discard?: number;
+  // #6189: a payment that names nothing and is not mana — "put three
+  // -1/-1 counters on this permanent", "draw a card", "exile the top
+  // card of your library". pay_cost holds its printed words, and
+  // `payable` is whether the chooser can make it (CR 118.3).
+  pay_state?: PayStateView;
   // ADR 0187 §5: an either payment — one offer with two or more ways to
   // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
   // One entry per branch, in the card's order; pay_cost holds the whole
@@ -3863,11 +3877,30 @@ export interface PayCardsView {
     | "tap"
     | "minus_one_counter"
     | "hand_to_library_top"
-    | "sacrifice_total_power";
+    | "sacrifice_total_power"
+    // #6189, the cumulative-upkeep payments: a counter on a creature an
+    // opponent controls, an opponent gaining life, an opponent creating
+    // a token, and gaining control of a land you don't control.
+    | "counter_opponent_creature"
+    | "opponent_gains_life"
+    | "opponent_creates_token"
+    | "gain_control_land";
   count: number;
   options: string[];
+  // #6189: `picks: "players"` means the options are SEAT ids, not
+  // cards; `repeats` means one option may pay more than once (CR
+  // 702.24a: each choice is made separately for each age counter).
+  picks?: "players";
+  repeats?: boolean;
   total_power?: number;
   powers?: Record<string, number>;
+}
+
+// A pay-unless payment that names nothing and is not mana (#6189).
+export interface PayStateView {
+  action: "counters_on_source" | "draw" | "exile_library_top";
+  count: number;
+  payable: boolean;
 }
 
 // One branch of an either payment (ADR 0187 §5).
@@ -5308,6 +5341,25 @@ export interface FinalCardView {
   attached_to_name?: string;
 }
 
+// CombatCostDemandView is one non-mana cost to attack or block, as the
+// server states it (#6190): which picker to open, the clause as the card
+// prints it, how many permanents it asks for, and the candidates that
+// could pay. The client re-derives none of it.
+export interface CombatCostDemandView {
+  // Which cost component, and so which id list the answer goes in:
+  // `sacrifice` → sacrifice_ids, `tap` → tap_ids, `return` → return_ids.
+  kind: "sacrifice" | "tap" | "return";
+  // The clause without the verb ("a land", "two Islands"), and the name
+  // of the permanent that charges it.
+  clause?: string;
+  source?: string;
+  // How many permanents must be named, and the instance ids that could
+  // pay, in battlefield order. Fewer candidates than `count` means the
+  // declaration cannot be made at all.
+  count: number;
+  candidates?: string[];
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -5502,6 +5554,21 @@ export interface CardView extends CastSurfaceView {
   // block only beside another blocker of its controller's. Omitted
   // otherwise.
   cant_block_alone?: boolean;
+  // #6190 (CR 508.1h / 509.1d): the NON-MANA costs this creature's
+  // controller must pay to attack or block with it — Exalted Dragon's
+  // "unless you sacrifice a land", Hollow Warrior's "unless you tap an
+  // untapped creature you control", Floodtide Serpent's "unless you
+  // return an enchantment you control to its owner's hand".
+  //
+  // `attack_cost` is priced against a target the creature may attack,
+  // so it is present only while it could be declared attacking;
+  // `block_cost` is priced for the creature alone, so the dock can show
+  // the price before the block is staged. Both omitted at a table with
+  // no such cost on it. The permanents are the player's choice and ride
+  // the declaration as `sacrifice_ids` / `tap_ids` / `return_ids`; see
+  // combatCost.ts.
+  attack_cost?: CombatCostDemandView[];
+  block_cost?: CombatCostDemandView[];
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat

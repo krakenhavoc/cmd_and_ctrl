@@ -749,6 +749,16 @@ type PendingChoiceView struct {
 	// with that many cards in hand.
 	PayRandomDiscard *int `json:"pay_random_discard,omitempty"`
 
+	// PayState is a payment that names nothing and is not mana (#6189):
+	// "put three -1/-1 counters on this permanent", "draw a card",
+	// "exile the top card of your library". The answer is a plain yes or
+	// no; PayCost holds the payment's printed words, and Payable is
+	// whether the chooser can make it (CR 118.3) — the client greys
+	// "Pay" when it cannot, as it does for a short energy payment.
+	// At most one of PayCards / PayEnergy / PayLife / PayDamage /
+	// PayNothing / PayState / PayEither is present.
+	PayState *PayStateView `json:"pay_state,omitempty"`
+
 	// PayEither is an either payment (ADR 0187 §5): one offer with two
 	// or more ways to pay, Worms of the Earth's "sacrifice two lands or
 	// have it deal 5 damage to you". Each entry is one branch; the
@@ -2389,6 +2399,15 @@ type PayCardsView struct {
 	// graveyard's are public. Present-and-empty when there is nothing
 	// to pay with.
 	Options []string `json:"options"`
+	// Picks is "players" when Options are SEAT ids and not cards
+	// (#6189: "an opponent gains 1 life", "have an opponent create a
+	// token"). Absent for every card payment.
+	Picks string `json:"picks,omitempty"`
+	// Repeats marks a payment one option may pay more than once
+	// (#6189, CR 702.24a: a cumulative upkeep makes each choice
+	// separately for each age counter, so one creature may take two
+	// counters). Absent for every other payment.
+	Repeats bool `json:"repeats,omitempty"`
 	// TotalPower is set for a "sacrifice_total_power" payment (#6187,
 	// Phyrexian Dreadnought): the answer names any number of Options,
 	// at least one, whose Powers add up to TotalPower or more. Count is
@@ -2397,6 +2416,20 @@ type PayCardsView struct {
 	// Powers is each option's power now, keyed by instance ID, for a
 	// "sacrifice_total_power" payment. Absent for every other.
 	Powers map[string]int `json:"powers,omitempty"`
+}
+
+// PayStateView is a pay-unless payment that names nothing and is not
+// mana (#6189): what it does, how much of it, and whether the chooser
+// can make it right now.
+type PayStateView struct {
+	// Action is "counters_on_source", "draw" or "exile_library_top".
+	Action string `json:"action"`
+	// Count is how many counters, cards drawn or cards exiled.
+	Count int `json:"count"`
+	// Payable is whether the chooser can pay (CR 118.3): a library with
+	// the cards, a permanent that can have counters put on it. A draw is
+	// always payable.
+	Payable bool `json:"payable"`
 }
 
 // PayOptionView is one branch of an either payment (ADR 0187 §5).
@@ -3796,6 +3829,21 @@ type CardView struct {
 	// creature has no text of its own to leak.
 	BlockCapacity   int  `json:"block_capacity,omitempty"`
 	BlocksAnyNumber bool `json:"blocks_any_number,omitempty"`
+	// AttackCost and BlockCost are the NON-MANA costs this creature's
+	// controller must pay to attack or block with it (#6190, CR 508.1h /
+	// 509.1d) — Exalted Dragon's "unless you sacrifice a land", Hollow
+	// Warrior's "unless you tap an untapped creature you control",
+	// Floodtide Serpent's "unless you return an enchantment you control
+	// to its owner's hand".
+	//
+	// AttackCost is priced against a target this creature may attack, so
+	// it is present only while it could be declared attacking; BlockCost
+	// is priced for the creature alone, so the dock can show the price
+	// before a block is staged. Both are absent at every table with no
+	// such cost on it.
+	AttackCost []CombatCostDemandView `json:"attack_cost,omitempty"`
+	BlockCost  []CombatCostDemandView `json:"block_cost,omitempty"`
+
 	// CantBlockAlone marks a creature that "can't block alone" (#5396,
 	// game.BlockRule.NotAlone; CR 506.5, 509.1b): it may block only
 	// beside another blocker of its controller's. Public, read off its
@@ -6311,6 +6359,31 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 // to send in declare_attacker's `target`. Kind is "player",
 // "planeswalker" or "battle"; ID is a seat id for a player and an
 // instance id for a permanent. Added in S27.
+// CombatCostDemandView is one NON-MANA cost to attack or block as the
+// dock needs it (#6190, CR 508.1h / 509.1d): the clause as printed,
+// which picker to open, how many permanents it asks for, and the
+// candidates that could pay it. The client re-derives none of it
+// (ADR 0045 §6) and sends the chosen ids back as `sacrifice_ids`,
+// `tap_ids` or `return_ids` on the declaration.
+type CombatCostDemandView struct {
+	// Kind is "sacrifice", "tap" or "return": which picker to open and
+	// which id list to send the answer in.
+	Kind string `json:"kind"`
+
+	// Clause is the cost as the card prints it, without the verb — "a
+	// land", "two Islands", "an untapped creature you control" — and
+	// Source the permanent that charges it.
+	Clause string `json:"clause,omitempty"`
+	Source string `json:"source,omitempty"`
+
+	// Count is how many permanents must be named, and Candidates the
+	// ones on the battlefield that could pay, in battlefield order. A
+	// demand with fewer candidates than Count cannot be paid, and the
+	// declaration is refused rather than offered.
+	Count      int      `json:"count"`
+	Candidates []string `json:"candidates,omitempty"`
+}
+
 type AttackTargetView struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
@@ -6525,6 +6598,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
+		stampCombatCosts(g, &view.Battlefield)
 		stampCrewedAndSaddledBy(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat, view.legalPromptCutsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
@@ -10416,6 +10490,68 @@ func stampBlockRefusals(g *game.Game, view *GameView) {
 	}
 }
 
+// stampCombatCosts projects the non-mana costs to attack and to block
+// (#6190) onto each battlefield creature: the clause, the count and the
+// candidates, so the attack and block docks can prompt for them and send
+// the answer with the declaration.
+//
+// Public, like every other combat fact in the view: the candidates are
+// permanents on the battlefield and the clause is printed on a card
+// everyone can read.
+//
+// The attack half is priced against the creature's FIRST legal attack
+// target, because every clause in the family ("this creature can't
+// attack unless …") is about the attacking creature and charges the same
+// whatever it attacks; a creature with no legal target shows none, since
+// there is nothing to declare. A tax that priced one target differently
+// would make this field a lie, exactly as AttackTargetView.Tax says of
+// its own.
+//
+// Caller holds g's read lock with fresh layers. The view and battlefield
+// slices are kept in step by index.
+func stampCombatCosts(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		if card.FaceDown || !game.IsCreaturePtr(card) {
+			continue
+		}
+		if demands := g.BlockCostDemandsForEffect(card); len(demands) > 0 {
+			view.Cards[i].BlockCost = combatCostDemandViews(demands)
+		}
+		targets := g.AttackTargetsForEffect(card.Controller)
+		if len(targets) == 0 {
+			continue
+		}
+		if demands := g.AttackCostDemandsForEffect(card, targets[0].ID); len(demands) > 0 {
+			view.Cards[i].AttackCost = combatCostDemandViews(demands)
+		}
+	}
+}
+
+// combatCostDemandViews is the engine's demands on the wire.
+func combatCostDemandViews(demands []game.CombatCostDemandView) []CombatCostDemandView {
+	out := make([]CombatCostDemandView, 0, len(demands))
+	for _, d := range demands {
+		row := CombatCostDemandView{
+			Kind:   string(d.Kind),
+			Clause: d.Clause,
+			Source: d.SourceName,
+			Count:  d.Count,
+		}
+		for _, id := range d.Candidates {
+			row.Candidates = append(row.Candidates, id.String())
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
 // stampNoUntap projects the untap-step state that needs the game handle.
 // Caller holds g's read lock. The view and battlefield slices are kept in
 // the same order by viewOfZone, so this pass can use the card index without
@@ -10798,6 +10934,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PayDamage = &n
 			case game.PayActionNothing:
 				v.PayNothing = true
+			case game.PayActionCountersOnSource, game.PayActionDraw, game.PayActionExileLibraryTop:
+				// #6189: a payment that names nothing and is not mana.
+				v.PayState = &PayStateView{
+					Action:  string(a.Kind),
+					Count:   a.Count,
+					Payable: g.PayActionPayableForEffect(c.Chooser, a),
+				}
 			case game.PayActionDiscardRandom:
 				v.PayRandomDiscard = &n
 			}
@@ -10810,6 +10953,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if v.PayCards.Options == nil {
 				v.PayCards.Options = []string{}
 			}
+			// #6189: whose ids these are, and whether one may pay twice.
+			if a.PicksPlayers {
+				v.PayCards.Picks = "players"
+			}
+			v.PayCards.Repeats = a.Repeats
 			if a.Kind == game.PayActionSacrificeTotalPower {
 				// #6187: the total and what each option adds to it.
 				v.PayCards.TotalPower = a.TotalPower
@@ -13077,6 +13225,12 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.BlockRefusals = nil
 	out.MinBlockers = 0
 	out.CantBlockAlone = false
+	// #6190: a cost to attack or block is the card's own printed clause
+	// ("unless you sacrifice a land"), so it names the card as loudly as
+	// its ability list does. The stamp pass skips a face-down permanent
+	// anyway; this keeps any other unknown card clear too.
+	out.AttackCost = nil
+	out.BlockCost = nil
 	// ADR 0109 §10: "its haste came from riot" says the card has riot,
 	// which names it as loudly as the ability list does.
 	out.RiotHaste = false

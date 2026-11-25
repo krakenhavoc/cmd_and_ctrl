@@ -1,8 +1,6 @@
 package cardskr
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -39,22 +37,5 @@ func init() {
 // leovoldTargetedByAnOpponent is "you or a permanent you control becomes
 // the target of a spell or ability an opponent controls".
 func leovoldTargetedByAnOpponent(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventBecomesTarget || source == nil {
-		return false
-	}
-	you := source.Controller
-	if you == uuid.Nil || ev.Actor == uuid.Nil || ev.Actor == you {
-		return false
-	}
-	if p := g.PlayerByIDForEffect(ev.Actor); p == nil {
-		return false
-	}
-	if ev.CardID == uuid.Nil {
-		return ev.Target == you
-	}
-	if !effects.OnBattlefield(g, ev.CardID) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Controller == you
+	return effects.OldB157YouOrYourPermanentIsTargeted(ev, source, g)
 }

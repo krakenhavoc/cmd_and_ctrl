@@ -1446,6 +1446,13 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// #6190: an unpaid NON-MANA cost to attack or block carries the
+		// clause and the creature it is about, so the dock can open the
+		// right picker instead of showing a bare refusal.
+		if body, ok := combatCostPayload(err); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		// #3855: a waived payment something reads asks what was paid
 		// on paper, with the shortfall, before anything was paid.
 		var pp *game.PaperPaymentRequiredError
@@ -1659,6 +1666,10 @@ func classifyActionError(err error) (code, message string) {
 		// ADR 0221, attackTaxPayload's arm one step over.
 		body, _ := blockTaxPayload(err)
 		return body.Code, body.Message
+	case errors.Is(err, game.ErrCombatCostUnpaid):
+		// #6190, the same shape for a cost paid in permanents.
+		body, _ := combatCostPayload(err)
+		return body.Code, body.Message
 	case errors.Is(err, game.ErrLandDropUnavailable):
 		// #500: the player is out of land plays for the turn. The
 		// allowance is not always one (Exploration, a one-turn
@@ -1857,6 +1868,34 @@ func paperPaymentPayload(pp *game.PaperPaymentRequiredError, payload protocol.Ac
 		CardID:       cp.InstanceID,
 		PaperPayment: prompt,
 	}
+}
+
+// combatCostPayload builds the `combat_cost_unpaid` error frame for a
+// declaration refused for want of a NON-MANA cost (#6190, CR 508.1h /
+// 509.1d): the clause as the card prints it in Reason and the creature
+// it is about in CardID, so the dock can open the picker that pays it.
+// ok is false for any other error.
+//
+// Nothing was staged, tapped, sacrificed or returned, so there is
+// nothing for the client to take back — only a cost to name and the
+// declaration to send again.
+func combatCostPayload(err error) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrCombatCostUnpaid) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeCombatCostUnpaid,
+		Message: "you haven't paid what it costs to attack or block",
+	}
+	var ce *game.CombatCostUnpaidError
+	if errors.As(err, &ce) {
+		body.Reason = ce.Clause
+		body.Message = ce.Sentence()
+		if ce.Creature != uuid.Nil {
+			body.CardID = ce.Creature.String()
+		}
+	}
+	return body, true
 }
 
 func attackTaxPayload(err error) (protocol.ErrorPayload, bool) {
