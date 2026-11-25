@@ -4256,6 +4256,20 @@ teamwork cost and any other "tap an untapped creature you control" still
 take the creature. The wire token is `cant_crew`, on the same
 `restrictions` list as the first set's.
 
+**"Can't be enchanted"** (#6203, CR 303.4) is three more bits of the same
+set, each with a helper in `cards/effects/cant_be_enchanted.go`:
+`ThisCantBeEnchanted()` (`game.CantBeEnchanted`, Tetravite's "This token
+can't be enchanted"), `EnchantedCantBeEnchantedByOtherAuras()`
+(`game.EnchantedCantBeEnchantedByOthers`, which the Aura carries on itself:
+Consecrate Land, Anti-Magic Aura) and
+`CantBecomeEnchantedAndOthersCantGainControl(applies, label)` (Guardian
+Beast: `game.CantBecomeEnchanted`, new attachments only, so Auras already
+attached stay, plus `game.OthersCantGainControl`). They are read at the
+Aura spell's target, an Aura entering without one, an attach and the
+state-based check. The control bar is read where every scoped control
+change is registered, so a gain or an exchange to another player does
+nothing. None has a wire token yet.
+
 **The engine reads them; you do not.** Declarations go through
 `game.AttackerEligible` and `Game.CanBlockLocked` (the boolean form of
 `Game.BlockPairRefusalLocked`, which also says why), activations through

@@ -1823,6 +1823,12 @@ func (g *Game) registerScopedEffectLocked(sourceID uuid.UUID, affected []Affecte
 	if len(affected) == 0 || len(mods) == 0 {
 		return false
 	}
+	// #6203: "other players can't gain control of" (Guardian Beast). A
+	// control change the bar forbids does nothing, whichever card asked
+	// for it.
+	if g.controlChangeBarredLocked(affected, mods) {
+		return false
+	}
 	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil, mods, d, label, ts)
 }
 

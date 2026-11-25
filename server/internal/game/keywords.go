@@ -591,6 +591,11 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if HasProtection(c) && ProtectedFrom(c, src.Characteristics()) {
 		return false
 	}
+	// #6203: an Aura spell can't target a permanent it can't enchant
+	// ("can't be enchanted", "… by other Auras"; CR 303.4).
+	if src.IsSpell() && src.Object != nil && g.auraBarredFromHostLocked(src.Object, c, true) {
+		return false
+	}
 	return true
 }
 
