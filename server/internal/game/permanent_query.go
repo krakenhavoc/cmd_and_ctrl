@@ -78,6 +78,12 @@ type PermanentQuery struct {
 	// power 2 or less" (Mogg Jailer, #6197). Read live off the
 	// battlefield permanent.
 	Untapped bool `json:",omitempty"`
+	// WithoutKeyword is a canonical keyword token the permanent must NOT
+	// have: "creatures without flying your opponents control can't block"
+	// (Stoneshock Giant, S82 older sets batch 271). Read through
+	// HasKeyword like Keyword, so a granted flying counts. Additive within
+	// the snapshot schema (omitted when empty).
+	WithoutKeyword string `json:",omitempty"`
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -115,7 +121,8 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
 		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast &&
 		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness &&
-		q.Untapped == o.Untapped
+		q.Untapped == o.Untapped &&
+		q.WithoutKeyword == o.WithoutKeyword
 }
 
 // samePermanentQueries compares two any-of lists in order.
@@ -147,6 +154,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if q.Keyword != "" && !HasKeyword(c, q.Keyword) {
+		return false
+	}
+	if q.WithoutKeyword != "" && HasKeyword(c, q.WithoutKeyword) {
 		return false
 	}
 	if len(q.Names) > 0 && !slices.ContainsFunc(q.Names, func(n string) bool { return strings.EqualFold(n, c.Effective().Name) }) {
@@ -323,6 +333,9 @@ func (q PermanentQuery) Noun() string {
 	}
 	if len(with) > 0 {
 		s += " with " + strings.Join(with, " and ")
+	}
+	if q.WithoutKeyword != "" {
+		s += " without " + q.WithoutKeyword
 	}
 	return s
 }
