@@ -338,6 +338,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 273 (#5540).
 	"Public Execution": "destroys one target creature; the -2/-0 on the player's other creatures is a combat trick that destroys nothing",
+
+	// S82 OLD batch 281 (#5542).
+	"Sengir Autocrat": "exiles only Serf tokens when it leaves the battlefield, the three it made and any others: a token cleanup of its own side effect, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
