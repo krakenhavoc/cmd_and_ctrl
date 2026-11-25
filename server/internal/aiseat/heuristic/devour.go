@@ -34,7 +34,13 @@ func (p *Policy) devourValue(st *state, ch *protocol.PendingChoiceView, ids []st
 	if len(ids) == 0 {
 		return 0, "devour nothing"
 	}
-	perCreature := float64(ch.Devour)*(st.w.Power+st.w.Toughness) +
+	per := float64(ch.Devour)
+	if ch.DevourX {
+		// #6267: X is the number devoured, so each of k creatures buys
+		// k counters.
+		per = float64(len(ids))
+	}
+	perCreature := per*(st.w.Power+st.w.Toughness) +
 		float64(ch.DevourLife)*st.w.Life
 	if ch.DevourDraw > 0 {
 		// A walk over the seat's cards, so only when a card is paid.

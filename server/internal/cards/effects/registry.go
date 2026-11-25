@@ -902,7 +902,7 @@ func Register(spec Spec) {
 		// #4896: the mana payer solves its discard as the cheapest N,
 		// with no set rule, and no printed mana ability says "with
 		// different names".
-		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) || game.DiscardCostSameName(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
 				spec.Name, i))
 		}
@@ -963,6 +963,10 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	CheckSacrificeAllCost(spec)
+	// #6208: the three activation-cost variants — a shared-colour reveal,
+	// an ability's sacrifice-all clause, and the untap form turned over to
+	// an opponent's board.
+	CheckActivationCostVariants(spec)
 	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one

@@ -2405,6 +2405,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -4335,6 +4338,12 @@ export interface ActivatedAbilityView {
   // count), so the picker greys a repeat and opens even when the options
   // number exactly `discard_cost_n`. The engine refuses a repeat.
   discard_cost_different_names?: boolean;
+  // #6264: "Discard two nonland cards with the same name" (Sphinx of the
+  // Chimes). The picks must share a name (either half of a split card), so
+  // the picker greys a card that shares none with those already picked and
+  // opens even at exactly `discard_cost_n` options. The engine refuses a
+  // set that doesn't share one.
+  discard_cost_same_name?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.
@@ -6022,6 +6031,13 @@ export interface ManaAbilityView {
   // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #6208: `tap_others_untap` turns the clause over here too, "Untap a
+  // tapped land an opponent controls" (Benthic Explorers): the options
+  // are the TAPPED permanents that could be untapped to pay — an
+  // OPPONENT's, for the one printed mana ability — and the picker's verb
+  // is "Untap". There is no `tap_others_frees_source` twin, because the
+  // activator never controls the permanent.
+  tap_others_untap?: boolean;
   // #1600: "Exile a creature you control" on a mana ability (Food
   // Chain). Same fields as ActivatedAbilityView's; the answer rides
   // activate_mana_ability as `exile_permanent_ids`.

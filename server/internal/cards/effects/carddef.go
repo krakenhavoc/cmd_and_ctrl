@@ -317,6 +317,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		LibraryTopVisible:                   spec.LibraryTopVisible,
 		LibraryTopVisibleWhen:               spec.LibraryTopVisibleWhen,
 		HandsRevealed:                       spec.HandsRevealed,
+		RevealsChosenPlayersDraws:           spec.RevealsChosenPlayersDraws,
 		AttackOnlyNearestOpponentInChosenDirection: spec.AttackOnlyNearestOpponentInChosenDirection,
 		LooksAtFaceDownCreatures:                   spec.LooksAtFaceDownCreatures,
 		DiscardByOpponent:                          spec.DiscardByOpponent,

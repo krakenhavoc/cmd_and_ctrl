@@ -534,6 +534,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipThisTurnModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6244: a next-loss replacement naming no player.
+			if problem := nextLossInsteadModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #6147: an enters-tapped filter naming a non-permanent type.
 			if problem := permanentsEnterTappedModProblem(m); problem != "" {
 				unknown = append(unknown, problem)

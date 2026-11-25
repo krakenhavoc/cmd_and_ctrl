@@ -1070,6 +1070,7 @@ var stackItemFields = plan(
 	// #1574: "this ability can't be copied". Carried: a restore that
 	// lost it would let a copy effect copy Gogo's activation.
 	"Uncopyable", carried, "",
+	"Cycling", carried, "#6169: stamped at activation from ActivatedAbilityShape.Cycling; StackItem.Cycling",
 	// ADR 0106 §4 (#1806): "this spell can't be countered" marks.
 	// Carried: a restore that lost one would let a Counterspell through.
 	"CantBeCountered", carried, "",
@@ -1294,6 +1295,7 @@ var pendingChoiceFields = plan(
 	// Talara's Bane's toughness, read as the pick was raised: without
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
+	"PickSlots", carried, "",
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (Null Summoner): a restored pick that forgot it would exile the
 	// card unlinked, and no standing permission could ever name it.
