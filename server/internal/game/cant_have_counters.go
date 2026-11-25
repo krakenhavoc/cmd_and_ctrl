@@ -66,9 +66,13 @@ func (g *Game) counterPlacementRefusedLocked(ev *ReplacementEvent) bool {
 		return false
 	}
 	if ev.CounterPlayer != uuid.Nil {
-		// A PLAYER placement: only Melira's "can't get additional poison
-		// counters this turn" refuses one (cant_get_poison.go).
-		return ev.CounterName == CounterPoison && g.playerCantGetPoisonLocked(ev.CounterPlayer)
+		// A PLAYER placement: Melira's "can't get additional poison
+		// counters this turn" refuses poison (cant_get_poison.go), and
+		// "can't get counters" every kind (cant_get_counters.go).
+		if ev.CounterName == CounterPoison && g.playerCantGetPoisonLocked(ev.CounterPlayer) {
+			return true
+		}
+		return g.playerCantGetCountersLocked(ev.CounterPlayer)
 	}
 	return g.cantHaveCountersLocked(findBattlefieldCard(g, ev.CounterTarget))
 }

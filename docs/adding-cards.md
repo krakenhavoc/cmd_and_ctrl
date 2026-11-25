@@ -5228,6 +5228,18 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
+can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
+a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).
+Suncleanser's "That player can't get counters for as long as this creature
+remains on the battlefield" is
+`PlayerCantGetCountersWhileSourceRemains(ctx, player, label)`, a
+`ModPlayerCantGetCounters` record. Both are read at the one player counter
+door (`counterPlacementRefusedLocked`), for every kind: poison, energy,
+experience, rad and tickets. Proliferate offers no such player. Solemnity's
+second sentence is `CantHaveCounters` over artifacts, creatures,
+enchantments and lands, as above.
+
 ### Blight as an effect (#4683, CR 701.68)
 
 "You may blight 2. If you do, …", "blight 1" and "each opponent blights

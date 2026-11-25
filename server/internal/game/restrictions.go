@@ -210,6 +210,15 @@ const (
 	// "sacrifice a creature" is no cost and is untouched. Absent from
 	// Names: it is no badge on the permanent that carries it.
 	PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate
+
+	// PlayersCantGetCounters is "Players can't get counters." (Solemnity,
+	// #6241; CR 122.1). A world rule the SOURCE carries on itself
+	// (RestrictSelfExtra), like PermanentsCantPhaseIn: while any permanent
+	// on the battlefield has it, counterPlacementRefusedLocked refuses
+	// every counter placement onto a player, of every kind, and
+	// proliferate offers no player (cant_get_counters.go). Absent from
+	// Names: it is no badge on the permanent that carries it.
+	PlayersCantGetCounters
 )
 
 // Has reports whether every bit in `want` is set.

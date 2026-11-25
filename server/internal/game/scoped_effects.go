@@ -365,6 +365,15 @@ const (
 	// (counterPlacementRefusedLocked). Scope ScopeGame with Player set to
 	// the one player. Reads Player.
 	ModCantGetPoisonCounters ModKind = "cantGetPoisonCounters"
+	// ModPlayerCantGetCounters is "<player> can't get counters" for a
+	// duration (Suncleanser's "That player can't get counters for as long
+	// as this creature remains on the battlefield", #6241; CR 122.1, CR
+	// 101.2): every kind of counter, poison, energy, experience, rad and
+	// tickets alike, refused at the counter door
+	// (counterPlacementRefusedLocked) before any replacement sees it.
+	// Scope ScopeGame; Player is the one player, zero every player. Reads
+	// Player. An on-disk identity.
+	ModPlayerCantGetCounters ModKind = "playerCantGetCounters"
 	// ModCantPlayLands is "<player> can't play lands this turn" (ADR
 	// 0109 §4, #1895; CR 101.2, CR 305.1): Turf Wound's, Solfatara's,
 	// Pardic Miner's and Moonhold's "target player …". Scope ScopeGame
@@ -1294,6 +1303,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantGainLife:           {reader: readerRule},
 	ModCantLoseLife:           {reader: readerRule},
 	ModCantGetPoisonCounters:  {reader: readerRule},
+	ModPlayerCantGetCounters:  {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
 	// #4571: the power-up ban, read by the activation gate.
