@@ -334,6 +334,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5718: Peace Talks' table-wide bar, read by targeting too. Its
 		// cases are in targeting_bar_table_test.go.
 		ModCantBeTargetedBySpellsOrActivated: true,
+		// #6263: Autumn's Veil's colour bar, read by targeting too. Its
+		// cases are in cant_be_countered_by_color_test.go.
+		ModCantBeTargetedBySpellsOfColors: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
