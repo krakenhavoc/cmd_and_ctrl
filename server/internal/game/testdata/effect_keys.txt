@@ -4396,6 +4396,7 @@ tail pile/split-the-spoils-settled
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
 tail planar-genesis/after-land
+tail planebound-accomplice/entered
 tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
