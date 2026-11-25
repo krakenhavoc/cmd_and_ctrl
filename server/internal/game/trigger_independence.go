@@ -1790,7 +1790,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert, "ForetellOnAnyTurn": defFieldInert, "UntapCounterRemovals": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
-	"UntapOptOuts": defFieldInert, "TurnSkipOffers": defFieldInert, "DrawStep": defFieldInert,
+	"UntapOptOuts": defFieldInert, "UntapTypeChoices": defFieldInert, "TurnSkipOffers": defFieldInert, "DrawStep": defFieldInert,
 	"CastCondition": defFieldInert, "CastConditionLabel": defFieldInert,
 	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert, "IgnorableEffect": defFieldInert,
 	"TurnFaceUpRestrictions": defFieldInert,
