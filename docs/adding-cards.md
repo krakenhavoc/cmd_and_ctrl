@@ -11781,6 +11781,14 @@ became "is a Werewolf", a `SetCreatureTypesMod` (#5949). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
 
+**"…is no longer snow"** is `game.RemoveSupertypesMod("Snow")` in the
+same kind of record (#6199, layer 4): Arcum's Weathervane's "Target snow
+land is no longer snow", with `game.AddSupertypesMod("Snow")` for its
+"becomes snow". The two apply in timestamp order (CR 613.7). As a printed
+static, Melting's "All lands are no longer snow" is
+`effects.AllLandsAreNoLongerSupertype("Snow")`. The kind
+`removeSupertypes` is an on-disk identity.
+
 **"…and loses all creature types"** is `game.LoseAllCreatureTypesMod()`
 (#4691, layer 4, CR 613.1d): every creature type goes and none comes,
 the every-creature-type fact included (a changeling's, or an earlier

@@ -462,6 +462,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModVoteChooser: true,
 		// #2562: cases above.
 		ModSetName: true, ModSetTypes: true, ModAddSupertypes: true,
+		// #6199: cases in remove_supertypes_test.go.
+		ModRemoveSupertypes: true,
 		// #2144: case above.
 		ModSetCreatureTypes: true,
 		// #4072: case above and in lose_subtypes_test.go.
