@@ -168,6 +168,25 @@ func (g *Game) QueueCardNameChoiceKeyedForEffect(chooser, source uuid.UUID, reas
 	return g.QueueChoiceForEffect(c)
 }
 
+// QueueCardNameChoiceKeyedNotBasicForEffect is QueueCardNameChoiceKeyedForEffect
+// for "choose a card name other than a basic land card name" (CR 201.4a):
+// the prompt refuses a basic land card's name and stays open for another
+// answer. Necromentia's at-resolution choice (#5458).
+//
+// Caller must hold g.mu.
+func (g *Game) QueueCardNameChoiceKeyedNotBasicForEffect(chooser, source uuid.UUID, reason string, then KeyedTail) uuid.UUID {
+	c := PendingChoice{
+		Kind:             PendingChoiceCardName,
+		Chooser:          chooser,
+		Count:            1,
+		Source:           source,
+		Reason:           reason,
+		NotBasicLandName: true,
+	}
+	g.keyValueThenLocked(&c, then)
+	return g.QueueChoiceForEffect(c)
+}
+
 // ResolveCardNameChoice processes a resolve_choice action for a
 // PendingChoiceCardName entry: the chooser names a card and it is
 // stamped onto the source permanent's ChosenName.
