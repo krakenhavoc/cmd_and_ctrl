@@ -67,6 +67,15 @@ export const ErrorCode = {
   // `reason` is the whole price ("{1}{1}"), `missing` the shortfall.
   // Nothing was spent; the declaration is still open, blocks staged.
   BlockTaxUnpaid: "block_tax_unpaid",
+  // #6190 (CR 508.1h / 509.1d): a declare_attacker, declare_attackers or
+  // finish_blocks refused because a NON-MANA cost to attack or block was
+  // not paid — Exalted Dragon's "unless you sacrifice a land", Hollow
+  // Warrior's tapped creature, Floodtide Serpent's returned enchantment.
+  // `reason` is the clause as the card prints it and `card_id` the
+  // creature it is about, so the dock can open the picker that pays it;
+  // the permanents ride the declaration as `sacrifice_ids` / `tap_ids` /
+  // `return_ids`. Nothing was staged and there is no override.
+  CombatCostUnpaid: "combat_cost_unpaid",
   // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
   // refused because the declaration breaks a CR 508.1c count limit
   // (Silent Arbiter's "no more than one creature can attack each
