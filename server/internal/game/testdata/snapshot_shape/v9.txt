@@ -83317,6 +83317,7 @@ spellsCastThisTurn{}.flyingCreatureSubtypes	string
 spellsCastThisTurn{}.fromExile	number:int
 spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
+spellsCastThisTurn{}.instantSorceryFromGraveyard	number:int
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
 spellsCastThisTurn{}.instantSorceryVillain	number:int
 spellsCastThisTurn{}.instants	number:int

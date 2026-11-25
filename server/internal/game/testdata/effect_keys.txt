@@ -285,6 +285,7 @@ body harald-unites-the-elves/shrink
 body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
 body head-of-the-hunt/wolf
+body heart-piercer-manticore/damage
 body heroic-sacrifice/its-counters-and-draw
 body hidetsugu-devouring-chaos/damage
 body hostility/elemental-shamans
@@ -3202,6 +3203,7 @@ run prompt-run/grab-the-reins-damage
 run prompt-run/greven-predator-captain-sacrifice
 run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
+run prompt-run/heart-piercer-manticore-sacrifice
 run prompt-run/hei-bai-two-counters
 run prompt-run/hew-the-entwood-sacrifice
 run prompt-run/highcliff-felidar-destroy
@@ -4541,6 +4543,7 @@ tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
 tail sacrificed-one/prompt-run/greven-predator-captain-sacrifice
 tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
+tail sacrificed-one/prompt-run/heart-piercer-manticore-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/insatiable-appetite-sacrifice
