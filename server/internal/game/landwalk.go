@@ -225,7 +225,7 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 		return nil
 	}
 	for _, t := range landwalkTokens {
-		if !HasKeyword(attacker, t.token) {
+		if !HasKeyword(attacker, t.token) || g.landwalkIgnoredLocked(t.token) {
 			continue
 		}
 		if land := check(t.spec); land != nil {
@@ -244,7 +244,7 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 			return true
 		}
 		spec, ok := parameterisedSnowLandwalk(a)
-		if !ok {
+		if !ok || g.landwalkIgnoredLocked(a) {
 			return true
 		}
 		if land := check(spec); land != nil {
@@ -254,6 +254,34 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 		return !noDefender
 	})
 	return token, hit
+}
+
+// landwalkIgnoredLocked reports whether a block rule on the table says
+// creatures with the landwalk `token` "can be blocked as though they
+// didn't have" it (#6195): Quagmire's swampwalk, Staff of the Ages'
+// every landwalk ability. Such a creature keeps the keyword; only the
+// CR 702.14c evasion is waived, so it is blockable as a creature
+// without it would be. Each token is waived on its own name: Quagmire
+// waives swampwalk, not snow swampwalk, which is a landwalk ability of
+// its own (CR 702.14c, 702.14d).
+//
+// Read-only. Caller holds g.mu (read or write) with fresh layers.
+func (g *Game) landwalkIgnoredLocked(token string) bool {
+	ignored := false
+	g.forEachBlockRuleLocked(func(r BlockRule, _ *Card) bool {
+		if r.IgnoreAllLandwalk {
+			ignored = true
+			return false
+		}
+		for _, t := range r.IgnoreLandwalk {
+			if t == token {
+				ignored = true
+				return false
+			}
+		}
+		return true
+	})
+	return ignored
 }
 
 // IsLandwalkToken reports whether token is a landwalk keyword the
