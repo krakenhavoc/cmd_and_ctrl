@@ -1296,6 +1296,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6147: Due Respect's and Nahiri's Lithoforming's "<permanents>
 	// enter tapped this turn" (scoped_permanents_enter_tapped.go).
 	ModPermanentsEnterTapped: {reader: readerReplacement},
+	// #5521: Combine Guildmage's "each creature you control enters with an
+	// additional +1/+1 counter this turn" (scoped_creatures_enter_with_counter.go).
+	ModCreaturesEnterWithPlusOneCounter: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1305,6 +1308,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventNextCombatFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
+	// Mistcaller: nontoken creatures that weren't cast are exiled as they enter.
+	ModExileUncastCreatures: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
 	ModMultiplyDamage: {reader: readerReplacement},
 	// #4468: damage increased by N this turn (add_damage.go).
@@ -1404,6 +1409,7 @@ var modKinds = map[ModKind]modKindSpec{
 	// (scoped_cost_reduction.go).
 	ModSpellsCostLessForPlayer:       {reader: readerRule},
 	ModExiledSpellsCostLessForPlayer: {reader: readerRule},
+	ModNamedSpellsCostLess:           {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named

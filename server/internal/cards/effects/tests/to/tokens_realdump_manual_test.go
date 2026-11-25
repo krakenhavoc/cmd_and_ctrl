@@ -173,6 +173,10 @@ var knownUnmatchedTokens = map[string]string{
 	// token card is */*, which a fixed size can never match; the template is 0/0 and the card sets X/X as it
 	// creates the token.
 	"0/0 blue and red Weird": "the printed token card is */*; Experimental Overload sets X/X as it creates it",
+	// Chainer's Torment (Dominaria) chapter III creates "an X/X black Nightmare Horror creature token". The
+	// printed token card is */*, which a fixed size can never match; the template is 0/0 and the card sets
+	// X/X as it creates the token.
+	"0/0 black Nightmare Horror": "the printed token card is */*; Chainer's Torment sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

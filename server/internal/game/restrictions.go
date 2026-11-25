@@ -249,6 +249,14 @@ const (
 	// proliferate offers no player (cant_get_counters.go). Absent from
 	// Names: it is no badge on the permanent that carries it.
 	PlayersCantGetCounters
+	// ObjectCantHaveCounters is "<object> can't have counters put on it"
+	// carried by a scoped record for a duration (Suncleanser's "It can't
+	// have counters put on it for as long as this creature remains on the
+	// battlefield", S82 older sets; CR 101.2). Written through a
+	// ModAddRestrictions record naming the object, and read with
+	// Characteristic.CantHaveCounters by cantHaveCountersLocked. Absent
+	// from Names.
+	ObjectCantHaveCounters
 )
 
 // Has reports whether every bit in `want` is set.

@@ -391,6 +391,7 @@ var TokenTable = map[string]game.Card{
 	"4/4 white Bird Soldier with flying":                               {Name: "Bird Soldier", TypeLine: "Token Creature — Bird Soldier", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 green Beast with trample":                                     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
+	"5/5 green Beast with trample":                                     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 5, Toughness: 5, Colors: []string{"G"}, Keywords: []string{"trample"}}, // Spawning Grounds (C18)
 	"4/4 green Phyrexian Beast":                                        {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"4/4 red Dinosaur Dragon with flying":                              {Name: "Dinosaur Dragon", TypeLine: "Token Creature — Dinosaur Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
@@ -568,6 +569,11 @@ var TokenTable = map[string]game.Card{
 	// placeholder, set to the +1/+1 counters Grakmaw had as it created it).
 	"0/0 black and green Hydra": {Name: "Hydra", TypeLine: "Token Creature — Hydra", Colors: []string{"B", "G"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 207: Rite of Belzenlok's Cleric, and Chainer's Torment's X/X Nightmare
+	// Horror (printed */*; a 0/0 placeholder, set to half the controller's life as it is created).
+	"0/1 black Cleric":           {Name: "Cleric", TypeLine: "Token Creature — Cleric", Power: 0, Toughness: 1, Colors: []string{"B"}},
+	"0/0 black Nightmare Horror": {Name: "Nightmare Horror", TypeLine: "Token Creature — Nightmare Horror", Colors: []string{"B"}, PrintedPTKnown: true},
+
 	// S82 RPR batch 32: Stitcher Geralf's X/X blue Zombie (printed */*; a 0/0 placeholder,
 	// set to the total power exiled as it is created).
 	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},
@@ -727,4 +733,6 @@ var TokenTable = map[string]game.Card{
 	"2/2 white and blue and black and red and green Citizen": {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 2, Toughness: 2, Colors: []string{"W", "U", "B", "R", "G"}},
 	// S82 OLD batch 172 (#5520): Tolsimir, Friend to Wolves's Voja.
 	"3/3 green and white Legendary Wolf named Voja, Friend to Elves": {Name: "Voja, Friend to Elves", TypeLine: "Token Legendary Creature — Wolf", Power: 3, Toughness: 3, Colors: []string{"G", "W"}},
+	// S82 OLD batch 205 (#5529): Quest for the Gravelord's Zombie Giant.
+	"5/5 black Zombie Giant": {Name: "Zombie Giant", TypeLine: "Token Creature — Zombie Giant", Power: 5, Toughness: 5, Colors: []string{"B"}},
 }

@@ -1,8 +1,6 @@
 package cardssh
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -28,17 +26,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			effects.WheneverThisAttacks("Shrieking Specter — defending player discards a card",
-				func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					defender := effects.DefendingPlayerOfAttack(g, item.Trigger.Event)
-					if defender == uuid.Nil {
-						return nil
-					}
-					return effects.DefendingPlayerDiscardsACard(g, item, defender)
-				}),
+			effects.WheneverThisAttacks("Shrieking Specter — defending player discards a card", effects.AttackDefenderDiscardsACard),
 		},
 	})
 }
