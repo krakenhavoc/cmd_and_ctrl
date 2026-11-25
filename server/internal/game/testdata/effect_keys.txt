@@ -1768,6 +1768,7 @@ coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
 coinflip coin-flip/mana-crypt-damage
+coinflip coin-flip/mogg-assassin
 coinflip coin-flip/mutalith-vortex-beast-warp-vortex
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent

@@ -2142,6 +2142,9 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 // card has one, and the walk that asks the opponent judges one clause
 // alone.
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
+	if c.ChosenByFirstTargetsController && (!c.ChosenByOpponent || i == 0) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen by the first target's controller but is not a later opponent's-choice clause — build it with OfTheFirstTargetsController after a clause of the controller's own (#6171)", name, i))
+	}
 	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
 	}
