@@ -1444,6 +1444,7 @@ choose choose-cards/port-of-karfell-return
 choose choose-cards/portent-of-calamity-card-type
 choose choose-cards/precursor-golem-copy-order
 choose choose-cards/press-the-enemy-cast
+choose choose-cards/priest-of-the-wakening-sun-reveal
 choose choose-cards/professor-onyx-discard-or-lose
 choose choose-cards/professor-onyx-take
 choose choose-cards/proliferate
