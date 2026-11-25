@@ -1459,6 +1459,7 @@ choose choose-cards/raff-weatherlight-stalwart-tap-two
 choose choose-cards/rakdos-patron-of-chaos-sacrifice
 choose choose-cards/rambling-possum-return-saddlers
 choose choose-cards/rampant-frogantua-lands
+choose choose-cards/random-piles
 choose choose-cards/read-the-runes-discarded
 choose choose-cards/reality-fracture-hand-card-on-bottom
 choose choose-cards/reality-smasher-discard
@@ -4841,6 +4842,7 @@ tail tail/old-b070-open-the-omenpaths-second-color
 tail tail/old-b159-ask-shuffle
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
+tail tail/random-piles-sacrifice
 tail tail/reenact-the-crime-copy
 tail tail/s82-mom-b12-guerrilla-after-mill
 tail tail/s82-mom-b12-guerrilla-exiled

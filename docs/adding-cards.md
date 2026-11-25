@@ -35,6 +35,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
   - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
   - [The turn's pile and guess tally (#6175, CR 700.3)](#the-turns-pile-and-guess-tally-6175-cr-7003)
+  - [Each player's piles, one picked at random (#6248, CR 700.3)](#each-players-piles-one-picked-at-random-6248-cr-7003)
   - ["Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)](#players-cant-pay-life-or-sacrifice-nonland-permanents-to-cast-spells-or-activate-abilities-6167)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
@@ -2476,6 +2477,23 @@ the note is keyed by the resolving stack item.
 holds every catalog card whose printed text says "pile" or "guess" to one
 of those two: it fails on a new one until it either notes itself or is
 listed with the reason it does not.
+
+### Each player's piles, one picked at random (#6248, CR 700.3)
+
+"Starting with you, each player separates all permanents they control into
+three piles. Then each player chooses one of their piles at random and
+sacrifices those permanents" (Whims of the Fates) is
+`effects.EachPlayerSacrificesARandomPile(3, "Whims of the Fates")`
+([cards/effects/random_piles.go](../server/internal/cards/effects/random_piles.go)).
+The engine half, `game.SeparateIntoPilesPickOneAtRandomForEffect`
+([game/random_piles.go](../server/internal/game/random_piles.go)), takes any
+number of piles. Each player, in turn order from you, picks piles 1 to N-1
+from the permanents they control through keyed `choose_cards` legs, and the
+rest is the last pile (CR 700.3a). Empty piles are fine (CR 700.3d). One pile
+per player is then drawn from the seeded pick stream, and the tail is told
+the permanents in the drawn piles. For a different "then", pass your own tail
+to the game function. Two piles split by one player and taken by another are
+still `PileSplit`.
 
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
