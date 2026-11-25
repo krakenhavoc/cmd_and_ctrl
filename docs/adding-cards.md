@@ -5574,6 +5574,12 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Lose all abilities except mana abilities (#6246, CR 613.1f).** Blood Sun's
+"All lands lose all abilities except mana abilities" is
+`Static: []game.StaticAbility{LandsLoseAllAbilitiesExceptMana()}`: a
+`RemovesAbilities` static with `KeepsManaAbilities`, so the lands keep their
+declared mana rows, a granted mana ability and their basic land types' mana
+ability, and lose everything else.
 **Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
 cast your commander from the command zone without paying its mana cost" is
 `OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a

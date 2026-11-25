@@ -189,6 +189,13 @@ type StaticAbility struct {
 	// survive it, which is the whole of that rule's last sentence.
 	RemovesAbilities bool
 
+	// KeepsManaAbilities narrows RemovesAbilities to "loses all
+	// abilities except mana abilities" (Blood Sun, #6246; CR 605.1a):
+	// the object's own mana abilities and a layer-6 grant of mana
+	// abilities only are kept, and everything else goes. Meaningful only
+	// beside RemovesAbilities. See Characteristic.ManaAbilitiesKept.
+	KeepsManaAbilities bool
+
 	// ContinuesAfterRemoval declares this static the later-layer half
 	// of a continuous effect that starts in an earlier layer, so
 	// CR 613.6 keeps it applying after its source has been silenced.
@@ -922,8 +929,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// ADR 0093 Decision 3: and every ability another effect
 			// granted it so far in this bucket. A grant sorted AFTER
 			// this removal appends to the emptied slice and survives
-			// (CR 613.6), exactly as a granted keyword does.
-			target.effective.GrantedAbilities = nil
+			// (CR 613.6), exactly as a granted keyword does. #6246: a
+			// removal that keeps mana abilities keeps a mana-only grant.
+			keepsMana := effectKeepsManaAbilities(eff)
+			target.effective.ManaAbilitiesKept = keepsMana && (!target.effective.AbilitiesRemoved || target.effective.ManaAbilitiesKept)
+			target.effective.GrantedAbilities = keptGrantsUnderRemoval(target.effective.GrantedAbilities, keepsMana)
 			// ADR 0155: and every row another object lent it. The
 			// borrow step runs after the whole bucket, so this is
 			// empty here; the removal's timestamp, recorded below, is
