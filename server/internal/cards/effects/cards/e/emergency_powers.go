@@ -41,8 +41,10 @@ func emergencyPowers(item *game.StackItem, ctx *effects.Context) error {
 	players := effects.TablePlayers(ctx)
 	// Exile the spell first: on the stack it is in nobody's graveyard, so the
 	// order against the shuffles cannot be seen.
-	if err := ctx.Game.ExileCardForEffect(item.SourceCardID); err != nil {
-		return err
+	if !effects.SourceIsNewObject(ctx.Game, item) {
+		if err := ctx.Game.ExileCardForEffect(item.SourceCardID); err != nil {
+			return err
+		}
 	}
 	return emergencyShuffleEach(ctx.Game, ctx.Controller(), item.SourceCardID, players, players)
 }
