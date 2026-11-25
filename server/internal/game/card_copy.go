@@ -322,6 +322,9 @@ func (g *Game) cardCopySweepSBALocked() bool {
 		scan(p.Hand)
 		scan(p.Graveyard)
 		scan(p.Command)
+		// #6155: a copy created outside the game (CR 707.13) that
+		// nobody cast.
+		scan(p.Sideboard)
 	}
 	for _, d := range out {
 		g.prepareCopyCeasesLocked(d.z, d.id)

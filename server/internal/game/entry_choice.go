@@ -606,6 +606,7 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	}
 	g.applyEntryCountersLocked(entered, ev.EntersWithCounters)
 	g.applyEntersDevouredLocked(entered, ev.EntersDevoured)
+	g.applyEntersTributePaidLocked(entered, ev.EntersTributePaid)
 	// ADR 0090, CR 722.3a: "this creature enters prepared". After the
 	// copy above, so a Clone copying a preparation card prepares the
 	// prepare spell it copied, and before EventETB.

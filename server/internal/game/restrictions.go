@@ -195,6 +195,21 @@ const (
 	// every bit here it belongs to the SOURCE (the Aura), so a layer-6
 	// "loses all abilities" leaves it.
 	CantCrew ExtraRestriction = 1 << iota
+
+	// PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate is "Players
+	// can't pay life or sacrifice nonland permanents to cast spells or
+	// activate abilities." (Yasharn, Implacable Earth, #6167). A world
+	// rule the SOURCE carries on itself (RestrictSelfExtra), like
+	// PlayersCantPayLifeToCastOrActivate, but wider in two ways: it names
+	// every activated ability, mana abilities included (CR 605), and it
+	// bars sacrificing a nonland permanent as a cost (CR 118.3, CR
+	// 601.2h, CR 602.2b). Read by cantPayLifeToCastOrActivateLocked and
+	// CanPayLifeForManaAbilityLocked for the life half, and by
+	// sacrificeCostBarredLocked, the predicate every sacrifice COST walk
+	// shares, for the other (sacrifice_cost_bar.go). An effect's
+	// "sacrifice a creature" is no cost and is untouched. Absent from
+	// Names: it is no badge on the permanent that carries it.
+	PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate
 )
 
 // Has reports whether every bit in `want` is set.

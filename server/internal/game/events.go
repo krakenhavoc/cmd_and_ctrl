@@ -414,7 +414,8 @@ const (
 	// Label is the game.LossCause ("life", "empty_draw", "poison",
 	// "commander_damage", "effect", "concede"); Source and CardID name
 	// the object whose effect made them lose, for an "effect" loss
-	// (ADR 0057 Decisions 1 and 7).
+	// (ADR 0057 Decisions 1 and 7). Amount is their life total as the
+	// turn began (#6164, LifeAsTurnBeganForEffect).
 	EventPlayerEliminated EventKind = "player_eliminated"
 
 	// EventGameOver — the game ended with a result (ADR 0057

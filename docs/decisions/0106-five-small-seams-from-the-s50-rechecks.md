@@ -444,6 +444,20 @@ Cards: Martyrdom (Full).
 
 ---
 
+## Amendment (2026-11-25): "Only the player this creature is attacking may activate this ability" (#6170)
+
+Capricopian names a fifth activator: the player the creature is attacking. It rides the same predicate with nothing stored.
+
+- **`ActivatedAbility.DefendingPlayerOnly`**, mirrored on `game.ActivatedAbilityShape`. `game.MayActivate` answers `source.AttackingTarget == player` (and never the controller) for such a row. `Card.AttackingTarget` names a seat only while the creature attacks a player, so a creature that is not attacking, or attacks a planeswalker or a battle, or attacks nothing after its target left combat (CR 506.4c), has no activator. A reselection (CR 508.7) moves the activator with the attack, and the row closes when combat ends. `ReachesAcross` includes it, so the activation path's and the enumerator's fast negative lets the attacked seat reach the permanent.
+- **Registration** counts it with the other named activators (at most one per row) and refuses it beside `{T}`, loyalty, crew, saddle, sacrifice-this, exert, a non-battlefield zone or a `Purpose`, as for opponents-only.
+- **Wire**: `defending_player_only` on `activated_abilities[i]`, additive. The per-seat copy is filed as for the other named activators. The client's `rowOpenToViewer` opens the row to the viewer whose seat is the card's `attacking_target` with an `attacking_target_kind` of player; every other viewer, the controller included, sees it greyed or not at all. Whether it is live is still the digest's answer.
+- **Bots**: the enumerator offers the row to exactly the seat `MayActivate` names. A defending-player row declares no `Purpose`, so the heuristic never reaches across to activate it, which is weaker than printed.
+- **"Reselect which player"**: `game.ReselectAttackPrompt.PlayersOnly` narrows the CR 508.7 prompt's options to players as it is built. Nothing about it is stored on the prompt.
+
+Cards: Capricopian (Full).
+
+---
+
 ## Amendment (2026-10-07): §5's held cards, one released (#1807)
 
 §5 shipped with four cards of the "from a single graveyard" family held for their other text. One of those holds has lapsed without any change to this ADR's machinery: Qutrub Forayer waited on "target creature that was dealt damage this turn", and the engine has recorded that since Covert Cutpurse (#1855, `DealtDamageThisTurn`, which reads the turn's damage events and treats a creature that entered afterwards as a new object, CR 400.7). The card is built on the two halves that exist: a modal enters trigger (CR 700.2) whose first bullet targets a damaged creature and whose second bullet is the `Same` clause (`upToNCardsFromASingleGraveyard(2)`). Each bullet reads its own target group by occurrence (`ModeTargets`), so the second bullet's `exileTheModesTargetCards` re-checks each pick at resolution (CR 608.2b) and the sameness rule is judged at announce exactly as for a spell. A bullet with no legal target cannot be chosen (CR 603.3c), so with no damaged creature on the table only the graveyard bullet is offered; the enumerator and the bot take the mode through the existing mode-pick path, so no new choice exists. Full, no caveat.

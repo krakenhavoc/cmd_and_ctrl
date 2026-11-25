@@ -618,6 +618,20 @@ type ReplacementEvent struct {
 	// sacrifice is chosen.
 	EntersDevoured int
 
+	// TributeOpponent is the opponent chosen for this permanent's
+	// tribute (CR 702.104a, #6251): written by the tribute's
+	// "choose an opponent" (an EntryController effect with
+	// ControlForTribute), and the player its payment question is put
+	// to. uuid.Nil until chosen, and for every other entry.
+	TributeOpponent uuid.UUID
+
+	// EntersTributePaid is that opponent's "yes" (CR 702.104a): the
+	// payment's Replace sets it beside the N +1/+1 counters, and every
+	// battlefield landing copies it onto Card.TributePaid, which "if
+	// tribute wasn't paid" reads (CR 702.104b). Rides the event for
+	// EntersTapped's reason.
+	EntersTributePaid bool
+
 	// EntersWithHaste is riot's "if you don't, it gains haste" (CR
 	// 702.136a, ADR 0109 §10): set by the haste answer to an entry_riot
 	// question and read by every battlefield landing, which gives the
@@ -753,6 +767,11 @@ type ReplacementEvent struct {
 	// creatures its enchant clause admits, never a player or another kind of
 	// permanent. Seeded from ZoneEntryOptions.AuraHostsCreaturesOnly.
 	auraHostCreaturesOnly bool
+	// auraHostYouControlOnly is the putting effect's "attached to creatures
+	// you control" (Storm Herald): the Aura's host is chosen among the
+	// permanents its enchant clause admits that the entering player
+	// controls. Seeded from ZoneEntryOptions.AuraHostsYouControlOnly.
+	auraHostYouControlOnly bool
 
 	// entersAsAura is a card that comes back "as an Aura" (returned_aura.go,
 	// ADR 0154's 2026-10-23 amendment): CR 303.4f judges it an Aura with
