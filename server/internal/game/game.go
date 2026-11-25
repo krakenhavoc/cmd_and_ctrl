@@ -417,6 +417,13 @@ type Game struct {
 	// begins, alongside ForetoldThisTurn.
 	DilemmasFacedThisTurn map[uuid.UUID]int
 
+	// PilesOrGuessesThisTurn lists, once each, the spells and abilities
+	// (their stack items) that caused one or more players to guess or to
+	// group cards or permanents into a pile this turn (#6175, CR 700.3;
+	// The Celestial Toymaker). Written by NotePileOrGuessForEffect, which
+	// every pile and guess effect calls; cleared as a turn begins.
+	PilesOrGuessesThisTurn []uuid.UUID
+
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
 	// Turn.advance to a new turn. Keyed by player ID. Added in S31
