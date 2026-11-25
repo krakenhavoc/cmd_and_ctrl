@@ -277,6 +277,11 @@ func nextFromSourceModProblem(m Mod) string {
 		if m.Kind == ModMultiplyDamage {
 			sourced = false
 		}
+		// #6160: Mystic Reflection's entry copy is spent by an entry in
+		// one event batch (nextEntersAsCopiesModProblem checks it).
+		if m.Kind == ModNextEntersAsCopies && m.SourceZone == "" && m.SpentInstance == 0 {
+			sourced = false
+		}
 		// ADR 0108 §9: a redirection reads the one source vocabulary
 		// (Objects, SourceZone, Queries) and the "next time" spend
 		// (redirectDamageModProblem checks it).

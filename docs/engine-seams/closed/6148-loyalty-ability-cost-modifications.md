@@ -1,0 +1,6 @@
+---
+title: "Loyalty ability cost modifications"
+date: 2026-11-25
+issues: [6148]
+---
+**Loyalty ability cost modifications** (#6148, CR 606.4, 606.5, 606.6) — two ways the board changes what a loyalty ability costs. An extra loyalty cost, "Planeswalkers' loyalty abilities you activate cost an additional [+1] to activate" (Carth the Lion), is `Spec.LoyaltyCostAdd` (`CardDef.LoyaltyCostAdd`): `Game.LoyaltyAdjustedCostForEffect` sums it over the activator's permanents (one that lost its abilities adds nothing) and combines it with the printed loyalty symbol into one cost (CR 606.5), so a −2 is a −1, a 0 is a +1, and CR 606.6 judges the combined cost (a −3 is activatable at 2 loyalty). The activation path, the enumerator and the ability view all fold it in once, up front, so the check, the payment, the offered move and the row's `loyalty_cost` agree. A mana tax, "Loyalty abilities of planeswalkers your opponents control cost {1} more to activate" (Eidolon of Obstruction), is an ordinary activation cost increase that reads the new `AbilityCostSubject.Loyalty` bit (an ability with a loyalty symbol in its cost, CR 606.1), so it is charged, previewed and enumerated through the activation pricer like any other. **Cards:** Carth the Lion, Eidolon of Obstruction (Full).

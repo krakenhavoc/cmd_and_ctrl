@@ -81,15 +81,46 @@ func keepAllButLowest(rolled []int, drop int) []int {
 }
 
 // FlipCoinsForEffect flips n coins whose faces matter but which nobody wins
-// or loses. true means heads. Caller must hold g.mu.
+// or loses. true means heads. It is FlipCoinsPreferringForEffect with heads
+// wanted on every coin, which is the face every caller that does not say
+// otherwise is better off with (Ral Zarek's extra turns). Caller must hold
+// g.mu.
 func (g *Game) FlipCoinsForEffect(d RandomDraw, n int) ([]bool, error) {
 	if n <= 0 {
 		return nil, ErrInvalidParam
 	}
+	prefer := make([]bool, n)
+	for i := range prefer {
+		prefer[i] = true
+	}
+	return g.FlipCoinsPreferringForEffect(d, prefer)
+}
+
+// FlipCoinsPreferringForEffect flips one uncalled coin per entry of
+// `prefer` (CR 705.2: only the face matters) and returns the faces, true
+// for heads. `prefer` is the face the flipper wants for that coin, and it
+// is read only when a FlipTwoIgnoreOne rule (Krark's Thumb, #6152) has the
+// player flip several coins for one and keep one: they keep that face when
+// any of the coins shows it. Rakdos, the Showstopper wants its controller's
+// own creatures heads and everyone else's tails. Caller must hold g.mu.
+func (g *Game) FlipCoinsPreferringForEffect(d RandomDraw, prefer []bool) ([]bool, error) {
+	n := len(prefer)
+	if n <= 0 {
+		return nil, ErrInvalidParam
+	}
 	r := g.randForLocked(rngStream{kind: rngStreamFlip, player: d.Player, source: d.Source})
+	per := g.coinsPerFlipLocked(d.Player)
 	faces := make([]bool, n)
 	for i := range faces {
-		faces[i] = r.IntN(2) == 0
+		// All the coins are drawn, in order, whichever is kept, so the
+		// stream advances the same way however the keep falls.
+		kept := r.IntN(2) == 0
+		for j := 1; j < per; j++ {
+			if face := r.IntN(2) == 0; face == prefer[i] {
+				kept = face
+			}
+		}
+		faces[i] = kept
 	}
 	// A coin-flip rule (Edgar's Two-Headed Coin) makes the coins heads and
 	// won. Read before this flip's events exist, so "the first time each
@@ -214,8 +245,17 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 		result.Won = make([]bool, spec.Coins)
 		forced := g.coinsComeUpHeadsLocked(spec.Flipper)
 		batch := g.eventSeq + 1
+		// Krark's Thumb (#6152): each coin is several, and the player
+		// keeps a won one when any is won (CR 705.2). All are drawn, in
+		// order, so the stream advances the same way whatever is kept.
+		per := g.coinsPerFlipLocked(spec.Flipper)
 		for i := range result.Faces {
-			won := r.IntN(2) == 0
+			won := false
+			for j := 0; j < per; j++ {
+				if r.IntN(2) == 0 {
+					won = true
+				}
+			}
 			head := (call == "heads") == won
 			if forced {
 				won, head = true, true

@@ -80,7 +80,7 @@ var activatedRowScopes = map[string]rowScope{
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.
-	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "GrantorOnly": rowPublic, "Activator": rowPublic, "Purpose": rowPublic,
+	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "GrantorOnly": rowPublic, "Activator": rowPublic, "DefendingPlayerOnly": rowPublic, "Purpose": rowPublic,
 	// #2449: the printed equip keyword (CR 702.6).
 	"Equip": rowPublic, "Reconfigure": rowPublic, "UntapSelf": rowPublic,
 	// The printed discard clause: the count in "Discard two cards"
@@ -165,6 +165,9 @@ var manaRowScopes = map[string]rowScope{
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
+	// #6208: the untap form of the same clause (Benthic Explorers) — the
+	// printed cost, and options read off the battlefield.
+	"TapOthersUntap": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
 	"ChargedManaCost": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,

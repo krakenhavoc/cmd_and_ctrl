@@ -247,6 +247,16 @@ type Player struct {
 	// over after leaving the game began nothing.
 	ExtraTurnsBegun int
 
+	// LifeAsTurnBegan is this player's life total as the current turn
+	// began (#6164, Sengir, the Dark Baron's "that player's life total as
+	// the turn began"), and LifeAsTurnBeganSeq the Turn.Seq it was taken
+	// on. Stamped for every player in the game when a turn begins
+	// (startTurnLocked); read through LifeAsTurnBeganForEffect, which
+	// falls back to the current life when the stamp is not this turn's
+	// (a game restored from a file written before the field).
+	LifeAsTurnBegan    int
+	LifeAsTurnBeganSeq int
+
 	// UpkeepsBegun counts the upkeep steps this player has begun
 	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
 	// before any "at the beginning of your upkeep" trigger is checked,

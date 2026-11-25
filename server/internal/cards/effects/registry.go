@@ -963,6 +963,10 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	CheckSacrificeAllCost(spec)
+	// #6208: the three activation-cost variants — a shared-colour reveal,
+	// an ability's sacrifice-all clause, and the untap form turned over to
+	// an opponent's board.
+	CheckActivationCostVariants(spec)
 	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
@@ -2144,6 +2148,9 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 // card has one, and the walk that asks the opponent judges one clause
 // alone.
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
+	if c.ChosenByFirstTargetsController && (!c.ChosenByOpponent || i == 0) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen by the first target's controller but is not a later opponent's-choice clause — build it with OfTheFirstTargetsController after a clause of the controller's own (#6171)", name, i))
+	}
 	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
 	}
@@ -2901,6 +2908,12 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
+	}
+	if ec.TopOnly && (ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber || ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.Processes()) {
+		// #6194: "the top <kind> card of your graveyard" is a graveyard
+		// clause with a printed count, nothing else.
+		panic(fmt.Sprintf("effects.Register: %q %s exiles the top cards of a pile that is not the graveyard, or without a printed count (#6194)",
+			name, where))
 	}
 	if ec.ManaValueFromTargets {
 		// #5240: a floor read off a cast's targets exists on a spell's

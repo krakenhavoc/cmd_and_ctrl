@@ -49,6 +49,13 @@ import "github.com/google/uuid"
 // refuses one that declares such a zone (checkAnyPlayerAbility in the
 // effects package).
 //
+// A fourth named activator is the player the source is attacking
+// (#6170, ADR 0106 §1 amendment 2026-11-25): Capricopian's "Only the
+// player this creature is attacking may activate this ability". It is
+// read off the source's own AttackingTarget, which names a seat only
+// while the creature attacks a player, so the answer changes with a
+// reselection (CR 508.7) and is nobody once combat is over.
+//
 // A third named activator is the granting effect's "you" (ADR 0106 §1
 // amendment 2026-10-09, #1947): Martyrdom's granted "Only you may
 // activate this ability" is open to the player who controlled the spell
@@ -80,6 +87,11 @@ func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbili
 			return source.Owner == player
 		case ab.GrantorOnly:
 			return origin.Granted() && origin.Activator != uuid.Nil && origin.Activator == player
+		case ab.DefendingPlayerOnly:
+			// #6170: the player this creature is attacking. A seat id in
+			// AttackingTarget is a player under attack; a planeswalker's,
+			// a battle's or AttackingNothing's never equals a seat.
+			return player != uuid.Nil && source.AttackingTarget == player && source.Controller != player
 		}
 		return source.Controller == player
 	}
@@ -119,9 +131,10 @@ func HasAnyPlayerManaAbility(c Card) bool {
 
 // ReachesAcross reports whether the row names an activator other than
 // the plain controller: any player, only the controller's opponents,
-// only the owner, or only the player who granted the row.
+// only the owner, only the player who granted the row, or only the
+// player the source is attacking.
 func (ab ActivatedAbilityShape) ReachesAcross() bool {
-	return ab.AnyPlayer || ab.OpponentsOnly || ab.OwnerOnly || ab.GrantorOnly
+	return ab.AnyPlayer || ab.OpponentsOnly || ab.OwnerOnly || ab.GrantorOnly || ab.DefendingPlayerOnly
 }
 
 // HasAnyPlayerAbility reports whether any activated ability `c` offers
