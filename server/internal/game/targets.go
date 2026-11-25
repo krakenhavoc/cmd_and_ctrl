@@ -772,6 +772,17 @@ type TargetSpec struct {
 	AsCastOpponentSlot int
 	AsCastMinPoison    int
 
+	// TappedOnlyAsCast is "You can't choose an untapped creature as this
+	// spell's target as you cast it" (Enthralling Hold, #6168): a
+	// candidate card must be tapped, but only on the walk of the card
+	// being CAST (TargetSource.casting, CR 601.2c) — the legal set the
+	// picker and the bot see and the announce check. The CR 608.2b
+	// re-check, a copy's new targets and an Aura's CR 704.5m enchant
+	// check never read it, so the Aura still resolves and stays attached
+	// after the creature untaps. DATA, judged in sourceAdmits
+	// (tapped_as_cast.go).
+	TappedOnlyAsCast bool
+
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
 	// on the stack, its controller chooses one of their opponents, and
@@ -2403,7 +2414,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
