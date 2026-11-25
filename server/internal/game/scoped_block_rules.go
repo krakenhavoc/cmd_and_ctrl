@@ -63,8 +63,8 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedExceptBy rule needs Text, the printed allowed set"
 		}
-		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 {
-			return "a cantBeBlockedExceptBy rule needs at least one keyword or subtype"
+		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 {
+			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype or object"
 		}
 	case ModCantBeBlockedByPlayer:
 		if m.Player == uuid.Nil {
@@ -129,6 +129,15 @@ func blockRuleModProblem(m Mod) string {
 // the refusal sentence.
 func CantBeBlockedExceptByMod(keywords, subtypes []string, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedExceptBy, Keywords: copyStrings(keywords), Subtypes: copyStrings(subtypes), Text: text}
+}
+
+// CantBeBlockedExceptByObjectsMod is CantBeBlockedExceptByMod whose
+// allowed set also names particular creatures (#6200, Raging River's
+// "except by creatures with flying and creatures in a pile with the
+// chosen label"): a blocker with one of `keywords`, or one of `objects`
+// as the object it is now, may block.
+func CantBeBlockedExceptByObjectsMod(keywords []string, objects []ObjectRef, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedExceptBy, Keywords: copyStrings(keywords), Objects: cloneObjectRefs(objects), Text: text}
 }
 
 // LimitBlockersPerDefenderMod is "each opponent can't block with more
@@ -241,7 +250,22 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 	switch m.Kind {
 	case ModCantBeBlockedExceptBy:
 		affected := affectedPredicate(e.Affected)
-		allowed := blockRuleAllowedPredicate(m.Keywords, m.Subtypes)
+		byTrait := blockRuleAllowedPredicate(m.Keywords, m.Subtypes)
+		// #6200: Raging River's piles. A blocker named by one of the
+		// record's Objects, as the object it was when the piles were
+		// made (CR 400.7), is allowed too.
+		objects := cloneObjectRefs(m.Objects)
+		allowed := func(c *Card) bool {
+			if byTrait(c) {
+				return true
+			}
+			for _, o := range objects {
+				if c != nil && c.InstanceID == o.ID && c.ObjectEpoch == o.Epoch {
+					return true
+				}
+			}
+			return false
+		}
 		return BlockRule{
 			Reason: BlockReasonCantBeBlockedExceptBy,
 			Label:  m.Text,

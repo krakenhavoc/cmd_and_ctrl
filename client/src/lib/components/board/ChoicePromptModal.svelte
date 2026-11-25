@@ -65,6 +65,7 @@
     toAnswer,
     trampleShort,
     unblockedMixed,
+    oneCreatureSplit,
     assignAllToPlayer,
     type DamageShares,
   } from "../../damageAssignment";
@@ -370,6 +371,17 @@
   // search ("a card", CR 701.23d) must find that many: the server sends
   // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
+  // #6216, CR 608.2g: cast a card from the library during this search
+  // (Panglacial Wurm). The prompt stays open; the server takes the card off
+  // its candidates.
+  function castWhileSearching(instanceID: string) {
+    if (!active || !viewerID) return;
+    sendAction(
+      "cast_spell",
+      { instance_id: instanceID, from_zone: "library", search_cast: active.id, auto_tap: true },
+      viewerID,
+    );
+  }
   // #4134: "you may search" has an answer beside "Find nothing": not
   // searching at all, which skips the shuffle and the search event. It is
   // only on the table BEFORE the search begins (looking at the list is
@@ -3039,7 +3051,17 @@
         {/if}
       {/if}
     {:else if isDamageAssignment && damageFrame}
-      {#if damageFrame.banding}
+      {#if damageFrame.banding && damageFrame.defender_assigns_by}
+        <!-- #6192: Defensive Formation hands the division of a creature
+               attacking you to you, as banding would. -->
+        <p class="prompt-hint">
+          <span class="band-tag">{damageFrame.defender_assigns_by}</span>
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is blocked by {damageFrame.blocker_card_ids.length} of your creatures, and you assign its damage:
+          divide its {damageFrame.attacker_power} damage among them however you like. None of it tramples
+          over.
+        </p>
+      {:else if damageFrame.banding}
         <!-- ADR 0224, CR 702.22j-k: banding hands the division to the
                other side, so the creatures taking the damage are yours. -->
         <p class="prompt-hint">
@@ -3062,6 +3084,14 @@
           <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
           is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
           {damageFrame.attacker_power} damage among them however you like.
+        </p>
+      {:else if damageFrame.one_creature}
+        <!-- #6192, Cunning Giant: unblocked, it may assign all of its
+               damage to one creature the defending player controls. -->
+        <p class="prompt-hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is unblocked. Assign all of its {damageFrame.attacker_power} damage to one creature the defending
+          player controls, or all of it to the defending player as usual.
         </p>
       {:else if damageFrame.as_though_unblocked}
         <!-- CR 510.1c, Wolverine, Claws Out: divide the damage among the
@@ -3136,7 +3166,9 @@
             <span class="assign-name"
               >Defending player ({damageFrame.allow_trample
                 ? "trample"
-                : "as though unblocked"})</span
+                : damageFrame.one_creature
+                  ? "as usual"
+                  : "as though unblocked"})</span
             >
             <span class="assign-step">
               <button
@@ -3167,7 +3199,11 @@
           </li>
         {/if}
       </ul>
-      {#if unblockedMixed(damageFrame, damageShares)}
+      {#if oneCreatureSplit(damageFrame, damageShares)}
+        <p class="prompt-hint sub warn">
+          All of the damage goes to one creature, or all of it to the defending player.
+        </p>
+      {:else if unblockedMixed(damageFrame, damageShares)}
         <p class="prompt-hint sub warn">
           Either divide the damage among the blockers or assign all of it to the defending player,
           not both.
@@ -3505,6 +3541,27 @@
           them all.
         {/if}
       </p>
+      {#if isSearch && (active?.search_castable?.length ?? 0) > 0}
+        <!-- #6216, CR 608.2g: a card its owner may cast while searching
+             their library. The cast pays its cost (auto-tapping) and goes
+             on the stack; this search then carries on. -->
+        <section class="search-cast" aria-label="Cast while searching">
+          <p class="prompt-hint">
+            While you're searching your library you may cast {active?.search_castable?.length === 1
+              ? "this card"
+              : "these cards"} from it. The search carries on afterwards.
+          </p>
+          {#each active?.search_castable ?? [] as card (card.instance_id)}
+            <button
+              type="button"
+              class="search-cast-button"
+              onclick={() => castWhileSearching(card.instance_id)}
+            >
+              {L.castWhileSearching(card.name)}
+            </button>
+          {/each}
+        </section>
+      {/if}
       {#if isEachLeg}
         <!-- ADR 0187 §8: whose effect, the rule, who is next, what the
              earlier players chose (CR 101.4b), and the running price. -->

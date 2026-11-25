@@ -30,6 +30,15 @@ describe("block tax (#5375)", () => {
     expect(blockTaxNote({ ...row, cost: undefined })).toBe("each blocker costs {1}");
     expect(blockTaxNote(null)).toBe("");
   });
+
+  it("names a life price (#6191, Heat Wave)", () => {
+    expect(blockTaxNote({ ...row, cost: undefined, life: 2 })).toBe(
+      "blocking costs 2 life, paid when you finish",
+    );
+    expect(blockTaxNote({ ...row, life: 1 })).toBe(
+      "blocking costs {1}{1} and 1 life, paid when you finish",
+    );
+  });
 });
 
 describe("the block staging dock under a block tax (#5375)", () => {

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -81,6 +83,21 @@ type BlockTaxQuery struct {
 	// Controller is the blocking creature's controller — "their
 	// controller", the player who pays.
 	Controller uuid.UUID
+
+	// Attacker is the attacking creature this block is against, for a
+	// tax priced per blocked attacker (BlockTax.PerAttacker, #6191):
+	// Hipparion's "can't block creatures with power 3 or greater unless
+	// you pay {1}", Awesome Presence's "enchanted creature can't be
+	// blocked unless defending player pays {3} for each creature they
+	// control that's blocking it". The zero Card for every other tax.
+	Attacker Card
+
+	// Blocking is every attacking creature the blocker is (or, for a
+	// proposed block, would be) blocking, as they stand. Read by a tax
+	// charged once per blocking creature that still cares what it
+	// blocks: Heat Wave's "can't block creatures you control unless
+	// their controller pays 1 life for each blocking creature" (#6191).
+	Blocking []Card
 }
 
 // BlockTax is one "creatures can't block unless their controller pays
@@ -122,6 +139,21 @@ type BlockTax struct {
 	// BlockTaxesForCard and nowhere else (AttackTax.ActiveWhen's
 	// reason). The zero value is "no gate".
 	ActiveWhen Designation
+
+	// PerAttacker prices this tax once per (blocking creature, attacker
+	// it blocks) pair rather than once per blocking creature (#6191):
+	// AppliesTo, ManaCost and LifeCost see the pair's attacker on
+	// BlockTaxQuery.Attacker. A creature blocking two attackers that
+	// both qualify pays twice — Awesome Presence's "for each creature
+	// they control that's blocking it" counts blockers of ONE attacker.
+	PerAttacker bool
+
+	// LifeCost is the life half of the clause FOR ONE blocking creature
+	// (or pair, under PerAttacker) — Heat Wave's "pays 1 life for each
+	// blocking creature they control" (#6191, CR 509.1d). Nil, or a
+	// non-positive answer, charges none. Checked against the life total
+	// before anything is paid (CR 119.4) and paid after the mana.
+	LifeCost func(q BlockTaxQuery) int
 }
 
 // BlockedBySelf is the AppliesTo for a tax a creature charges for its
@@ -175,6 +207,13 @@ type BlockTaxLine struct {
 
 	// Mana is what this one line charges, e.g. "{1}".
 	Mana string
+
+	// Attacker is the attacker of a per-pair line (BlockTax.PerAttacker);
+	// uuid.Nil for a line charged per blocking creature.
+	Attacker uuid.UUID
+
+	// Life is the life this one line charges (#6191).
+	Life int
 }
 
 // BlockTaxPrice is what one defender's block declaration costs at
@@ -197,23 +236,29 @@ type BlockTaxPrice struct {
 	// defender names when they finish blocking, never chosen by the
 	// engine.
 	NonMana []CombatCostLine
+
+	// Life is the life the declaration owes (#6191): the sum of every
+	// line's Life.
+	Life int
 }
 
 // IsFree reports that the declaration costs nothing.
-func (p BlockTaxPrice) IsFree() bool { return p.Cost == "" && len(p.NonMana) == 0 }
+func (p BlockTaxPrice) IsFree() bool { return p.Cost == "" && p.Life <= 0 && len(p.NonMana) == 0 }
 
 // Describe is the price as a player reads it: "{1}{1}", "tapping an
 // untapped creature you control", or both. "" when free.
 func (p BlockTaxPrice) Describe() string {
-	nm := combatCostDescribe(p.NonMana)
-	switch {
-	case nm == "":
-		return p.Cost
-	case p.Cost == "":
-		return nm
-	default:
-		return p.Cost + " and " + nm
+	var parts []string
+	if p.Cost != "" {
+		parts = append(parts, p.Cost)
 	}
+	if p.Life > 0 {
+		parts = append(parts, fmt.Sprintf("%d life", p.Life))
+	}
+	if nm := combatCostDescribe(p.NonMana); nm != "" {
+		parts = append(parts, nm)
+	}
+	return strings.Join(parts, " and ")
 }
 
 // PriceBlockDeclaration prices `seat`'s staged blocks — what finishing
@@ -234,13 +279,124 @@ func (g *Game) PriceBlockDeclarationForEffect(seat uuid.UUID) BlockTaxPrice {
 // creatures — the enumerator's "what would this block add". Ids not on
 // the battlefield are skipped. Caller must hold g.mu.
 func (g *Game) PriceBlockersForEffect(blockers []uuid.UUID) BlockTaxPrice {
-	cards := make([]*Card, 0, len(blockers))
+	plans := make([]blockPlan, 0, len(blockers))
 	for _, id := range blockers {
 		if c := findBattlefieldCard(g, id); c != nil {
-			cards = append(cards, c)
+			plans = append(plans, g.stagedBlockPlanLocked(c))
 		}
 	}
-	return g.priceBlockersLocked(cards)
+	return g.priceBlockPlansLocked(plans)
+}
+
+// PriceBlockAdditionForEffect is what declaring `pairs` on top of
+// `seat`'s staged blocks would ADD to the declaration's CR 509.1d price
+// (#6191): the lines the combined declaration has that the staged one
+// does not. A per-blocker tax a staged creature already pays adds
+// nothing; a per-attacker tax (Hipparion, Awesome Presence) adds a line
+// for each new pair it applies to, and a tax that reads what the blocker
+// blocks (Heat Wave) is judged on the combined blocks. The enumerator's
+// "what does this block cost". Caller must hold g.mu.
+func (g *Game) PriceBlockAdditionForEffect(seat uuid.UUID, pairs []BlockDeclaration) BlockTaxPrice {
+	var plans []blockPlan
+	index := map[uuid.UUID]int{}
+	if g.Battlefield != nil && seat != uuid.Nil {
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller == seat && c.BlockingTarget != uuid.Nil {
+				index[c.InstanceID] = len(plans)
+				plans = append(plans, g.stagedBlockPlanLocked(c))
+			}
+		}
+	}
+	staged := g.priceBlockPlansLocked(plans)
+	combined := make([]blockPlan, len(plans))
+	for i, p := range plans {
+		combined[i] = blockPlan{card: p.card, attackers: append([]*Card(nil), p.attackers...)}
+	}
+	for _, pr := range pairs {
+		atk := findBattlefieldCard(g, pr.Attacker)
+		if atk == nil {
+			continue
+		}
+		i, ok := index[pr.Blocker]
+		if !ok {
+			blk := findBattlefieldCard(g, pr.Blocker)
+			if blk == nil {
+				continue
+			}
+			i = len(combined)
+			index[pr.Blocker] = i
+			combined = append(combined, blockPlan{card: blk})
+		}
+		if !slices.ContainsFunc(combined[i].attackers, func(c *Card) bool { return c.InstanceID == atk.InstanceID }) {
+			combined[i].attackers = append(combined[i].attackers, atk)
+		}
+	}
+	return blockPriceMinus(g.priceBlockPlansLocked(combined), staged)
+}
+
+// blockPriceMinus is the lines of `full` that `base` does not have,
+// matched on (source, label, blocker, attacker); the non-mana lines on
+// (source, label, creature).
+func blockPriceMinus(full, base BlockTaxPrice) BlockTaxPrice {
+	type key struct {
+		src, blk, atk uuid.UUID
+		label         string
+	}
+	have := map[key]int{}
+	for _, l := range base.Lines {
+		have[key{l.Source, l.Blocker, l.Attacker, l.Label}]++
+	}
+	var out BlockTaxPrice
+	var b strings.Builder
+	for _, l := range full.Lines {
+		k := key{l.Source, l.Blocker, l.Attacker, l.Label}
+		if have[k] > 0 {
+			have[k]--
+			continue
+		}
+		out.Lines = append(out.Lines, l)
+		b.WriteString(l.Mana)
+		out.Life += l.Life
+	}
+	nm := map[key]int{}
+	for _, l := range base.NonMana {
+		nm[key{l.Source, l.Creature, uuid.Nil, l.Label}]++
+	}
+	for _, l := range full.NonMana {
+		k := key{l.Source, l.Creature, uuid.Nil, l.Label}
+		if nm[k] > 0 {
+			nm[k]--
+			continue
+		}
+		out.NonMana = append(out.NonMana, l)
+	}
+	out.Cost = b.String()
+	if out.Cost != "" {
+		out.Total, _ = ParseCost(out.Cost)
+	}
+	return out
+}
+
+// blockPlan is one blocking creature and the attackers it blocks (or
+// would block), the unit the pricer charges.
+type blockPlan struct {
+	card      *Card
+	attackers []*Card
+}
+
+// stagedBlockPlanLocked is `c` with the attackers it is blocking now.
+func (g *Game) stagedBlockPlanLocked(c *Card) blockPlan {
+	p := blockPlan{card: c}
+	if c.BlockingTarget == uuid.Nil {
+		return p
+	}
+	for _, id := range append([]uuid.UUID{c.BlockingTarget}, c.AlsoBlocking...) {
+		if a := findBattlefieldCard(g, id); a != nil {
+			p.attackers = append(p.attackers, a)
+		}
+	}
+	return p
 }
 
 // priceStagedBlocksLocked prices every creature `seat` controls that is
@@ -253,63 +409,53 @@ func (g *Game) priceStagedBlocksLocked(seat uuid.UUID) BlockTaxPrice {
 	if CatalogBlockTaxes == nil || g.Battlefield == nil || seat == uuid.Nil {
 		return BlockTaxPrice{}
 	}
-	var cards []*Card
+	var plans []blockPlan
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.Controller == seat && c.BlockingTarget != uuid.Nil {
-			cards = append(cards, c)
+			plans = append(plans, g.stagedBlockPlanLocked(c))
 		}
 	}
-	return g.priceBlockersLocked(cards)
+	return g.priceBlockPlansLocked(plans)
 }
 
-// priceBlockersLocked is the one pricer: for each blocking creature,
+// priceBlockPlansLocked is the one pricer: for each blocking creature,
 // every block tax on the battlefield that applies to it. A creature
-// blocking several attackers (#1706) is ONE creature and pays once —
-// the clause is "for each of those creatures", not per block.
+// blocking several attackers (#1706) is ONE creature and pays a
+// per-blocker tax once — the clause is "for each of those creatures",
+// not per block; a PerAttacker tax (#6191) is asked once per attacker
+// it blocks instead.
 //
 // Caller must hold g.mu.
-func (g *Game) priceBlockersLocked(blockers []*Card) BlockTaxPrice {
+func (g *Game) priceBlockPlansLocked(plans []blockPlan) BlockTaxPrice {
 	var out BlockTaxPrice
-	if CatalogBlockTaxes == nil || len(blockers) == 0 || g.Battlefield == nil {
+	if CatalogBlockTaxes == nil || len(plans) == 0 || g.Battlefield == nil {
 		return out
 	}
 	var b strings.Builder
-	for _, blk := range blockers {
+	for _, plan := range plans {
+		blk := plan.card
+		blocking := make([]Card, 0, len(plan.attackers))
+		for _, a := range plan.attackers {
+			blocking = append(blocking, *a)
+		}
 		for i := range g.Battlefield.Cards {
 			src := &g.Battlefield.Cards[i]
 			taxes := blockTaxesOf(src)
 			if len(taxes) == 0 {
 				continue
 			}
-			q := BlockTaxQuery{Game: g, Source: *src, Blocker: *blk, Controller: blk.Controller}
+			base := BlockTaxQuery{Game: g, Source: *src, Blocker: *blk, Controller: blk.Controller, Blocking: blocking}
 			for _, t := range taxes {
-				if t.AppliesTo != nil && !t.AppliesTo(q) {
+				if !t.PerAttacker {
+					g.priceBlockTaxLineLocked(&out, &b, t, base, src.InstanceID, uuid.Nil)
 					continue
 				}
-				if !t.NonMana.Empty() {
-					out.NonMana = append(out.NonMana, CombatCostLine{
-						Source:   src.InstanceID,
-						Label:    t.NonMana.Label,
-						Payer:    blk.Controller,
-						Creature: blk.InstanceID,
-						Cost:     t.NonMana,
-					})
+				for _, a := range plan.attackers {
+					q := base
+					q.Attacker = *a
+					g.priceBlockTaxLineLocked(&out, &b, t, q, src.InstanceID, a.InstanceID)
 				}
-				if t.ManaCost == nil {
-					continue
-				}
-				mana := t.ManaCost(q)
-				if mana == "" {
-					continue
-				}
-				b.WriteString(mana)
-				out.Lines = append(out.Lines, BlockTaxLine{
-					Source:  src.InstanceID,
-					Label:   t.Label,
-					Blocker: blk.InstanceID,
-					Mana:    mana,
-				})
 			}
 		}
 	}
@@ -322,6 +468,44 @@ func (g *Game) priceBlockersLocked(blockers []*Card) BlockTaxPrice {
 	return out
 }
 
+// priceBlockTaxLineLocked adds what one tax charges for one blocking
+// creature (or one pair) to `out`.
+func (g *Game) priceBlockTaxLineLocked(out *BlockTaxPrice, b *strings.Builder, t BlockTax, q BlockTaxQuery, src, attacker uuid.UUID) {
+	if t.AppliesTo != nil && !t.AppliesTo(q) {
+		return
+	}
+	if !t.NonMana.Empty() {
+		out.NonMana = append(out.NonMana, CombatCostLine{
+			Source:   src,
+			Label:    t.NonMana.Label,
+			Payer:    q.Controller,
+			Creature: q.Blocker.InstanceID,
+			Cost:     t.NonMana,
+		})
+	}
+	mana := ""
+	if t.ManaCost != nil {
+		mana = t.ManaCost(q)
+	}
+	life := 0
+	if t.LifeCost != nil {
+		life = max(t.LifeCost(q), 0)
+	}
+	if mana == "" && life == 0 {
+		return
+	}
+	b.WriteString(mana)
+	out.Life += life
+	out.Lines = append(out.Lines, BlockTaxLine{
+		Source:   src,
+		Label:    t.Label,
+		Blocker:  q.Blocker.InstanceID,
+		Mana:     mana,
+		Attacker: attacker,
+		Life:     life,
+	})
+}
+
 // blockTaxedLocked reports whether blocking with `c` would cost
 // anything — the CR 509.1c test the requirement search asks.
 //
@@ -330,7 +514,19 @@ func (g *Game) blockTaxedLocked(c *Card) bool {
 	if CatalogBlockTaxes == nil || c == nil {
 		return false
 	}
-	return !g.priceBlockersLocked([]*Card{c}).IsFree()
+	return !g.priceBlockPlansLocked([]blockPlan{{card: c}}).IsFree()
+}
+
+// blockPairTaxedLocked reports whether `c` blocking `attacker` would
+// cost anything — CR 509.1c's test for a pair, which a tax that reads
+// the attacker (#6191) can only answer per pair.
+//
+// Caller must hold g.mu.
+func (g *Game) blockPairTaxedLocked(c, attacker *Card) bool {
+	if CatalogBlockTaxes == nil || c == nil || attacker == nil {
+		return false
+	}
+	return !g.priceBlockPlansLocked([]blockPlan{{card: c, attackers: []*Card{attacker}}}).IsFree()
 }
 
 // DeclareBlockersParams is the payment posture of completing a block
@@ -381,10 +577,24 @@ func (g *Game) payBlockTaxLocked(seat uuid.UUID, params DeclareBlockersParams) e
 	if err := g.combatCostRefusalLocked(seat, price.NonMana, params.Pay); err != nil {
 		return err
 	}
+	// #6191, CR 119.4: the life is checked before anything is paid, with
+	// the life the defender said they would pay for Phyrexian symbols.
+	if price.Life > 0 {
+		need := price.Life + max(params.PhyrexianLife, 0)*PhyrexianLifePerSymbol
+		if !g.CanPayLifeLocked(p, need) {
+			return &BlockTaxUnpaidError{Cost: price.Describe(), Err: fmt.Errorf("%w: paying %d life needs a life total of at least %d (CR 119.4)", ErrInvalidParam, need, need)}
+		}
+	}
+	source, label := uuid.Nil, "block tax"
+	if len(price.Lines) > 0 {
+		source, label = price.Lines[0].Source, price.Lines[0].Label
+	}
 	if price.Cost == "" {
+		if err := g.payBlockTaxLifeLocked(seat, source, price); err != nil {
+			return err
+		}
 		return g.payCombatCostsLocked(seat, price.NonMana, params.Pay)
 	}
-	source, label := price.Lines[0].Source, price.Lines[0].Label
 	excluded := make(map[uuid.UUID]bool, len(params.LockedSources))
 	for _, id := range params.LockedSources {
 		excluded[id] = true
@@ -400,9 +610,28 @@ func (g *Game) payBlockTaxLocked(seat uuid.UUID, params DeclareBlockersParams) e
 	}, ManaSpendContext{}, excluded); err != nil {
 		return &BlockTaxUnpaidError{Cost: price.Cost, Err: err}
 	}
+	if err := g.payBlockTaxLifeLocked(seat, source, price); err != nil {
+		return err
+	}
 	// Last, for payAttackTaxLocked's reason: a sacrifice is a
 	// battlefield exit and the mana is already paid.
 	return g.payCombatCostsLocked(seat, price.NonMana, params.Pay)
+}
+
+// payBlockTaxLifeLocked pays the life half of a block tax (#6191) once
+// its mana is paid: paying life is losing it (CR 119.4), through
+// payLifeAsCostLocked's CR 614 window. Validated before anything was
+// paid, so a refusal here is that function's backstop.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) payBlockTaxLifeLocked(seat, source uuid.UUID, price BlockTaxPrice) error {
+	if price.Life <= 0 {
+		return nil
+	}
+	if err := g.payLifeAsCostLocked(source, seat, price.Life); err != nil {
+		return &BlockTaxUnpaidError{Cost: price.Describe(), Err: err}
+	}
+	return nil
 }
 
 // settleBlockTaxForcedLocked is completion point 4's version: the step

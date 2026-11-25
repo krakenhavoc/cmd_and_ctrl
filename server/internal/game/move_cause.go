@@ -198,6 +198,9 @@ func discardMoveCause(c DiscardCause, player uuid.UUID) MoveCause {
 		return MoveCause{Kind: MoveCauseCost, Controller: player}
 	case DiscardCauseCleanup:
 		return MoveCause{Kind: MoveCauseRule}
+	case DiscardCauseSpecialAction:
+		// #6224, CR 116.2e: the player's own special action.
+		return MoveCause{Kind: MoveCauseSpecialAction, Controller: player}
 	}
 	return MoveCause{}
 }

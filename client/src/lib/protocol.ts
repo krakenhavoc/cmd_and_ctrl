@@ -2301,6 +2301,12 @@ export interface PendingChoiceView {
   // answers are {apply: true} (begin the search, then the Agent's controller
   // picks) and {apply: false} (don't search).
   search_undecided?: boolean;
+  // #6216: the cards in the searcher's library they may cast right now
+  // because they are searching it ("While you're searching your library,
+  // you may cast this card from your library", Panglacial Wurm). Each is
+  // cast with a cast_spell naming this prompt as `search_cast`; the search
+  // then goes on. Chooser-only.
+  search_castable?: CardView[];
   // #3217: on a "search your library and/or graveyard" prompt, the
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
@@ -2644,6 +2650,14 @@ export interface DamageAssignmentView {
   // player a blocker's among their attackers. No trample, and
   // covers_lethal is never set, so the split is never sent unasked.
   banding?: boolean;
+  // #6192: the permanent whose static, rather than banding, hands this
+  // division to the defending player (Defensive Formation). Display only.
+  defender_assigns_by?: string;
+  // #6192: an unblocked attacker that may assign its combat damage to a
+  // creature the defending player controls (Cunning Giant):
+  // blocker_card_ids are those creatures, and the answer is all of
+  // attacker_power on exactly one of them, or all of it to the player.
+  one_creature?: boolean;
   // #2956 (ADR 0147): the server's canonical split
   // (legal.CanonicalDamageSplit), the one the bots answer with. The
   // prompt pre-fills it, and with "Auto-assign combat damage" on the
@@ -6425,6 +6439,9 @@ export interface BlockTaxView {
   each?: string;
   // The printed clauses that tax this seat's blocks.
   labels: string[];
+  // #6191: the life the blocks staged now cost (Heat Wave's "pays 1 life
+  // for each blocking creature"). Absent with none.
+  life?: number;
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

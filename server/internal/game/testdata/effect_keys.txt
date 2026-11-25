@@ -747,6 +747,7 @@ choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bitter-revelation-take
 choose choose-cards/black-suns-twilight-return
+choose choose-cards/blocks-by-piles
 choose choose-cards/blood-for-bones-first
 choose choose-cards/blood-for-bones-second
 choose choose-cards/blossom-prancer-take
@@ -1080,6 +1081,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/left-right-piles
 choose choose-cards/legion-angel-take
 choose choose-cards/leonardo-da-vinci-discarded
 choose choose-cards/leyline-dowser-milled
@@ -1564,6 +1566,7 @@ choose choose-cards/seed-of-hope-permanent
 choose choose-cards/selective-adaptation-battlefield
 choose choose-cards/selective-adaptation-keyword
 choose choose-cards/sensational-spider-man-remove-stun
+choose choose-cards/separate-into-piles
 choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-kin-exile
@@ -2361,6 +2364,7 @@ number number/resourceful-defense-move-counters
 number number/s82-gap-b153-scrounging-bandar-move
 number number/s82-old-b061-blessing-of-frost-share
 number number/s82-old-b170-remove-counters
+number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
@@ -2514,6 +2518,7 @@ option option-pick/land-mana-each
 option option-pick/lantern-of-revealing-bottom
 option option-pick/lavabrink-floodgates-doom
 option option-pick/leatherhead-remove-a-counter
+option option-pick/left-right-piles-label
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/life-bidding-top-or-stand
 option option-pick/liliana-of-the-dark-realms-pump

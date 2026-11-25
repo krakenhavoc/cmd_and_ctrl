@@ -4980,3 +4980,32 @@ CR 506.3d, 509.3c, 509.4.
 Back-out: drop the `becomesBlocked` emission; `TestEntryBlockerOnAnUnblockedAttackerMakesItBecomeBlocked` fails.
 
 Tests: `game/put_blocking_test.go`, `cards/effects/put_blocking_becomes_blocked_test.go`.
+
+## Amendment (2026-11-25, [#6200](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6200)): blocks decided by piles
+
+Owner decision on #6200: Camouflage and Raging River ship Full.
+
+**Camouflage** replaces the CR 509.1 declaration for the turn. A `blocksByPiles` record (ScopeGame, until end of turn) is
+read in three places: `beginBlockDeclarationLocked`, which asks each defending player for their piles in APNAP order
+(CR 101.4) instead of completing anyone as "declared, none"; the block verbs, which refuse with `ErrBlocksDecidedByPiles`;
+and the option generator, which offers no block (so `legal` and the bot never offer what the verb refuses). Priority stays
+parked (Decision 38, #1501) until the last defender's piles are in. A pile is a keyed `choose_cards` leg over the creatures
+the player controls; one already in as many piles as attackers it can block (`BlockCapacity`) is not offered again
+(CR 700.3a, and the card's own exception for creatures that can block additional creatures; CR 700.3d, a pile may be
+empty). The attackers are shuffled with the seeded pick stream (ADR 0054) and pile i goes to the i-th. Each creature in a
+pile that passes `BlockPairRefusalLocked` and is untapped blocks; the set is judged by the same validator as a declared one
+(`checkBlockRestrictionsLocked`), and a pile whose blocks break a count or a whole-combat limit is taken out before the
+rest are judged again. The player's declaration then completes as `finish_blocks` completes one (block requirements,
+CR 509.1c, are not asked: the player declares nothing).
+
+**Raging River** needs no new gate: its label is a `cantBeBlockedExceptBy` record (Decision P8's tier 3b) whose allowed
+set now also takes `Objects`, the pile's creatures as the objects they were (CR 400.7). The two legs are a keyed
+`choose_cards` per defending player (the left pile; the rest is the right) and a keyed `option_pick` per attacker.
+
+Both flows hold their state as prompt data (Carry, Nums), so a table waiting on any leg is a restore point.
+
+Back-out: complete pending defenders before the piles (`autoCompleteBlockDeclarationsLocked` first) and
+`TestCamouflagePilesBlockTheAttackerTheyAreAssignedToAtRandom` fails; drop the Objects check from the allowed set and
+`TestRagingRiverLabelsLimitBlockersToTheChosenPile` fails.
+
+Tests: `game/blocks_by_piles_test.go`.

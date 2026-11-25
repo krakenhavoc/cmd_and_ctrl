@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
+  - ["As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)](#as-long-as-this-is-on-the-stack-adr-0048-amendment-2026-11-25-6222)
   - ["Counter target spell if it would destroy a land you control" (ADR 0228, #6225)](#counter-target-spell-if-it-would-destroy-a-land-you-control-adr-0228-6225)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
@@ -68,6 +69,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
   - [Cloak (#4452, CR 701.58)](#cloak-4452-cr-70158)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
+  - [Blocks decided by piles: Camouflage and Raging River (#6200, CR 700.3)](#blocks-decided-by-piles-camouflage-and-raging-river-6200-cr-7003)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
   - ["Whenever a mana ability of this creature resolves" (#5644)](#whenever-a-mana-ability-of-this-creature-resolves-5644)
@@ -2475,6 +2477,27 @@ holds every catalog card whose printed text says "pile" or "guess" to one
 of those two: it fails on a new one until it either notes itself or is
 listed with the reason it does not.
 
+### Each player separates their permanents into piles (#6248, CR 700.3)
+
+"Starting with you, each player separates all permanents they control into
+three piles. Then each player chooses one of their piles at random and
+sacrifices those permanents." (Whims of the Fates) is
+`effects.SeparateIntoPiles{Piles: 3, Then: effects.SacrificeARandomPileEach}.Apply(ctx)`
+([separate_into_piles.go](../server/internal/cards/effects/separate_into_piles.go)).
+Each player, from the controller in turn order (CR 101.4), is asked for
+`Piles - 1` piles of their own permanents, each a keyed `reveal_pick` over
+what is left that may take none (CR 700.3d); the last pile is the rest. A
+player with nothing left is asked nothing. Every split is made before
+anything happens to any pile, and the split notes the spell for the pile
+and guess tally. A different "then" is a `RegisterPilesThen(key, body)`,
+handed each player's piles in order. `SacrificeARandomPileEach` draws
+each player's pile from the seeded pick stream
+(`Game.ChooseIndexAtRandomForEffect`, which an undo rewinds) and
+sacrifices the chosen piles together, one event (CR 701.21a). No prompt
+holds a closure, so a table waiting on a split is a restore point. A bot
+answers each pile pick from the enumerator's legal answers, as it answers
+any `reveal_pick`.
+
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
 "Players can't pay life to cast spells or to activate abilities that
@@ -3964,6 +3987,20 @@ copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
 Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
 fails anything else.
 
+### "You may discard this card any time you could cast an instant" (#6224, CR 116.2e)
+
+Circling Vultures' clause is a special action, declared like foretell:
+
+```go
+SpecialActions: []game.SpecialAction{DiscardAnyTimeYouCouldCastAnInstant()},
+```
+
+The player discards the card from their hand with priority, on any turn,
+outside split second; nothing goes on the stack and they keep priority.
+The discard's cause is `game.DiscardCauseSpecialAction`, so discard
+triggers and madness see it and "if an effect causes you to discard" does
+not. The bot never takes it on its own.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,
@@ -5076,6 +5113,22 @@ right, and the replacement knows who is countering. Declare
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
 
+### "As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)
+
+A spell's ability that functions while the spell is on the stack (CR
+113.6b). The source is the spell, and "you" is its controller.
+
+- **A cost modifier** (Kaervek's Torch's "spells that target it cost {2}
+  more to cast") goes on `Spec.CostModifiers` as
+  `effects.SpellsThatTargetThisCostMore(2, label)`; mark any other with
+  `effects.WhileOnTheStack(m)`. An `OnStack` modifier is never read from
+  the battlefield.
+- **Any other static** (Torrent of Lava's "each creature has '{T}: …'")
+  is a `game.StaticAbility` with `Zones: []game.ZoneKind{game.ZoneStack}`.
+  A granted ability's stack item carries the granting spell in
+  `item.GrantedBy`, so "damage … by Torrent of Lava" is a shield
+  against that object (`PreventNextDamageFromSource{From: …}`).
+
 ### "Counter target spell if it would destroy a land you control" (ADR 0228, #6225)
 
 Equinox. The ability's target clause is any spell
@@ -5507,6 +5560,12 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
+cast your commander from the command zone without paying its mana cost" is
+`OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a
+`resolution_cast` prompt over the caster's own commanders in the command
+zone (`game.FreeCastFromCommandPermission`). The commander tax is still
+paid, and the cast counts toward it.
 **Colourless sources of damage (#6230, CR 105.2c, CR 120.2).** Ghostly
 Flame's "Black and/or red permanents and spells are colorless sources of
 damage" is `Static: []game.StaticAbility{ColorlessDamageSources("BR", label)}`,
@@ -5790,6 +5849,21 @@ upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
 library.
 
 
+### Who assigns combat damage, and to what (#6192, ADR 0224 amendment 2026-11-25)
+
+- "Rather than the attacking player, you assign the combat damage of each
+  creature attacking you. You can divide that creature's combat damage as
+  you choose among any of the creatures blocking it." (Defensive
+  Formation) is `Spec{YouAssignAttackersDamage: true}`: banding's
+  division (CR 702.22j), handed to this permanent's controller.
+- "If this creature is unblocked, you may have it assign its combat damage
+  to a creature defending player controls." (Cunning Giant) is
+  `Spec{UnblockedAssignsToACreature: true}`: its controller is asked in the
+  combat damage step for one such creature or the player.
+
+Both are read live through `CatalogAbilityKey`, so a permanent that has
+lost its abilities changes nothing.
+
 ### Adding a block-rule card (S37+, #750)
 
 "Can't be blocked except by Walls", "can't be blocked by creatures with
@@ -5890,6 +5964,39 @@ pins the whole-combat limits, checking the enumerator against the verb
 on a clone for every candidate, and
 [conditional_combat_limits_test.go](../server/internal/cards/effects/tests/cm/conditional_combat_limits_test.go)
 does the same for the #1534 variants, planeswalker targets included.
+
+### Blocks decided by piles: Camouflage and Raging River (#6200, CR 700.3)
+
+Two clauses divide creatures into piles in combat. Both are built from
+prompts the client and the bot already answer (keyed `choose_cards` and
+`option_pick` legs), so no wire change.
+
+- **Camouflage**, "This turn, instead of declaring blockers, each
+  defending player … divides them into a number of piles equal to the
+  number of attacking creatures … Assign each pile to a different one of
+  those attacking creatures at random": `effects.BlocksByPilesThisTurn(name)`
+  as the spell's effect. It registers a `blocksByPiles` record for the
+  turn ([game/blocks_by_piles.go](../server/internal/game/blocks_by_piles.go)).
+  As the declare blockers step begins, each defending player in APNAP
+  order (CR 101.4) picks one pile per attacker; a creature is offered for
+  as many piles as attackers it can block (`BlockCapacity`), so "can block
+  additional creatures" puts it in more. The piles are shuffled onto the
+  attackers with the seeded pick stream, every creature that can block its
+  pile's attacker does, and a pile whose blocks break a whole-declaration
+  bound (menace, a whole-combat limit) is taken out. The block verbs refuse
+  with `ErrBlocksDecidedByPiles` meanwhile. The cast restriction ("only
+  during your declare attackers step") is the card's own.
+- **Raging River**, "each defending player divides all creatures without
+  flying they control into a "left" pile and a "right" pile. Then, for
+  each attacking creature you control, choose "left" or "right."":
+  `effects.DivideIntoLeftAndRightPiles()` on the "whenever one or more
+  creatures you control attack" trigger
+  ([game/left_right_piles.go](../server/internal/game/left_right_piles.go)).
+  Each label is a `cantBeBlockedExceptBy` record on the attacker for the
+  rest of combat whose allowed set is flying plus the pile's creatures as
+  objects (`CantBeBlockedExceptByObjectsMod`, CR 400.7).
+
+Tests: [game/blocks_by_piles_test.go](../server/internal/game/blocks_by_piles_test.go).
 
 ### Adding a triggered ability (S19+)
 

@@ -1436,6 +1436,23 @@ type Spec struct {
 	// #4184.
 	YourPlaneswalkersLoyaltyTwiceEachTurn bool
 
+	// YouAssignAttackersDamage declares the printed static "Rather than
+	// the attacking player, you assign the combat damage of each creature
+	// attacking you. You can divide that creature's combat damage as you
+	// choose among any of the creatures blocking it." (Defensive
+	// Formation): CR 702.22j's banding division, handed to this
+	// permanent's controller for every creature attacking them that is
+	// blocked by two or more creatures. Judged through CatalogAbilityKey.
+	// #6192, ADR 0224 amendment 2026-11-25.
+	YouAssignAttackersDamage bool
+
+	// UnblockedAssignsToACreature declares the printed "If this creature
+	// is unblocked, you may have it assign its combat damage to a creature
+	// defending player controls." (Cunning Giant): its controller is asked,
+	// in the combat damage step, for all of its damage to one such creature
+	// or to what it attacks. Judged through CatalogAbilityKey. #6192.
+	UnblockedAssignsToACreature bool
+
 	// ActivateAsThoughHaste declares the printed static "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (Thousand-Year Elixir, #3928): CR 302.6 no
