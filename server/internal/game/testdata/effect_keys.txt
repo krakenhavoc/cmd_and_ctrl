@@ -1387,6 +1387,7 @@ choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-dragon-god-exile
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
 choose choose-cards/nicol-bolas-planeswalker-sacrifice
+choose choose-cards/nicol-bolas-the-deceiver-punisher-discarded
 choose choose-cards/nihiloor-tap-for-opponent
 choose choose-cards/ninjas-blades-loot
 choose choose-cards/nissa-of-shadowed-boughs-put
@@ -1782,6 +1783,7 @@ choose choose-cards/wick-the-whorled-mind-snail
 choose choose-cards/wicked-slumber-first-stun
 choose choose-cards/wicked-slumber-second-stun
 choose choose-cards/wildfire-devils-exile
+choose choose-cards/wildfire-eternal-cast
 choose choose-cards/winota-joiner-of-forces-human
 choose choose-cards/winter-cynical-opportunist-exile
 choose choose-cards/winter-cynical-opportunist-put
@@ -2604,6 +2606,7 @@ option option-pick/nazgul-battle-mace-pay-or-take
 option option-pick/neo-invoke-the-ancients-counter
 option option-pick/nesting-grounds-counter-kind
 option option-pick/nick-fury-spymaster-attacks
+option option-pick/nicol-bolas-the-deceiver-punisher
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
@@ -5225,6 +5228,7 @@ tail then/necromentia-named
 tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
+tail then/nicol-bolas-the-deceiver-punisher-sacrificed
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/offsprings-revenge-copy
