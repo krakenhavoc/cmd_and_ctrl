@@ -1388,6 +1388,7 @@ choose choose-cards/old-b072-reckless-crew-attach
 choose choose-cards/old-b178-scrabbling-claws-exile
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
+choose choose-cards/omnispell-adept-cast
 choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
@@ -2729,6 +2730,7 @@ payunless pay-unless/battlemages-bracers-copy-ability
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
+payunless pay-unless/blood-operative-return
 payunless pay-unless/bloodfeather-phoenix-return
 payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/bns-b52-slinza-fight
