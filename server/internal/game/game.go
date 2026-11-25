@@ -2172,6 +2172,12 @@ type CastTally struct {
 	// spells you've cast this turn". Read through NoncreatureCardTypesCast.
 	// Additive within the snapshot version.
 	NoncreatureCardTypes string `json:"noncreatureCardTypes,omitempty"`
+	// Kicked counts the kicked spells the player cast this turn (CR 702.33a),
+	// read as each spell became cast: Vine Gecko's "the first kicked spell you
+	// cast each turn costs {1} less to cast" prices a spell while Kicked is
+	// still 0 (a cost is determined, CR 601.2f, before the spell is counted
+	// here). Additive within the snapshot version.
+	Kicked int `json:"kicked,omitempty"`
 	// Artifact counts the artifact spells the player cast this turn,
 	// read as each spell became cast, off the spell on the stack
 	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the

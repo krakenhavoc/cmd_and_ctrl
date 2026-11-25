@@ -2686,6 +2686,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if !card.IsCreature() {
 		tally.Noncreature++
 	}
+	// CR 702.33a: Vine Gecko's "first kicked spell you cast each turn".
+	if KickedTimesPaid(card, params.OptionalCosts) > 0 {
+		tally.Kicked++
+	}
 	// #5235: "if you haven't cast a spell from your hand this turn".
 	// src is the zone the card was found in before CR 601.2a moved it to
 	// the stack, the zone CastFromZone records on the item.
