@@ -132,21 +132,19 @@ func init() {
 
 // unmaskLocked is the Mask's "instead it's turned face up": `cardID`, if
 // it is a masked face-down permanent, is turned face up first (CR 708.8;
-// no cost, no new object). Reports whether it was. Caller must hold g.mu
-// (write).
-func (g *Game) unmaskLocked(cardID uuid.UUID) bool {
+// no cost, no new object). One that can't be turned face up (CR 101.2)
+// stays face down. Caller must hold g.mu (write).
+func (g *Game) unmaskLocked(cardID uuid.UUID) {
 	if cardID == uuid.Nil || g.Battlefield == nil {
-		return false
+		return
 	}
 	c := findBattlefieldCard(g, cardID)
 	if c == nil || !c.FaceDown || c.FaceDownKind != FaceDownMasked {
-		return false
+		return
 	}
-	if !g.TurnFaceUpForEffect(uuid.Nil, c.Controller, cardID) {
-		return false
+	if g.TurnFaceUpForEffect(uuid.Nil, c.Controller, cardID) {
+		g.RecomputeLayersIfStaleLocked()
 	}
-	g.RecomputeLayersIfStaleLocked()
-	return true
 }
 
 // unmaskForDamageLocked turns a masked source or recipient of the damage

@@ -1022,8 +1022,14 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	// ADR 0166: while Word of Command makes this player play a card,
 	// only their lands' mana abilities may be activated.
 	landsOnly := g.LandManaOnlyLocked(controller)
+	// #6204: under a Piracy permission another player's land is a source
+	// too, for a CAST only (its mana may be spent only to cast spells),
+	// never for the costed pass, and never while Word of Command limits
+	// the player to their own lands.
+	piracy := !costed && !landsOnly && wish.restrictedSpend() != nil && g.MayTapForeignLandsLocked(controller)
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller != controller {
+		foreign := c.Controller != controller
+		if foreign && (!piracy || !c.IsLand()) {
 			continue
 		}
 		if landsOnly && !c.IsLand() {
@@ -1060,6 +1066,11 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		}
 		for _, cand := range cands {
 			picked := &cand.ab
+			// #6204: of another player's land, only the {T} rows the
+			// permission reaches (MayActivateManaLocked's own test).
+			if foreign && !g.MayActivateManaLocked(controller, c, ZoneBattlefield, *picked) {
+				continue
+			}
 			// ADR 0135 §4 (owner decision 3): a permanent named to a
 			// sacrifice cost on this cast may still tap for mana (CR
 			// 601.2g before 601.2h), but no ability that sacrifices it
@@ -1162,7 +1173,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				RiderRank: wish.riderRank(picked.SpendRiders),
 				// #3874: restricted output the cast's spend context
 				// admitted (the picker refuses it in every other).
-				Restricted: manaAbilityRestricted(*picked),
+				Restricted: manaAbilityRestricted(*picked) || foreign,
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.

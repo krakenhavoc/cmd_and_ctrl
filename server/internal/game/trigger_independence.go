@@ -1801,6 +1801,8 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
 	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert, "ActivateAsThoughHasteOthers": defFieldInert,
+	// #6233: the permanent's whole text follows its controller's graveyard, which an item can write.
+	"FullTextOfTopGraveyardCreature": defFieldOwnRules,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,

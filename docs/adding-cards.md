@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
+  - ["As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)](#as-long-as-this-is-on-the-stack-adr-0048-amendment-2026-11-25-6222)
   - ["Counter target spell if it would destroy a land you control" (ADR 0228, #6225)](#counter-target-spell-if-it-would-destroy-a-land-you-control-adr-0228-6225)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
@@ -68,6 +69,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
   - [Cloak (#4452, CR 701.58)](#cloak-4452-cr-70158)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
+  - [Blocks decided by piles: Camouflage and Raging River (#6200, CR 700.3)](#blocks-decided-by-piles-camouflage-and-raging-river-6200-cr-7003)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
   - ["Whenever a mana ability of this creature resolves" (#5644)](#whenever-a-mana-ability-of-this-creature-resolves-5644)
@@ -831,6 +833,16 @@ see them:
   The dice are rolled as the spell resolves, before the entry begins; a
   permanent that was not cast rolls nothing (CR 107.3m). One such clause
   per card.
+
+**"You may tap lands you don't control for mana" (ADR 0106 §1 amendment 2026-11-25, #6204).**
+Piracy's "Until end of turn, you may tap lands you don't control for
+mana. Spend this mana only to cast spells." is a player's permission,
+not a row: the effect calls
+`ctx.Game.AllowTapForeignLandsThisTurnForEffect(item.Controller)`. The
+engine does the rest: the player may activate the `{T}` mana rows of
+any land another player controls until the turn ends, the mana goes to
+their pool tagged `purpose:cast`, the auto-tapper plans those lands for
+their casts, and the client shows the rows on their copy of the land.
 
 ### Adding a mana ability (S15+)
 
@@ -3858,6 +3870,24 @@ declaration locks in), dealing or being dealt damage (every damage event),
 or assigning combat damage; only its card's own morph or disguise turns it
 up otherwise (CR 708.7). "Activate only as a sorcery" is the ability's own
 timing.
+### "Exiles it with X delay counters … puts it onto the stack as a copy" (#6221, CR 707.10)
+
+Ertai's Meddling's resolution is one call on the target spell:
+
+```go
+_, err := g.ExileSpellWithDelayCountersForEffect(spellID, x, item.SourceCardID, "")
+```
+
+The spell's controller exiles it (not countered) with X delay counters,
+and the spell is remembered as it stood on the stack, as epic remembers it
+(`DelayedTrigger.CopiesSpell`). At each of that player's upkeeps, while the
+card is still that object in exile (`DelayedTrigger.WhileExiled`, CR
+603.4), a delay counter is removed; when none is left the card itself goes
+onto the stack with the original's targets, modes, X and paid costs. It is
+not cast, so cast triggers don't see it. "X can't be 0" is the card's own
+`MinX`.
+
+Tests: [delayed_recast_test.go](../server/internal/game/delayed_recast_test.go).
 
 ### Tribute (#6251, CR 702.104)
 
@@ -3902,6 +3932,26 @@ Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
 d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
 read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
 `CatalogAbilityKey` are what follow the exchange.
+
+### "Has the full text of" the top card of your graveyard (ADR 0160 amendment 2026-11-25, #6233)
+
+Volrath's Shapeshifter (CR 612.6) declares the static as data, and keeps
+its own activated ability through a grant:
+
+```go
+const keep = "volraths-shapeshifter/discard"
+var discard effects.ActivatedAbility // the "{2}: Discard a card." ability
+effects.Spec{
+    FullTextOfTopGraveyardCreature: &game.FullTextStatic{Keep: keep},
+    Activated: []effects.ActivatedAbility{discard},
+    Grants: []effects.AbilityGrant{{Key: keep, Text: "{2}: Discard a card.", Activated: []effects.ActivatedAbility{discard}}},
+}
+```
+
+The engine writes the top creature card's values (name, cost, colour,
+types, abilities, P/T) onto the permanent before every layer pass and
+takes them off when the top card changes (`game/full_text.go`). The
+overlay is not copiable and ends when the permanent leaves.
 
 ### Changing one word of a card's text (ADR 0160 amendment 2026-10-15)
 
@@ -5042,6 +5092,22 @@ right, and the replacement knows who is countering. Declare
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
 
+### "As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)
+
+A spell's ability that functions while the spell is on the stack (CR
+113.6b). The source is the spell, and "you" is its controller.
+
+- **A cost modifier** (Kaervek's Torch's "spells that target it cost {2}
+  more to cast") goes on `Spec.CostModifiers` as
+  `effects.SpellsThatTargetThisCostMore(2, label)`; mark any other with
+  `effects.WhileOnTheStack(m)`. An `OnStack` modifier is never read from
+  the battlefield.
+- **Any other static** (Torrent of Lava's "each creature has '{T}: …'")
+  is a `game.StaticAbility` with `Zones: []game.ZoneKind{game.ZoneStack}`.
+  A granted ability's stack item carries the granting spell in
+  `item.GrantedBy`, so "damage … by Torrent of Lava" is a shield
+  against that object (`PreventNextDamageFromSource{From: …}`).
+
 ### "Counter target spell if it would destroy a land you control" (ADR 0228, #6225)
 
 Equinox. The ability's target clause is any spell
@@ -5473,6 +5539,15 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Colourless sources of damage (#6230, CR 105.2c, CR 120.2).** Ghostly
+Flame's "Black and/or red permanents and spells are colorless sources of
+damage" is `Static: []game.StaticAbility{ColorlessDamageSources("BR", label)}`,
+a world rule the permanent carries on itself
+(`Characteristic.ColorlessDamageSourceColors`). The damage event's source
+is read with no colour, so protection from black or red, prevention that
+names a colour and "a red source of your choice" all see a colourless
+source; the permanents and spells keep their colours otherwise.
+
 **Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
 can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
 a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).
@@ -5847,6 +5922,39 @@ pins the whole-combat limits, checking the enumerator against the verb
 on a clone for every candidate, and
 [conditional_combat_limits_test.go](../server/internal/cards/effects/tests/cm/conditional_combat_limits_test.go)
 does the same for the #1534 variants, planeswalker targets included.
+
+### Blocks decided by piles: Camouflage and Raging River (#6200, CR 700.3)
+
+Two clauses divide creatures into piles in combat. Both are built from
+prompts the client and the bot already answer (keyed `choose_cards` and
+`option_pick` legs), so no wire change.
+
+- **Camouflage**, "This turn, instead of declaring blockers, each
+  defending player … divides them into a number of piles equal to the
+  number of attacking creatures … Assign each pile to a different one of
+  those attacking creatures at random": `effects.BlocksByPilesThisTurn(name)`
+  as the spell's effect. It registers a `blocksByPiles` record for the
+  turn ([game/blocks_by_piles.go](../server/internal/game/blocks_by_piles.go)).
+  As the declare blockers step begins, each defending player in APNAP
+  order (CR 101.4) picks one pile per attacker; a creature is offered for
+  as many piles as attackers it can block (`BlockCapacity`), so "can block
+  additional creatures" puts it in more. The piles are shuffled onto the
+  attackers with the seeded pick stream, every creature that can block its
+  pile's attacker does, and a pile whose blocks break a whole-declaration
+  bound (menace, a whole-combat limit) is taken out. The block verbs refuse
+  with `ErrBlocksDecidedByPiles` meanwhile. The cast restriction ("only
+  during your declare attackers step") is the card's own.
+- **Raging River**, "each defending player divides all creatures without
+  flying they control into a "left" pile and a "right" pile. Then, for
+  each attacking creature you control, choose "left" or "right."":
+  `effects.DivideIntoLeftAndRightPiles()` on the "whenever one or more
+  creatures you control attack" trigger
+  ([game/left_right_piles.go](../server/internal/game/left_right_piles.go)).
+  Each label is a `cantBeBlockedExceptBy` record on the attacker for the
+  rest of combat whose allowed set is flying plus the pile's creatures as
+  objects (`CantBeBlockedExceptByObjectsMod`, CR 400.7).
+
+Tests: [game/blocks_by_piles_test.go](../server/internal/game/blocks_by_piles_test.go).
 
 ### Adding a triggered ability (S19+)
 
@@ -10595,6 +10703,17 @@ lethal damage, the cards that fill a hand). The bot answers it when the
 life it costs leaves it at 10 or more, and a person's stepper opens on
 it, so declare it whenever the card has one. `Marks` are other numbers
 worth offering a bot.
+
+**Life bidding** (#6212, ADR 0129 amendment 2026-11-25,
+[life_bidding.go](../server/internal/cards/effects/life_bidding.go)):
+"You start the bidding with a bid of 0. In turn order, each player may top
+the high bid. The bidding ends if the high bid stands." is
+`LifeBidding{Opening: 0, Then: won}` (`OpeningChosen: true` for "a bid of
+any number"; `Bidders` for "you and target spell's controller"). `won` is
+a `NumberThen` that gets the high bidder as `r.Chooser` (`uuid.Nil` if they
+left) and the high bid as `r.Number`, with the resolving item as
+`ctx.Item`; it does the rest of the card ("loses life equal to the high
+bid and draws four cards", "if you win the bidding, counter that spell").
 
 **A payment with {X} in it** (#2727, the same ADR's next amendment,
 [may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is

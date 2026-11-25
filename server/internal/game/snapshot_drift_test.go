@@ -152,6 +152,7 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsThisTurn", carried, "",
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"LoyaltyTwiceThisTurn", carried, "",
+	"TapForeignLandsThisTurn", carried, "",
 	"LoyaltyPermanentTwiceThisTurn", carried, "",
 	"LoyaltyPermanentExtraThisTurn", carried, "",
 	"LoyaltyPermanentExtraUsedThisTurn", carried, "",
@@ -596,6 +597,9 @@ var cardFields = plan(
 	// entry copy that a Cytoshape overwrote. Not derivable from the
 	// board once the copy has landed, so carried like PrintedSelf.
 	"DurationCopyBase", carried, "",
+	// #6233: the printed values under a full-text overlay (CR 612.6).
+	// Carried for DurationCopyBase's reason.
+	"FullTextBase", carried, "",
 	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
 	// clause granted. Carried, and carriable at all, because it holds
 	// catalog KEYS rather than closures — the abilities themselves
@@ -1175,6 +1179,7 @@ var delayedTriggerFields = plan(
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 	"CopiesSpell", carried, "", // #6141, CR 702.50a: epic's spell record
+	"WhileExiled", carried, "", // #6221, CR 603.4: "if that card is exiled" (delayed_recast.go)
 )
 
 var pendingChoiceFields = plan(

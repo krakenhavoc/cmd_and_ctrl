@@ -15,6 +15,7 @@ func (g *Game) emitAnnouncedTargetsLocked(actor, source, itemID uuid.UUID, targe
 		}
 	}
 	g.emitBecameTargetLocked(actor, source, itemID, targets, crimeSlot)
+	g.emitTargetsChosenLocked(actor, source, itemID, targets, "")
 }
 
 func (g *Game) crimeTargetLocked(actor uuid.UUID, target TargetRef) bool {
