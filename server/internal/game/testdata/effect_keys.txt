@@ -2336,6 +2336,8 @@ number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
+number number/life-bidding-opening-bid
+number number/life-bidding-raise
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
@@ -2506,6 +2508,7 @@ option option-pick/lantern-of-revealing-bottom
 option option-pick/lavabrink-floodgates-doom
 option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
+option option-pick/life-bidding-top-or-stand
 option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
 option option-pick/linvala-shield-of-sea-gate-keyword
