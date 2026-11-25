@@ -264,6 +264,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
 	{field: "BlockTaxes", fallback: "Block tax", ownLabel: true},
 	{field: "EquipCostAlternatives", fallback: "Equip abilities may cost {0}", ownLabel: true},
+	{field: "CyclingCostAlternatives", fallback: "Cycling may cost {0}", ownLabel: true},
 	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},

@@ -1703,14 +1703,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #4475, CR 118.9: the twin pays the alternative instead of the
 	// whole printed cost; everything else about the row is the row's.
 	if twin {
-		if !ab.Equip {
+		if !ab.Equip && !ab.Cycling {
 			return ErrInvalidParam
 		}
-		alt, from, ok := g.EquipCostAlternativeLocked(playerID)
+		shape, ok := g.twinShapeFor(playerID, ab)
 		if !ok {
 			return ErrAlternativeCostUnavailable
 		}
-		ab = equipTwinShape(ab, alt, from)
+		ab = shape
 	}
 	// #4566, CR 602.2b / 601.2b: an either/or cost is announced with the
 	// branch it pays, and from here on the row's cost IS that branch
