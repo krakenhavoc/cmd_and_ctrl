@@ -44,15 +44,7 @@ func init() {
 			effects.GrantAbilitiesToAttached(curiousObsessionDraw),
 		},
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && !effects.B18AttackedThisTurn(g, source.Controller)
-			}, "Curious Obsession — sacrifice this Aura (you didn't attack with a creature this turn)", func(g *game.Game, item *game.StackItem) error {
-				// CR 603.4: re-checked on resolution.
-				if effects.B18AttackedThisTurn(g, item.Controller) {
-					return nil
-				}
-				return effects.SacrificeThisIfStillOnBattlefield(g, item)
-			}),
+			effects.AtYourEndStepSacrificeThisIfYouDidntAttack("Curious Obsession — sacrifice this Aura (you didn't attack with a creature this turn)"),
 		},
 	})
 }
