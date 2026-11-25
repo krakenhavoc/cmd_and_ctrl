@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -470,5 +471,56 @@ func TestTheFaceChangeTimestampGoesWithTheObject(t *testing.T) {
 	})
 	if c, _, _ := cardAnywhere(g, id); c.FaceTurnedAt != 0 {
 		t.Errorf("FaceTurnedAt = %d in the graveyard, want 0", c.FaceTurnedAt)
+	}
+}
+
+// TestReturnFromExileFaceDownLandsAListedCyberman is Death in Heaven's
+// chapter III door (#6092): a creature card in exile is put onto the
+// battlefield face down under the effect controller's control as a listed
+// 2/2 Cyberman artifact creature (CR 708.2). It is a new object (CR 400.7)
+// and only its controller may look at it (CR 708.5), even its owner may not.
+func TestReturnFromExileFaceDownLandsAListedCyberman(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	c := NewCard("Sheoldred", opp.ID)
+	c.TypeLine = "Legendary Creature — Phyrexian Praetor"
+	c.OracleID = "oracle-sheoldred"
+	c.Power, c.Toughness = 4, 5
+	old := c.InstanceID
+	g.WithWriteLock(func() { g.Exile.PushTop(c) })
+
+	var entered uuid.UUID
+	var err error
+	g.WithWriteLock(func() {
+		entered, err = g.ReturnFromExileFaceDownForEffect(old, me.ID, false, cybermanListing())
+	})
+	if err != nil || entered == uuid.Nil || entered == old {
+		t.Fatalf("ReturnFromExileFaceDownForEffect = (%s, %v), want a new object (old ID %s)", entered, err, old)
+	}
+	got := layeredBattlefieldCard(t, g, entered)
+	if !got.FaceDown || got.FaceDownKind != FaceDownTurned {
+		t.Fatalf("state = (%v, %q), want (true, %q)", got.FaceDown, got.FaceDownKind, FaceDownTurned)
+	}
+	if !got.IsArtifact() || !got.IsCreature() || !got.HasSubtype("Cyberman") || got.CurrentPower() != 2 || got.CurrentToughness() != 2 {
+		t.Errorf("entered as %v %v %d/%d, want a 2/2 Cyberman artifact creature",
+			got.Effective().Types, got.Effective().Subtypes, got.CurrentPower(), got.CurrentToughness())
+	}
+	if got.IsLegendary() {
+		t.Error("the card underneath's supertype leaked through")
+	}
+	if got.Controller != me.ID || got.Owner != opp.ID {
+		t.Errorf("controller/owner = %s/%s, want me/opponent", got.Controller, got.Owner)
+	}
+	if !got.IsKnownTo(me.ID) || got.IsKnownTo(opp.ID) {
+		t.Error("CR 708.5: the controller, and only the controller, may look")
+	}
+	if g.Exile.Contains(old) {
+		t.Error("the card is still in exile")
+	}
+
+	// A card that has left exile is not found (CR 400.7).
+	g.WithWriteLock(func() { _, err = g.ReturnFromExileFaceDownForEffect(old, me.ID, false, cybermanListing()) })
+	if !errors.Is(err, ErrCardNotFound) {
+		t.Errorf("second return err = %v, want ErrCardNotFound", err)
 	}
 }

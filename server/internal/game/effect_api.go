@@ -3984,11 +3984,40 @@ func (g *Game) ReturnFromExileWithCountersKeyedForEffect(cardID, controller uuid
 	return err
 }
 
-// returnFromExileToBattlefieldLocked is the body of both exile-return
-// doors.
+// ReturnFromExileFaceDownForEffect is "put [the cards exiled with this]
+// onto the battlefield FACE DOWN under your control. They're 2/2 Cyberman
+// artifact creatures." — Death in Heaven's chapter III (#6092). It is
+// ReturnFromGraveyardFaceDownForEffect's exile twin: the CR 614 entry
+// pipeline with the face-down state riding the entry EVENT, so the one
+// finisher lands a CR 708.2 object whose controller is its only knower,
+// and no ETB trigger or "as enters" hook of the card fires (CR 708.2a).
+// The card is a new object (CR 400.7), as every exile return is.
+//
+// The kind is FaceDownTurned (an effect put it here, CR 708.7). `listed`
+// is the body the effect lists (CR 708.2); nil is the default nameless
+// 2/2. `controller` uuid.Nil is "under its owner's control". Returns the
+// entering permanent's NEW ID, uuid.Nil when nothing entered or the entry
+// paused, and ErrCardNotFound when the card is not in exile any more.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileFaceDownForEffect(cardID, controller uuid.UUID, tapped bool, listed *FaceDownListing) (uuid.UUID, error) {
+	return g.returnFromExileEntryLocked(cardID, controller, tapped, nil, FaceDownTurned, listed, entryThen{})
+}
+
+// returnFromExileToBattlefieldLocked is the body of the face-up
+// exile-return doors.
 //
 // Caller must hold g.mu.
 func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then entryThen) (uuid.UUID, error) {
+	return g.returnFromExileEntryLocked(cardID, controller, tapped, counters, FaceDownNone, nil, then)
+}
+
+// returnFromExileEntryLocked is the body of every exile-to-battlefield
+// return, with the face-down state the entry lands in (FaceDownNone for
+// every face-up return).
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromExileEntryLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, faceDown FaceDownKind, listed *FaceDownListing, then entryThen) (uuid.UUID, error) {
 	// CR 712.21c (ADR 0145): a return that finds the card a melded
 	// permanent left exile as finds both its cards, and returns each.
 	// The other card goes first and on its own; the card the effect
@@ -4050,7 +4079,11 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 		NewZone:            ZoneBattlefield,
 		EntersTapped:       tapped,
 		EntersWithCounters: copyCounterMap(counters),
-		entryResumable:     true,
+		// #6092: a face-down return rides the event the way a morph's
+		// entry and a graveyard face-down return do.
+		FaceDown:       faceDown,
+		FaceDownListed: listed,
+		entryResumable: true,
 		// CR 400.7: the returning permanent is a NEW OBJECT. The
 		// finisher mints the ID and strips the old object's
 		// battlefield state, on the inline path and the resumed one
