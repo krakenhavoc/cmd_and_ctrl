@@ -1150,6 +1150,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-enchantment-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
+choose choose-cards/liliana-the-necromancer-reanimate
 choose choose-cards/lively-dirge-return
 choose choose-cards/living-lore-exile
 choose choose-cards/living-wish-take
@@ -1649,6 +1650,7 @@ choose choose-cards/tether-technician-strike
 choose choose-cards/tetsuo-imperial-champion-cast
 choose choose-cards/tezzeret-betrayer-of-flesh-discard-the-one
 choose choose-cards/tezzeret-betrayer-of-flesh-discard-two-or-artifact
+choose choose-cards/tezzeret-cruel-machinist-face-down
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
@@ -3144,6 +3146,7 @@ run prompt-run/bns-b52-sutina-return-land
 run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
+run prompt-run/brawl-bash-ogre-sacrifice
 run prompt-run/breath-of-fury-attach
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/bristlebud-farmer-sacrifice
@@ -4591,6 +4594,7 @@ tail sacrificed-one/prompt-run/bloodcrazed-socialite-pump
 tail sacrificed-one/prompt-run/bloodmist-infiltrator-unblockable
 tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
+tail sacrificed-one/prompt-run/brawl-bash-ogre-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/caesar-legions-emperor-sacrifice
 tail sacrificed-one/prompt-run/cavalier-of-night-sacrifice
