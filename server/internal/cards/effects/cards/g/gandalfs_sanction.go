@@ -29,14 +29,6 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      effects.TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok || t.Kind != game.TargetCard {
-				return nil
-			}
-			c, ok := ctx.Game.LookupCardForEffect(t.ID)
-			if !ok {
-				return nil
-			}
 			x := 0
 			if p := ctx.Game.PlayerByIDForEffect(item.Controller); p != nil && p.Graveyard != nil {
 				for _, gc := range p.Graveyard.Cards {
@@ -48,23 +40,7 @@ func init() {
 			if x <= 0 {
 				return nil
 			}
-			toCreature, toController := x, 0
-			if c.ToughnessIsKnown() {
-				need := max(c.CurrentToughness()-c.DamageMarked, 0)
-				toCreature = min(x, need)
-				toController = x - toCreature
-			}
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				if toCreature > 0 {
-					if err := (effects.DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: toCreature}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				if toController > 0 {
-					return ctx.Game.DealDamageToPlayerForEffect(item.SourceCardID, c.Controller, toController)
-				}
-				return nil
-			})
+			return effects.S82OldB116DamageToTargetCreatureExcessToItsController(item, ctx, x)
 		},
 	})
 }

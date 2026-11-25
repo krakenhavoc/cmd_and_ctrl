@@ -515,6 +515,7 @@ body sandbender-scavengers/return-to-battlefield
 body saruman-of-many-colors/exile-and-copy
 body satya-aetherflux-genius/sacrifice-unless-energy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
+body savai-thundermane/damage
 body savior-of-ollenbock/exile
 body scarblades-malice/elf
 body searing-blood/3-to-its-controller
@@ -2881,6 +2882,7 @@ payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/satya-sacrifice-token
+payunless pay-unless/savai-thundermane-damage
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/serene-steward-counter
