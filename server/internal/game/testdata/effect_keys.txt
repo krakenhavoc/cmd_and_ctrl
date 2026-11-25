@@ -3863,6 +3863,7 @@ tail connive/kamiz-obscura-oculus
 tail connive/x
 tail conspiracy/agenda-named
 tail conundrum-sphinx/named
+tail consulate-crackdown/record-returns
 tail copy-and-cast/cast-copies-then-exile-self
 tail copy-and-cast/mnemonic-deluge-three-copies
 tail copy-and-cast/spelltwine-both-then-exile-self

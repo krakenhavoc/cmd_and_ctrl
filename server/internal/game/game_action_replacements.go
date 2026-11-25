@@ -78,6 +78,11 @@ type GameActionReplacement struct {
 	Kind GameActionReplacementKind
 	// Life is the total ReplaceLoseGameExileThisLifeBecomes sets.
 	Life int
+	// StartingLife makes the total "equal to your starting life total"
+	// (Exquisite Archangel, S82 OLD batch 255, #5536): the table's starting
+	// life (g.Settings.StartingLife), read as the replacement applies, in
+	// place of Life.
+	StartingLife bool
 }
 
 // CatalogGameActionReplacements returns the game-action replacements a
@@ -161,7 +166,11 @@ func (g *Game) replaceLossLocked(p *Player, cause LossCause) bool {
 	}
 	// "your life total becomes N": a gain or a loss of the difference
 	// (CR 119.5), through the life window like every other.
-	if delta := row.Life - p.Life; delta != 0 {
+	total := row.Life
+	if row.StartingLife {
+		total = g.Settings.StartingLife
+	}
+	if delta := total - p.Life; delta != 0 {
 		_ = g.ChangePlayerLifeForEffect(source, p.ID, delta)
 	}
 	return true
@@ -265,6 +274,10 @@ func gameActionReplacementRows(v reflect.Value) []string {
 	for _, r := range rows {
 		switch r.Kind {
 		case ReplaceLoseGameExileThisLifeBecomes:
+			if r.StartingLife {
+				out = append(out, "If you would lose the game, instead exile this and your life total becomes equal to your starting life total.")
+				break
+			}
 			out = append(out, "If you would lose the game, instead exile this and your life total becomes "+strconv.Itoa(r.Life)+".")
 		case ReplacePlaneswalkOrderTopTwo:
 			out = append(out, "If you would planeswalk, instead look at the top two cards of your planar deck, put one on the bottom and the other on top, then planeswalk.")
