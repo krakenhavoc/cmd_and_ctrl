@@ -2732,6 +2732,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
+				if src.Kind == ZoneGraveyard {
+					tally.InstantSorceryFromGraveyard++
+				}
 				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
 					tally.InstantSorceryMaxManaValue = mv
 				}
