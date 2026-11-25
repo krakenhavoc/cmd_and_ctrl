@@ -482,6 +482,25 @@ type ManaSpendContext struct {
 	// other payment, which means no source restriction.
 	SourceOnly ManaSourceKinds
 
+	// NoMana is the spell's own "You can't spend mana to cast this
+	// spell" (Hogaak, Arisen Necropolis, #6227): when set, NO mana may
+	// pay for it, whatever its colour, source or restrictions, so the
+	// mana half of the total cost has to be covered by the convoke taps
+	// and the delve exiles the announcement makes (CR 702.51a, 702.66a)
+	// and the cast is refused for insufficient mana when they leave
+	// anything owed (CR 601.2h).
+	//
+	// SourceOnly's sibling, and here for the same reason: it is a
+	// property of the SPELL rather than of any mana, and this context is
+	// what every cast payment, the pool solver, the auto-tapper's pool
+	// top-up, internal/legal's probe and the auto-tap preview already
+	// thread through, so one field makes all of them agree. Set by
+	// ManaSpendForCast from the card's catalog declaration
+	// (CantSpendManaFor); false for every other payment, which means no
+	// such restriction. Additive: a stored context from before it
+	// (AssistPrompt.Spend) reads as false.
+	NoMana bool
+
 	// CastFrom is the zone a spell is being cast FROM (CR 601.2a moves
 	// it to the stack first, so the zone has to be carried): what
 	// ManaRestrictNotFromHand reads (#2811). Empty when the caller does
@@ -792,6 +811,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		HasDevoid:        c.printsDevoid(),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
+		NoMana:           CantSpendManaFor(c),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
@@ -809,7 +829,16 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 // restriction. A token with no recorded source kinds (mana from a
 // spell, a token minted before kinds were recorded) can never satisfy
 // a source restriction — the weaker direction.
+//
+// #6227: "You can't spend mana to cast this spell" is the strongest
+// form of the same question and is asked first, because it is about no
+// property of the mana at all — every token is refused, so a cost with
+// anything left in it after the convoke taps and the delve exiles is
+// unpayable (CR 601.2h).
 func (ctx ManaSpendContext) allowsToken(tok ManaToken) bool {
+	if ctx.NoMana {
+		return false
+	}
 	if ctx.SourceOnly != 0 && !tok.SourceKinds.HasAny(ctx.SourceOnly) {
 		return false
 	}

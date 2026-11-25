@@ -356,6 +356,20 @@ func (g *Game) autoTapTopUpWithLocked(
 	prefer ManaSourceKinds,
 	triggerMana bool,
 ) (tapPlan, ParsedCost, bool) {
+	// #6227: "You can't spend mana to cast this spell" — no source
+	// could pay, so there is no plan to make and nothing to exclude it
+	// from. The floating pool answers on its own, and under NoMana it
+	// says yes only to a cost with nothing left in it: the convoke taps
+	// and the delve exiles covered the whole of the mana. Without this
+	// the planner would tap a land for a cast that cannot spend what it
+	// makes.
+	if ctx.NoMana {
+		p := g.playerByIDLocked(controller)
+		if p == nil || !p.ManaPool.CanPayFor(cost, xValue, ctx) {
+			return nil, ParsedCost{}, false
+		}
+		return nil, ParsedCost{}, true
+	}
 	// #2556: "Spend only mana produced by basic lands to cast this
 	// spell" — the sources that could not pay are out of every plan
 	// below, the pool top-up and the costed pass alike.

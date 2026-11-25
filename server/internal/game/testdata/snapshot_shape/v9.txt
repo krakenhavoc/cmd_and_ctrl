@@ -45396,6 +45396,7 @@ pendingChoices[].assist.spend.ManaCostHasX	bool
 pendingChoices[].assist.spend.ManaValue	number:int
 pendingChoices[].assist.spend.ManaValueKnown	bool
 pendingChoices[].assist.spend.NoAbilitiesSpell	bool
+pendingChoices[].assist.spend.NoMana	bool
 pendingChoices[].assist.spend.Object	custom(uuid.UUID)
 pendingChoices[].assist.spend.ObjectOwner	custom(uuid.UUID)
 pendingChoices[].assist.spend.Payer	custom(uuid.UUID)

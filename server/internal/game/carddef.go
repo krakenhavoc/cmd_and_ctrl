@@ -143,6 +143,12 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// CantSpendMana is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; #6227): the mana half of the total
+	// cost must be covered by the convoke taps and the delve exiles
+	// alone. Read through CantSpendManaFor into the cast's
+	// ManaSpendContext; see cant_spend_mana.go.
+	CantSpendMana bool
 	// Splice is CR 702.47's "Splice onto [quality] [cost]": while the
 	// card is in its owner's hand it may be revealed as they cast a spell
 	// of that quality, adding its rules text (the rest of this row) to
@@ -975,6 +981,12 @@ func init() {
 	CatalogDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.Delve
+		}
+		return false
+	}
+	CatalogCantSpendMana = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CantSpendMana
 		}
 		return false
 	}

@@ -41,6 +41,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"AlternativeCosts":           "the spell's own alternative costs",
 	"TapCost":                    "the spell's own tap cost (convoke and the like)",
 	"Delve":                      "the spell's own delve, a keyword",
+	"CantSpendMana":              "the spell's own \"you can't spend mana to cast this spell\" (#6227): a restriction on how its cost is paid, like SpendOnly",
 	"Splice":                     "a hand card's splice ability (ADR 0202), offered on the spell it splices onto",
 	"SpendOnly":                  "the spell's own spend-only clause on X (#2556): a restriction on how its cost is paid, shown by the cast surface",
 	"SpendOnlySources":           "the spell's own spend-only-by-source clause (#2556): the same, for the mana's source",
