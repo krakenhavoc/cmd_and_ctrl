@@ -2248,6 +2248,9 @@ export interface PendingChoiceView {
   pay_life?: number;
   pay_damage?: number;
   pay_nothing?: boolean;
+  // #6187: "discard N cards at random" (CR 701.9b). A yes or no; the
+  // server picks the cards. "Yes" pays only with N cards in hand.
+  pay_random_discard?: number;
   // ADR 0187 §5: an either payment — one offer with two or more ways to
   // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
   // One entry per branch, in the card's order; pay_cost holds the whole
@@ -3843,9 +3846,22 @@ export interface PayCardsView {
   // "minus_one_counter" (#5746): the permanents of the clause's kind the
   // chooser controls that can have a counter put on them; each one named
   // gets a -1/-1 counter.
-  action: "discard" | "sacrifice" | "exile_graveyard" | "tap" | "minus_one_counter";
+  // "hand_to_library_top" (#6187): the chooser's hand, as a discard's;
+  // each one named goes on top of their library. "sacrifice_total_power"
+  // (#6187, Phyrexian Dreadnought): any number of options, at least one,
+  // whose `powers` add up to `total_power` or more; `count` is then 0.
+  action:
+    | "discard"
+    | "sacrifice"
+    | "exile_graveyard"
+    | "tap"
+    | "minus_one_counter"
+    | "hand_to_library_top"
+    | "sacrifice_total_power";
   count: number;
   options: string[];
+  total_power?: number;
+  powers?: Record<string, number>;
 }
 
 // One branch of an either payment (ADR 0187 §5).

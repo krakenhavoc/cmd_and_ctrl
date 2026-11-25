@@ -4691,7 +4691,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
 		payable = g.payActionPayableLocked(chooserID, pays)
 	} else if apply && pays != nil {
-		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, pays)) >= pays.Count {
+		if len(cardIDs) > 0 || g.payActionCanPayLocked(chooserID, pays) {
 			if err := g.validatePayActionLocked(chooserID, pays, cardIDs); err != nil {
 				return err
 			}

@@ -741,6 +741,11 @@ type PendingChoiceView struct {
 	PayLife    *int `json:"pay_life,omitempty"`
 	PayDamage  *int `json:"pay_damage,omitempty"`
 	PayNothing bool `json:"pay_nothing,omitempty"`
+	// PayRandomDiscard is a payment that discards that many cards at
+	// random from the chooser's hand (#6187, CR 701.9b): the answer is
+	// yes or no, and the engine picks the cards. "Yes" is a payment only
+	// with that many cards in hand.
+	PayRandomDiscard *int `json:"pay_random_discard,omitempty"`
 
 	// PayEither is an either payment (ADR 0187 §5): one offer with two
 	// or more ways to pay, Worms of the Earth's "sacrifice two lands or
@@ -2378,6 +2383,14 @@ type PayCardsView struct {
 	// graveyard's are public. Present-and-empty when there is nothing
 	// to pay with.
 	Options []string `json:"options"`
+	// TotalPower is set for a "sacrifice_total_power" payment (#6187,
+	// Phyrexian Dreadnought): the answer names any number of Options,
+	// at least one, whose Powers add up to TotalPower or more. Count is
+	// then 0 and unused.
+	TotalPower int `json:"total_power,omitempty"`
+	// Powers is each option's power now, keyed by instance ID, for a
+	// "sacrifice_total_power" payment. Absent for every other.
+	Powers map[string]int `json:"powers,omitempty"`
 }
 
 // PayOptionView is one branch of an either payment (ADR 0187 §5).
@@ -10712,6 +10725,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PayDamage = &n
 			case game.PayActionNothing:
 				v.PayNothing = true
+			case game.PayActionDiscardRandom:
+				v.PayRandomDiscard = &n
 			}
 		} else if a != nil {
 			v.PayCards = &PayCardsView{
@@ -10721,6 +10736,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 			if v.PayCards.Options == nil {
 				v.PayCards.Options = []string{}
+			}
+			if a.Kind == game.PayActionSacrificeTotalPower {
+				// #6187: the total and what each option adds to it.
+				v.PayCards.TotalPower = a.TotalPower
+				v.PayCards.Powers = make(map[string]int, len(v.PayCards.Options))
+				for _, id := range g.PayActionOptionsForEffect(c.Chooser, a) {
+					v.PayCards.Powers[id.String()] = g.AltTappedPowerForEffect(id)
+				}
 			}
 		}
 		if pa := c.PayAmount; pa != nil {
@@ -12561,7 +12584,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		// about. Only the chooser gets them; every seat still sees what
 		// the payment is and how many cards it takes. A sacrifice's
 		// options are public permanents and go to everyone.
-		if c.PayCards != nil && c.PayCards.Action == string(game.PayActionDiscard) && c.Chooser != viewerID {
+		// #6187: so is a hand-to-library payment's.
+		if c.PayCards != nil && (c.PayCards.Action == string(game.PayActionDiscard) || c.PayCards.Action == string(game.PayActionHandToLibraryTop)) && c.Chooser != viewerID {
 			pc := *c.PayCards
 			pc.Options = []string{}
 			out[i].PayCards = &pc

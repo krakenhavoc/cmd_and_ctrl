@@ -439,7 +439,18 @@ func (e *enumerator) choiceMoves() bool {
 				// ADR 0150 §6: an any-player sacrifice or discard says
 				// whose effect it stops, as a mana link does.
 				payVerb, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
-				for _, set := range e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+				sets := [][]uuid.UUID(nil)
+				if action.Kind == game.PayActionSacrificeTotalPower {
+					// #6187: any number adding up to the total. The
+					// payments offered are the ones that stop as soon as
+					// the total is reached: in the payment order (the
+					// permanents the seat would miss least first), and
+					// biggest first (the fewest permanents).
+					sets = totalPowerPayments(g, pool, action.TotalPower)
+				} else {
+					sets = e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource)
+				}
+				for _, set := range sets {
 					a := true
 					p := base()
 					p.Apply = &a
@@ -3210,4 +3221,58 @@ func (e *enumerator) addSearchZoneSubsets(c *game.PendingChoice, reason string, 
 		}
 		e.addChoice(c, label+" only", p)
 	}
+}
+
+// totalPowerPayments are the total-power sacrifices (#6187) the
+// enumerator offers from `pool` (in the engine's payment order): the
+// first permanents in that order until their powers reach `total`, and
+// the most powerful first until they do. Duplicates are dropped, and
+// none is offered when the whole pool falls short (CR 118.3).
+func totalPowerPayments(g *game.Game, pool []uuid.UUID, total int) [][]uuid.UUID {
+	take := func(order []uuid.UUID) []uuid.UUID {
+		sum := 0
+		var out []uuid.UUID
+		for _, id := range order {
+			p := g.AltTappedPowerForEffect(id)
+			if p <= 0 {
+				continue
+			}
+			out = append(out, id)
+			if sum += p; sum >= total {
+				return out
+			}
+		}
+		return nil
+	}
+	first := take(pool)
+	if first == nil {
+		return nil
+	}
+	biggest := append([]uuid.UUID(nil), pool...)
+	sort.SliceStable(biggest, func(i, j int) bool {
+		return g.AltTappedPowerForEffect(biggest[i]) > g.AltTappedPowerForEffect(biggest[j])
+	})
+	second := take(biggest)
+	out := [][]uuid.UUID{first}
+	if !sameIDSet(first, second) {
+		out = append(out, second)
+	}
+	return out
+}
+
+// sameIDSet reports whether a and b hold the same ids, in any order.
+func sameIDSet(a, b []uuid.UUID) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	in := make(map[uuid.UUID]bool, len(a))
+	for _, id := range a {
+		in[id] = true
+	}
+	for _, id := range b {
+		if !in[id] {
+			return false
+		}
+	}
+	return true
 }
