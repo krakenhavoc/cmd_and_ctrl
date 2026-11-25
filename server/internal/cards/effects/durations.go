@@ -61,6 +61,19 @@ func DurationUntilYourNextUpkeep(ctx *Context, player uuid.UUID) game.Duration {
 	return ctx.Game.UntilYourNextUpkeepDuration(player)
 }
 
+// DurationUntilEndOfYourNextUpkeep is "until the end of <player>'s next
+// upkeep" (#6229, Halfdane): the effect lasts through that player's next
+// upkeep step and ends as it ends.
+func DurationUntilEndOfYourNextUpkeep(ctx *Context, player uuid.UUID) game.Duration {
+	return ctx.Game.UntilEndOfYourNextUpkeepDuration(player)
+}
+
+// DurationUntilACreatureSpellIsCast is "until a player casts a creature
+// spell" (#6229, Soul Sculptor): any player's creature spell ends it.
+func DurationUntilACreatureSpellIsCast() game.Duration {
+	return game.UntilACreatureSpellIsCastDuration()
+}
+
 // DurationThisTurnAndNextTurn is "this turn and next turn" (#5718):
 // Peace Talks. The effect lasts through the turn it is made in and the
 // turn after it, whoever takes that turn (an extra turn taken right after

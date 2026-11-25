@@ -209,6 +209,65 @@ func TestLurkerIsTargetableOnceItAttacked(t *testing.T) {
 	}
 }
 
+// TestLurkerIsTargetableOnceItBlocked — the other half of the
+// condition, and the reason it is read off the turn's per-pair block
+// record (#6193) rather than the creature's current block: a Lurker that
+// blocked stays targetable once combat is over, which is what "blocked
+// this turn" says.
+func TestLurkerIsTargetableOnceItBlocked(t *testing.T) {
+	g := newActiveGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	bar := SourceTargetingBar{
+		Label:                           "Lurker can't be the target of spells unless it attacked or blocked this turn.",
+		Quality:                         ProtectionQuality{Kind: ProtectionQualityEverything, Printed: "everything"},
+		Spells:                          true,
+		UnlessAttackedOrBlockedThisTurn: true,
+	}
+	// A small attacker and a fat Lurker, so the Lurker is still on the
+	// battlefield after combat damage and the bar can be asked again.
+	attacker := pushCombatant(t, g, me, "Attacker", 1, 1)
+	lurker := pushCombatant(t, g, them, "Lurker", 2, 5)
+	barred := func() bool {
+		var ok bool
+		g.WithWriteLock(func() {
+			g.RecomputeLayersIfStaleLocked()
+			c, found := g.battlefieldCardLocked(lurker)
+			if !found {
+				t.Fatal("the Lurker left the battlefield")
+			}
+			eff := c.Effective()
+			eff.TargetingBars = append(eff.TargetingBars, bar)
+			c.effective = &eff
+			card := *c
+			ok = !g.canBeTargetedByLocked(&card, ZoneBattlefield, whiteInstant(me.ID))
+		})
+		return ok
+	}
+	if !barred() {
+		t.Fatal("a Lurker that has not blocked was targetable")
+	}
+	attackAndStepToBlocks(t, g, them.ID, attacker)
+	if err := g.DeclareBlocker(lurker, attacker); err != nil {
+		t.Fatalf("DeclareBlocker: %v", err)
+	}
+	// A STAGED block is not yet a block: the declaration is announced
+	// when the defender finishes it (CR 509.1), and that is where the
+	// turn records it.
+	if !barred() {
+		t.Fatal("a staged block lifted the bar before the declaration was announced")
+	}
+	if err := g.FinishBlocks(them.ID); err != nil {
+		t.Fatalf("FinishBlocks: %v", err)
+	}
+	if barred() {
+		t.Fatal("a Lurker that blocked is still barred")
+	}
+	advanceIntoStep(t, g, StepPostcombatMain)
+	if barred() {
+		t.Error("a Lurker that blocked earlier this turn is barred again after combat")
+	}
+}
+
 // TestBarIsNotHexproofSoAWaiverDoesNotLiftIt — the bars sit ahead of
 // hexproof, so a "may be targeted as though it didn't have hexproof"
 // waiver (hexproof_bypass.go) cannot reach them. Here as a unit on the

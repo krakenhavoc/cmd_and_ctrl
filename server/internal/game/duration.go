@@ -315,6 +315,42 @@ const (
 	// player who left the game would have taken it.
 	UntilEndOfCombatOnYourNextTurn
 
+	// UntilACreatureSpellIsCast is "until a player casts a creature
+	// spell" (#6229, Soul Sculptor): the effect lasts until ANY player
+	// casts a creature spell, and ends on that EVENT (CR 611.2b) — no
+	// turn boundary ends it. A copy of a spell is not cast (CR 707.10),
+	// and putting a creature onto the battlefield is not casting one.
+	//
+	// The sixteenth kind, appended after UntilEndOfCombatOnYourNextTurn
+	// so every persisted int keeps its meaning; a binary from before it
+	// refuses a file carrying it through Known.
+	//
+	// CastSpell, once a creature spell is on the stack, calls
+	// endCreatureSpellCastDurationsLocked, which sets Ended on every
+	// scoped effect with this kind and sweeps them, so the effect is gone
+	// before the spell's own cast triggers are put on the stack.
+	// durationExpiredLocked reads only the flag, as for UntilCardCast.
+	UntilACreatureSpellIsCast
+
+	// UntilEndOfYourNextUpkeep is "until the end of your next upkeep"
+	// (#6229, Halfdane): the effect lasts through the named player's next
+	// UPKEEP STEP and ends as that step ends. Made during that player's
+	// upkeep (Halfdane's trigger), it lasts through the rest of this
+	// upkeep and the whole of the next one.
+	//
+	// The seventeenth kind, appended after UntilACreatureSpellIsCast so
+	// every persisted int keeps its meaning; a binary from before it
+	// refuses a file carrying it through Known.
+	//
+	// The stamps are UntilYourNextUpkeep's: ExpiresAfterTurnsBegun is the
+	// player's Player.UpkeepsBegun when the effect was made, and
+	// ExpiresAtTurnsBegun the CR 800.4m backstop. The effect is over once
+	// the player has begun an upkeep since and the cursor is no longer in
+	// it (or has begun two). A pure read; the step-transition sweep runs
+	// it as the upkeep ends. A skipped upkeep never begins and ends
+	// nothing.
+	UntilEndOfYourNextUpkeep
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -513,7 +549,11 @@ func (d Duration) Problem() string {
 	if d.Kind == UntilPlaneswalkAway && d.SourceEpoch != 0 {
 		return "an until-you-planeswalk-away duration carries an object epoch"
 	}
-	if d.Kind != UntilSourceExilesAnother && d.Kind != UntilCardCast && d.Kind != UntilPlaneswalkAway && (d.SourceEpoch != 0 || d.Ended) {
+	if d.Kind == UntilACreatureSpellIsCast && d.SourceEpoch != 0 {
+		return "an until-a-creature-spell-is-cast duration carries an object epoch"
+	}
+	if d.Kind != UntilSourceExilesAnother && d.Kind != UntilCardCast && d.Kind != UntilPlaneswalkAway &&
+		d.Kind != UntilACreatureSpellIsCast && (d.SourceEpoch != 0 || d.Ended) {
 		return fmt.Sprintf("a source-exile stamp on a %s duration", d.Kind)
 	}
 	if d.Kind == UntilPlaneswalkAway && d.Source == uuid.Nil {
@@ -854,6 +894,47 @@ func (g *Game) UntilYourNextUpkeepDuration(player uuid.UUID) Duration {
 		ExpiresAtTurnsBegun:    turns,
 		ExpiresAfterTurnsBegun: upkeeps,
 	}
+}
+
+// UntilEndOfYourNextUpkeepDuration is "until the end of <player>'s next
+// upkeep" (#6229, Halfdane), with UntilYourNextUpkeepDuration's stamps.
+// Caller must hold g.mu.
+func (g *Game) UntilEndOfYourNextUpkeepDuration(player uuid.UUID) Duration {
+	d := g.UntilYourNextUpkeepDuration(player)
+	d.Kind = UntilEndOfYourNextUpkeep
+	return d
+}
+
+// UntilACreatureSpellIsCastDuration is "until a player casts a creature
+// spell" (#6229, Soul Sculptor). Needs no game state.
+func UntilACreatureSpellIsCastDuration() Duration { return Duration{Kind: UntilACreatureSpellIsCast} }
+
+// endCreatureSpellCastDurationsLocked ends every UntilACreatureSpellIsCast
+// duration (#6229): a creature spell has just been cast. A fresh slice,
+// as endCardCastDurationsLocked writes, then a sweep.
+//
+// Caller must hold g.mu (write).
+func (g *Game) endCreatureSpellCastDurationsLocked() {
+	matches := func(d Duration) bool { return d.Kind == UntilACreatureSpellIsCast && !d.Ended }
+	found := false
+	for _, e := range g.ScopedEffects {
+		if matches(e.Duration) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return
+	}
+	next := make([]ScopedEffect, len(g.ScopedEffects))
+	for i, e := range g.ScopedEffects {
+		if matches(e.Duration) {
+			e.Duration.Ended = true
+		}
+		next[i] = e
+	}
+	g.ScopedEffects = next
+	g.sweepScopedStaticsLocked(false)
 }
 
 // ThisTurnAndNextTurnDuration is "this turn and next turn" (#5718),
@@ -1428,6 +1509,25 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// Over once CastSpell marked it (#3520). The card leaving
 		// exile uncast does NOT end it (ruling 2026-08-21).
 		return d.Ended
+	case UntilACreatureSpellIsCast:
+		// Over once CastSpell marked it (#6229).
+		return d.Ended
+	case UntilEndOfYourNextUpkeep:
+		// Over once the player's next upkeep has begun and ended (#6229),
+		// or, once they have left, as the turn holding it would have
+		// begun (CR 800.4m).
+		p := g.playerByIDLocked(d.Player)
+		if p == nil {
+			return true
+		}
+		if p.UpkeepsBegun > d.ExpiresAfterTurnsBegun+1 {
+			return true
+		}
+		if p.UpkeepsBegun == d.ExpiresAfterTurnsBegun+1 {
+			inIt := g.Turn.Step == StepUpkeep && g.activePlayerIDLocked() == d.Player
+			return !inIt
+		}
+		return p.Eliminated && p.TurnsBegun >= d.ExpiresAtTurnsBegun
 	case UntilPlaneswalkAway:
 		// Over once planeswalkAwayFromLocked marked it (ADR 0216 §5).
 		return d.Ended
@@ -1675,6 +1775,10 @@ func (k DurationKind) String() string {
 		return "this turn and next turn"
 	case UntilEndOfCombatOnYourNextTurn:
 		return "until end of combat on your next turn"
+	case UntilACreatureSpellIsCast:
+		return "until a player casts a creature spell"
+	case UntilEndOfYourNextUpkeep:
+		return "until the end of your next upkeep"
 	}
 	return "unknown duration"
 }

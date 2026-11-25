@@ -238,6 +238,7 @@ export function faceOptions(card: CardView, zone?: string): FaceOption[] {
 export function castSurfaceOf(s: CastSurfaceView) {
   return {
     target_mode: s.target_mode,
+    cast_creature_types: s.cast_creature_types,
     legal_targets: s.legal_targets,
     clauses: s.clauses,
     modes: s.modes,

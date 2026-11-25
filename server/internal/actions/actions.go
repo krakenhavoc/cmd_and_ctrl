@@ -816,6 +816,9 @@ func dispatch(g *game.Game, a Action) error {
 			// then names the objects of that type. Absent unless the
 			// announced optional behold chooses its type.
 			BeholdType string `json:"behold_type,omitempty"`
+			// #6245 — the creature type a spell that chooses one as it
+			// is cast names (Selective Snare, CR 601.2c).
+			ChosenCreatureType string `json:"chosen_creature_type,omitempty"`
 			// #3402 — the permanents a mandatory exile-a-permanent
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
@@ -1031,6 +1034,7 @@ func dispatch(g *game.Game, a Action) error {
 		params.CounterKind = p.CounterKind
 		params.CounterKinds = p.CounterKinds
 		params.BeholdType = p.BeholdType
+		params.ChosenCreatureType = p.ChosenCreatureType
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {

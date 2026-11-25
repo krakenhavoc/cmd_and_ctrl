@@ -2968,6 +2968,7 @@ followUpParks[].then.paid.action.Of.Types	array
 followUpParks[].then.paid.action.Of.Types[]	string
 followUpParks[].then.paid.action.Of.Untapped	bool
 followUpParks[].then.paid.action.TopOnly	bool
+followUpParks[].then.paid.action.TotalPower	number:int
 followUpParks[].then.paid.action.Words	string
 followUpParks[].then.paid.autoAnswerKey	string
 followUpParks[].then.paid.causeController	custom(uuid.UUID)
@@ -3692,6 +3693,7 @@ frozenEntries[].event.counterTail.then.paid.action.Of.Types	array
 frozenEntries[].event.counterTail.then.paid.action.Of.Types[]	string
 frozenEntries[].event.counterTail.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.counterTail.then.paid.action.TopOnly	bool
+frozenEntries[].event.counterTail.then.paid.action.TotalPower	number:int
 frozenEntries[].event.counterTail.then.paid.action.Words	string
 frozenEntries[].event.counterTail.then.paid.autoAnswerKey	string
 frozenEntries[].event.counterTail.then.paid.causeController	custom(uuid.UUID)
@@ -4393,6 +4395,7 @@ frozenEntries[].event.damageTail.each.each.paid.action.Of.Types	array
 frozenEntries[].event.damageTail.each.each.paid.action.Of.Types[]	string
 frozenEntries[].event.damageTail.each.each.paid.action.Of.Untapped	bool
 frozenEntries[].event.damageTail.each.each.paid.action.TopOnly	bool
+frozenEntries[].event.damageTail.each.each.paid.action.TotalPower	number:int
 frozenEntries[].event.damageTail.each.each.paid.action.Words	string
 frozenEntries[].event.damageTail.each.each.paid.autoAnswerKey	string
 frozenEntries[].event.damageTail.each.each.paid.causeController	custom(uuid.UUID)
@@ -5085,6 +5088,7 @@ frozenEntries[].event.damageTail.each.then.paid.action.Of.Types	array
 frozenEntries[].event.damageTail.each.then.paid.action.Of.Types[]	string
 frozenEntries[].event.damageTail.each.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.damageTail.each.then.paid.action.TopOnly	bool
+frozenEntries[].event.damageTail.each.then.paid.action.TotalPower	number:int
 frozenEntries[].event.damageTail.each.then.paid.action.Words	string
 frozenEntries[].event.damageTail.each.then.paid.autoAnswerKey	string
 frozenEntries[].event.damageTail.each.then.paid.causeController	custom(uuid.UUID)
@@ -5795,6 +5799,7 @@ frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttac
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].SourceName	string
 frozenEntries[].event.damageTail.sourceLki.ExtraRestrictions	number:uint8
+frozenEntries[].event.damageTail.sourceLki.FlagbearerTargetRule	bool
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities	array
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -6071,6 +6076,7 @@ frozenEntries[].event.damageTail.then.paid.action.Of.Types	array
 frozenEntries[].event.damageTail.then.paid.action.Of.Types[]	string
 frozenEntries[].event.damageTail.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.damageTail.then.paid.action.TopOnly	bool
+frozenEntries[].event.damageTail.then.paid.action.TotalPower	number:int
 frozenEntries[].event.damageTail.then.paid.action.Words	string
 frozenEntries[].event.damageTail.then.paid.autoAnswerKey	string
 frozenEntries[].event.damageTail.then.paid.causeController	custom(uuid.UUID)
@@ -6890,6 +6896,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Of.Types	arr
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Of.Types[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.TopOnly	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.TotalPower	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.action.Words	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.autoAnswerKey	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.paid.causeController	custom(uuid.UUID)
@@ -7658,6 +7665,7 @@ frozenEntries[].event.entryTail.batch.then.paid.action.Of.Types	array
 frozenEntries[].event.entryTail.batch.then.paid.action.Of.Types[]	string
 frozenEntries[].event.entryTail.batch.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.entryTail.batch.then.paid.action.TopOnly	bool
+frozenEntries[].event.entryTail.batch.then.paid.action.TotalPower	number:int
 frozenEntries[].event.entryTail.batch.then.paid.action.Words	string
 frozenEntries[].event.entryTail.batch.then.paid.autoAnswerKey	string
 frozenEntries[].event.entryTail.batch.then.paid.causeController	custom(uuid.UUID)
@@ -8350,6 +8358,7 @@ frozenEntries[].event.entryTail.keyed.paid.action.Of.Types	array
 frozenEntries[].event.entryTail.keyed.paid.action.Of.Types[]	string
 frozenEntries[].event.entryTail.keyed.paid.action.Of.Untapped	bool
 frozenEntries[].event.entryTail.keyed.paid.action.TopOnly	bool
+frozenEntries[].event.entryTail.keyed.paid.action.TotalPower	number:int
 frozenEntries[].event.entryTail.keyed.paid.action.Words	string
 frozenEntries[].event.entryTail.keyed.paid.autoAnswerKey	string
 frozenEntries[].event.entryTail.keyed.paid.causeController	custom(uuid.UUID)
@@ -9078,6 +9087,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Of.Types	array
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Of.Types[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Of.Untapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.TopOnly	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.TotalPower	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.action.Words	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.autoAnswerKey	string
 frozenEntries[].event.entryTail.search.spec.thenTail.paid.causeController	custom(uuid.UUID)
@@ -9792,6 +9802,7 @@ frozenEntries[].event.entryTail.tokens.then.paid.action.Of.Types	array
 frozenEntries[].event.entryTail.tokens.then.paid.action.Of.Types[]	string
 frozenEntries[].event.entryTail.tokens.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.entryTail.tokens.then.paid.action.TopOnly	bool
+frozenEntries[].event.entryTail.tokens.then.paid.action.TotalPower	number:int
 frozenEntries[].event.entryTail.tokens.then.paid.action.Words	string
 frozenEntries[].event.entryTail.tokens.then.paid.autoAnswerKey	string
 frozenEntries[].event.entryTail.tokens.then.paid.causeController	custom(uuid.UUID)
@@ -10952,6 +10963,7 @@ frozenEntries[].event.keywordActionTail.then.paid.action.Of.Types	array
 frozenEntries[].event.keywordActionTail.then.paid.action.Of.Types[]	string
 frozenEntries[].event.keywordActionTail.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.keywordActionTail.then.paid.action.TopOnly	bool
+frozenEntries[].event.keywordActionTail.then.paid.action.TotalPower	number:int
 frozenEntries[].event.keywordActionTail.then.paid.action.Words	string
 frozenEntries[].event.keywordActionTail.then.paid.autoAnswerKey	string
 frozenEntries[].event.keywordActionTail.then.paid.causeController	custom(uuid.UUID)
@@ -11670,6 +11682,7 @@ frozenEntries[].event.lifeTail.each.then.paid.action.Of.Types	array
 frozenEntries[].event.lifeTail.each.then.paid.action.Of.Types[]	string
 frozenEntries[].event.lifeTail.each.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.lifeTail.each.then.paid.action.TopOnly	bool
+frozenEntries[].event.lifeTail.each.then.paid.action.TotalPower	number:int
 frozenEntries[].event.lifeTail.each.then.paid.action.Words	string
 frozenEntries[].event.lifeTail.each.then.paid.autoAnswerKey	string
 frozenEntries[].event.lifeTail.each.then.paid.causeController	custom(uuid.UUID)
@@ -12365,6 +12378,7 @@ frozenEntries[].event.lifeTail.then.paid.action.Of.Types	array
 frozenEntries[].event.lifeTail.then.paid.action.Of.Types[]	string
 frozenEntries[].event.lifeTail.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.lifeTail.then.paid.action.TopOnly	bool
+frozenEntries[].event.lifeTail.then.paid.action.TotalPower	number:int
 frozenEntries[].event.lifeTail.then.paid.action.Words	string
 frozenEntries[].event.lifeTail.then.paid.autoAnswerKey	string
 frozenEntries[].event.lifeTail.then.paid.causeController	custom(uuid.UUID)
@@ -13952,6 +13966,7 @@ frozenEntries[].event.millTail.run.then.paid.action.Of.Types	array
 frozenEntries[].event.millTail.run.then.paid.action.Of.Types[]	string
 frozenEntries[].event.millTail.run.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.millTail.run.then.paid.action.TopOnly	bool
+frozenEntries[].event.millTail.run.then.paid.action.TotalPower	number:int
 frozenEntries[].event.millTail.run.then.paid.action.Words	string
 frozenEntries[].event.millTail.run.then.paid.autoAnswerKey	string
 frozenEntries[].event.millTail.run.then.paid.causeController	custom(uuid.UUID)
@@ -14642,6 +14657,7 @@ frozenEntries[].event.millTail.then.paid.action.Of.Types	array
 frozenEntries[].event.millTail.then.paid.action.Of.Types[]	string
 frozenEntries[].event.millTail.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.millTail.then.paid.action.TopOnly	bool
+frozenEntries[].event.millTail.then.paid.action.TotalPower	number:int
 frozenEntries[].event.millTail.then.paid.action.Words	string
 frozenEntries[].event.millTail.then.paid.autoAnswerKey	string
 frozenEntries[].event.millTail.then.paid.causeController	custom(uuid.UUID)
@@ -15373,6 +15389,7 @@ frozenEntries[].event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 frozenEntries[].event.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.DefenderWaivers[].SourceName	string
 frozenEntries[].event.sourceLki.ExtraRestrictions	number:uint8
+frozenEntries[].event.sourceLki.FlagbearerTargetRule	bool
 frozenEntries[].event.sourceLki.GrantedAbilities	array
 frozenEntries[].event.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -16502,6 +16519,7 @@ frozenEntries[].event.tokenTail.then.paid.action.Of.Types	array
 frozenEntries[].event.tokenTail.then.paid.action.Of.Types[]	string
 frozenEntries[].event.tokenTail.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.tokenTail.then.paid.action.TopOnly	bool
+frozenEntries[].event.tokenTail.then.paid.action.TotalPower	number:int
 frozenEntries[].event.tokenTail.then.paid.action.Words	string
 frozenEntries[].event.tokenTail.then.paid.autoAnswerKey	string
 frozenEntries[].event.tokenTail.then.paid.causeController	custom(uuid.UUID)
@@ -18562,6 +18580,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Of.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Of.Types[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.TopOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.TotalPower	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.action.Words	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.autoAnswerKey	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.paid.causeController	custom(uuid.UUID)
@@ -19290,6 +19309,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Of.Types	a
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Of.Types[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Of.Untapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.TopOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.TotalPower	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.action.Words	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.autoAnswerKey	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.paid.causeController	custom(uuid.UUID)
@@ -19980,6 +20000,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Of.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Of.Types[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.TopOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.TotalPower	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.action.Words	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.autoAnswerKey	string
 frozenEntries[].event.zoneRoute.batchLegs.then.paid.causeController	custom(uuid.UUID)
@@ -20690,6 +20711,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Of.Types	array
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Of.Types[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.TopOnly	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.TotalPower	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.action.Words	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.autoAnswerKey	string
 frozenEntries[].event.zoneRoute.discardLegs.then.paid.causeController	custom(uuid.UUID)
@@ -21469,6 +21491,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Of.Types	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Of.Types[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Of.Untapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.TopOnly	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.TotalPower	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.action.Words	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.autoAnswerKey	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.paid.causeController	custom(uuid.UUID)
@@ -22635,6 +22658,7 @@ heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttac
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].SourceName	string
 heldCombatDamage.answers[].frame.SourceLKI.ExtraRestrictions	number:uint8
+heldCombatDamage.answers[].frame.SourceLKI.FlagbearerTargetRule	bool
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities	array
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[]	object
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -22935,6 +22959,7 @@ lastKnownBattlefield{}.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 lastKnownBattlefield{}.DefenderWaivers[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.DefenderWaivers[].SourceName	string
 lastKnownBattlefield{}.ExtraRestrictions	number:uint8
+lastKnownBattlefield{}.FlagbearerTargetRule	bool
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -23240,6 +23265,7 @@ lastKnownPermanents{}[].characteristic.DefenderWaivers[].OnlyPlayersWhoAttackedY
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].SourceName	string
 lastKnownPermanents{}[].characteristic.ExtraRestrictions	number:uint8
+lastKnownPermanents{}[].characteristic.FlagbearerTargetRule	bool
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -25936,6 +25962,7 @@ movesAwaitingTokens[].counterTail.then.paid.action.Of.Types	array
 movesAwaitingTokens[].counterTail.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].counterTail.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].counterTail.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].counterTail.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].counterTail.then.paid.action.Words	string
 movesAwaitingTokens[].counterTail.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].counterTail.then.paid.causeController	custom(uuid.UUID)
@@ -26637,6 +26664,7 @@ movesAwaitingTokens[].damageTail.each.each.paid.action.Of.Types	array
 movesAwaitingTokens[].damageTail.each.each.paid.action.Of.Types[]	string
 movesAwaitingTokens[].damageTail.each.each.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].damageTail.each.each.paid.action.TopOnly	bool
+movesAwaitingTokens[].damageTail.each.each.paid.action.TotalPower	number:int
 movesAwaitingTokens[].damageTail.each.each.paid.action.Words	string
 movesAwaitingTokens[].damageTail.each.each.paid.autoAnswerKey	string
 movesAwaitingTokens[].damageTail.each.each.paid.causeController	custom(uuid.UUID)
@@ -27329,6 +27357,7 @@ movesAwaitingTokens[].damageTail.each.then.paid.action.Of.Types	array
 movesAwaitingTokens[].damageTail.each.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].damageTail.each.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].damageTail.each.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].damageTail.each.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].damageTail.each.then.paid.action.Words	string
 movesAwaitingTokens[].damageTail.each.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].damageTail.each.then.paid.causeController	custom(uuid.UUID)
@@ -28039,6 +28068,7 @@ movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttac
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].SourceName	string
 movesAwaitingTokens[].damageTail.sourceLki.ExtraRestrictions	number:uint8
+movesAwaitingTokens[].damageTail.sourceLki.FlagbearerTargetRule	bool
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities	array
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -28315,6 +28345,7 @@ movesAwaitingTokens[].damageTail.then.paid.action.Of.Types	array
 movesAwaitingTokens[].damageTail.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].damageTail.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].damageTail.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].damageTail.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].damageTail.then.paid.action.Words	string
 movesAwaitingTokens[].damageTail.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].damageTail.then.paid.causeController	custom(uuid.UUID)
@@ -29134,6 +29165,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Of.Types	arr
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.action.Words	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.paid.causeController	custom(uuid.UUID)
@@ -29902,6 +29934,7 @@ movesAwaitingTokens[].entryTail.batch.then.paid.action.Of.Types	array
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].entryTail.batch.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].entryTail.batch.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].entryTail.batch.then.paid.action.Words	string
 movesAwaitingTokens[].entryTail.batch.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].entryTail.batch.then.paid.causeController	custom(uuid.UUID)
@@ -30594,6 +30627,7 @@ movesAwaitingTokens[].entryTail.keyed.paid.action.Of.Types	array
 movesAwaitingTokens[].entryTail.keyed.paid.action.Of.Types[]	string
 movesAwaitingTokens[].entryTail.keyed.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].entryTail.keyed.paid.action.TopOnly	bool
+movesAwaitingTokens[].entryTail.keyed.paid.action.TotalPower	number:int
 movesAwaitingTokens[].entryTail.keyed.paid.action.Words	string
 movesAwaitingTokens[].entryTail.keyed.paid.autoAnswerKey	string
 movesAwaitingTokens[].entryTail.keyed.paid.causeController	custom(uuid.UUID)
@@ -31322,6 +31356,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Of.Types	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Of.Types[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.TopOnly	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.TotalPower	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.action.Words	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.autoAnswerKey	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.paid.causeController	custom(uuid.UUID)
@@ -32036,6 +32071,7 @@ movesAwaitingTokens[].entryTail.tokens.then.paid.action.Of.Types	array
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].entryTail.tokens.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].entryTail.tokens.then.paid.action.Words	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].entryTail.tokens.then.paid.causeController	custom(uuid.UUID)
@@ -33196,6 +33232,7 @@ movesAwaitingTokens[].keywordActionTail.then.paid.action.Of.Types	array
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].keywordActionTail.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].keywordActionTail.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].keywordActionTail.then.paid.action.Words	string
 movesAwaitingTokens[].keywordActionTail.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].keywordActionTail.then.paid.causeController	custom(uuid.UUID)
@@ -33914,6 +33951,7 @@ movesAwaitingTokens[].lifeTail.each.then.paid.action.Of.Types	array
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].lifeTail.each.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].lifeTail.each.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].lifeTail.each.then.paid.action.Words	string
 movesAwaitingTokens[].lifeTail.each.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].lifeTail.each.then.paid.causeController	custom(uuid.UUID)
@@ -34609,6 +34647,7 @@ movesAwaitingTokens[].lifeTail.then.paid.action.Of.Types	array
 movesAwaitingTokens[].lifeTail.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].lifeTail.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].lifeTail.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].lifeTail.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].lifeTail.then.paid.action.Words	string
 movesAwaitingTokens[].lifeTail.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].lifeTail.then.paid.causeController	custom(uuid.UUID)
@@ -36196,6 +36235,7 @@ movesAwaitingTokens[].millTail.run.then.paid.action.Of.Types	array
 movesAwaitingTokens[].millTail.run.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].millTail.run.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].millTail.run.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].millTail.run.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].millTail.run.then.paid.action.Words	string
 movesAwaitingTokens[].millTail.run.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].millTail.run.then.paid.causeController	custom(uuid.UUID)
@@ -36886,6 +36926,7 @@ movesAwaitingTokens[].millTail.then.paid.action.Of.Types	array
 movesAwaitingTokens[].millTail.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].millTail.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].millTail.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].millTail.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].millTail.then.paid.action.Words	string
 movesAwaitingTokens[].millTail.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].millTail.then.paid.causeController	custom(uuid.UUID)
@@ -37617,6 +37658,7 @@ movesAwaitingTokens[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].SourceName	string
 movesAwaitingTokens[].sourceLki.ExtraRestrictions	number:uint8
+movesAwaitingTokens[].sourceLki.FlagbearerTargetRule	bool
 movesAwaitingTokens[].sourceLki.GrantedAbilities	array
 movesAwaitingTokens[].sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -38746,6 +38788,7 @@ movesAwaitingTokens[].tokenTail.then.paid.action.Of.Types	array
 movesAwaitingTokens[].tokenTail.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].tokenTail.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].tokenTail.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].tokenTail.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].tokenTail.then.paid.action.Words	string
 movesAwaitingTokens[].tokenTail.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].tokenTail.then.paid.causeController	custom(uuid.UUID)
@@ -40806,6 +40849,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Of.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.action.Words	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.paid.causeController	custom(uuid.UUID)
@@ -41534,6 +41578,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Of.Types	a
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Of.Types[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.TopOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.TotalPower	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.action.Words	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.autoAnswerKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.paid.causeController	custom(uuid.UUID)
@@ -42224,6 +42269,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Of.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.action.Words	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.paid.causeController	custom(uuid.UUID)
@@ -42934,6 +42980,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Of.Types	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.action.Words	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.paid.causeController	custom(uuid.UUID)
@@ -43713,6 +43760,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Of.Types	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Of.Types[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Of.Untapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.TopOnly	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.TotalPower	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.action.Words	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.autoAnswerKey	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.paid.causeController	custom(uuid.UUID)
@@ -46076,6 +46124,7 @@ pendingChoices[].assist.announce.params.AutoTap	bool
 pendingChoices[].assist.announce.params.BeholdType	string
 pendingChoices[].assist.announce.params.BlightIDs	array
 pendingChoices[].assist.announce.params.BlightIDs[]	custom(uuid.UUID)
+pendingChoices[].assist.announce.params.ChosenCreatureType	string
 pendingChoices[].assist.announce.params.ConspireIDs	array
 pendingChoices[].assist.announce.params.ConspireIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.CostBranch	number:int
@@ -46196,6 +46245,7 @@ pendingChoices[].assist.spend.ClassLevel	bool
 pendingChoices[].assist.spend.Colors	array
 pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
+pendingChoices[].assist.spend.CostHasC	bool
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.FaceDownSpell	bool
@@ -47388,6 +47438,7 @@ pendingChoices[].attackSplit.tail.paid.action.Of.Types	array
 pendingChoices[].attackSplit.tail.paid.action.Of.Types[]	string
 pendingChoices[].attackSplit.tail.paid.action.Of.Untapped	bool
 pendingChoices[].attackSplit.tail.paid.action.TopOnly	bool
+pendingChoices[].attackSplit.tail.paid.action.TotalPower	number:int
 pendingChoices[].attackSplit.tail.paid.action.Words	string
 pendingChoices[].attackSplit.tail.paid.autoAnswerKey	string
 pendingChoices[].attackSplit.tail.paid.causeController	custom(uuid.UUID)
@@ -49494,6 +49545,7 @@ pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAtta
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.ExtraRestrictions	number:uint8
+pendingChoices[].damageAssignment.SourceLKI.FlagbearerTargetRule	bool
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -49794,6 +49846,7 @@ pendingChoices[].diceRoll.then.paid.action.Of.Types	array
 pendingChoices[].diceRoll.then.paid.action.Of.Types[]	string
 pendingChoices[].diceRoll.then.paid.action.Of.Untapped	bool
 pendingChoices[].diceRoll.then.paid.action.TopOnly	bool
+pendingChoices[].diceRoll.then.paid.action.TotalPower	number:int
 pendingChoices[].diceRoll.then.paid.action.Words	string
 pendingChoices[].diceRoll.then.paid.autoAnswerKey	string
 pendingChoices[].diceRoll.then.paid.causeController	custom(uuid.UUID)
@@ -50539,6 +50592,7 @@ pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].OnlyPlayersWhoAttac
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].SourceName	string
 pendingChoices[].divideShield.staged[].lki.ExtraRestrictions	number:uint8
+pendingChoices[].divideShield.staged[].lki.FlagbearerTargetRule	bool
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities	array
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -50828,6 +50882,7 @@ pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].OnlyPlayersWh
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].SourceName	string
 pendingChoices[].divideShield.staged[].sourceLki.ExtraRestrictions	number:uint8
+pendingChoices[].divideShield.staged[].sourceLki.FlagbearerTargetRule	bool
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities	array
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -51109,6 +51164,7 @@ pendingChoices[].divideShield.walk.each.paid.action.Of.Types	array
 pendingChoices[].divideShield.walk.each.paid.action.Of.Types[]	string
 pendingChoices[].divideShield.walk.each.paid.action.Of.Untapped	bool
 pendingChoices[].divideShield.walk.each.paid.action.TopOnly	bool
+pendingChoices[].divideShield.walk.each.paid.action.TotalPower	number:int
 pendingChoices[].divideShield.walk.each.paid.action.Words	string
 pendingChoices[].divideShield.walk.each.paid.autoAnswerKey	string
 pendingChoices[].divideShield.walk.each.paid.causeController	custom(uuid.UUID)
@@ -51801,6 +51857,7 @@ pendingChoices[].divideShield.walk.then.paid.action.Of.Types	array
 pendingChoices[].divideShield.walk.then.paid.action.Of.Types[]	string
 pendingChoices[].divideShield.walk.then.paid.action.Of.Untapped	bool
 pendingChoices[].divideShield.walk.then.paid.action.TopOnly	bool
+pendingChoices[].divideShield.walk.then.paid.action.TotalPower	number:int
 pendingChoices[].divideShield.walk.then.paid.action.Words	string
 pendingChoices[].divideShield.walk.then.paid.autoAnswerKey	string
 pendingChoices[].divideShield.walk.then.paid.causeController	custom(uuid.UUID)
@@ -52499,6 +52556,7 @@ pendingChoices[].libraryOrder.then.paid.action.Of.Types	array
 pendingChoices[].libraryOrder.then.paid.action.Of.Types[]	string
 pendingChoices[].libraryOrder.then.paid.action.Of.Untapped	bool
 pendingChoices[].libraryOrder.then.paid.action.TopOnly	bool
+pendingChoices[].libraryOrder.then.paid.action.TotalPower	number:int
 pendingChoices[].libraryOrder.then.paid.action.Words	string
 pendingChoices[].libraryOrder.then.paid.autoAnswerKey	string
 pendingChoices[].libraryOrder.then.paid.causeController	custom(uuid.UUID)
@@ -53252,6 +53310,7 @@ pendingChoices[].nameThen.paid.action.Of.Types	array
 pendingChoices[].nameThen.paid.action.Of.Types[]	string
 pendingChoices[].nameThen.paid.action.Of.Untapped	bool
 pendingChoices[].nameThen.paid.action.TopOnly	bool
+pendingChoices[].nameThen.paid.action.TotalPower	number:int
 pendingChoices[].nameThen.paid.action.Words	string
 pendingChoices[].nameThen.paid.autoAnswerKey	string
 pendingChoices[].nameThen.paid.causeController	custom(uuid.UUID)
@@ -54068,6 +54127,7 @@ pendingChoices[].parked.cast.params.AutoTap	bool
 pendingChoices[].parked.cast.params.BeholdType	string
 pendingChoices[].parked.cast.params.BlightIDs	array
 pendingChoices[].parked.cast.params.BlightIDs[]	custom(uuid.UUID)
+pendingChoices[].parked.cast.params.ChosenCreatureType	string
 pendingChoices[].parked.cast.params.ConspireIDs	array
 pendingChoices[].parked.cast.params.ConspireIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.CostBranch	number:int
@@ -54194,6 +54254,7 @@ pendingChoices[].payActionClause.Of.Types	array
 pendingChoices[].payActionClause.Of.Types[]	string
 pendingChoices[].payActionClause.Of.Untapped	bool
 pendingChoices[].payActionClause.TopOnly	bool
+pendingChoices[].payActionClause.TotalPower	number:int
 pendingChoices[].payActionClause.Words	string
 pendingChoices[].payAmount	object
 pendingChoices[].payAmount.goal	number:int
@@ -54462,6 +54523,7 @@ pendingChoices[].pickTail.paid.action.Of.Types	array
 pendingChoices[].pickTail.paid.action.Of.Types[]	string
 pendingChoices[].pickTail.paid.action.Of.Untapped	bool
 pendingChoices[].pickTail.paid.action.TopOnly	bool
+pendingChoices[].pickTail.paid.action.TotalPower	number:int
 pendingChoices[].pickTail.paid.action.Words	string
 pendingChoices[].pickTail.paid.autoAnswerKey	string
 pendingChoices[].pickTail.paid.causeController	custom(uuid.UUID)
@@ -55200,6 +55262,7 @@ pendingChoices[].replacementResume.event.counterTail.then.paid.action.Of.Types	a
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.counterTail.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.counterTail.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.counterTail.then.paid.causeController	custom(uuid.UUID)
@@ -55901,6 +55964,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Of.Typ
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.action.Words	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.damageTail.each.each.paid.causeController	custom(uuid.UUID)
@@ -56593,6 +56657,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Of.Typ
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.damageTail.each.then.paid.causeController	custom(uuid.UUID)
@@ -57303,6 +57368,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].SourceName	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.ExtraRestrictions	number:uint8
+pendingChoices[].replacementResume.event.damageTail.sourceLki.FlagbearerTargetRule	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -57579,6 +57645,7 @@ pendingChoices[].replacementResume.event.damageTail.then.paid.action.Of.Types	ar
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.damageTail.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.damageTail.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.damageTail.then.paid.causeController	custom(uuid.UUID)
@@ -58398,6 +58465,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.paid.causeController	custom(uuid.UUID)
@@ -59166,6 +59234,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Of.Typ
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.paid.causeController	custom(uuid.UUID)
@@ -59858,6 +59927,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Of.Types	ar
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.action.Words	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.entryTail.keyed.paid.causeController	custom(uuid.UUID)
@@ -60586,6 +60656,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.act
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.action.Words	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.paid.causeController	custom(uuid.UUID)
@@ -61300,6 +61371,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Of.Ty
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.paid.causeController	custom(uuid.UUID)
@@ -62460,6 +62532,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Of.T
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.paid.causeController	custom(uuid.UUID)
@@ -63178,6 +63251,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Of.Types
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.paid.causeController	custom(uuid.UUID)
@@ -63873,6 +63947,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Of.Types	arra
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.lifeTail.then.paid.causeController	custom(uuid.UUID)
@@ -65460,6 +65535,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Of.Types	
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.millTail.run.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.millTail.run.then.paid.causeController	custom(uuid.UUID)
@@ -66150,6 +66226,7 @@ pendingChoices[].replacementResume.event.millTail.then.paid.action.Of.Types	arra
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.millTail.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.millTail.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.millTail.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.millTail.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.millTail.then.paid.causeController	custom(uuid.UUID)
@@ -66881,6 +66958,7 @@ pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].OnlyPlayers
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].SourceName	string
 pendingChoices[].replacementResume.event.sourceLki.ExtraRestrictions	number:uint8
+pendingChoices[].replacementResume.event.sourceLki.FlagbearerTargetRule	bool
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities	array
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -68010,6 +68088,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Of.Types	arr
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.tokenTail.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.tokenTail.then.paid.causeController	custom(uuid.UUID)
@@ -70070,6 +70149,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.acti
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.paid.causeController	custom(uuid.UUID)
@@ -70798,6 +70878,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.pai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.action.Words	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.paid.causeController	custom(uuid.UUID)
@@ -71488,6 +71569,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Of
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.paid.causeController	custom(uuid.UUID)
@@ -72198,6 +72280,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.paid.causeController	custom(uuid.UUID)
@@ -72977,6 +73060,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Of.Types[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Of.Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.TopOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.TotalPower	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.action.Words	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.autoAnswerKey	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.paid.causeController	custom(uuid.UUID)
@@ -74144,6 +74228,7 @@ pendingChoices[].scryThen.paid.action.Of.Types	array
 pendingChoices[].scryThen.paid.action.Of.Types[]	string
 pendingChoices[].scryThen.paid.action.Of.Untapped	bool
 pendingChoices[].scryThen.paid.action.TopOnly	bool
+pendingChoices[].scryThen.paid.action.TotalPower	number:int
 pendingChoices[].scryThen.paid.action.Words	string
 pendingChoices[].scryThen.paid.autoAnswerKey	string
 pendingChoices[].scryThen.paid.causeController	custom(uuid.UUID)
@@ -74885,6 +74970,7 @@ pendingChoices[].searchPrompt.spec.thenTail.paid.action.Of.Types	array
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Of.Types[]	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Of.Untapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.TopOnly	bool
+pendingChoices[].searchPrompt.spec.thenTail.paid.action.TotalPower	number:int
 pendingChoices[].searchPrompt.spec.thenTail.paid.action.Words	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.autoAnswerKey	string
 pendingChoices[].searchPrompt.spec.thenTail.paid.causeController	custom(uuid.UUID)
@@ -75879,6 +75965,7 @@ pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYo
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].SourceName	string
 pendingChoices[].targetWalk.frame.lki.ExtraRestrictions	number:uint8
+pendingChoices[].targetWalk.frame.lki.FlagbearerTargetRule	bool
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities	array
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[]	object
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -76813,6 +76900,7 @@ pendingChoices[].triggerFrame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bo
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].SourceName	string
 pendingChoices[].triggerFrame.lki.ExtraRestrictions	number:uint8
+pendingChoices[].triggerFrame.lki.FlagbearerTargetRule	bool
 pendingChoices[].triggerFrame.lki.GrantedAbilities	array
 pendingChoices[].triggerFrame.lki.GrantedAbilities[]	object
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -85274,6 +85362,7 @@ seats[].statics[].cantAttack.scope.playerOnly	bool
 seats[].statics[].cantAttack.scope.subtype	string
 seats[].statics[].cantBeCountered	object
 seats[].statics[].cantBeCountered.active	bool
+seats[].statics[].cantBeCountered.byColors	string
 seats[].statics[].cantBeCountered.except	object
 seats[].statics[].cantBeCountered.except.epoch	number:int
 seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
@@ -86557,6 +86646,15 @@ turnTally.becameTapped	map:string
 turnTally.becameTapped{}	number:int
 turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
+turnTally.combatBlocks	array
+turnTally.combatBlocks[]	object
+turnTally.combatBlocks[].attacker	object
+turnTally.combatBlocks[].attacker.epoch	number:int
+turnTally.combatBlocks[].attacker.id	custom(uuid.UUID)
+turnTally.combatBlocks[].blocker	object
+turnTally.combatBlocks[].blocker.epoch	number:int
+turnTally.combatBlocks[].blocker.id	custom(uuid.UUID)
+turnTally.combatBlocks[].phaseId	number:int
 turnTally.combatDamagedPlayers	map:string
 turnTally.combatDamagedPlayers{}	number:int
 turnTally.couldAttack	array

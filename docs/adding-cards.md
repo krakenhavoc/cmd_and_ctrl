@@ -4034,6 +4034,13 @@ though they didn't have swampwalk" (Quagmire) is a block rule,
 Staff of the Ages' every-landwalk waiver is
 `effects.BlockableAsThoughNoLandwalkAtAll()` (#6195).
 
+"This creature can block Dragons as though it had reach" (Dragon
+Hunter, #6250) is a block rule on the creature itself,
+`effects.CanBlockAsThoughItHadReach(effects.QuerySubtype("Dragon"))`: it
+waives the CR 702.9b flying restriction for the attackers its queries
+name and nothing else — the creature does not gain reach, and another
+permanent's copy of the rule grants it nothing.
+
 The five evasion keywords in #825 use that same pair function. Read colors,
 types and power from effective characteristics; shadow restricts both
 directions, while horsemanship restricts only the attacker's blockers. The
@@ -4315,6 +4322,20 @@ enumerator's `crewPayment`. It names crew only: a saddle cost, a
 teamwork cost and any other "tap an untapped creature you control" still
 take the creature. The wire token is `cant_crew`, on the same
 `restrictions` list as the first set's.
+
+**"Can't be enchanted"** (#6203, CR 303.4) is three more bits of the same
+set, each with a helper in `cards/effects/cant_be_enchanted.go`:
+`ThisCantBeEnchanted()` (`game.CantBeEnchanted`, Tetravite's "This token
+can't be enchanted"), `EnchantedCantBeEnchantedByOtherAuras()`
+(`game.EnchantedCantBeEnchantedByOthers`, which the Aura carries on itself:
+Consecrate Land, Anti-Magic Aura) and
+`CantBecomeEnchantedAndOthersCantGainControl(applies, label)` (Guardian
+Beast: `game.CantBecomeEnchanted`, new attachments only, so Auras already
+attached stay, plus `game.OthersCantGainControl`). They are read at the
+Aura spell's target, an Aura entering without one, an attach and the
+state-based check. The control bar is read where every scoped control
+change is registered, so a gain or an exchange to another player does
+nothing. None has a wire token yet.
 
 **The engine reads them; you do not.** Declarations go through
 `game.AttackerEligible` and `Game.CanBlockLocked` (the boolean form of
@@ -5304,6 +5325,18 @@ damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
 zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
+
+**Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
+can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
+a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).
+Suncleanser's "That player can't get counters for as long as this creature
+remains on the battlefield" is
+`PlayerCantGetCountersWhileSourceRemains(ctx, player, label)`, a
+`ModPlayerCantGetCounters` record. Both are read at the one player counter
+door (`counterPlacementRefusedLocked`), for every kind: poison, energy,
+experience, rad and tickets. Proliferate offers no such player. Solemnity's
+second sentence is `CantHaveCounters` over artifacts, creatures,
+enchantments and lands, as above.
 
 ### Blight as an effect (#4683, CR 701.68)
 
@@ -6459,6 +6492,14 @@ costs that contain {X}" is `Restrictions: []string{game.ManaRestrictXCost}`
 spell whose mana cost (or the alternative cost it is cast for) has {X},
 or an activated ability with {X} in its mana, and the mana then pays the
 whole cost, not only X.
+
+"…or pay a cost that contains {C}" (Cultivator Drone, #6259) is
+`game.ManaRestrictColorlessCost`, matched on a cast or an activation whose
+cost being paid prints `{C}` (`ManaSpendContext.CostHasC`). The mana may pay
+any part of that cost. Cultivator Drone's whole clause is
+`ManaRestrictAnyOf([]string{ManaRestrictCast, ManaRestrictColorless},
+[]string{ManaRestrictActivate, ManaRestrictColorless},
+[]string{ManaRestrictColorlessCost})`.
 
 **Mana for spells with {X} in their mana costs (#4834):** "Spend this mana
 only to cast spells with {X} in their mana costs" is
@@ -11798,6 +11839,14 @@ became "is a Werewolf", a `SetCreatureTypesMod` (#5949). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
 
+**"…is no longer snow"** is `game.RemoveSupertypesMod("Snow")` in the
+same kind of record (#6199, layer 4): Arcum's Weathervane's "Target snow
+land is no longer snow", with `game.AddSupertypesMod("Snow")` for its
+"becomes snow". The two apply in timestamp order (CR 613.7). As a printed
+static, Melting's "All lands are no longer snow" is
+`effects.AllLandsAreNoLongerSupertype("Snow")`. The kind
+`removeSupertypes` is an on-disk identity.
+
 **"…and loses all creature types"** is `game.LoseAllCreatureTypesMod()`
 (#4691, layer 4, CR 613.1d): every creature type goes and none comes,
 the every-creature-type fact included (a changeling's, or an earlier
@@ -11826,6 +11875,11 @@ creature" reads the creature's types before it goes, as one tail word
 puts the hit onto the battlefield, Heirloom Blade into the hand
 (`cmdr2B03RevealUntilSharingTypeToHand`). "Protection from mana value N or
 greater" is `game.ProtectionQualityManaValueAtLeast`, the mirror of "or less".
+"Protection from creatures your opponents control" is the token
+`game.ProtectionFromOpponentsCreatures` (Crypsis; "your" is the protected
+permanent's controller), and "protection from non-Human creatures" is
+`game.ProtectionFromNonSubtypeCreatures("Human")` (Spare from Evil; a
+changeling has every type, so it is not stopped) (#6253).
 A `OfThatPlayersChoice` clause on a damage trigger is asked of the player the
 damage was dealt to (`triggerChooserOf`): Bladegriff Prototype.
 
@@ -15360,6 +15414,17 @@ if g.OpponentPermanentDealtExcessDamageThisTurn(you) { … }             // a re
 ```
 
 `CondOpponentPermanentDealtExcessDamage` declares `game.FootprintCondOpponentPermanentDealtExcessDamage`, since the tally only rises within a turn. "Whenever … is dealt excess noncombat damage", one event's amount inside a trigger, is still `excess_damage.go` (Magmatic Galleon, Fall of Cair Andros).
+
+### "The most common color among all permanents" (#6207)
+
+Counted by `game.MostCommonColorsForEffect` over the layered colours (CR 105.2): each permanent counts once per colour, colourless counts for nothing, ties are all returned, and with no coloured permanent no colour is common. A layer-7c static may read it, since layer 5 has settled for the pass. The shapes are in `cards/effects/most_common_color.go`:
+
+```go
+Static: []game.StaticAbility{SelfPumpWhileColorIsMostCommon("R", -2, -2)}, // Halam Djinn: "… as long as red is the most common color among all permanents or is tied for most common"
+Static: []game.StaticAbility{PumpEnchantedUnlessSharesAMostCommonColor(3, 3)}, // Heroic Defiance
+SharesAMostCommonColor(g, card)                      // Tsabo's Assassin, Barrin's Unmaking, checked as the ability or spell resolves
+ColorIsMostCommonUntiedAmongNontoken(g, player, col) // Call to Arms
+```
 
 ### "If you control no untapped lands" (#5794)
 

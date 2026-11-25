@@ -1,7 +1,5 @@
 package game
 
-import "github.com/google/uuid"
-
 // source_targeting_bar.go — #6196: "can't be the target of" a SPELL OR
 // ABILITY WITH A QUALITY, as a static on the permanent.
 //
@@ -161,14 +159,16 @@ func (g *Game) attackedOrBlockedThisTurnLocked(c *Card) bool {
 	if g.AttackedThisTurn(c.InstanceID) {
 		return true
 	}
-	// The BLOCK half is read off the creature's current block, because
-	// the turn keeps no record of past block declarations the way it
-	// keeps TurnTally.Attacks. So the bar comes back up when combat ends
-	// for a creature that blocked and did not attack — the one creature
-	// this matters to is Lurker, and that reading is STRICTER than
-	// printed. #6190 adds the block-side tally (TurnTally.Blocks, keyed
-	// by object and combat phase); this reader becomes a tally read in
-	// the same change that lands Lurker, so the card never ships with
-	// the gap.
-	return c.BlockingTarget != uuid.Nil || len(c.AlsoBlocking) > 0
+	// The BLOCK half is the turn's per-pair block record (#6193,
+	// TurnTally.CombatBlocks): every block this object made this turn,
+	// however it was made — the declaration, a creature put onto the
+	// battlefield blocking, or an effect. Reading the creature's CURRENT
+	// block instead would put the bar back up when combat ended, which
+	// the card does not say.
+	for _, b := range g.TurnTally.CombatBlocks {
+		if b.Blocker.ID == c.InstanceID && b.Blocker.Epoch == c.ObjectEpoch {
+			return true
+		}
+	}
+	return false
 }

@@ -2152,6 +2152,7 @@ confirm confirm/titan-of-littjara-loot
 confirm confirm/tivash-gloom-summoner-demon
 confirm confirm/transcendent-archaic-draw
 confirm confirm/tricksters-talisman-sacrifice
+confirm confirm/turn-skip-offer
 confirm confirm/turtles-in-time-ask
 confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
