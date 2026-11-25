@@ -5252,6 +5252,7 @@ vote secret/call-to-the-void
 vote secret/gollum-scheming-guide
 vote secret/itazura-lingering-wick
 vote secret/toymakers-trap
+vote secret/wheel-of-misfortune
 vote vote/bite-of-the-black-rose
 vote vote/capital-punishment
 vote vote/cirdan-the-shipwright
