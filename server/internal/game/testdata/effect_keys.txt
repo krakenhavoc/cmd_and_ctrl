@@ -3892,6 +3892,7 @@ tail essence-flux/counter-if-spirit
 tail etali-primal-conqueror/after-mill
 tail evelyn-the-covetous/collect
 tail evelyn-the-covetous/exile-step
+tail ever-after/black-zombies-then-library
 tail evolving-door/cast
 tail exile-from-hand-and-plot/plot
 tail exile-pile/praesidium-protectiva-back-on-top
