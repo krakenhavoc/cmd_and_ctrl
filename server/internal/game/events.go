@@ -391,6 +391,17 @@ const (
 	// Archivist of Oghma, etc.).
 	EventSearchLibrary EventKind = "search_library"
 
+	// EventLibraryShuffled — Actor's library was shuffled (#6215;
+	// CR 701.24a). One event per library per shuffle, even of a library
+	// of zero or one card (CR 701.24e), so simultaneous shuffles trigger
+	// once each (CR 701.24f). Label is ShuffleByEffect when a spell or
+	// ability caused it (a search's shuffle, "shuffle your library",
+	// "can't search" with its shuffle still owed) and ShuffleByAction for
+	// the sandbox's manual shuffle; the opening-hand and mulligan
+	// shuffles emit none. Psychogenic Probe, Psychic Surgery and Cosi's
+	// Trickster watch it.
+	EventLibraryShuffled EventKind = "library_shuffled"
+
 	// SearchShuffledLabel is the Label on an EventSearchLibrary whose
 	// search also shuffled the library, so the log can say both. It is
 	// not "shuffle": that label is a plain shuffle with no search, which
