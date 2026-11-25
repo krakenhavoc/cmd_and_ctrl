@@ -3417,6 +3417,7 @@ searchrule search/different-names
 searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
+searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
 steps steps/wylls-reversal-retarget-then-copy
 steps steps/zimones-hypothesis-rest
