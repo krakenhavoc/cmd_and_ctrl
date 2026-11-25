@@ -3349,6 +3349,13 @@ export interface AdditionalCostView {
   // when any card pays. Fewer cards than `min` means the cost cannot be
   // paid right now, so the spell is uncastable.
   discard_options?: LegalTargetsView;
+  // #6145: "discard X cards" (Channeled Force). `demands_x` is set too, so
+  // the X prompt opens first; the picks on `discard_ids` must number
+  // exactly the announced X (`discard_cards` is absent). `discard_x_max`
+  // is the largest X the hand pays, absent at 0. A narrowed clause
+  // ("discard X land cards") lists its cards on `discard_options`.
+  discard_x?: boolean;
+  discard_x_max?: number;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.
