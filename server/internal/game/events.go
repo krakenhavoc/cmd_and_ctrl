@@ -391,6 +391,17 @@ const (
 	// Archivist of Oghma, etc.).
 	EventSearchLibrary EventKind = "search_library"
 
+	// EventLibraryShuffled — Actor's library was shuffled (#6215;
+	// CR 701.24a). One event per library per shuffle, even of a library
+	// of zero or one card (CR 701.24e), so simultaneous shuffles trigger
+	// once each (CR 701.24f). Label is ShuffleByEffect when a spell or
+	// ability caused it (a search's shuffle, "shuffle your library",
+	// "can't search" with its shuffle still owed) and ShuffleByAction for
+	// the sandbox's manual shuffle; the opening-hand and mulligan
+	// shuffles emit none. Psychogenic Probe, Psychic Surgery and Cosi's
+	// Trickster watch it.
+	EventLibraryShuffled EventKind = "library_shuffled"
+
 	// SearchShuffledLabel is the Label on an EventSearchLibrary whose
 	// search also shuffled the library, so the log can say both. It is
 	// not "shuffle": that label is a plain shuffle with no search, which
@@ -2031,6 +2042,14 @@ type Event struct {
 	// read off a nonland permanent, but nothing prints a nonland
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
+
+	// LandOrdinal is, on a Played entry, how many lands its player has
+	// played this turn counting this one (#6213): 1 for the turn's first
+	// land play, 2 for the second. Fastbond's "if it wasn't the first
+	// land you played this turn" reads it, so the answer is the play's
+	// own and not the tally as some later reader finds it. Zero on every
+	// entry that is not a land play.
+	LandOrdinal int `json:"land_ordinal,omitempty"`
 
 	// BecameToken marks the EventZoneMove from no zone onto the
 	// battlefield that announces the token a copy of a permanent spell

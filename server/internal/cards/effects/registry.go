@@ -497,6 +497,9 @@ func Register(spec Spec) {
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
 	// #3860: a target tax names what it charges, whom and for what.
 	checkTargetTaxes(spec.Name, spec.TargetTaxes)
+	// #6206: the spell's own per-target life surcharge, the same guard
+	// one slot over.
+	checkLifePerTarget(spec.Name, spec.LifePerTarget)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
@@ -552,6 +555,14 @@ func Register(spec Spec) {
 	// every cast of a card that declared any other shape, so say so at
 	// boot instead.
 	for i, m := range spec.SelfCostModifiers {
+		// #6206: a modifier aimed at one component of a cost ("Buyback
+		// costs cost {2} less") prices OTHER spells' costs from the
+		// battlefield, and the component pass never shows it a self
+		// modifier (activeCostModifiersLocked), so in this slot it would
+		// be dead text. It belongs in Spec.CostModifiers.
+		if m.PricesOptionalCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d (%q) prices the %q cost component — declare it in Spec.CostModifiers", spec.Name, i, m.Label, m.PricesOptionalCost))
+		}
 		if m.Kind == game.CostFloor {
 			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostFloor — a spell's own cost modifier increases or reduces", spec.Name, i))
 		}
@@ -564,6 +575,23 @@ func Register(spec Spec) {
 	for i, m := range spec.CostModifiers {
 		if m.Kind == game.CostZeroAlternative && (!m.Activations || m.Amount != nil) {
 			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) is a CostZeroAlternative without Activations or with an Amount — build it with PayZeroRatherThanThePowerUpCost", spec.Name, i, m.Label))
+		}
+	}
+	// #6206: a cost change aimed at one component of a cost is an
+	// increase or a reduction of that component's mana. A CostFloor or a
+	// zero alternative on a component is a shape no card prints and the
+	// pass has no meaning for, and the component pass prices casts, so a
+	// component modifier that also claimed activations or special
+	// actions would be gathered by nothing.
+	for i, m := range spec.CostModifiers {
+		if m.PricesOptionalCost == "" {
+			continue
+		}
+		if m.Kind != game.CostIncrease && m.Kind != game.CostReduction {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) prices the %q cost component and is neither an increase nor a reduction", spec.Name, i, m.Label, m.PricesOptionalCost))
+		}
+		if m.Activations || m.SpecialActions {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) prices the %q cost component of a CAST, so it cannot also price activations or special actions", spec.Name, i, m.Label, m.PricesOptionalCost))
 		}
 	}
 	for _, mods := range [][]game.CostModifier{spec.CostModifiers, spec.SelfCostModifiers} {
@@ -902,7 +930,7 @@ func Register(spec Spec) {
 		// #4896: the mana payer solves its discard as the cheapest N,
 		// with no set rule, and no printed mana ability says "with
 		// different names".
-		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) || game.DiscardCostSameName(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
 				spec.Name, i))
 		}
@@ -3032,6 +3060,12 @@ func CheckAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		}
 		if m.SpecialActions {
 			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))
+		}
+		// #6206: an optional ADDITIONAL cost belongs to a cast (CR
+		// 601.2b), so the component pass never prices an activation, and
+		// an ability's own clause prices that ability's cost.
+		if m.PricesOptionalCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s prices the %q cost component — an optional additional cost belongs to a cast", name, where, m.PricesOptionalCost))
 		}
 		if m.ActiveWhen != (game.Designation{}) {
 			panic(fmt.Sprintf("effects.Register: %q %s declares a designation gate — gate the ability (ActivatedAbility.ActiveWhen) instead", name, where))

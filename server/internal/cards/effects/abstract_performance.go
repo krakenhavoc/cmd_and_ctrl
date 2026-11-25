@@ -40,6 +40,8 @@ func init() {
 		Name:         "Abstract Performance",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			// #6175: a face-down pile and a face-up pile.
+			NotePileOrGuess(ctx)
 			return ctx.Game.ExileTopFaceDownUnseenKeyedForEffect(ctx.Controller(), 4, ctx.ItemTail(abstractPerformanceFaceDown))
 		},
 	})

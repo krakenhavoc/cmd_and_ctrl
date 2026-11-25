@@ -1254,6 +1254,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6260: Gather Specimens' "if a creature would enter the battlefield
+	// under an opponent's control this turn, it enters under your control
+	// instead" (scoped_enters_under_control.go).
+	ModCreaturesEnterUnderYourControl: {reader: readerReplacement},
 	// #6160: Mystic Reflection's "the next time one or more creatures or
 	// planeswalkers enter this turn, they enter as copies".
 	ModNextEntersAsCopies: {reader: readerReplacement},
@@ -1321,6 +1325,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6239: "adapts as though it had no +1/+1 counters", read by the
+	// adapt (adapt_ignores_counters.go).
+	ModAdaptIgnoresCounters: {reader: readerRule},
 	// #5251: Lumbering Laundry's look at face-down creatures, read by
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
@@ -1397,6 +1404,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipNextCombatPhase: {reader: readerRule},
 	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
 	ModSkipNextStep: {reader: readerRule},
+	// #6244: "the next time you would lose the game this turn, instead
+	// …" (Stunning Reversal).
+	ModNextLossInstead: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1984,6 +1994,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := nextLossInsteadModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
