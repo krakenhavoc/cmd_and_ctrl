@@ -34,6 +34,18 @@ describe("manaAbilityNeedsPrompt", () => {
       manaAbilityNeedsPrompt(ability({ tap_others_options: { cards: ["bear"], min: 1, max: 1 } })),
     ).toBe(true);
   });
+
+  // #6085: Rosheen, Roaring Prophet asks which cards with {X} to reveal
+  // while the hand holds one, and taps straight out (revealing none) when
+  // it holds none.
+  it("asks before Rosheen's reveal only when there is a card to show", () => {
+    expect(
+      manaAbilityNeedsPrompt(
+        ability({ reveal_cost_any_number: true, reveal_cost_options: ["fireball"] }),
+      ),
+    ).toBe(true);
+    expect(manaAbilityNeedsPrompt(ability({ reveal_cost_any_number: true }))).toBe(false);
+  });
 });
 
 describe("manaTapPayment", () => {

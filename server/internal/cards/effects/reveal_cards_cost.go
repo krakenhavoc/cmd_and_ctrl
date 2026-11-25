@@ -73,6 +73,8 @@ func checkRevealCardsClause(name, where string, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s reveals cards with no Label — build it with RevealX / RevealN", name, where))
 	case rc.Color != "" && !strings.Contains("WUBRG", rc.Color):
 		panic(fmt.Sprintf("effects.Register: %q %s reveals cards of colour %q — one of W, U, B, R, G", name, where, rc.Color))
+	case rc.AnyNumber:
+		panic(fmt.Sprintf("effects.Register: %q %s reveals any number of cards in an activation cost — that form is a mana ability's (ManaAbilityCost.Reveal, #6085)", name, where))
 	case rc.CountFromX && rc.N != 0:
 		panic(fmt.Sprintf("effects.Register: %q %s reveals X cards and also declares a fixed count — build it with RevealX", name, where))
 	case !rc.CountFromX && rc.N <= 0:
@@ -92,5 +94,40 @@ func checkRevealCardsClause(name, where string, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s reveals X cards and also sacrifices or taps X permanents — one announced X cannot pay both", name, where))
 	case game.DiscardCountFromX(cost.DiscardCards) || game.DiscardManaValueX(cost.DiscardCards):
 		panic(fmt.Sprintf("effects.Register: %q %s reveals X cards and also discards X cards — one announced X cannot pay both", name, where))
+	}
+}
+
+// RevealAnyNumber is a mana ability's "Reveal any number of <quality>
+// cards from your hand" (#6085): Rosheen, Roaring Prophet's "{T}: Reveal
+// any number of cards with {X} in their mana cost in your hand. Add
+// {C}{C} for each card revealed this way." Put it on
+// ManaAbilityCost.Reveal; the activator names the cards on `reveal_ids`
+// (zero is a legal answer), they are revealed as the ability resolves,
+// and ProducedForPaid reads them back as PaidCost.Revealed. `quality` is
+// the RevealCost the cards must match; the label is the clause as
+// printed, without the verb.
+func RevealAnyNumber(label string, quality game.RevealCost) *game.RevealCardsCost {
+	return &game.RevealCardsCost{RevealCost: quality, AnyNumber: true, Label: label}
+}
+
+// checkManaRevealClause is the boot-time rule for a mana ability's
+// reveal (#6085): the AnyNumber form only, with a label, a hand quality
+// (no behold, no exile) and something that reads the revealed cards.
+func checkManaRevealClause(name string, i int, ma ManaAbility) {
+	rc := ma.Cost.Reveal
+	if rc == nil {
+		return
+	}
+	switch {
+	case !rc.AnyNumber || rc.N != 0 || rc.CountFromX || rc.SharesColor:
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d reveals a fixed or X count — a mana ability announces no X (CR 605.3b); build it with RevealAnyNumber", name, i))
+	case rc.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d reveals cards with no Label — build it with RevealAnyNumber", name, i))
+	case rc.Behold || rc.Exile || rc.Chosen || rc.ChosenType || rc.ChooseCreatureOrWarped:
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d reveals with a cast-only RevealCost form", name, i))
+	case rc.Color != "" && !strings.Contains("WUBRG", rc.Color):
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d reveals cards of colour %q — one of W, U, B, R, G", name, i, rc.Color))
+	case ma.ProducedForPaid == nil:
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d reveals cards but nothing reads them — declare ProducedForPaid", name, i))
 	}
 }

@@ -33,10 +33,12 @@ import (
 // sees it. The whole table sees the cards (RevealForEffect) and they
 // stay known while they sit there.
 //
-// An ACTIVATED ability only: a mana ability has no stack item to carry
-// an announced X (CR 605.3b), and no printed mana ability reveals.
-// effects.Register refuses it on one. Build it with effects.RevealX /
-// effects.RevealN, never by hand.
+// The N and X forms are an ACTIVATED ability's only: a mana ability has
+// no stack item to carry an announced X (CR 605.3b). A mana ability
+// carries the AnyNumber form alone (Rosheen, Roaring Prophet, #6085), as
+// ManaAbilityShape.RevealCards. effects.Register refuses the rest. Build
+// it with effects.RevealX / effects.RevealN / effects.RevealAnyNumber,
+// never by hand.
 type RevealCardsCost struct {
 	// RevealCost carries the quality the cards must have. Behold is
 	// meaningless here (a battlefield pick is not a hand reveal) and
@@ -73,6 +75,24 @@ type RevealCardsCost struct {
 	// route. A fixed count only: no printed card reveals X cards that
 	// share a colour, and Register refuses the combination.
 	SharesColor bool
+
+	// AnyNumber is "Reveal any number of <quality> cards from your hand"
+	// (#6085): Rosheen, Roaring Prophet's "{T}: Reveal any number of cards
+	// with {X} in their mana cost in your hand. Add {C}{C} for each card
+	// revealed this way." The count is the activator's, from zero to every
+	// candidate, and N is 0. On a MANA ability only
+	// (ManaAbilityShape.RevealCards): the reveal is part of the ability's
+	// effect, and a mana ability resolves as it is activated (CR 605.3b),
+	// so the cards are named with the activation, as a colour is named up
+	// front (ManaAbilityParams.Colors, #1443). Never beside N, CountFromX
+	// or SharesColor; effects.Register refuses the combinations.
+	AnyNumber bool `json:",omitempty"`
+}
+
+// RevealCardsAnyNumber reports the "any number of" form (#6085).
+// Nil-safe.
+func RevealCardsAnyNumber(c *RevealCardsCost) bool {
+	return c != nil && c.AnyNumber
 }
 
 // ErrRevealedColorMismatch is the refusal for a reveal payment whose
@@ -170,7 +190,7 @@ func (g *Game) revealWithColorPartnerLocked(ids []uuid.UUID) []uuid.UUID {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) RevealCardsPaymentForEffect(playerID, sourceID uuid.UUID, rc *RevealCardsCost) []uuid.UUID {
-	if rc == nil || rc.CountFromX || rc.N < 1 {
+	if rc == nil || rc.CountFromX || rc.AnyNumber || rc.N < 1 {
 		return nil
 	}
 	options := g.RevealCardsOptionsForEffect(playerID, sourceID, rc)
@@ -215,7 +235,9 @@ func (g *Game) validateRevealCardsCostLocked(playerID, sourceID uuid.UUID, rc *R
 	if rc.CountFromX {
 		want = x
 	}
-	if len(ids) != want {
+	// #6085: "any number of" takes every count, zero included; each card
+	// is still a distinct candidate, checked below.
+	if !rc.AnyNumber && len(ids) != want {
 		return ErrInvalidParam
 	}
 	options := make(map[uuid.UUID]bool)

@@ -2964,6 +2964,11 @@ func dispatch(g *game.Game, a Action) error {
 			// an "Exile a creature you control" cost on a MANA ability
 			// (Food Chain). The same field activate_ability uses.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #6085 — reveal_ids names the cards a "Reveal any number of
+			// … cards from your hand" mana ability reveals (Rosheen,
+			// Roaring Prophet). The field activate_ability's reveal cost
+			// uses. See game.ManaAbilityParams.RevealIDs.
+			RevealIDs []string `json:"reveal_ids,omitempty"`
 			// #1443 — the colour a pipe slot adds, named BEFORE the
 			// source is tapped, so no mana_pick is queued. `color` is
 			// the one-slot spelling (a painland, Birds of Paradise,
@@ -3071,6 +3076,14 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			manaExilePermanentIDs = append(manaExilePermanentIDs, id)
 		}
+		manaRevealIDs := make([]uuid.UUID, 0, len(p.RevealIDs))
+		for _, raw := range p.RevealIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability reveal_ids: %w", err)
+			}
+			manaRevealIDs = append(manaRevealIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
 			Ref:               p.Ref,
 			SacrificeIDs:      sacIDs,
@@ -3082,6 +3095,7 @@ func dispatch(g *game.Game, a Action) error {
 			DiscardIDs:        manaDiscardIDs,
 			ExileIDs:          manaExileIDs,
 			ExilePermanentIDs: manaExilePermanentIDs,
+			RevealIDs:         manaRevealIDs,
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
 			PhyrexianLife:     p.PhyrexianLife,

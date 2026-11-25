@@ -2994,6 +2994,18 @@ type ManaAbilityCost struct {
 	// exile is a decision, and the planner makes none.
 	ExileCards *game.ExileCost
 
+	// Reveal is "Reveal any number of <quality> cards from your hand"
+	// (#6085) — Rosheen, Roaring Prophet. Build it with RevealAnyNumber.
+	// Part of the effect rather than the cost, named with the activation
+	// because a mana ability resolves as it is activated (CR 605.3b); see
+	// game.ManaAbilityShape.RevealCards. The row's ProducedForPaid reads
+	// the cards back as PaidCost.Revealed (Register refuses a row that
+	// does not declare one).
+	//
+	// The auto-tapper never plans a source that has one: which cards to
+	// show is the player's decision.
+	Reveal *game.RevealCardsCost
+
 	// Forage is "Forage" as part of the activation cost (CR 701.61a,
 	// #5397): Thornvault Forager's "{T}, Forage: Add two mana in any
 	// combination of colors." The mana-ability spelling of Forage(): the
