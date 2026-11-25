@@ -1,0 +1,6 @@
+---
+title: "You skip your next untap step / draw step"
+date: 2026-11-25
+issues: [6144]
+---
+**You skip your next untap step / draw step** (#6144, CR 500.11, 614.10, 614.10a) — "You skip your next untap step" (Avizoa) and "you skip your next draw step" (Ivory Gargoyle) skip one occurrence of that step of that player, in whatever turn it falls, and are used up by it. It is one `ScopedEffect` (`ScopeGame`, `IndefiniteDuration`) with a `ModSkipNextStep` mod (`skipNextStep`) naming the player and the step (`StepUntap` or `StepDraw`), written by `Game.SkipNextStepForEffect(player, step, source, label)` and spent in `finishStepEntryLocked` (`spendNextStepSkipLocked`) once the step is known to exist and the CR 614 step-transition window (Stasis, Necropotence) has let it through, so a step another effect skips does not use it up. Two records skip the next two occurrences, a step that has begun is never skipped (the record waits for the next), and a waiting record of a player who has left goes as the next turn begins. An older binary refuses a restore point that carries one. `Game.NextStepSkipsForLocked(player, step)` counts what is owed. **Cards**: Avizoa and Ivory Gargoyle are built by their OLD batches.

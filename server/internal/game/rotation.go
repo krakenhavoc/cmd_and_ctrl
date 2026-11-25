@@ -333,6 +333,9 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// #5838: a "skips their next combat phase" record of a player who has
 	// left goes as a turn begins (skip_next_combat_phase.go).
 	g.sweepLeftPlayersNextCombatSkipsLocked()
+	// #6144: the same for "skip your next untap/draw step"
+	// (skip_next_step.go).
+	g.sweepLeftPlayersNextStepSkipsLocked()
 	// #4973: an extra turn that really begins (CR 500.7) — the one
 	// count "haven't begun an extra turn this game" reads.
 	if s := g.Turn.ActiveSeat; g.Turn.Extra && s >= 0 && s < len(g.Seats) && g.Seats[s] != nil {

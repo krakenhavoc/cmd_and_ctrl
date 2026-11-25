@@ -813,8 +813,9 @@ type Mod struct {
 	// mutated in place (see ScopedEffect's contract).
 	Amount int `json:"amount,omitempty"`
 	// Step and ExtraTurn are ModSkipExtraTurnStep's (ADR 0188 Decision
-	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Refused
-	// on every other kind (skipExtraTurnStepModProblem).
+	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Step is
+	// also ModSkipNextStep's (#6144). Refused on every other kind
+	// (skipExtraTurnStepModProblem).
 	Step      Step `json:"step,omitempty"`
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
@@ -1375,6 +1376,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipCombatPhases: {reader: readerRule},
 	// #5838: "skips their next combat phase" (Blinding Angel).
 	ModSkipNextCombatPhase: {reader: readerRule},
+	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
+	ModSkipNextStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1957,6 +1960,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextCombatPhaseModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipNextStepModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
