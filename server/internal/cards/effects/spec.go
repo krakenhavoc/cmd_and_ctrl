@@ -1911,6 +1911,13 @@ type Spec struct {
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
 
+	// RevealsChosenPlayersDraws declares "The chosen player reveals each
+	// card they draw" (Booby Trap, #6238): every card the permanent's
+	// chosen player draws is revealed to the table as it is drawn
+	// (game.CardDef.RevealsChosenPlayersDraws). The player is the one
+	// its "as this enters, choose an opponent" stored.
+	RevealsChosenPlayersDraws bool
+
 	// AttackOnlyNearestOpponentInChosenDirection declares "each player
 	// may attack only the nearest opponent in the chosen direction and
 	// planeswalkers controlled by that opponent" (Pramikon, Sky

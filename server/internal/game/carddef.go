@@ -774,6 +774,13 @@ type CardDef struct {
 	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
 	HandsRevealed HandRevealScope
 
+	// RevealsChosenPlayersDraws is "The chosen player reveals each card
+	// they draw" (Booby Trap, #6238): every card the permanent's
+	// ChosenPlayer draws is revealed to every player as it is drawn (CR
+	// 701.20a), while the permanent is on the battlefield with its
+	// abilities. Read in the draw path (draw_reveal.go).
+	RevealsChosenPlayersDraws bool
+
 	// AttackOnlyNearestOpponentInChosenDirection is "each player may
 	// attack only the nearest opponent in the chosen direction and
 	// planeswalkers controlled by that opponent" (Pramikon, Sky
