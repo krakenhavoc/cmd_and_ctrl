@@ -569,6 +569,11 @@ var TokenTable = map[string]game.Card{
 	// placeholder, set to the +1/+1 counters Grakmaw had as it created it).
 	"0/0 black and green Hydra": {Name: "Hydra", TypeLine: "Token Creature — Hydra", Colors: []string{"B", "G"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 207: Rite of Belzenlok's Cleric, and Chainer's Torment's X/X Nightmare
+	// Horror (printed */*; a 0/0 placeholder, set to half the controller's life as it is created).
+	"0/1 black Cleric":           {Name: "Cleric", TypeLine: "Token Creature — Cleric", Power: 0, Toughness: 1, Colors: []string{"B"}},
+	"0/0 black Nightmare Horror": {Name: "Nightmare Horror", TypeLine: "Token Creature — Nightmare Horror", Colors: []string{"B"}, PrintedPTKnown: true},
+
 	// S82 RPR batch 32: Stitcher Geralf's X/X blue Zombie (printed */*; a 0/0 placeholder,
 	// set to the total power exiled as it is created).
 	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},

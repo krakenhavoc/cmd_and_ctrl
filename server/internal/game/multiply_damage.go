@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -75,12 +76,16 @@ const (
 	DamageSourcesYours DamageSources = "yours"
 	// DamageSourcesCreatures is "a creature" (Blind Fury).
 	DamageSourcesCreatures DamageSources = "creatures"
+	// DamageSourcesYoursRed is "a red source you control": DamageSourcesYours
+	// narrowed to a source that is red as the damage was dealt (CR 105.1,
+	// 608.2h; The Flame of Keld).
+	DamageSourcesYoursRed DamageSources = "yoursRed"
 )
 
 // Known reports whether this binary can interpret s.
 func (s DamageSources) Known() bool {
 	switch s {
-	case DamageSourcesAny, DamageSourcesYours, DamageSourcesCreatures:
+	case DamageSourcesAny, DamageSourcesYours, DamageSourcesCreatures, DamageSourcesYoursRed:
 		return true
 	}
 	return false
@@ -283,6 +288,8 @@ func (g *Game) damageSourcesMatchLocked(e ScopedEffect, s DamageSources, ev *Rep
 		return e.Controller != uuid.Nil && ch.Controller == e.Controller
 	case DamageSourcesCreatures:
 		return characteristicHasType(ch, "Creature")
+	case DamageSourcesYoursRed:
+		return e.Controller != uuid.Nil && ch.Controller == e.Controller && slices.Contains(ch.Colors, "R")
 	}
 	return false
 }
@@ -440,6 +447,9 @@ func (g *Game) damageMultiplierLineLocked(e *ScopedEffect, m Mod) string {
 	case m.Sources == DamageSourcesYours:
 		b.WriteString(you)
 		b.WriteString("'s sources deal ")
+	case m.Sources == DamageSourcesYoursRed:
+		b.WriteString(you)
+		b.WriteString("'s red sources deal ")
 	case m.Sources == DamageSourcesCreatures:
 		b.WriteString("Creatures deal ")
 	default:
