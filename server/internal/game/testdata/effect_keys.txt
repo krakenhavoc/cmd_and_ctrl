@@ -629,6 +629,7 @@ body until/return-to-battlefield
 body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
 body villainous-syndication/return
+body vivien-monsters-advocate/search-lesser-creature
 body vronos/phase-out-the-objects
 body vulturous-aven/draw-and-lose
 body warp/exile
@@ -2616,6 +2617,7 @@ option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
 option option-pick/vislor-turlough-deal-with-the-black-guardian
+option option-pick/vivien-monsters-advocate-counter
 option option-pick/volos-journal-note
 option option-pick/wake-to-slaughter-opponent
 option option-pick/winding-way-type
@@ -4184,6 +4186,7 @@ tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
 tail lucius-the-eternal/exiled
+tail lukka-coppercoat-outcast/reveal-greater-creature
 tail lulu-loyal-hollyphant/untap
 tail make-your-own-luck/plot-then-rest
 tail makeshift-mannequin/grant-while-counter
@@ -5215,6 +5218,7 @@ tail vis/s82-gap-b142-dromars-cavern-after-return
 tail vis/s82-gap-b142-riths-grove-after-return
 tail vis/s82-gap-b143-trevas-ruins-after-return
 tail vision-quest/haste
+tail vivien-monsters-advocate/beast-counter-choice
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
 tail wake-to-slaughter/entered
