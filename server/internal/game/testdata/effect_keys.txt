@@ -2334,6 +2334,7 @@ drawthen old-b043-discard-two-unless-instant-or-sorcery
 drawthen old-b193/dream-cache-put-back
 drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
+drawthen s82-old-b259/discard-if-no-artifacts
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -4895,6 +4896,7 @@ tail tail/kathril-next-keyword
 tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/lord-of-the-void-exiled
+tail tail/lost-legacy-exiled
 tail tail/mohiam-imperial-truthsayer-exiled
 tail tail/mordenkainen-hand-to-library
 tail tail/mordenkainen-shuffle
@@ -4927,6 +4929,7 @@ tail tail/uchuulon-copy
 tail tail/unauthorized-exit-surveil
 tail tail/unyielding-gatekeeper-after-exile
 tail tail/vault-13-dwellers-journey-tuck-rest
+tail tail/verdant-crescendo-nissa
 tail tail/warp-world-bottom
 tail tail/warp-world-enchantments
 tail tail/warp-world-shuffled
@@ -5166,6 +5169,7 @@ tail then/lim-duls-vault-looked
 tail then/living-lore-cast
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
+tail then/lost-legacy-named
 tail then/lumbering-battlement-exiled-one
 tail then/make-an-example-chosen-pile
 tail then/manabond-discard-hand
