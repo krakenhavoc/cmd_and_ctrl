@@ -6422,6 +6422,9 @@ export interface BlockTaxView {
   each?: string;
   // The printed clauses that tax this seat's blocks.
   labels: string[];
+  // #6191: the life the blocks staged now cost (Heat Wave's "pays 1 life
+  // for each blocking creature"). Absent with none.
+  life?: number;
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

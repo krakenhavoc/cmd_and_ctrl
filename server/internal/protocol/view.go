@@ -6331,6 +6331,9 @@ type BlockTaxView struct {
 	// Labels are the printed clauses that tax this seat's blocks, one
 	// per clause, for the hint.
 	Labels []string `json:"labels"`
+	// Life is the life the blocks staged now cost (#6191, Heat Wave's
+	// "pays 1 life for each blocking creature"); 0 with none.
+	Life int `json:"life,omitempty"`
 }
 
 // viewOfBlockTaxes is TurnView.BlockTaxes. Caller holds g's lock.
@@ -6344,8 +6347,27 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 			continue
 		}
 		seat := g.Seats[idx].ID
-		row := BlockTaxView{Seat: idx, Cost: g.PriceBlockDeclarationForEffect(seat).Cost}
+		staged := g.PriceBlockDeclarationForEffect(seat)
+		row := BlockTaxView{Seat: idx, Cost: staged.Cost, Life: staged.Life}
 		seen := map[string]bool{}
+		addLabels := func(lines []game.BlockTaxLine) {
+			for _, l := range lines {
+				if !seen[l.Label] {
+					seen[l.Label] = true
+					row.Labels = append(row.Labels, l.Label)
+				}
+			}
+		}
+		addLabels(staged.Lines)
+		// #6191: a tax that reads the attacker blocked (Hipparion,
+		// Heat Wave) shows only against an attacker, so each creature is
+		// also priced against every attacking creature for the hint.
+		var attackers []uuid.UUID
+		for i := range g.Battlefield.Cards {
+			if a := &g.Battlefield.Cards[i]; a.AttackingTarget != uuid.Nil {
+				attackers = append(attackers, a.InstanceID)
+			}
+		}
 		each, uniform := "", true
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
@@ -6358,11 +6380,9 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 			} else if price.Cost != each {
 				uniform = false
 			}
-			for _, l := range price.Lines {
-				if !seen[l.Label] {
-					seen[l.Label] = true
-					row.Labels = append(row.Labels, l.Label)
-				}
+			addLabels(price.Lines)
+			for _, a := range attackers {
+				addLabels(g.PriceBlockAdditionForEffect(seat, []game.BlockDeclaration{{Blocker: c.InstanceID, Attacker: a}}).Lines)
 			}
 		}
 		if len(row.Labels) == 0 {
