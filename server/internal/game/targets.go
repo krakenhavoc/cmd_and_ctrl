@@ -510,6 +510,7 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
 	ch.SourceRingBearer = rec.RingBearer
 	ch.SourceIsPermanent = true
+	ch.SourceCounters = copyCounterMap(rec.Counters)
 	return ch
 }
 
@@ -772,6 +773,17 @@ type TargetSpec struct {
 	AsCastOpponentSlot int
 	AsCastMinPoison    int
 
+	// TappedOnlyAsCast is "You can't choose an untapped creature as this
+	// spell's target as you cast it" (Enthralling Hold, #6168): a
+	// candidate card must be tapped, but only on the walk of the card
+	// being CAST (TargetSource.casting, CR 601.2c) — the legal set the
+	// picker and the bot see and the announce check. The CR 608.2b
+	// re-check, a copy's new targets and an Aura's CR 704.5m enchant
+	// check never read it, so the Aura still resolves and stays attached
+	// after the creature untaps. DATA, judged in sourceAdmits
+	// (tapped_as_cast.go).
+	TappedOnlyAsCast bool
+
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
 	// on the stack, its controller chooses one of their opponents, and
@@ -789,6 +801,20 @@ type TargetSpec struct {
 	// the client's walk and the bot's enumerator skip it the same way.
 	// Build it with effects.OfAnOpponentsChoice.
 	ChosenByOpponent bool
+
+	// ChosenByFirstTargetsController narrows a ChosenByOpponent clause's
+	// chooser to one player: the controller of the permanent picked for
+	// the first clause (slot 0) of the same mode. Mogg Assassin's "You
+	// choose target creature an opponent controls, and that opponent
+	// chooses target creature" (#6171): in a multiplayer game "that
+	// opponent" is not the controller's to name, so the engine names them
+	// (opponentChoosersForStepLocked) and asks no "which opponent"
+	// question. Everything else about the clause is ChosenByOpponent's:
+	// legality is judged for the ability's controller (CR 601.2c, CR
+	// 115.1). Meaningless without ChosenByOpponent; effects.Register
+	// refuses it alone and on the first clause. Build it with
+	// effects.OfTheFirstTargetsController.
+	ChosenByFirstTargetsController bool
 
 	// ChosenByTriggerActor is "target … that player controls of their
 	// choice" on a triggered ability (#1997, ADR 0019 amendment
@@ -1072,6 +1098,17 @@ type TargetSpec struct {
 	// cost was uncharged — and which was strictly stronger than the
 	// printed card (issue #259).
 	CountFromX bool
+
+	// CountFromKicks makes the clause's target count one plus the number
+	// of times the spell was kicked (#6150, CR 601.2c, 702.33c-d): "choose
+	// any target, then choose another target for each time this spell was
+	// kicked" (Comet Storm, Strength of the Tajuru). Min and Max are the
+	// unkicked count, 1. TargetSpecUnderOptionalCosts binds it to the
+	// announced kicks wherever the announcement is judged (announce, the
+	// CR 608.2b re-check, the move enumerator); the wire ships it as
+	// count_from_kicks so the picker asks for 1 + kicks. A spell's single
+	// card-level clause only (effects.Register).
+	CountFromKicks bool
 
 	// UpToX turns CountFromX into "up to X": the announced X is the
 	// CEILING and zero targets is a legal pick ("up to X target cards
@@ -2403,7 +2440,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

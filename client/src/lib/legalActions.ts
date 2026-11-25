@@ -405,7 +405,13 @@ export function acrossActions(
     const own = new Set(
       (c.activated_abilities ?? [])
         .filter(
-          (a) => (a.any_player || a.opponents_only || a.owner_only || a.grantor_only) && a.ref,
+          (a) =>
+            (a.any_player ||
+              a.opponents_only ||
+              a.owner_only ||
+              a.grantor_only ||
+              a.defending_player_only) &&
+            a.ref,
         )
         .map((a) => a.ref),
     );

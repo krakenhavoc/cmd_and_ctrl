@@ -823,8 +823,9 @@ type Mod struct {
 	// mutated in place (see ScopedEffect's contract).
 	Amount int `json:"amount,omitempty"`
 	// Step and ExtraTurn are ModSkipExtraTurnStep's (ADR 0188 Decision
-	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Refused
-	// on every other kind (skipExtraTurnStepModProblem).
+	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Step is
+	// also ModSkipNextStep's (#6144). Refused on every other kind
+	// (skipExtraTurnStepModProblem).
 	Step      Step `json:"step,omitempty"`
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
@@ -1253,6 +1254,12 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6160: Mystic Reflection's "the next time one or more creatures or
+	// planeswalkers enter this turn, they enter as copies".
+	ModNextEntersAsCopies: {reader: readerReplacement},
+	// #6147: Due Respect's and Nahiri's Lithoforming's "<permanents>
+	// enter tapped this turn" (scoped_permanents_enter_tapped.go).
+	ModPermanentsEnterTapped: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1388,6 +1395,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipCombatPhases: {reader: readerRule},
 	// #5838: "skips their next combat phase" (Blinding Angel).
 	ModSkipNextCombatPhase: {reader: readerRule},
+	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
+	ModSkipNextStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1633,10 +1642,12 @@ func blockRequirementModProblem(m Mod) string {
 		// here (attackPermanentModProblem checks it).
 		// #6087: a creaturesExceptObjects restriction names the spared
 		// creatures here (exceptObjectsScopeProblem checks it).
+		// #6160: Mystic Reflection names the creature to copy and the
+		// entry that spent it (nextEntersAsCopiesModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
 			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
-			m.Kind != ModAddRestrictions {
+			m.Kind != ModAddRestrictions && m.Kind != ModNextEntersAsCopies {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1970,6 +1981,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextCombatPhaseModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipNextStepModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
@@ -2519,11 +2533,22 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return removeKeywordPrefixesApply(copyStrings(m.Keywords))
 	case ModRemoveKeywords:
 		keywords := m.Keywords
+		// CR 702.22b (#6142): a permanent that loses banding loses every
+		// "bands with other" ability as well.
+		losesBanding := false
+		for _, kw := range keywords {
+			if strings.EqualFold(kw, KeywordBanding) {
+				losesBanding = true
+			}
+		}
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			kept := make([]string, 0, len(ch.Abilities))
 			for _, a := range ch.Abilities {
-				drop := false
+				drop := losesBanding && strings.HasPrefix(strings.ToLower(a), KeywordBandsWithOtherPrefix)
 				for _, kw := range keywords {
+					if drop {
+						break
+					}
 					if strings.EqualFold(a, kw) {
 						drop = true
 						break

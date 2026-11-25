@@ -37,6 +37,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
+  - [Epic (#6141, CR 702.50)](#epic-6141-cr-70250)
   - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](#players-cant-play-lands-adr-0109-4-1895)
@@ -361,7 +362,10 @@ rewrite any old name it brought.
    anything is paid; legality is still judged for the controller, and the
    chosen opponent rides the item for the resolution re-check and a
    retarget. Read the pick at resolution with `ctx.ClauseTarget(slot)` like
-   any other clause. Not on a mode, and never divided or "up to"
+   any other clause. "… an opponent controls, and that opponent chooses
+   target …" (Mogg Assassin, #6171) is `OfTheFirstTargetsController(spec)`
+   on the later clause: the chooser is the controller of the first
+   clause's pick, named by the engine, never asked of the controller. Not on a mode, and never divided or "up to"
    (`effects.Register` refuses them). #2055, ADR 0019 amendment 2026-10-16.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
@@ -1808,7 +1812,13 @@ owner may activate this ability" (Personal Incarnation) is
 `OwnerOnly: true`. Same predicate (`game.MayActivate`), same "you is the
 activator" reading, same registration limits as `AnyPlayer`; set at most
 one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
-activator is the granting spell's controller (Martyrdom) has no shape yet.
+activator is the granting spell's controller (Martyrdom) is `GrantorOnly`.
+"Only the player this creature is attacking may activate this ability"
+(Capricopian, #6170) is `DefendingPlayerOnly: true`: the activator is the
+seat in the source's `AttackingTarget`, so the row has none while the
+creature is not attacking a player. Pair it with a `Condition` for any
+step restriction (`effects.DuringStep(game.StepDeclareAttackers)`), and
+reselect a player with `game.ReselectAttackPrompt{PlayersOnly: true}`.
 
 **An any-player MANA ability (ADR 0106 §1 amendment 2026-10-16, #1864).**
 The same bit on a `ManaAbility` row, Mana Cache's:
@@ -3690,6 +3700,27 @@ Assert the OBSERVABLE result — name, P/T, types, counters, and for
 anything with a catalog entry, its behaviour — because a copy that
 rewrote only the display fields looks identical on the wire.
 
+### Epic (#6141, CR 702.50)
+
+Wrap the spell's `OnResolve` in `effects.Epic`. It applies both epic
+abilities (CR 702.50a) and then the spell's own text: the caster's
+"can't cast spells" for the rest of the game (an outright cast ban with
+`IndefiniteDuration`, on the player's statics) and a delayed trigger at
+each of the caster's upkeeps that copies the spell as it resolved, X,
+modes, kicker and targets included, offering new targets (CR 707.10c).
+The trigger carries the spell as snapshot data (`DelayedTrigger.CopiesSpell`),
+so it needs the original card nowhere. The copy loses the epic keyword
+(CR 707.9b), so its own resolution runs the text alone.
+
+```go
+OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
+    // the spell's text
+}),
+```
+
+Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
+Ideal's.
+
 ### Exchanging text boxes (ADR 0160)
 
 A text box here is the catalog KEY plus the importer's keywords, so
@@ -3877,7 +3908,11 @@ below) and the printed-colour rule `printedColorsOf` (devoid — see
 (`game/block_legality.go`, `game/landwalk.go`) against the defending
 player's lands, by effective characteristics on both sides; the rarer
 variants (snow swampwalk, legendary landwalk, desertwalk) join the
-table with their first card.
+table with their first card. "Creatures with swampwalk can be blocked as
+though they didn't have swampwalk" (Quagmire) is a block rule,
+`effects.BlockableAsThoughNoLandwalk("swampwalk")` in `Spec.BlockRules`;
+Staff of the Ages' every-landwalk waiver is
+`effects.BlockableAsThoughNoLandwalkAtAll()` (#6195).
 
 The five evasion keywords in #825 use that same pair function. Read colors,
 types and power from effective characteristics; shadow restricts both

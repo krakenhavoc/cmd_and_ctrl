@@ -2317,6 +2317,15 @@ type CastTally struct {
 	// EventCast. A copy of a spell is not cast (CR 707.10). Additive within
 	// the snapshot version.
 	FromExile int `json:"fromExile,omitempty"`
+	// InstantSorceryFromGraveyard counts the instant and sorcery spells the
+	// player cast this turn from their graveyard, read like FromExile off
+	// the zone the card was in as the cast was proposed and off the spell as
+	// it is on the stack (CR 601.2i): Sevinne, the Chronoclasm's "your first
+	// instant or sorcery spell from your graveyard each turn" is
+	// InstantSorceryFromGraveyard == 1 once the tally is bumped, which is
+	// before EventCast. A copy is not cast (CR 707.10). Additive within the
+	// snapshot version.
+	InstantSorceryFromGraveyard int `json:"instantSorceryFromGraveyard,omitempty"`
 }
 
 // FromHand is how many of the player's spells this turn were cast from
@@ -2737,6 +2746,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// hoisted it so EventStepBegan is emitted exactly once per step
 	// that begins and the harvester can trust it.)
 	if g.MulligansOpen && (g.Turn.Step == StepUntap || g.Turn.Step == StepUpkeep) {
+		return
+	}
+	// #6144 (CR 614.10a): "you skip your next untap/draw step" is spent
+	// by the first such step of the player's that exists and that the
+	// window above let through; the cursor walks past it as past any
+	// skipped step (CR 500.11), so it never begins (skip_next_step.go).
+	if g.spendNextStepSkipLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
 		return
 	}
 	// ADR 0059 Decision 8: the step has really begun, so it counts —

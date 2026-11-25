@@ -31,8 +31,10 @@ func (g *Game) retargetedAbilityCopyLocked(itemID, controller, from, to uuid.UUI
 	next := make([]TargetRef, len(item.Targets))
 	moved := false
 	for i, t := range item.Targets {
-		if t.Kind == TargetCard && t.ID == from {
-			t.ID = to
+		if (t.Kind == TargetCard || t.Kind == TargetPlayer) && t.ID == from {
+			// #6159, CR 707.10d: `to` may be a player where `from` is a
+			// permanent, or the other way round (Radiant Performer).
+			t.Kind, t.ID = g.retargetKindLocked(to), to
 			moved = true
 		}
 		next[i] = t

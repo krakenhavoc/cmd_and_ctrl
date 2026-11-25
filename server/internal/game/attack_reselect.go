@@ -160,6 +160,13 @@ type ReselectAttackPrompt struct {
 	// (reselectAttackPicked), so a table waiting on it is a restore point;
 	// #4361 slice 6 retired the closure Then, which nothing set.
 	Next []uuid.UUID
+	// PlayersOnly narrows the choice to players: Capricopian's "reselect
+	// which PLAYER this creature is attacking" (#6170) offers no
+	// planeswalker or battle. Read as the prompt is built, so nothing of
+	// it is stored on the prompt; the attackers in Next are asked with
+	// every target, as Windshaper Planetar prints. False for every other
+	// card.
+	PlayersOnly bool
 }
 
 // ReselectAttackQuestion is the header of "you may reselect which player or
@@ -255,6 +262,9 @@ func (g *Game) askNextReselectLocked(chooser, source uuid.UUID, attackers []uuid
 // Caller must hold g.mu.
 func (g *Game) QueueReselectAttackForEffect(p ReselectAttackPrompt) uuid.UUID {
 	options := g.reselectAttackOptionsLocked(p.Attacker)
+	if p.PlayersOnly {
+		options = reselectPlayerOptionsOnly(options)
+	}
 	if options == nil {
 		// #4253 slice 10b: the rest of the chain is data, asked in turn.
 		g.askNextReselectLocked(p.Chooser, p.Source, p.Next)
@@ -319,4 +329,23 @@ func (g *Game) attackTargetLabelLocked(id uuid.UUID) string {
 		return c.Name
 	}
 	return "nothing"
+}
+
+// reselectPlayerOptionsOnly keeps the "keep attacking" option and the
+// players of a reselect prompt's options (#6170), or nil when no player
+// is left to reselect onto.
+func reselectPlayerOptionsOnly(options []ChoiceOption) []ChoiceOption {
+	if len(options) == 0 {
+		return nil
+	}
+	out := []ChoiceOption{options[0]}
+	for _, o := range options[1:] {
+		if o.Player != uuid.Nil {
+			out = append(out, o)
+		}
+	}
+	if len(out) == 1 {
+		return nil
+	}
+	return out
 }

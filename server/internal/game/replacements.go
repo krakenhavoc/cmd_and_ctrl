@@ -753,6 +753,11 @@ type ReplacementEvent struct {
 	// creatures its enchant clause admits, never a player or another kind of
 	// permanent. Seeded from ZoneEntryOptions.AuraHostsCreaturesOnly.
 	auraHostCreaturesOnly bool
+	// auraHostYouControlOnly is the putting effect's "attached to creatures
+	// you control" (Storm Herald): the Aura's host is chosen among the
+	// permanents its enchant clause admits that the entering player
+	// controls. Seeded from ZoneEntryOptions.AuraHostsYouControlOnly.
+	auraHostYouControlOnly bool
 
 	// entersAsAura is a card that comes back "as an Aura" (returned_aura.go,
 	// ADR 0154's 2026-10-23 amendment): CR 303.4f judges it an Aura with
