@@ -127,6 +127,8 @@ var activatedRowScopes = map[string]rowScope{
 	// #1297's exile-N-cards clause: its printed count and words, and
 	// the pile it names.
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	// #6121: where the graveyard pick goes, a printed fact of the clause.
+	"ExileCostToLibraryBottom": rowPublic,
 	// #4455's any-number form (Baron Helmut Zemo): the printed flag and
 	// the printed symbol floor.
 	"ExileCostAnyNumber": rowPublic, "ExileCostSymbolColor": rowPublic, "ExileCostSymbolMin": rowPublic,
@@ -189,6 +191,10 @@ var manaRowScopes = map[string]rowScope{
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
 	"ExileCostOptions":   rowHiddenUnlessGraveyard,
+	// #6085: Rosheen's "Reveal any number of …" — the clause is public,
+	// the matching hand cards are not.
+	"RevealCostAnyNumber": rowPublic, "RevealCostLabel": rowPublic,
+	"RevealCostOptions": rowHiddenZone,
 	// #5397: forage on a mana ability — the branches stay on the public
 	// row (a graveyard and a Food are public); publicCostBranches clears
 	// a discard branch's hand cards should one ever ship.

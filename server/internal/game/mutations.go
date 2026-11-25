@@ -1136,7 +1136,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #5390, CR 601.2b / 118.3: the offer's "remove N counters from
 	// among creatures you control", through the activation's own
 	// validator. Paid below, first of the board costs.
-	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params), params.XValue)
+	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castAltCounterPayment(card, alt, params), params.XValue)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad counter-removal payment",
 			"card_name", card.Name,
@@ -1747,6 +1747,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #3868: a mandatory "tap an untapped Vampire you control", on the
 	// same list, kept apart from the convoke / waterbend taps (CR 118.3).
+	// #6121: a mandatory "remove any number of counters from among
+	// creatures you control", through the activation's own validator.
+	// Paid below with the alternative cost's counters, first of the board
+	// costs.
+	addCounters, err := g.validateAdditionalCostCountersLocked(playerID, cardID, costPlan, alt, castCounterPayment(params))
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad additional counter-removal payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"counter_sources", len(params.CounterSourceIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateCastTapOthersLocked(playerID, cardID, costPlan, params.TeamworkIDs, params.TapIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad tap-a-permanent payment",
 			"card_name", card.Name,
@@ -2503,6 +2517,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// that is also sacrificed to the cast pays its counters before it
 	// goes. Not a replaceable event (payCounterRemovalLocked), and the
 	// total is recorded as an activation's is.
+	// #6121: or the mandatory additional cost's counters, which ride the
+	// same lists; never both (validateAdditionalCostCountersLocked).
+	if len(addCounters.parts) > 0 {
+		altCounters = addCounters
+	}
 	if len(altCounters.parts) > 0 {
 		if err := g.payCounterRemovalLocked(altCounters); err != nil {
 			slog.Error("cast_spell: counter removal failed after validation",
@@ -4200,6 +4219,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// #3961: and the announced tap count (Explosive Singularity's
 		// "{1} less for each creature tapped this way").
 		TappingToPay: len(params.TeamworkIDs),
+		// #6121: and the announced counter total (Hierophant Bio-Titan's
+		// "{2} less for each counter removed this way").
+		RemovingCounters: g.castCountersAnnouncedLocked(card, params),
 		// #5193: and the announced optional costs (Bite Down on Crime's
 		// "{2} less if evidence was collected").
 		OptionalCosts: params.OptionalCosts,
@@ -7139,7 +7161,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 			mark.controller = cause.Controller
 		}
 	}
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.PutOnLibraryBottom, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.PutOnLibraryBottom, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, exileCounterStamp{kind: ev.ExileCounter, n: ev.ExileCounterCount}, mark)
 	if moveErr == nil {
 		// #5876: whose ability exiled the permanent, once it is there.
 		g.stampExiledByAbilityLocked(g.Exile, ev.CardID, ev.moveCause())
@@ -7189,7 +7211,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // no verb of its own passes leaveMark{cause: LeaveCauseOther}.
 //
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter, bottom bool, exiledWith exileLink, exileCounter string, mark leaveMark) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter, bottom bool, exiledWith exileLink, exileCounter exileCounterStamp, mark leaveMark) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -7285,7 +7307,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		}
 	}
 	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability, g.Turn.Seq)
-	stampExileCounterLocked(destZone, cardID, exileCounter)
+	stampExileCounterLocked(destZone, cardID, exileCounter.kind, exileCounter.n)
 	move := Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,
@@ -8392,6 +8414,14 @@ type ManaAbilityParams struct {
 	// gives them. On the wire as `exile_permanent_ids`.
 	ExilePermanentIDs []uuid.UUID
 
+	// RevealIDs names the cards a "Reveal any number of … cards from your
+	// hand" mana ability reveals (#6085, ManaAbilityShape.RevealCards):
+	// Rosheen, Roaring Prophet. Any number of distinct candidates, none
+	// included; refused on an ability with no such clause. On the wire as
+	// `reveal_ids`, the name activate_ability uses for its reveal cost.
+	// The auto-tapper never sets it.
+	RevealIDs []uuid.UUID
+
 	// Colors names, up front, the colour each PICKING slot of the
 	// output adds (#1443): one entry per entry of
 	// ManaAbilityColorOptions, in output order — a painland's "{R|W}"
@@ -8726,6 +8756,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// pay two components (CR 118.3).
 	exiles, err := g.validateExileCardsCostLocked(playerID, cardID, ab.ExileCards, params.ExileIDs, discards)
 	if err != nil {
+		return err
+	}
+	// #6085: the cards a "Reveal any number of …" clause names (Rosheen,
+	// Roaring Prophet), validated by the SAME function the CR 602 reveal
+	// cost uses. Revealing moves nothing (CR 701.20b), so a card named
+	// here may also be one another component names.
+	if err := g.validateRevealCardsCostLocked(playerID, cardID, ab.RevealCards, params.RevealIDs, 0); err != nil {
 		return err
 	}
 	// #1228: the exile-this component, validated by the SAME rule one
@@ -9209,6 +9246,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		Label:   ab.Label,
 		Exhaust: ab.Exhaust,
 	})
+	// #6085: "Reveal any number of … cards from your hand" is the head
+	// of the effect (CR 605.3b, CR 701.20a): the named cards are shown to
+	// the table as the ability resolves, before the mana is made, and
+	// recorded for ProducedForPaid ("Add {C}{C} for each card revealed
+	// this way"). Nothing moves.
+	if len(params.RevealIDs) > 0 {
+		g.payRevealCardsCostLocked(playerID, cardID, ab.RevealCards, params.RevealIDs)
+		paid.Revealed = append([]uuid.UUID(nil), params.RevealIDs...)
+	}
 	// --- pre-rider ------------------------------------------------
 	//
 	// #1370: PreRider is everything the oracle text says BEFORE the
@@ -9910,6 +9956,11 @@ func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilit
 		return PaidCost{}
 	}
 	paid := g.maxCounterPaymentLocked(playerID, sourceID, ab.RemoveCounters)
+	// #6085: "Reveal any number of …" could reveal every candidate in the
+	// hand, so that is what "could produce" assumes (CR 106.7).
+	if RevealCardsAnyNumber(ab.RevealCards) {
+		paid.Revealed = g.RevealCardsOptionsForEffect(playerID, sourceID, ab.RevealCards)
+	}
 	// #6208: the UNTAP form names the permanents whose own output the
 	// ability reads — Benthic Explorers' "one mana of any type THAT LAND
 	// could produce". Without them here, every reader that asks what the

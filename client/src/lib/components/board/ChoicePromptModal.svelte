@@ -1124,6 +1124,7 @@
       payCards,
       snap.battlefield?.cards,
       snap.seats?.find((s) => s.id === viewerID),
+      snap.seats,
     );
   });
   // #6189: a payment whose picks are players lists the seats it names
@@ -1143,7 +1144,7 @@
     // An either payment is answered by a branch's own button, never by
     // a bare "Pay" (answerEither).
     payEither !== null ||
-      (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
+      (payCards !== null && !payCardsReady(payCards, payCardPicks, snap.seats)) ||
       (isPayUnless && energyShortBy(active, viewerEnergy) > 0) ||
       (isPayUnless &&
         ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)) ||
@@ -2935,7 +2936,7 @@
           {payEither ? "Choose how to pay" : "Pay"} — {active.pay_cost ?? "the cost"} — or don't and let
           {triggerSourceName(active.source)} do its thing.
         </p>
-        {#if !canPayCards(payCards)}
+        {#if !canPayCards(payCards, snap.seats)}
           <p class="prompt-hint">You don't have enough to pay this.</p>
         {:else if isPlayerPicks(payCards)}
           <!-- #6189: the payment names players, not cards. -->

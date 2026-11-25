@@ -318,6 +318,19 @@ type ExileCost struct {
 	// before it ("a card an opponent owns"), additive.
 	ExiledWithSource bool
 
+	// ToLibraryBottom is "Put N cards from your graveyard on the bottom of
+	// your library" as a CR 602 ability's cost (#6121, Battlefield
+	// Scrounger's threshold ability): the same pick out of the activator's
+	// own graveyard, but the payer puts each card on the bottom of its
+	// owner's library instead of exiling it. Not an exile, so nothing is
+	// recorded on PaidCost.Exiled and no exile watcher sees it. The cards
+	// go in the order named, which is the owner's arrangement (CR 401.4:
+	// the owner may arrange cards put in one position at the same time;
+	// the payer of this cost is their owner). A CR 602 ability with a
+	// printed count from the graveyard only; effects.Register refuses it
+	// anywhere else. False is every clause before it, additive.
+	ToLibraryBottom bool `json:",omitempty"`
+
 	// ManaValueAtLeast is the other floor an AnyNumber clause may read:
 	// the chosen cards' total mana value must be this or more. It is
 	// collect evidence N (CR 701.59a, #5193: "exile any number of cards
@@ -773,6 +786,33 @@ func (g *Game) payExileCardsCostToLocked(playerID, sourceID uuid.UUID, ids []uui
 			MustSettleNow: true,
 			ExiledWith:    ref,
 			// #1397: see payExileSelfCostLocked.
+			commanderAnswer: commanderAnswerFor(answers, id),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// payGraveyardToBottomCostLocked pays a ToLibraryBottom clause (#6121):
+// each named card leaves its owner's graveyard for the bottom of that
+// library, in the order named (CR 401.4), through the one exit primitive
+// with MustSettleNow like every other cost (CR 601.2h / 602.2b). It is
+// not an exile, so a commander put there is a commander put into a
+// library, and CR 903.9a's command-zone offer is asked with the answers
+// gathered before the payment (#1397).
+//
+// Caller must hold g.mu for writing and have validated the list.
+func (g *Game) payGraveyardToBottomCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+	for _, id := range ids {
+		if _, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:          id,
+			Dst:             ZoneLibrary,
+			ToBottom:        true,
+			Actor:           playerID,
+			Source:          sourceID,
+			Cause:           MoveCause{Kind: MoveCauseCost, Controller: playerID},
+			MustSettleNow:   true,
 			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {
 			return err

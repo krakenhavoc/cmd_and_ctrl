@@ -18,3 +18,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func RevealFromOpeningHandForYourFirstUpkeep(label string, body game.BodyRef) *game.OpeningHandAction {
 	return &game.OpeningHandAction{Reveal: &game.OpeningHandReveal{Label: label, Body: body}}
 }
+
+// RevealFromOpeningHand is the reveal for a moment other than "your first
+// upkeep" (ADR 0133 amendment 2026-11-25):
+//
+//	OpeningHand: RevealFromOpeningHand(game.RevealAtTheFirstUpkeep, label, body),
+//
+// game.RevealAtTheFirstUpkeep is "at the beginning of the first upkeep"
+// (Chancellor of the Dross); game.RevealAtYourFirstMainPhase is "at the
+// beginning of your first main phase of the game" (Chancellor of the
+// Tangle); game.RevealAtEachOpponentsFirstSpell is "when each opponent
+// casts their first spell of the game" (Chancellor of the Annex), one
+// trigger per opponent whose payload is the spell that opponent cast.
+func RevealFromOpeningHand(at game.OpeningHandRevealAt, label string, body game.BodyRef) *game.OpeningHandAction {
+	return &game.OpeningHandAction{Reveal: &game.OpeningHandReveal{At: at, Label: label, Body: body}}
+}

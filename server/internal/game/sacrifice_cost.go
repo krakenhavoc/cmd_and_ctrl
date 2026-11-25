@@ -115,6 +115,7 @@ func SacrificeCountFromX(spec *TargetSpec) bool {
 // The three shapes, and the whole of the variable-count design:
 //
 //	fixed        Min == Max == N        lo = hi = N
+//	range        0 <= Min < Max         lo = Min, hi = Max (#6121, "up to three")
 //	one or more  Min >= 1, Max == 0     lo = Min, hi = 0   (open)
 //	any number   Min == Max == 0        lo = 0,   hi = 0   (open, ADR 0100)
 //	X            CountFromX             lo = hi = x
@@ -146,6 +147,19 @@ func SacrificeCostBounds(spec *TargetSpec, x int) (lo, hi int) {
 	if spec.Max < 1 && spec.Min >= 1 {
 		// "One or more": a floor the card prints and no ceiling.
 		return spec.Min, 0
+	}
+	if spec.Max >= 1 && spec.Min < spec.Max {
+		// A printed range (#6121): "Sacrifice up to three permanents"
+		// (Baba Lysaga, Night Witch) is a floor of zero and a ceiling of
+		// three, and "one or two" a floor of one. CR 602.2b through
+		// 601.2b: the activator announces how many within the range.
+		// Before #6121 a range read as its ceiling, which no card
+		// declared.
+		lo := spec.Min
+		if lo < 0 {
+			lo = 0
+		}
+		return lo, spec.Max
 	}
 	return n, n
 }

@@ -107,6 +107,24 @@ type RevealCost struct {
 	// hand". Read with Card.IsColorless; combines with the other
 	// qualities by AND.
 	Colorless bool `json:",omitempty"`
+	// XInManaCost narrows the candidates to cards with {X} in their mana
+	// cost (CR 107.3, CR 202.1): Rosheen, Roaring Prophet's "Reveal any
+	// number of cards with {X} in their mana cost in your hand" (#6085).
+	// The printed mana cost of the card in hand, parsed (CardHasXInManaCost).
+	// Combines with the other qualities by AND.
+	XInManaCost bool `json:",omitempty"`
+}
+
+// CardHasXInManaCost reports whether `c`'s mana cost has an {X} in it
+// (CR 107.3, CR 202.1): the cost printed on the card, parsed, so an {X}
+// in an additional, alternative or activation cost does not count. A card
+// with no mana cost (a land) has none.
+func CardHasXInManaCost(c Card) bool {
+	if c.ManaCost == "" {
+		return false
+	}
+	cost, err := ParseCost(c.ManaCost)
+	return err == nil && cost.XSlots > 0
 }
 
 // count is how many objects one payment of the clause beholds: Count,
@@ -168,6 +186,9 @@ func (rc *RevealCost) matches(c Card) bool {
 		return false
 	}
 	if rc.Colorless && !c.IsColorless() {
+		return false
+	}
+	if rc.XInManaCost && !CardHasXInManaCost(c) {
 		return false
 	}
 	return true

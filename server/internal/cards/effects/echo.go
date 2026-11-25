@@ -153,6 +153,9 @@ func (p UpkeepPayment) times(n int, noun, plural string) UpkeepPayment {
 		return DrawPayment(count)
 	case game.PayActionExileLibraryTop:
 		return ExileLibraryTopPayment(count)
+	case game.PayActionGraveyardToLibraryBottom:
+		// #6121: the group stays the printed one; only the total grows.
+		return GraveyardToLibraryBottomPayment(count, p.Action.GroupSize)
 	}
 	return SacrificePayment(count, noun, plural, p.Action.Of)
 }

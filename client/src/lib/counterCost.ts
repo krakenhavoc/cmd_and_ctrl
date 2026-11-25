@@ -260,3 +260,12 @@ export function counterPaymentParams(
 export function counterChoiceKey(c: CounterChoice): string {
   return `${c.cardID}\u0000${c.kind}`;
 }
+
+// additionalCostAsksCounters reports whether a cast's additional cost
+// removes counters (#6121, Hierophant Bio-Titan's "you may remove any
+// number of +1/+1 counters from among creatures you control") and there
+// is a counter to choose. With none on the board the only payment is
+// none, so there is nothing to ask.
+export function additionalCostAsksCounters(cost: CounterCostShape | undefined): boolean {
+  return !!cost && hasCounterCost(cost) && (cost.counter_cost_options ?? []).length > 0;
+}
