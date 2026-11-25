@@ -54,12 +54,14 @@ func formOfTheDinosaurStrike(g *game.Game, item *game.StackItem) error {
 	if target == uuid.Nil {
 		return nil
 	}
+	if _, ok := g.LookupCardForEffect(target); !ok {
+		return nil
+	}
+	g.RecomputeLayersIfStaleLocked()
 	c, ok := g.LookupCardForEffect(target)
 	if !ok {
 		return nil
 	}
-	g.RecomputeLayersIfStaleLocked()
-	c, _ = g.LookupCardForEffect(target)
 	power := c.CurrentPower()
 	ref := effects.DamagedCreatureRef(g, target)
 	if err := (effects.DealDamage{Source: item.SourceCardID, Target: target, Amount: 15}).Apply(ctx); err != nil {
