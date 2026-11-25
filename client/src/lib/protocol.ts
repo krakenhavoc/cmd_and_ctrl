@@ -4995,6 +4995,9 @@ export interface LegalTargetsView {
   // Manipulator), not the one collected in the X prompt. A card with no
   // entry in the map meets no bound.
   mana_value_equals_x?: boolean;
+  // #6122: "with power X" (Ent-Draught Basin), narrowed from `powers` by
+  // an EXACT match.
+  power_equals_x?: boolean;
   power_at_most_x?: boolean;
   toughness_at_most_x?: boolean;
   x_from_counters_removed?: boolean;

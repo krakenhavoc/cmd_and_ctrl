@@ -1268,7 +1268,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		otherX := !g.tapCostForCastParamsLocked(playerID, card, params).Empty()
 		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
-			otherX = otherX || ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
+			otherX = otherX || ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) ||
+				ReturnToHandCountFromX(ac.ReturnToHand)
 		}
 		if err := validateOptionalCostX(optionalCosts, params.OptionalCosts, params.XValue, paidHasX, otherX); err != nil {
 			slog.Warn("cast_spell rejected: X does not fit the optional cost",
@@ -1805,7 +1806,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #5247: and the return-a-permanent cost, with every permanent another
 	// component of this cast already takes off the battlefield (CR 118.3).
-	if err := g.validateCastReturnToHandLocked(playerID, cardID, costPlan, params.ReturnIDs, castReturnAlsoSpent(params)); err != nil {
+	if err := g.validateCastReturnToHandLocked(playerID, cardID, costPlan, params.ReturnIDs, castReturnAlsoSpent(params), params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad return-a-permanent payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,

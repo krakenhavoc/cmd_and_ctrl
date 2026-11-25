@@ -930,12 +930,13 @@ export function withinX(lt: LegalTargetsView, choices?: CastChoices): string[] {
   const cards = lt.cards ?? [];
   let values: Record<string, number> | undefined;
   if (lt.mana_value_at_most_x || lt.mana_value_equals_x) values = lt.mana_values;
-  else if (lt.power_at_most_x) values = lt.powers;
+  else if (lt.power_at_most_x || lt.power_equals_x) values = lt.powers;
   else if (lt.toughness_at_most_x) values = lt.toughnesses;
   else return cards;
   const x = lt.x_from_counters_removed ? (choices?.countersRemoved ?? 0) : (choices?.xValue ?? 0);
   const vals = values ?? {};
-  const exact = lt.mana_value_equals_x === true;
+  // #6122: "with power X" (Ent-Draught Basin) is exact too.
+  const exact = lt.mana_value_equals_x === true || lt.power_equals_x === true;
   return cards.filter((id) => vals[id] !== undefined && (exact ? vals[id] === x : vals[id] <= x));
 }
 
@@ -1736,6 +1737,10 @@ export interface ClaimedExilePermanentCost {
   label: string;
   count: number;
   options: string[];
+  // #6122: "return X Swamps you control" (Infernal Harvest) — any number
+  // of the options, none included, and the number picked is the cast's
+  // x_value. `count` is 0 then.
+  countFromX?: boolean;
 }
 
 // castExilePermanentCost is the exile-a-permanent cost a cast pays, if
@@ -1775,6 +1780,14 @@ function claimedPermanentCost(
   label: string | undefined,
 ): ClaimedExilePermanentCost | undefined {
   if (!opts) return undefined;
+  if (opts.count_from_x) {
+    return {
+      label: label ?? "permanents you control",
+      count: 0,
+      options: opts.cards ?? [],
+      countFromX: true,
+    };
+  }
   return {
     label: label ?? "a permanent you control",
     count: opts.min ?? 1,
@@ -1912,8 +1925,22 @@ export function castHandExileCost(
 // "Remove X loyalty counters from among planeswalkers you control"),
 // which the server ships as a counter block with `counter_cost_variable`:
 // the counters picked are the X.
+//
+// #6122: so does "Exile X cards from your graveyard" (Summons of
+// Saruman's flashback), shipped as `pay_options.count_from_x`: the
+// number of cards picked is the X.
 export function altCostPayDefinesX(offer: AlternativeCostView | undefined): boolean {
-  return offer?.pay_options?.mana_value_equals_x === true || altCostCountersDefineX(offer);
+  return (
+    offer?.pay_options?.mana_value_equals_x === true ||
+    altCostPayCountIsX(offer) ||
+    altCostCountersDefineX(offer)
+  );
+}
+
+// altCostPayCountIsX reports an offer whose card count is the spell's X
+// (#6122): any number of the options, none included.
+export function altCostPayCountIsX(offer: AlternativeCostView | undefined): boolean {
+  return offer?.pay_options?.count_from_x === true;
 }
 
 // altCostCountersDefineX reports an offer whose counter removal is the
@@ -1939,6 +1966,8 @@ export function altCostPayX(
   offer: AlternativeCostView | undefined,
   picked: string[],
 ): number | undefined {
+  // #6122: "Exile X cards" — the number picked is the X.
+  if (altCostPayCountIsX(offer)) return picked.length;
   if (offer?.pay_options?.mana_value_equals_x !== true || picked.length !== 1) return undefined;
   return offer.pay_options.mana_values?.[picked[0]];
 }

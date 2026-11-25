@@ -255,3 +255,34 @@ func TestXBoundFlagsAreMutuallyExclusiveInPractice(t *testing.T) {
 		t.Error("mana value 3 should meet the bound")
 	}
 }
+
+// PowerEqualsX (#6122, Ent-Draught Basin's "target creature with power
+// X"): X is announced before the targets are chosen (CR 601.2b-c via CR
+// 602.2b). Unbound, the clause admits every creature; bound to X it
+// admits power X exactly, read as CR 208.1 has it (counters included).
+func TestPowerEqualsXBindsToTheAnnouncedX(t *testing.T) {
+	spec := (&TargetSpec{Zones: []ZoneKind{ZoneBattlefield}, Min: 1, Max: 1}).WithPowerEqualsX()
+	if got := boundStatistic(spec); got != BoundStatPower {
+		t.Fatalf("statistic %q, want power", got)
+	}
+	two := Card{TypeLine: "Creature — Bear", Power: 2, Toughness: 2}
+	three := Card{TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Counters: map[string]int{CounterPlusOne: 1}}
+	four := Card{TypeLine: "Creature — Bear", Power: 4, Toughness: 4}
+	if !spec.xBoundAdmits(two) {
+		t.Error("before X is bound, the clause admits every creature")
+	}
+	steps := AnnouncedClauses(spec, nil, nil)
+	bindStepsX(steps, 3)
+	if !steps[0].Clause.xBoundAdmits(three) {
+		t.Error("bound to X=3: a 2/2 with a +1/+1 counter has power 3 and must qualify")
+	}
+	if steps[0].Clause.xBoundAdmits(two) {
+		t.Error("bound to X=3: power 2 must not qualify (exact, not \"or less\")")
+	}
+	if steps[0].Clause.xBoundAdmits(four) {
+		t.Error("bound to X=3: power 4 must not qualify")
+	}
+	if spec.xBoundSet {
+		t.Error("binding writes the announcement's copy, never the catalog spec")
+	}
+}
