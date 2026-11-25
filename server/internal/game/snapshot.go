@@ -1111,7 +1111,10 @@ type cardSnapshot struct {
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
 	DurationCopyBase *PrintedValues `json:"durationCopyBase,omitempty"`
-	NeedsEffect      bool           `json:"needsEffect"`
+	// FullTextBase is Card.FullTextBase (#6233): the printed values
+	// under a full-text overlay. Additive; absent means none applies.
+	FullTextBase *PrintedValues `json:"fullTextBase,omitempty"`
+	NeedsEffect  bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
 	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
@@ -3272,6 +3275,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,
@@ -4472,6 +4476,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,

@@ -516,6 +516,12 @@ type CardDef struct {
 	// battlefield through CatalogAbilityKey; see
 	// activate_as_though_haste.go.
 	ActivateAsThoughHasteOthers bool
+	// FullTextOfTopGraveyardCreature is this permanent's printed "As
+	// long as the top card of your graveyard is a creature card, this
+	// creature has the full text of that card" (CR 612.6, Volrath's
+	// Shapeshifter, #6233). nil is none. Read from the battlefield by
+	// the layer-1 materialiser; see full_text.go.
+	FullTextOfTopGraveyardCreature *FullTextStatic
 	// ExtraVote is this permanent's printed "While voting, you get an
 	// additional vote" or "you may vote an additional time" (CR
 	// 701.38d, ADR 0146). Read from the battlefield through

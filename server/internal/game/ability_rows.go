@@ -304,6 +304,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "YourPlaneswalkersLoyaltyTwiceEachTurn", label: boolRow("You may activate the loyalty abilities of planeswalkers you control twice each turn rather than only once.")},
 	{field: "ActivateAsThoughHaste", label: boolRow("You may activate abilities of creatures you control as though those creatures had haste.")},
 	{field: "ActivateAsThoughHasteOthers", label: boolRow("You may activate abilities of other creatures you control as though those creatures had haste.")},
+	{field: "FullTextOfTopGraveyardCreature", label: fullTextRows},
 	{field: "ExtraVote", label: extraVoteRows},
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
 	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
@@ -409,6 +410,14 @@ func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, na
 		out = append(out, AbilityRow{Kind: AbilityRowStatic, Label: text, Generic: generic})
 	}
 	return out
+}
+
+// fullTextRows labels a printed full-text static (#6233, CR 612.6).
+func fullTextRows(v reflect.Value) []string {
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
+		return []string{"As long as the top card of your graveyard is a creature card, this creature has the full text of that card."}
+	}
+	return nil
 }
 
 func boolRow(label string) func(reflect.Value) []string {
