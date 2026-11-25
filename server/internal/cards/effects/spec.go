@@ -1994,6 +1994,11 @@ type Spec struct {
 	// Such a permanent joins the same prompt the caps raise, exempt
 	// from the rule that untapping is otherwise mandatory.
 	UntapOptOuts []game.UntapOptOut
+	// UntapTypeChoices declares "each player chooses artifact,
+	// creature, or land during their untap step. That player can untap
+	// only permanents of the chosen type this step" (Storage Matrix,
+	// #6218; game.UntapTypeChoice).
+	UntapTypeChoices []game.UntapTypeChoice
 
 	// DrawStep declares the printed clause "you draw a card during
 	// each opponent's draw step" — Teferi, Who Slows the Sunset's

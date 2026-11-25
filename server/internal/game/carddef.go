@@ -312,6 +312,10 @@ type CardDef struct {
 	CounterRemovalLocks  []CounterRemovalLock
 	UntapCaps            []UntapCap
 	UntapOptOuts         []UntapOptOut
+	// UntapTypeChoices is Storage Matrix's "each player chooses
+	// artifact, creature, or land during their untap step" (#6218,
+	// untap_type_choice.go).
+	UntapTypeChoices []UntapTypeChoice
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -1211,6 +1215,12 @@ func init() {
 	CatalogUntapOptOuts = func(key string) []UntapOptOut {
 		if d := catalogDef(key); d != nil {
 			return d.UntapOptOuts
+		}
+		return nil
+	}
+	CatalogUntapTypeChoices = func(key string) []UntapTypeChoice {
+		if d := catalogDef(key); d != nil {
+			return d.UntapTypeChoices
 		}
 		return nil
 	}

@@ -279,6 +279,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CounterRemovalLocks", fallback: "Counters can't be removed", ownLabel: true},
 	{field: "UntapCaps", fallback: "Limits untapping", ownLabel: true},
 	{field: "UntapOptOuts", fallback: "May choose not to untap", ownLabel: true},
+	{field: "UntapTypeChoices", fallback: "Untap only a chosen card type", ownLabel: true},
 	{field: "DrawStep", fallback: "Extra draw", ownLabel: true},
 	{field: "CastRestrictions", fallback: "Casting restriction", ownLabel: true},
 	{field: "LandPlayRestrictions", fallback: "Land-play restriction", ownLabel: true},
