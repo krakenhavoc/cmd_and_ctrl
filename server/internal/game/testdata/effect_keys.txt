@@ -170,6 +170,7 @@ body dr-leonard-mccoy/when-it-dies-this-turn
 body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
+body draw/s82-old-b205-azra-oddsmaker-two
 body draw/the-inner-light-that-many
 body draw/two-cards-s82-old-b134
 body draw/viviens-stampede
@@ -731,6 +732,7 @@ choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
 choose choose-cards/aziza-mage-tower-captain-tap-three
+choose choose-cards/azra-oddsmaker-chosen
 choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
 choose choose-cards/back-for-seconds-pick
@@ -1465,6 +1467,7 @@ choose choose-cards/reanimate-one-milled
 choose choose-cards/reckoner-shakedown-counters
 choose choose-cards/recruit-discarded
 choose choose-cards/redcap-raiders-tap
+choose choose-cards/regnas-sanction-keep
 choose choose-cards/reinterpret-cast
 choose choose-cards/rejoin-the-fight-pick
 choose choose-cards/relentless-pursuit-take
@@ -2506,6 +2509,7 @@ option option-pick/intrude-on-the-mind-chooser
 option option-pick/invasion-of-arcavios-zones
 option option-pick/itazura-lingering-wick-opponent
 option option-pick/kharn-the-betrayer-opponent
+option option-pick/khorvaths-fury-friend-or-foe
 option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
 option option-pick/lantern-of-revealing-bottom
@@ -2570,6 +2574,7 @@ option option-pick/rattleback-apothecary-keyword
 option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
 option option-pick/realms-uncharted-opponent
+option option-pick/regnas-sanction-friend-or-foe
 option option-pick/rejoinder-tap-or-untap
 option option-pick/remove-a-counter-of-your-choice
 option option-pick/reselect-attack
@@ -2720,6 +2725,7 @@ payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
 payunless pay-unless/aurora-shifter-copy
 payunless pay-unless/avatar-b30-moku-pump-and-haste
+payunless pay-unless/azra-oddsmaker-choose
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/battlemages-bracers-copy-ability
@@ -2966,6 +2972,7 @@ payunless pay-unless/s82-old-b022-leshracs-sigil
 payunless pay-unless/s82-old-b024-depala-reveal
 payunless pay-unless/s82-old-b046-lisette-counters
 payunless pay-unless/s82-old-b046-valentin-pest
+payunless pay-unless/s82-old-b205-tenacious-dead-return
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy

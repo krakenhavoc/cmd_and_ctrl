@@ -727,4 +727,6 @@ var TokenTable = map[string]game.Card{
 	"2/2 white and blue and black and red and green Citizen": {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 2, Toughness: 2, Colors: []string{"W", "U", "B", "R", "G"}},
 	// S82 OLD batch 172 (#5520): Tolsimir, Friend to Wolves's Voja.
 	"3/3 green and white Legendary Wolf named Voja, Friend to Elves": {Name: "Voja, Friend to Elves", TypeLine: "Token Legendary Creature — Wolf", Power: 3, Toughness: 3, Colors: []string{"G", "W"}},
+	// S82 OLD batch 205 (#5529): Quest for the Gravelord's Zombie Giant.
+	"5/5 black Zombie Giant": {Name: "Zombie Giant", TypeLine: "Token Creature — Zombie Giant", Power: 5, Toughness: 5, Colors: []string{"B"}},
 }
