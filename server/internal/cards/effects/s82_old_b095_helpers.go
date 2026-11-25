@@ -9,20 +9,6 @@ import (
 // Warrior, and Wizard" type line, and a one-target "can't be blocked this
 // turn" ability body.
 
-// OldB095PartyCostsLess is "This spell costs {1} less to cast for each
-// creature in your party" (Tazri, Shatterskull Minotaur, Veteran Adventurer,
-// Deadly Alliance, Journey to Oblivion). The party (CR 700.8) is counted as
-// the spell is cast (CR 601.2f), through the layers.
-func OldB095PartyCostsLess() game.CostModifier {
-	return CostsLessEach(func(q game.CostQuery) int {
-		party := 0
-		if q.Game != nil {
-			party = FinB9PartySize(q.Game, q.Controller)
-		}
-		return party
-	}, "This spell costs {1} less to cast for each creature in your party.")
-}
-
 // OldB095AlsoPartyTypes is "<this> is also a Cleric, Rogue, Warrior, and
 // Wizard" (Stonework Packbeast, Veteran Adventurer): a layer 4 static that
 // adds the four party creature types to the card itself (CR 205.3d, 613.1d).

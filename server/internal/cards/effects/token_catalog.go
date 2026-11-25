@@ -595,6 +595,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Toggo, Goblin Weaponsmith's Rock (S82 OLD batch 77, #5507).
 	printedS82OldB077RockToken,
+	// Relic Robber's Goblin Construct (Zendikar Rising, S82 OLD batch 097, #5508).
+	printedS82OldB097GoblinConstructToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

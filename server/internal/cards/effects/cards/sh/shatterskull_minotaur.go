@@ -23,6 +23,6 @@ func init() {
 		Name:              "Shatterskull Minotaur",
 		Completeness:      effects.CompletenessFull,
 		PrintedKeywords:   []string{"haste"},
-		SelfCostModifiers: []game.CostModifier{effects.OldB095PartyCostsLess()},
+		SelfCostModifiers: []game.CostModifier{effects.S82OldB089PartyCostReduction()},
 	})
 }

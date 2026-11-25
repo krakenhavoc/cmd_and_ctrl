@@ -24,6 +24,6 @@ func init() {
 		Completeness:      effects.CompletenessFull,
 		PrintedKeywords:   []string{"vigilance"},
 		Static:            []game.StaticAbility{effects.OldB095AlsoPartyTypes("Veteran Adventurer")},
-		SelfCostModifiers: []game.CostModifier{effects.OldB095PartyCostsLess()},
+		SelfCostModifiers: []game.CostModifier{effects.S82OldB089PartyCostReduction()},
 	})
 }

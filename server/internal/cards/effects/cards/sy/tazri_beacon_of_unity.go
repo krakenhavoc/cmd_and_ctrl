@@ -26,7 +26,7 @@ func init() {
 		OracleID:          "ce703e1d-b7b2-4b8b-a12c-714fc152d0a5",
 		Name:              "Tazri, Beacon of Unity",
 		Completeness:      effects.CompletenessFull,
-		SelfCostModifiers: []game.CostModifier{effects.OldB095PartyCostsLess()},
+		SelfCostModifiers: []game.CostModifier{effects.S82OldB089PartyCostReduction()},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2/U}{2/B}{2/R}{2/G}: Look at the top six cards of your library. You may reveal up to two Cleric, Rogue, Warrior, Wizard, and/or Ally cards from among them and put them into your hand. Put the rest on the bottom of your library in a random order.",
 			Purpose: game.Purpose{Draws: 2, Answers: game.AnswerValue},

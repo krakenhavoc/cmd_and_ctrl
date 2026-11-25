@@ -21,7 +21,7 @@ func init() {
 		OracleID:          "0d2cdcc6-da65-4f66-ba38-111efad44919",
 		Name:              "Deadly Alliance",
 		Completeness:      effects.CompletenessFull,
-		SelfCostModifiers: []game.CostModifier{effects.OldB095PartyCostsLess()},
+		SelfCostModifiers: []game.CostModifier{effects.S82OldB089PartyCostReduction()},
 		Targets:           effects.TargetPermanent("target creature or planeswalker", effects.Or(effects.Creature(), effects.Planeswalker())),
 		OnResolve:         effects.DestroyTheTargetPermanent,
 	})

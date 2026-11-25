@@ -24,7 +24,7 @@ func init() {
 		OracleID:          "31e8c1e1-520a-4e64-a221-203afc819fcf",
 		Name:              "Journey to Oblivion",
 		Completeness:      effects.CompletenessFull,
-		SelfCostModifiers: []game.CostModifier{effects.OldB095PartyCostsLess()},
+		SelfCostModifiers: []game.CostModifier{effects.S82OldB089PartyCostReduction()},
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(effects.WhenThisEnters("Journey to Oblivion — exile target nonland permanent an opponent controls until this enchantment leaves the battlefield",
 				effects.ExileChosenTargetUntilThisLeaves("Journey to Oblivion — the exiled card returns when Journey to Oblivion leaves the battlefield")),
