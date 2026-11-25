@@ -314,6 +314,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
 	{field: "OpponentsSearchTopN", label: searchTopNRows},
 	{field: "OpponentsCantSearchLibraries", label: boolRow("Your opponents can't search libraries.")},
+	{field: "PlayersCantSearchLibraries", label: boolRow("Players can't search libraries.")},
 	{field: "AttackingPlayerChoosesBlocks", label: boolRow("The attacking player chooses how each creature blocks each combat.")},
 	{field: "DrawsFromBottom", label: boolRow("You draw cards from the bottom of your library rather than the top.")},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},

@@ -1524,6 +1524,13 @@ type Spec struct {
 	// its abilities blocks nothing.
 	OpponentsCantSearchLibraries bool
 
+	// PlayersCantSearchLibraries declares Leonin Arbiter's "Players can't
+	// search libraries" (#6247): every player, its controller included.
+	// With an IgnorableEffect whose ManaCost is "{2}" it is the whole
+	// card: "Any player may pay {2} for that player to ignore this effect
+	// until end of turn" (CR 116.2d, game/ignore_effect.go).
+	PlayersCantSearchLibraries bool
+
 	// AttackingPlayerChoosesBlocks declares Invasion Plans' "The attacking
 	// player chooses how each creature blocks each combat": in every
 	// declare blockers step the active player declares the blocks of every

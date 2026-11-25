@@ -665,6 +665,16 @@ Snapshot impact: none. The emblem def is catalog data and the serial registry is
 
 Snapshot impact: one new mod kind (`ignoreEffect`), additive within v9, and a new corpus board (`damping_engine_ignore`). No fixture is edited.
 
+## Amendment 2026-11-25 ([#6247](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6247)): ignoring an effect by paying mana (Leonin Arbiter)
+
+**Owner decision 2026-11-24 on #6247:** build it, and ship the card Full. What changed, and why: the #1986 amendment above made the ignore's cost a sacrifice and nothing else ("There is no mana"), because Damping Engine was the only card. Leonin Arbiter is the second: "Players can't search libraries. Any player may pay {2} for that player to ignore this effect until end of turn." The same CR 116.2d special action, with a mana cost. The Quenchable Fire half of the issue (CR 116.2c, stopping a delayed trigger) moved to #6220 and is not decided here.
+
+1. **The price.** `IgnorableEffect.ManaCost` (Scryfall braces; `effects.Register` refuses one that does not parse). With it, the offer names no sacrifice candidates and carries `ManaCost`. The action refuses a `sacrifice_id` and pays the mana through `payAbilityManaCostLocked`, with `strict` and `auto_tap` and the special-action spend context, as foretell and the rest do (§3 of the #1986 amendment: "no mana" now means "no mana unless the card prints it"). A refused payment leaves no record.
+2. **The effect it switches off.** `CardDef.PlayersCantSearchLibraries` (`Spec.PlayersCantSearchLibraries`) is "Players can't search libraries" for every player, its controller included. It is read in `searchCantLocked` beside Stranglehold's opponents-only ban, so it lives in the one search primitive, and a player with a live `ignoreEffect` record naming that object is not stopped (CR 701.23a: a player who can't search finds nothing, and the rest of the instruction still happens). `Register` counts the flag as the ignorable restriction, so the card's `IgnorableEffect` is not refused.
+3. **The wire.** `IgnorableEffectView.mana_cost` (omitempty). The client's button pays at once with `strict` and `auto_tap` and opens no picker (label `ignoreEffectPay`). The enumerator offers the move only when the seat can pay it, in the same spend context. The heuristic keeps `valueOfIgnoreEffect`: it pays only when the ignore unblocks a card in hand that names the source, so a bot under an Arbiter keeps its mana. The search is a resolution step the bot can't price before it casts.
+
+No snapshot change: the record is the existing `ignoreEffect` kind.
+
 ## Amendment 2026-10-23 ([#1997](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1997)): six of the world enchantments §8 left out
 
 §8's check found nine uncatalogued world enchantments that each need one shape of their own (Revelation's shipped with ADR 0199). Six of them are built here, one small shape each. None of them is shared, so each is the smallest thing that says its card's text.

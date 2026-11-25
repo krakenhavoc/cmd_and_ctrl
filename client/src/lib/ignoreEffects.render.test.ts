@@ -113,4 +113,32 @@ describe("IgnoreEffects", () => {
     expect(rows(container)).toHaveLength(0);
     expect(sent).toEqual([]);
   });
+
+  // #6247: Leonin Arbiter's "Any player may pay {2} for that player to
+  // ignore this effect until end of turn". A row with a mana cost pays at
+  // once, auto-tapped, and opens no picker.
+  it("pays a mana-cost ignore at once, with no sacrifice", () => {
+    const arbiter: IgnorableEffectView = {
+      source_id: "engine",
+      source_name: "Leonin Arbiter",
+      label: "Pay {2}: ignore Leonin Arbiter's effect until end of turn",
+      sacrifice_ids: [],
+      mana_cost: "{2}",
+    };
+    const { container, sent } = mount([arbiter]);
+    const btn = container.querySelector<HTMLButtonElement>(
+      "button[aria-label='Pay to ignore Leonin Arbiter']",
+    );
+    expect(btn).not.toBeNull();
+    expect(btn!.textContent).toContain("{2}");
+    click(btn!);
+    expect(rows(container)).toHaveLength(0);
+    expect(sent).toEqual([
+      {
+        type: "special_action",
+        params: { card_id: "engine", kind: "ignore_effect", strict: true, auto_tap: true },
+        player: ME,
+      },
+    ]);
+  });
 });

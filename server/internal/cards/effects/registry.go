@@ -1320,6 +1320,9 @@ func CheckIgnorableEffect(spec Spec) {
 	for _, r := range spec.LandPlayRestrictions {
 		marked = marked || r.Ignorable
 	}
+	// #6247: "Players can't search libraries" is the ignorable effect
+	// itself (Leonin Arbiter); searchCantLocked asks the ignore record.
+	marked = marked || spec.PlayersCantSearchLibraries
 	ig := spec.IgnorableEffect
 	if ig == nil {
 		if marked {
@@ -1329,6 +1332,11 @@ func CheckIgnorableEffect(spec Spec) {
 	}
 	if ig.Label == "" || ig.Applies == nil {
 		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect without its Label or Applies", spec.Name))
+	}
+	if ig.ManaCost != "" {
+		if _, err := game.ParseCost(ig.ManaCost); err != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect with an unparseable ManaCost %q: %v", spec.Name, ig.ManaCost, err))
+		}
 	}
 	if !marked {
 		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect but no restriction is Ignorable, so ignoring it would switch nothing off", spec.Name))

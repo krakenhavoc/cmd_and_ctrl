@@ -14,6 +14,11 @@
   // timing and no strict flag to send; the server refuses a pick that is
   // not on its list, so the picker cannot offer a wrong one.
   //
+  // #6247: a row with a `mana_cost` (Leonin Arbiter's "{2}") is paid in
+  // mana instead. Its button sends
+  //   special_action { card_id, kind: "ignore_effect", strict, auto_tap }
+  // at once, with no picker: there is nothing to choose.
+  //
   // Renders nothing when no effect bears on the seat, which is almost
   // always.
   import type {
@@ -49,6 +54,18 @@
     picking ? orderSacrificeOptions(view.battlefield.cards, picking.sacrifice_ids) : [],
   );
 
+  function take(row: IgnorableEffectView): void {
+    if (!row.mana_cost) {
+      picking = row;
+      return;
+    }
+    sendAction(
+      "special_action",
+      { card_id: row.source_id, kind: "ignore_effect", strict: true, auto_tap: true },
+      seatID,
+    );
+  }
+
   function confirm(ids: string[]): void {
     const row = picking;
     picking = null;
@@ -68,10 +85,12 @@
         type="button"
         class="ignore"
         title={row.label}
-        aria-label={L.ignoreEffect(row.source_name)}
-        onclick={() => (picking = row)}
+        aria-label={row.mana_cost
+          ? L.ignoreEffectPay(row.source_name)
+          : L.ignoreEffect(row.source_name)}
+        onclick={() => take(row)}
       >
-        Ignore {row.source_name}
+        Ignore {row.source_name}{row.mana_cost ? ` (${row.mana_cost})` : ""}
       </button>
     {/each}
   </div>

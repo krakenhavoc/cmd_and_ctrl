@@ -22,8 +22,13 @@ type IgnorableEffectView struct {
 	// ignore Damping Engine's effect until end of turn").
 	Label string `json:"label"`
 	// SacrificeIDs are the permanents the seat may give up, in the order
-	// a "choose for me" would take them. Never empty.
+	// a "choose for me" would take them. Never empty for a sacrifice
+	// cost; empty when the ignore is paid in mana.
 	SacrificeIDs []string `json:"sacrifice_ids"`
+	// ManaCost is the ignore's price in mana (#6247, Leonin Arbiter's
+	// "{2}"), fired as `special_action {kind: "ignore_effect", card_id,
+	// auto_tap: true}` with no sacrifice. Absent for a sacrifice cost.
+	ManaCost string `json:"mana_cost,omitempty"`
 }
 
 // viewOfIgnorableEffects projects the seat's CR 116.2d offers from the
@@ -43,6 +48,7 @@ func viewOfIgnorableEffects(g *game.Game, seat uuid.UUID) []IgnorableEffectView 
 			SourceName:   offer.SourceName,
 			Label:        offer.Label,
 			SacrificeIDs: ids,
+			ManaCost:     offer.ManaCost,
 		})
 	}
 	return out
