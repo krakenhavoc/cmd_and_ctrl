@@ -7127,7 +7127,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 			mark.controller = cause.Controller
 		}
 	}
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.PutOnLibraryBottom, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.PutOnLibraryBottom, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, exileCounterStamp{kind: ev.ExileCounter, n: ev.ExileCounterCount}, mark)
 	if moveErr == nil {
 		// #5876: whose ability exiled the permanent, once it is there.
 		g.stampExiledByAbilityLocked(g.Exile, ev.CardID, ev.moveCause())
@@ -7177,7 +7177,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // no verb of its own passes leaveMark{cause: LeaveCauseOther}.
 //
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter, bottom bool, exiledWith exileLink, exileCounter string, mark leaveMark) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter, bottom bool, exiledWith exileLink, exileCounter exileCounterStamp, mark leaveMark) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -7273,7 +7273,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		}
 	}
 	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability, g.Turn.Seq)
-	stampExileCounterLocked(destZone, cardID, exileCounter)
+	stampExileCounterLocked(destZone, cardID, exileCounter.kind, exileCounter.n)
 	move := Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,

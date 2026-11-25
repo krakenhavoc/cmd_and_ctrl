@@ -10799,6 +10799,7 @@ frozenEntries[].event.entryTail.tokens.then.words[]	string
 frozenEntries[].event.entryTail.tokens.token	custom(uuid.UUID)
 frozenEntries[].event.exchangeTextWith	custom(uuid.UUID)
 frozenEntries[].event.exileCounter	string
+frozenEntries[].event.exileCounterCount	number:int
 frozenEntries[].event.exiledWith	object
 frozenEntries[].event.exiledWith.epoch	number:int
 frozenEntries[].event.exiledWith.id	custom(uuid.UUID)
@@ -34287,6 +34288,7 @@ movesAwaitingTokens[].entryTail.tokens.then.words[]	string
 movesAwaitingTokens[].entryTail.tokens.token	custom(uuid.UUID)
 movesAwaitingTokens[].exchangeTextWith	custom(uuid.UUID)
 movesAwaitingTokens[].exileCounter	string
+movesAwaitingTokens[].exileCounterCount	number:int
 movesAwaitingTokens[].exiledWith	object
 movesAwaitingTokens[].exiledWith.epoch	number:int
 movesAwaitingTokens[].exiledWith.id	custom(uuid.UUID)
@@ -65036,6 +65038,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.words[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.token	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.exchangeTextWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.exileCounter	string
+pendingChoices[].replacementResume.event.exileCounterCount	number:int
 pendingChoices[].replacementResume.event.exiledWith	object
 pendingChoices[].replacementResume.event.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.exiledWith.id	custom(uuid.UUID)
