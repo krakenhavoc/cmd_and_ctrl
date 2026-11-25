@@ -3422,7 +3422,13 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 	case LogReveal:
 		return renderRevealText(*e, actor)
 	case LogChooseColor:
-		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
+		color := game.ColorName(e.Choice)
+		if len(e.Choice) > 1 {
+			// #6146: "the color or colors of your choice" logs its set
+			// ("WU" → "white and blue").
+			color = game.ColorSetName(e.Choice)
+		}
+		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(color, "a color"), card)
 	case LogChooseType:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "a creature type"), card)
 	case LogChooseName:

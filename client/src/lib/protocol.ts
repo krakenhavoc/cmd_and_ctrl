@@ -2084,6 +2084,11 @@ export interface PendingChoiceView {
   // and "C" last on the one prompt that asks "colorless or the color of
   // your choice" (#5650).
   color_amounts?: Record<string, number>;
+  // #6146: on a "choose_color" prompt that asks for "the color or colors
+  // of your choice": the answer is a non-empty set of color_options, sent
+  // as their letters in resolve_choice's `color` ("WU"). Absent on every
+  // other prompt, which takes one letter.
+  color_multi?: boolean;
   // #780: on a "choose_color" prompt — the card's own declaration of
   // what it will DO with the colour it is handed. Public (it is a
   // reading of the printed text) and absent on every other kind, and

@@ -67,6 +67,12 @@ export interface ManaPickOption {
   title: string;
   /** Non-empty when the server says this option cannot be used. */
   disabled?: string;
+  /**
+   * #6146: set on a toggle picker ("the color or colors of your
+   * choice"): drawn as a toggle button, aria-pressed with this value.
+   * Absent on a picker where a press is the answer.
+   */
+  pressed?: boolean;
   /** Which mana ability this option activates (ability pickers). */
   abilityIndex?: number;
   /** Which colour this option answers (mana_pick / choose_color). */
