@@ -4007,6 +4007,28 @@ copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
 Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
 fails anything else.
 
+### Licids: "becomes an Aura … You may pay {X} to end this effect" (#5781, CR 116.2c)
+
+A licid (Leeching Licid, Quickening Licid, …) is three declarations
+([ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md)
+amendment 2026-11-25):
+
+```go
+ReturnedAura: effects.EnchantCreature(),
+Static:       append(effects.LicidForm(0), <the Aura's own text>...),
+Activated:    []effects.ActivatedAbility{effects.LicidAbility("{B}", "{B}")},
+```
+
+`LicidAbility(cost, endCost)` is the printed ability, and it must be
+activated row 0, the row `LicidForm(0)` takes away while the licid is an
+Aura. The Aura's own text uses the ordinary Aura helpers ("Enchanted
+creature has haste", "At the beginning of the upkeep of enchanted
+creature's controller, …"), which find nothing while the licid is a
+creature. Paying to end the effect is the engine's `end_effect` special
+action, derived from the permanent and offered to the player who activated
+the ability: the card declares nothing for it. Test the end with
+`g.PerformSpecialAction(me, licid, game.SpecialActionEndEffect, game.SpecialActionParams{})`.
+
 ### "You may discard this card any time you could cast an instant" (#6224, CR 116.2e)
 
 Circling Vultures' clause is a special action, declared like foretell:

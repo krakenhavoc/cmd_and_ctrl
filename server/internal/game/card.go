@@ -2249,6 +2249,17 @@ type Card struct {
 	// lookup, ended by the same zone change.
 	ReturnedAura bool
 
+	// AuraFormEndBy and AuraFormEndCost are a licid's "You may pay {X} to
+	// end this effect" (#5781, licid.go, ADR 0154 amendment 2026-11-25):
+	// the player who may end the effect that made this permanent an Aura
+	// (the controller of the ability that created it, CR 109.5) and the
+	// cost, in brace notation. Set with ReturnedAura by
+	// BecomeLicidAuraForEffect; both cleared when the effect ends
+	// (SpecialActionEndEffect) and at both CR 400.7 sites. Not copiable
+	// (CR 707.2). Carried by clone and the snapshot.
+	AuraFormEndBy   uuid.UUID
+	AuraFormEndCost string
+
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a
 	// battlefield host is judged by it (#3159; documented beside
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it

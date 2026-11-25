@@ -59,6 +59,8 @@ battlefield.cards[].attachedTo.splice	number:int
 battlefield.cards[].attackingTarget	custom(uuid.UUID)
 battlefield.cards[].attractionLights	array
 battlefield.cards[].attractionLights[]	number:int
+battlefield.cards[].auraFormEndBy	custom(uuid.UUID)
+battlefield.cards[].auraFormEndCost	string
 battlefield.cards[].baseController	custom(uuid.UUID)
 battlefield.cards[].battleX	number:float64
 battlefield.cards[].battleY	number:float64
@@ -624,6 +626,8 @@ delayedTriggers[].copiesSpell.card.attachedTo.splice	number:int
 delayedTriggers[].copiesSpell.card.attackingTarget	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.card.attractionLights	array
 delayedTriggers[].copiesSpell.card.attractionLights[]	number:int
+delayedTriggers[].copiesSpell.card.auraFormEndBy	custom(uuid.UUID)
+delayedTriggers[].copiesSpell.card.auraFormEndCost	string
 delayedTriggers[].copiesSpell.card.baseController	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.card.battleX	number:float64
 delayedTriggers[].copiesSpell.card.battleY	number:float64
@@ -1590,6 +1594,8 @@ enteringTokens[].attachedTo.splice	number:int
 enteringTokens[].attackingTarget	custom(uuid.UUID)
 enteringTokens[].attractionLights	array
 enteringTokens[].attractionLights[]	number:int
+enteringTokens[].auraFormEndBy	custom(uuid.UUID)
+enteringTokens[].auraFormEndCost	string
 enteringTokens[].baseController	custom(uuid.UUID)
 enteringTokens[].battleX	number:float64
 enteringTokens[].battleY	number:float64
@@ -2211,6 +2217,8 @@ exile.cards[].attachedTo.splice	number:int
 exile.cards[].attackingTarget	custom(uuid.UUID)
 exile.cards[].attractionLights	array
 exile.cards[].attractionLights[]	number:int
+exile.cards[].auraFormEndBy	custom(uuid.UUID)
+exile.cards[].auraFormEndCost	string
 exile.cards[].baseController	custom(uuid.UUID)
 exile.cards[].battleX	number:float64
 exile.cards[].battleY	number:float64
@@ -10854,6 +10862,8 @@ frozenEntries[].event.keywordActionTail.armyToken.attachedTo.splice	number:int
 frozenEntries[].event.keywordActionTail.armyToken.attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.attractionLights	array
 frozenEntries[].event.keywordActionTail.armyToken.attractionLights[]	number:int
+frozenEntries[].event.keywordActionTail.armyToken.auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.auraFormEndCost	string
 frozenEntries[].event.keywordActionTail.armyToken.baseController	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.battleX	number:float64
 frozenEntries[].event.keywordActionTail.armyToken.battleY	number:float64
@@ -13559,6 +13569,8 @@ frozenEntries[].event.millTail.run.planned[].attachedTo.splice	number:int
 frozenEntries[].event.millTail.run.planned[].attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].attractionLights	array
 frozenEntries[].event.millTail.run.planned[].attractionLights[]	number:int
+frozenEntries[].event.millTail.run.planned[].auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].auraFormEndCost	string
 frozenEntries[].event.millTail.run.planned[].baseController	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].battleX	number:float64
 frozenEntries[].event.millTail.run.planned[].battleY	number:float64
@@ -14054,6 +14066,8 @@ frozenEntries[].event.millTail.run.seen[].attachedTo.splice	number:int
 frozenEntries[].event.millTail.run.seen[].attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].attractionLights	array
 frozenEntries[].event.millTail.run.seen[].attractionLights[]	number:int
+frozenEntries[].event.millTail.run.seen[].auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].auraFormEndCost	string
 frozenEntries[].event.millTail.run.seen[].baseController	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].battleX	number:float64
 frozenEntries[].event.millTail.run.seen[].battleY	number:float64
@@ -16722,6 +16736,8 @@ frozenEntries[].event.tokenGroups[].template.attachedTo.splice	number:int
 frozenEntries[].event.tokenGroups[].template.attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.attractionLights	array
 frozenEntries[].event.tokenGroups[].template.attractionLights[]	number:int
+frozenEntries[].event.tokenGroups[].template.auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.auraFormEndCost	string
 frozenEntries[].event.tokenGroups[].template.baseController	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.battleX	number:float64
 frozenEntries[].event.tokenGroups[].template.battleY	number:float64
@@ -17960,6 +17976,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.attachedTo.splice	numb
 frozenEntries[].event.tokensAfterMove[].groups[].template.attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.attractionLights	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.attractionLights[]	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.auraFormEndCost	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.baseController	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.battleX	number:float64
 frozenEntries[].event.tokensAfterMove[].groups[].template.battleY	number:float64
@@ -18469,6 +18487,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].attachedTo.splice	numbe
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].attractionLights	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].attractionLights[]	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].auraFormEndCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].baseController	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].battleX	number:float64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].battleY	number:float64
@@ -18964,6 +18984,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].attachedTo.splice	number:i
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].attractionLights	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].attractionLights[]	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].auraFormEndCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].baseController	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].battleX	number:float64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].battleY	number:float64
@@ -23213,6 +23235,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].attachedTo.splice	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].attackingTarget	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].attractionLights	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].attractionLights[]	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].auraFormEndBy	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].auraFormEndCost	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].baseController	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].battleX	number:float64
 frozenEntries[].event.zoneRoute.simultaneousExit[].battleY	number:float64
@@ -24718,6 +24742,8 @@ lastKnownStack[].card.attachedTo.splice	number:int
 lastKnownStack[].card.attackingTarget	custom(uuid.UUID)
 lastKnownStack[].card.attractionLights	array
 lastKnownStack[].card.attractionLights[]	number:int
+lastKnownStack[].card.auraFormEndBy	custom(uuid.UUID)
+lastKnownStack[].card.auraFormEndCost	string
 lastKnownStack[].card.baseController	custom(uuid.UUID)
 lastKnownStack[].card.battleX	number:float64
 lastKnownStack[].card.battleY	number:float64
@@ -25732,6 +25758,8 @@ match.decks[].fixed[].attachedTo.splice	number:int
 match.decks[].fixed[].attackingTarget	custom(uuid.UUID)
 match.decks[].fixed[].attractionLights	array
 match.decks[].fixed[].attractionLights[]	number:int
+match.decks[].fixed[].auraFormEndBy	custom(uuid.UUID)
+match.decks[].fixed[].auraFormEndCost	string
 match.decks[].fixed[].baseController	custom(uuid.UUID)
 match.decks[].fixed[].battleX	number:float64
 match.decks[].fixed[].battleY	number:float64
@@ -26225,6 +26253,8 @@ match.decks[].main[].attachedTo.splice	number:int
 match.decks[].main[].attackingTarget	custom(uuid.UUID)
 match.decks[].main[].attractionLights	array
 match.decks[].main[].attractionLights[]	number:int
+match.decks[].main[].auraFormEndBy	custom(uuid.UUID)
+match.decks[].main[].auraFormEndCost	string
 match.decks[].main[].baseController	custom(uuid.UUID)
 match.decks[].main[].battleX	number:float64
 match.decks[].main[].battleY	number:float64
@@ -26721,6 +26751,8 @@ match.decks[].side[].attachedTo.splice	number:int
 match.decks[].side[].attackingTarget	custom(uuid.UUID)
 match.decks[].side[].attractionLights	array
 match.decks[].side[].attractionLights[]	number:int
+match.decks[].side[].auraFormEndBy	custom(uuid.UUID)
+match.decks[].side[].auraFormEndCost	string
 match.decks[].side[].baseController	custom(uuid.UUID)
 match.decks[].side[].battleX	number:float64
 match.decks[].side[].battleY	number:float64
@@ -34359,6 +34391,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.attachedTo.splice	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.attractionLights	array
 movesAwaitingTokens[].keywordActionTail.armyToken.attractionLights[]	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.auraFormEndCost	string
 movesAwaitingTokens[].keywordActionTail.armyToken.baseController	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.battleX	number:float64
 movesAwaitingTokens[].keywordActionTail.armyToken.battleY	number:float64
@@ -37064,6 +37098,8 @@ movesAwaitingTokens[].millTail.run.planned[].attachedTo.splice	number:int
 movesAwaitingTokens[].millTail.run.planned[].attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].attractionLights	array
 movesAwaitingTokens[].millTail.run.planned[].attractionLights[]	number:int
+movesAwaitingTokens[].millTail.run.planned[].auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].auraFormEndCost	string
 movesAwaitingTokens[].millTail.run.planned[].baseController	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].battleX	number:float64
 movesAwaitingTokens[].millTail.run.planned[].battleY	number:float64
@@ -37559,6 +37595,8 @@ movesAwaitingTokens[].millTail.run.seen[].attachedTo.splice	number:int
 movesAwaitingTokens[].millTail.run.seen[].attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].attractionLights	array
 movesAwaitingTokens[].millTail.run.seen[].attractionLights[]	number:int
+movesAwaitingTokens[].millTail.run.seen[].auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].auraFormEndCost	string
 movesAwaitingTokens[].millTail.run.seen[].baseController	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].battleX	number:float64
 movesAwaitingTokens[].millTail.run.seen[].battleY	number:float64
@@ -40227,6 +40265,8 @@ movesAwaitingTokens[].tokenGroups[].template.attachedTo.splice	number:int
 movesAwaitingTokens[].tokenGroups[].template.attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.attractionLights	array
 movesAwaitingTokens[].tokenGroups[].template.attractionLights[]	number:int
+movesAwaitingTokens[].tokenGroups[].template.auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.auraFormEndCost	string
 movesAwaitingTokens[].tokenGroups[].template.baseController	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.battleX	number:float64
 movesAwaitingTokens[].tokenGroups[].template.battleY	number:float64
@@ -41465,6 +41505,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.attachedTo.splice	numb
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.attractionLights	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.attractionLights[]	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.auraFormEndCost	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.baseController	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.battleX	number:float64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.battleY	number:float64
@@ -41974,6 +42016,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].attachedTo.splice	numbe
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].attractionLights	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].attractionLights[]	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].auraFormEndCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].baseController	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].battleX	number:float64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].battleY	number:float64
@@ -42469,6 +42513,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].attachedTo.splice	number:i
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].attractionLights	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].attractionLights[]	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].auraFormEndCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].baseController	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].battleX	number:float64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].battleY	number:float64
@@ -46718,6 +46764,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].attachedTo.splice	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].attackingTarget	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].attractionLights	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].attractionLights[]	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].auraFormEndBy	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].auraFormEndCost	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].baseController	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].battleX	number:float64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].battleY	number:float64
@@ -48848,6 +48896,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.attachedTo.splice	number:
 pendingChoices[].attackSplit.settled.chosen[].template.attackingTarget	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.attractionLights	array
 pendingChoices[].attackSplit.settled.chosen[].template.attractionLights[]	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.auraFormEndCost	string
 pendingChoices[].attackSplit.settled.chosen[].template.baseController	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.battleX	number:float64
 pendingChoices[].attackSplit.settled.chosen[].template.battleY	number:float64
@@ -49363,6 +49413,8 @@ pendingChoices[].attackSplit.settled.groups[].template.attachedTo.splice	number:
 pendingChoices[].attackSplit.settled.groups[].template.attackingTarget	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.attractionLights	array
 pendingChoices[].attackSplit.settled.groups[].template.attractionLights[]	number:int
+pendingChoices[].attackSplit.settled.groups[].template.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.auraFormEndCost	string
 pendingChoices[].attackSplit.settled.groups[].template.baseController	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.battleX	number:float64
 pendingChoices[].attackSplit.settled.groups[].template.battleY	number:float64
@@ -50581,6 +50633,8 @@ pendingChoices[].attackSplit.template.attachedTo.splice	number:int
 pendingChoices[].attackSplit.template.attackingTarget	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.attractionLights	array
 pendingChoices[].attackSplit.template.attractionLights[]	number:int
+pendingChoices[].attackSplit.template.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.auraFormEndCost	string
 pendingChoices[].attackSplit.template.baseController	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.battleX	number:float64
 pendingChoices[].attackSplit.template.battleY	number:float64
@@ -51513,6 +51567,8 @@ pendingChoices[].copyWalk.src.attachedTo.splice	number:int
 pendingChoices[].copyWalk.src.attackingTarget	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.attractionLights	array
 pendingChoices[].copyWalk.src.attractionLights[]	number:int
+pendingChoices[].copyWalk.src.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.auraFormEndCost	string
 pendingChoices[].copyWalk.src.baseController	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.battleX	number:float64
 pendingChoices[].copyWalk.src.battleY	number:float64
@@ -65125,6 +65181,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.attachedTo.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.attractionLights	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.attractionLights[]	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.auraFormEndCost	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.battleX	number:float64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.battleY	number:float64
@@ -67830,6 +67888,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].attachedTo.splic
 pendingChoices[].replacementResume.event.millTail.run.planned[].attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].attractionLights	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].attractionLights[]	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].auraFormEndCost	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].battleX	number:float64
 pendingChoices[].replacementResume.event.millTail.run.planned[].battleY	number:float64
@@ -68325,6 +68385,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].attachedTo.splice	n
 pendingChoices[].replacementResume.event.millTail.run.seen[].attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].attractionLights	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].attractionLights[]	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].auraFormEndCost	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].battleX	number:float64
 pendingChoices[].replacementResume.event.millTail.run.seen[].battleY	number:float64
@@ -70993,6 +71055,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.attachedTo.splic
 pendingChoices[].replacementResume.event.tokenGroups[].template.attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.attractionLights	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.attractionLights[]	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.auraFormEndCost	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.battleX	number:float64
 pendingChoices[].replacementResume.event.tokenGroups[].template.battleY	number:float64
@@ -72231,6 +72295,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.att
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.attractionLights	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.attractionLights[]	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.auraFormEndCost	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.battleX	number:float64
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.battleY	number:float64
@@ -72740,6 +72806,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].atta
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].attractionLights	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].attractionLights[]	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].auraFormEndCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].battleX	number:float64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].battleY	number:float64
@@ -73235,6 +73303,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].attache
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].attractionLights	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].attractionLights[]	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].auraFormEndCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].battleX	number:float64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].battleY	number:float64
@@ -77484,6 +77554,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].attachedTo
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].attackingTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].attractionLights	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].attractionLights[]	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].auraFormEndCost	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].battleX	number:float64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].battleY	number:float64
@@ -80124,6 +80196,8 @@ pendingChoices[].targetWalk.frame.source.attachedTo.splice	number:int
 pendingChoices[].targetWalk.frame.source.attackingTarget	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.attractionLights	array
 pendingChoices[].targetWalk.frame.source.attractionLights[]	number:int
+pendingChoices[].targetWalk.frame.source.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.auraFormEndCost	string
 pendingChoices[].targetWalk.frame.source.baseController	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.battleX	number:float64
 pendingChoices[].targetWalk.frame.source.battleY	number:float64
@@ -81115,6 +81189,8 @@ pendingChoices[].triggerFrame.source.attachedTo.splice	number:int
 pendingChoices[].triggerFrame.source.attackingTarget	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.attractionLights	array
 pendingChoices[].triggerFrame.source.attractionLights[]	number:int
+pendingChoices[].triggerFrame.source.auraFormEndBy	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.auraFormEndCost	string
 pendingChoices[].triggerFrame.source.baseController	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.battleX	number:float64
 pendingChoices[].triggerFrame.source.battleY	number:float64
@@ -82438,6 +82514,8 @@ phasedOut.cards[].attachedTo.splice	number:int
 phasedOut.cards[].attackingTarget	custom(uuid.UUID)
 phasedOut.cards[].attractionLights	array
 phasedOut.cards[].attractionLights[]	number:int
+phasedOut.cards[].auraFormEndBy	custom(uuid.UUID)
+phasedOut.cards[].auraFormEndCost	string
 phasedOut.cards[].baseController	custom(uuid.UUID)
 phasedOut.cards[].battleX	number:float64
 phasedOut.cards[].battleY	number:float64
@@ -82938,6 +83016,8 @@ planechase.deck.cards[].attachedTo.splice	number:int
 planechase.deck.cards[].attackingTarget	custom(uuid.UUID)
 planechase.deck.cards[].attractionLights	array
 planechase.deck.cards[].attractionLights[]	number:int
+planechase.deck.cards[].auraFormEndBy	custom(uuid.UUID)
+planechase.deck.cards[].auraFormEndCost	string
 planechase.deck.cards[].baseController	custom(uuid.UUID)
 planechase.deck.cards[].battleX	number:float64
 planechase.deck.cards[].battleY	number:float64
@@ -83436,6 +83516,8 @@ planechase.faceUp.cards[].attachedTo.splice	number:int
 planechase.faceUp.cards[].attackingTarget	custom(uuid.UUID)
 planechase.faceUp.cards[].attractionLights	array
 planechase.faceUp.cards[].attractionLights[]	number:int
+planechase.faceUp.cards[].auraFormEndBy	custom(uuid.UUID)
+planechase.faceUp.cards[].auraFormEndCost	string
 planechase.faceUp.cards[].baseController	custom(uuid.UUID)
 planechase.faceUp.cards[].battleX	number:float64
 planechase.faceUp.cards[].battleY	number:float64
@@ -84194,6 +84276,8 @@ resolving.card.attachedTo.splice	number:int
 resolving.card.attackingTarget	custom(uuid.UUID)
 resolving.card.attractionLights	array
 resolving.card.attractionLights[]	number:int
+resolving.card.auraFormEndBy	custom(uuid.UUID)
+resolving.card.auraFormEndCost	string
 resolving.card.baseController	custom(uuid.UUID)
 resolving.card.battleX	number:float64
 resolving.card.battleY	number:float64
@@ -85372,6 +85456,8 @@ seats[].attractionDeck.cards[].attachedTo.splice	number:int
 seats[].attractionDeck.cards[].attackingTarget	custom(uuid.UUID)
 seats[].attractionDeck.cards[].attractionLights	array
 seats[].attractionDeck.cards[].attractionLights[]	number:int
+seats[].attractionDeck.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].attractionDeck.cards[].auraFormEndCost	string
 seats[].attractionDeck.cards[].baseController	custom(uuid.UUID)
 seats[].attractionDeck.cards[].battleX	number:float64
 seats[].attractionDeck.cards[].battleY	number:float64
@@ -86060,6 +86146,8 @@ seats[].command.cards[].attachedTo.splice	number:int
 seats[].command.cards[].attackingTarget	custom(uuid.UUID)
 seats[].command.cards[].attractionLights	array
 seats[].command.cards[].attractionLights[]	number:int
+seats[].command.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].command.cards[].auraFormEndCost	string
 seats[].command.cards[].baseController	custom(uuid.UUID)
 seats[].command.cards[].battleX	number:float64
 seats[].command.cards[].battleY	number:float64
@@ -86560,6 +86648,8 @@ seats[].companion.cards[].attachedTo.splice	number:int
 seats[].companion.cards[].attackingTarget	custom(uuid.UUID)
 seats[].companion.cards[].attractionLights	array
 seats[].companion.cards[].attractionLights[]	number:int
+seats[].companion.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].companion.cards[].auraFormEndCost	string
 seats[].companion.cards[].baseController	custom(uuid.UUID)
 seats[].companion.cards[].battleX	number:float64
 seats[].companion.cards[].battleY	number:float64
@@ -87069,6 +87159,8 @@ seats[].emblems.cards[].attachedTo.splice	number:int
 seats[].emblems.cards[].attackingTarget	custom(uuid.UUID)
 seats[].emblems.cards[].attractionLights	array
 seats[].emblems.cards[].attractionLights[]	number:int
+seats[].emblems.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].emblems.cards[].auraFormEndCost	string
 seats[].emblems.cards[].baseController	custom(uuid.UUID)
 seats[].emblems.cards[].battleX	number:float64
 seats[].emblems.cards[].battleY	number:float64
@@ -87665,6 +87757,8 @@ seats[].graveyard.cards[].attachedTo.splice	number:int
 seats[].graveyard.cards[].attackingTarget	custom(uuid.UUID)
 seats[].graveyard.cards[].attractionLights	array
 seats[].graveyard.cards[].attractionLights[]	number:int
+seats[].graveyard.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].graveyard.cards[].auraFormEndCost	string
 seats[].graveyard.cards[].baseController	custom(uuid.UUID)
 seats[].graveyard.cards[].battleX	number:float64
 seats[].graveyard.cards[].battleY	number:float64
@@ -88161,6 +88255,8 @@ seats[].hand.cards[].attachedTo.splice	number:int
 seats[].hand.cards[].attackingTarget	custom(uuid.UUID)
 seats[].hand.cards[].attractionLights	array
 seats[].hand.cards[].attractionLights[]	number:int
+seats[].hand.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].hand.cards[].auraFormEndCost	string
 seats[].hand.cards[].baseController	custom(uuid.UUID)
 seats[].hand.cards[].battleX	number:float64
 seats[].hand.cards[].battleY	number:float64
@@ -88662,6 +88758,8 @@ seats[].junkyard.cards[].attachedTo.splice	number:int
 seats[].junkyard.cards[].attackingTarget	custom(uuid.UUID)
 seats[].junkyard.cards[].attractionLights	array
 seats[].junkyard.cards[].attractionLights[]	number:int
+seats[].junkyard.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].junkyard.cards[].auraFormEndCost	string
 seats[].junkyard.cards[].baseController	custom(uuid.UUID)
 seats[].junkyard.cards[].battleX	number:float64
 seats[].junkyard.cards[].battleY	number:float64
@@ -89184,6 +89282,8 @@ seats[].library.cards[].attachedTo.splice	number:int
 seats[].library.cards[].attackingTarget	custom(uuid.UUID)
 seats[].library.cards[].attractionLights	array
 seats[].library.cards[].attractionLights[]	number:int
+seats[].library.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].library.cards[].auraFormEndCost	string
 seats[].library.cards[].baseController	custom(uuid.UUID)
 seats[].library.cards[].battleX	number:float64
 seats[].library.cards[].battleY	number:float64
@@ -89724,6 +89824,8 @@ seats[].sideboard.cards[].attachedTo.splice	number:int
 seats[].sideboard.cards[].attackingTarget	custom(uuid.UUID)
 seats[].sideboard.cards[].attractionLights	array
 seats[].sideboard.cards[].attractionLights[]	number:int
+seats[].sideboard.cards[].auraFormEndBy	custom(uuid.UUID)
+seats[].sideboard.cards[].auraFormEndCost	string
 seats[].sideboard.cards[].baseController	custom(uuid.UUID)
 seats[].sideboard.cards[].battleX	number:float64
 seats[].sideboard.cards[].battleY	number:float64
@@ -90637,6 +90739,8 @@ stack.cards[].attachedTo.splice	number:int
 stack.cards[].attackingTarget	custom(uuid.UUID)
 stack.cards[].attractionLights	array
 stack.cards[].attractionLights[]	number:int
+stack.cards[].auraFormEndBy	custom(uuid.UUID)
+stack.cards[].auraFormEndCost	string
 stack.cards[].baseController	custom(uuid.UUID)
 stack.cards[].battleX	number:float64
 stack.cards[].battleY	number:float64

@@ -165,6 +165,10 @@ func (g *Game) SpecialActionsOfferedLocked(actor uuid.UUID, card Card, zone Zone
 	own := SpecialActionsOfferedByCard(card)
 	for _, sa := range own {
 		if specialActionZone(sa.Kind) == zone && g.faceUpRevealPayableLocked(actor, sa) {
+			// #5781: only the player a licid's effect names may end it.
+			if sa.Kind == SpecialActionEndEffect && card.AuraFormEndBy != actor {
+				continue
+			}
 			out = append(out, sa)
 		}
 	}

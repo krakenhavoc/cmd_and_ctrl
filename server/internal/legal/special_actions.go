@@ -98,6 +98,12 @@ func (e *enumerator) specialActionMoves() {
 			card := g.Battlefield.Cards[i]
 			// ADR 0103: and a face-up Room offers an unlock per
 			// locked door (CR 709.5e).
+			// #5781: a licid in its Aura form offers end_effect to the
+			// player its effect names, whoever controls it (CR 116.2c).
+			if card.ReturnedAura && card.AuraFormEndBy == e.seat {
+				e.specialActionMovesForCard(card, game.ZoneBattlefield)
+				continue
+			}
 			if !(card.FaceDownIsPermanent() || game.HasSharedTypeLine(card)) || card.Controller != e.seat {
 				continue
 			}
