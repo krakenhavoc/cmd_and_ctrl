@@ -3872,6 +3872,25 @@ OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
 Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
 Ideal's.
 
+### Illusionary Mask: a face-down cast paid with {X} (#6219, CR 708.2)
+
+The Mask's `{X}` ability resolves with two calls:
+
+```go
+cands := g.MaskCandidatesForEffect(item.Controller, item.Paid.Mana)
+g.OfferMaskCastForEffect(item.Controller, item.SourceCardID, "Illusionary Mask", cands)
+```
+
+The candidates are the creature cards in hand whose mana cost the mana
+spent on X could pay (some or all of it). The offer is a resolution cast
+(CR 608.2g) of one of them face down as a 2/2 without paying its mana cost,
+under `game.AltCostKeyGrantedFaceDownFree`; the spell and the permanent are
+the new face-down kind `game.FaceDownMasked`. A masked permanent is turned
+face up instead of being tapped (any `EventTapCard`, and an attack as the
+declaration locks in), dealing or being dealt damage (every damage event),
+or assigning combat damage; only its card's own morph or disguise turns it
+up otherwise (CR 708.7). "Activate only as a sorcery" is the ability's own
+timing.
 ### "Exiles it with X delay counters … puts it onto the stack as a copy" (#6221, CR 707.10)
 
 Ertai's Meddling's resolution is one call on the target spell:

@@ -5485,7 +5485,8 @@ export interface CardView extends CastSurfaceView {
   // (#1573 — the holder of the cast permission over it may look:
   // Gonti, Night Minister; Outrageous Robbery), or one of the
   // CR 708.2 permanent states
-  // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
+  // "manifested" / "morphed" / "disguised" / "cloaked" / "turned" /
+  // "masked" (#6219, Illusionary Mask). PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
   // non-knower redaction and labels the card back.
   face_down_kind?: string;
