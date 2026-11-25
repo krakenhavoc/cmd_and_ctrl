@@ -83,6 +83,13 @@ const (
 	// restriction that does (Karfell Harbinger, S82 OLD batch 071; Niko
 	// Defies Destiny, batch 060).
 	SpendPurposeForetell ManaSpendPurpose = "foretell"
+
+	// SpendPurposeCumulativeUpkeep is paying a cumulative upkeep's cost
+	// (CR 702.24a, #6189): Snowfall's and Adarkar Unicorn's "Spend this
+	// mana only to pay cumulative upkeep costs". It is the one
+	// pay-unless payment with a purpose of its own; every other one is
+	// SpendPurposeUnknown, which no restricted mana may pay (#352).
+	SpendPurposeCumulativeUpkeep ManaSpendPurpose = "cumulative_upkeep"
 )
 
 // Restriction tag constants and constructors. Card files build tags
@@ -137,6 +144,10 @@ const (
 	// this mana only to foretell cards or cast spells that have foretell"
 	// (S82 OLD batch 060), combined with ManaRestrictSpellForetell.
 	ManaRestrictForetell = "purpose:foretell"
+	// ManaRestrictCumulativeUpkeep permits the token only on a
+	// cumulative upkeep's payment (CR 702.24a, CR 106.6, #6189):
+	// Snowfall's "Spend this mana only to pay cumulative upkeep costs".
+	ManaRestrictCumulativeUpkeep = "purpose:cumulative_upkeep"
 	// ManaRestrictColorless permits the token only when the object
 	// being paid for is colorless (CR 105.2c) — Shrine of the
 	// Forsaken Gods, Eldrazi Temple.
@@ -902,6 +913,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeTurnFaceUp
 	case ManaRestrictForetell:
 		return ctx.Purpose == SpendPurposeForetell
+	case ManaRestrictCumulativeUpkeep:
+		return ctx.Purpose == SpendPurposeCumulativeUpkeep
 	case ManaRestrictSpellForetell:
 		return ctx.Purpose == SpendPurposeCast && ctx.ForetellSpell
 	case ManaRestrictNoGeneric:

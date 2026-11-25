@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -114,6 +115,53 @@ const (
 	// blights" trigger does not see it. A creature the counter kills
 	// still paid.
 	PayActionMinusOneCounter PayActionKind = "minus_one_counter"
+	// PayActionCounterOnOpponentCreature puts one counter of CounterKind
+	// on each creature named, which must be one an OPPONENT of the payer
+	// controls (#6189): Sheltering Ancient's "Cumulative upkeep—Put a
+	// +1/+1 counter on a creature an opponent controls". A card pick, and
+	// a repeatable one (Repeats): a cumulative upkeep makes each choice
+	// separately for each age counter (CR 702.24a), so one creature may
+	// be named twice and take two counters. The counters are a cost's,
+	// as PayActionMinusOneCounter's are.
+	PayActionCounterOnOpponentCreature PayActionKind = "counter_opponent_creature"
+	// PayActionCountersOnSource puts Count counters of CounterKind on
+	// the prompt's own source (#6189): Aboroth's "Cumulative upkeep—Put
+	// a -1/-1 counter on this creature", which with three age counters
+	// is three counters on the one permanent. It names nothing, and is
+	// a payment only while the source can have counters put on it (CR
+	// 118.3, #4692).
+	PayActionCountersOnSource PayActionKind = "counters_on_source"
+	// PayActionOpponentGainsLife has an opponent the payer names gain
+	// Amount life (#6189): Wall of Shards' "Cumulative upkeep—An
+	// opponent gains 1 life". The pick is a PLAYER (PicksPlayers), and
+	// repeatable: with two age counters the payer may name one opponent
+	// twice or two opponents once each. The life is a cost's
+	// (gainLifeAsCostLocked, as a splice cost's is).
+	PayActionOpponentGainsLife PayActionKind = "opponent_gains_life"
+	// PayActionOpponentCreatesToken has an opponent the payer names
+	// create one token of TokenKey each (#6189): Varchild's War-Riders'
+	// "Cumulative upkeep—Have an opponent create a 1/1 red Survivor
+	// creature token". A repeatable PLAYER pick, like
+	// PayActionOpponentGainsLife.
+	PayActionOpponentCreatesToken PayActionKind = "opponent_creates_token"
+	// PayActionGainControlOfLand gains the payer control of each land
+	// named, which must be one they do NOT control (#6189): Herald of
+	// Leshrac's "Cumulative upkeep—Gain control of a land you don't
+	// control". A card pick of Count distinct lands; control is gained
+	// for as long as the payer has it (an indefinite scoped effect), and
+	// the card's own leave trigger is what gives the lands back.
+	PayActionGainControlOfLand PayActionKind = "gain_control_land"
+	// PayActionDraw draws the payer Count cards (#6189): Psychic
+	// Vortex's "Cumulative upkeep—Draw a card". It names nothing and is
+	// always a payment: a draw from an empty library is not an illegal
+	// cost, it is a draw the player cannot complete and later loses for
+	// (CR 104.3c, CR 121.3c).
+	PayActionDraw PayActionKind = "draw"
+	// PayActionExileLibraryTop exiles the top Count cards of the payer's
+	// library (#6189): Thought Lash's "Cumulative upkeep—Exile the top
+	// card of your library". It names nothing, and is a payment only
+	// while the library holds that many cards (CR 118.3).
+	PayActionExileLibraryTop PayActionKind = "exile_library_top"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -124,7 +172,8 @@ func (a *PayAction) NamesNothing() bool {
 		return false
 	}
 	switch a.Kind {
-	case PayActionEnergy, PayActionLife, PayActionDamage, PayActionNothing, PayActionMana:
+	case PayActionEnergy, PayActionLife, PayActionDamage, PayActionNothing, PayActionMana,
+		PayActionCountersOnSource, PayActionDraw, PayActionExileLibraryTop:
 		return true
 	}
 	return false
@@ -168,8 +217,18 @@ func (g *Game) payActionPayableLocked(chooser uuid.UUID, a *PayAction) bool {
 	case PayActionLife:
 		// CR 119.4 and CR 119.8, through the gate every life cost uses.
 		return g.CanPayLifeLocked(p, a.Count)
-	case PayActionDamage, PayActionNothing:
+	case PayActionDamage, PayActionNothing, PayActionDraw:
+		// #6189: a draw is always a payment, even from an empty
+		// library (CR 104.3c: the player loses later, the cost is paid).
 		return true
+	case PayActionCountersOnSource:
+		// #6189, CR 118.3: only while the permanent is there and can
+		// have counters put on it (#4692).
+		c := findBattlefieldCard(g, a.OnSource)
+		return a.Count > 0 && c != nil && !g.cantHaveCountersLocked(c)
+	case PayActionExileLibraryTop:
+		// #6189, CR 118.3: the library must hold that many cards.
+		return a.Count > 0 && g.LibraryExileCostPayableForEffect(chooser, a.Count)
 	case PayActionMana:
 		// #4566: what payCostLocked would pay now, asked of a clone so
 		// the answer is the payer's own (canPayCostLocked).
@@ -206,6 +265,9 @@ func (g *Game) payActionCanPayLocked(chooser uuid.UUID, a *PayAction) bool {
 		return false
 	case a.NamesNothing():
 		return g.payActionPayableLocked(chooser, a)
+	case a.Repeats:
+		// #6189: one option can pay every pick, so any option will do.
+		return a.Count > 0 && len(g.payActionOptionsLocked(chooser, a)) > 0
 	}
 	return len(g.payActionOptionsLocked(chooser, a)) >= a.Count
 }
@@ -261,6 +323,59 @@ type PayAction struct {
 	// answer emits EventForage once the payment is made. Unused by every
 	// other payment.
 	Forage bool `json:",omitempty"`
+	// Amount is the life an opponent gains per pick
+	// (PayActionOpponentGainsLife, #6189). Unused by every other kind.
+	// Additive (#522).
+	Amount int `json:",omitempty"`
+	// CounterKind is the counter a counter payment puts on
+	// (PayActionCounterOnOpponentCreature, PayActionCountersOnSource,
+	// #6189): CounterPlusOne, CounterMinusOne. Unused by every other
+	// kind. Additive (#522).
+	CounterKind string `json:",omitempty"`
+	// TokenKey is the catalog token row a PayActionOpponentCreatesToken
+	// creates one of per pick (#6189). Unused by every other kind.
+	// Additive (#522).
+	TokenKey string `json:",omitempty"`
+	// PicksPlayers marks a payment whose picks are PLAYERS, not cards
+	// (PayActionOpponentGainsLife, PayActionOpponentCreatesToken,
+	// #6189): the options are the payer's opponents and the answer's
+	// ids are seats. Additive (#522).
+	PicksPlayers bool `json:",omitempty"`
+	// OnSource is the permanent a PayActionCountersOnSource puts its
+	// counters on — the asking ability's own source, stamped by the card
+	// that builds the payment (#6189), so the payable probe can ask
+	// whether that permanent can have counters put on it (CR 118.3).
+	// Unused by every other kind. Additive (#522).
+	OnSource uuid.UUID `json:",omitempty"`
+	// Repeats marks a payment one option may pay more than once
+	// (#6189): a cumulative upkeep makes each choice separately for
+	// each age counter (CR 702.24a), so naming one creature twice is
+	// two counters and naming one opponent twice is two lots of life.
+	// Additive (#522).
+	Repeats bool `json:",omitempty"`
+}
+
+// payActionOpponentLocked reports whether `other` is an opponent of
+// `payer` still in the game (#6189): a different seat, not eliminated.
+func payActionOpponentLocked(g *Game, payer, other uuid.UUID) bool {
+	if other == payer || other == uuid.Nil {
+		return false
+	}
+	p := g.playerByIDLocked(other)
+	return p != nil && !p.Eliminated
+}
+
+// createPayActionTokenLocked creates one token of the catalog row `key`
+// under `controller` (#6189, PayActionOpponentCreatesToken), so it
+// enters under the named opponent's control (CR 111.2).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) createPayActionTokenLocked(controller uuid.UUID, key string) error {
+	tmpl, ok := PayActionTokenForEffect(key)
+	if !ok {
+		return fmt.Errorf("%w: pay-action token %q", ErrUnknownEffectKey, key)
+	}
+	return g.CreateTokenForEffect(controller, tmpl, 1)
 }
 
 // PayActionPhrase is the verb phrase for one payment when its card gives
@@ -294,6 +409,41 @@ func PayActionPhrase(a PayAction) string {
 		return "pay " + a.Mana
 	case PayActionExileFromGraveyard:
 		return "exile " + n + " cards from your graveyard"
+	case PayActionCounterOnOpponentCreature:
+		if a.Count == 1 {
+			return "put a " + a.CounterKind + " counter on a creature an opponent controls"
+		}
+		return "put a " + a.CounterKind + " counter on each of " + n + " creatures opponents control"
+	case PayActionCountersOnSource:
+		if a.Count == 1 {
+			return "put a " + a.CounterKind + " counter on this permanent"
+		}
+		return "put " + n + " " + a.CounterKind + " counters on this permanent"
+	case PayActionOpponentGainsLife:
+		if a.Count == 1 {
+			return "have an opponent gain " + strconv.Itoa(a.Amount) + " life"
+		}
+		return "have opponents gain " + strconv.Itoa(a.Amount) + " life " + n + " times"
+	case PayActionOpponentCreatesToken:
+		if a.Count == 1 {
+			return "have an opponent create a token"
+		}
+		return "have opponents create " + n + " tokens"
+	case PayActionGainControlOfLand:
+		if a.Count == 1 {
+			return "gain control of a land you don't control"
+		}
+		return "gain control of " + n + " lands you don't control"
+	case PayActionDraw:
+		if a.Count == 1 {
+			return "draw a card"
+		}
+		return "draw " + n + " cards"
+	case PayActionExileLibraryTop:
+		if a.Count == 1 {
+			return "exile the top card of your library"
+		}
+		return "exile the top " + n + " cards of your library"
 	case PayActionNothing:
 		return "say yes"
 	}
@@ -405,6 +555,39 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 				out = append(out, c.InstanceID)
 			}
 		}
+	case PayActionCounterOnOpponentCreature:
+		// #6189: only a permanent an OPPONENT of the payer controls
+		// that matches Of and can have a counter put on it (CR 118.3).
+		// Not a target. Battlefield order.
+		if g.Battlefield == nil {
+			return nil
+		}
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if payActionOpponentLocked(g, chooser, c.Controller) && a.Of.matchesLocked(g, c) && !g.cantHaveCountersLocked(c) {
+				out = append(out, c.InstanceID)
+			}
+		}
+	case PayActionGainControlOfLand:
+		// #6189: a permanent matching Of the payer does NOT control,
+		// whoever does. Battlefield order.
+		if g.Battlefield == nil {
+			return nil
+		}
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller != chooser && a.Of.matchesLocked(g, c) {
+				out = append(out, c.InstanceID)
+			}
+		}
+	case PayActionOpponentGainsLife, PayActionOpponentCreatesToken:
+		// #6189: the picks are PLAYERS — the payer's opponents, in
+		// seat order.
+		for _, p := range g.Seats {
+			if p != nil && !p.Eliminated && p.ID != chooser {
+				out = append(out, p.ID)
+			}
+		}
 	}
 	return out
 }
@@ -432,7 +615,11 @@ func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked [
 	seen := make(map[uuid.UUID]bool, len(picked))
 	for _, id := range picked {
 		// One card pays once: naming a land twice is not "two lands".
-		if seen[id] || !legal[id] {
+		// #6189: a repeatable payment is the exception — a cumulative
+		// upkeep's choices are made separately for each age counter
+		// (CR 702.24a), so one creature may take two counters and one
+		// opponent may gain life twice.
+		if (seen[id] && !a.Repeats) || !legal[id] {
 			return ErrInvalidParam
 		}
 		seen[id] = true
@@ -499,6 +686,67 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 			if _, err := g.payCostCounterLocked(chooser, id, CounterMinusOne, 1); err != nil {
 				return err
 			}
+		}
+	case PayActionCounterOnOpponentCreature:
+		// #6189: one counter per naming, as a cost's (CR 118.12), with
+		// the payer as its placer — the same window a
+		// PayActionMinusOneCounter payment goes through.
+		for _, id := range picked {
+			if findBattlefieldCard(g, id) == nil {
+				continue
+			}
+			if _, err := g.payCostCounterLocked(chooser, id, a.CounterKind, 1); err != nil {
+				return err
+			}
+		}
+	case PayActionCountersOnSource:
+		// #6189: Count counters on the asking ability's own permanent,
+		// in one placement (Aboroth's three age counters are three
+		// -1/-1 counters at once).
+		if findBattlefieldCard(g, a.OnSource) != nil {
+			if _, err := g.payCostCounterLocked(chooser, a.OnSource, a.CounterKind, a.Count); err != nil {
+				return err
+			}
+		}
+	case PayActionOpponentGainsLife:
+		// #6189: each named opponent gains Amount life as a cost's
+		// (gainLifeAsCostLocked), naming the same opponent twice
+		// gaining twice.
+		for _, id := range picked {
+			if err := g.gainLifeAsCostLocked(source, id, a.Amount); err != nil {
+				return err
+			}
+		}
+	case PayActionOpponentCreatesToken:
+		// #6189: one token per naming, created by the named opponent,
+		// so it enters under their control (CR 111.2).
+		for _, id := range picked {
+			if err := g.createPayActionTokenLocked(id, a.TokenKey); err != nil {
+				return err
+			}
+		}
+	case PayActionGainControlOfLand:
+		// #6189: the payer gains control of each named permanent for as
+		// long as they have it (an indefinite control effect); the
+		// card's own leave trigger gives them back.
+		for _, id := range picked {
+			g.GainControlForEffect(source, id, chooser, IndefiniteDuration(), "cumulative upkeep — gain control")
+		}
+	case PayActionDraw:
+		// #6189: the payer draws, through the one draw path, so
+		// replacements and draw triggers see it.
+		if err := g.DrawNForEffect(chooser, a.Count); err != nil {
+			return err
+		}
+	case PayActionExileLibraryTop:
+		// #6189: the top Count cards to exile, face up, as a cost's
+		// (payLibraryExileCostLocked's path).
+		ids, err := g.libraryExileCostCardsLocked(chooser, a.Count)
+		if err != nil {
+			return err
+		}
+		if err := g.payLibraryExileCostLocked(chooser, source, ids, nil); err != nil {
+			return err
 		}
 	case PayActionEnergy:
 		// ADR 0129 §3 (energy_payment.go): the counters come off the

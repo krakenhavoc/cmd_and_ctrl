@@ -33,7 +33,14 @@ import { guardedWritable } from "./guardedStore";
 
 import type { DockAction, DockRequest } from "./dock";
 import type { RematchPlan } from "./rematch";
-import type { CardView, PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
+import type {
+  CardView,
+  PendingChoiceView,
+  PayStateView,
+  PickOptionView,
+  PlayerView,
+  VoteView,
+} from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
 import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
@@ -296,6 +303,15 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
           tag: "any player pays",
           hint: `${anyPlayerWhose(c, seats, ctx.sourceName)}. ${anyPlayerOfferLine(c, seats)} ${anyPlayerHowToPay(c, ctx)}`,
           hintWarn: short,
+        };
+      }
+      if (c.pay_state) {
+        // #6189: a payment that names nothing and is not mana.
+        return {
+          title: reason || `${ctx.sourceName} — ${payPhrase(c)}?`,
+          tag: "pay unless",
+          hint: `${payStateHint(c.pay_state)} If you don't, ${ctx.sourceName} does its thing.`,
+          hintWarn: !c.pay_state.payable,
         };
       }
       return {
@@ -895,6 +911,7 @@ export function payPhrase(
     | "pay_cost"
     | "pay_damage"
     | "pay_nothing"
+    | "pay_state"
     | "pay_cards"
     | "pay_either"
     | "accept_label"
@@ -911,8 +928,32 @@ export function payPhrase(
     return `take ${cost || `${c.pay_damage} damage`}`;
   }
   if (c.pay_nothing) return c.accept_label ? lowerFirst(c.accept_label) : "say yes";
+  // #6189: the card's own words ("Draw a card", "Exile the top card of
+  // your library"), which pay_cost carries.
+  if (c.pay_state) return lowerFirst(cost) || payStateWords(c.pay_state);
   if (c.pay_cards) return lowerFirst(cost) || "pay the cost";
   return `pay ${cost || "the cost"}${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}`;
+}
+
+// payStateHint says what a pay_state payment does, or why it cannot be
+// made (#6189, CR 118.3).
+function payStateHint(s: PayStateView): string {
+  const words = payStateWords(s);
+  if (!s.payable) return `You can't ${words}, so you can't pay this.`;
+  return `${words[0].toUpperCase()}${words.slice(1)}, or don't.`;
+}
+
+// payStateWords is a pay_state payment as a verb phrase when the card
+// gave none (#6189).
+export function payStateWords(s: PayStateView): string {
+  const n = s.count;
+  if (s.action === "draw") return n === 1 ? "draw a card" : `draw ${n} cards`;
+  if (s.action === "exile_library_top") {
+    return n === 1
+      ? "exile the top card of your library"
+      : `exile the top ${n} cards of your library`;
+  }
+  return n === 1 ? "put a counter on this permanent" : `put ${n} counters on this permanent`;
 }
 
 // payButtonLabel is a pay_unless's "Pay" button when the card names no
@@ -947,6 +988,7 @@ function anyPlayerHowToPay(c: PendingChoiceView, ctx: ChoiceDockContext): string
     return `${ctx.sourceName} deals ${c.pay_damage} damage to you if you take it.`;
   }
   if (c.pay_nothing) return "It costs you nothing.";
+  if (c.pay_state) return payStateHint(c.pay_state);
   return `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't.`;
 }
 

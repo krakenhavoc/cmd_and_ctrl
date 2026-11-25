@@ -18,11 +18,36 @@ export function payCardsReady(pc: PayCardsView, picks: string[]): boolean {
   return picks.length === pc.count;
 }
 
-// togglePayCard adds or removes `id`, never past the count.
+// togglePayCard adds or removes `id`, never past the count. #6189: on a
+// repeatable payment a click adds another copy of the same option (one
+// choice per age counter, CR 702.24a) until the count is full, and a
+// click on a full payment's option clears it.
 export function togglePayCard(pc: PayCardsView, picks: string[], id: string): string[] {
+  if (!pc.options.includes(id)) return picks;
+  if (pc.repeats) {
+    if (picks.length >= pc.count) return picks.filter((c) => c !== id);
+    return [...picks, id];
+  }
   if (picks.includes(id)) return picks.filter((c) => c !== id);
-  if (picks.length >= pc.count || !pc.options.includes(id)) return picks;
+  if (picks.length >= pc.count) return picks;
   return [...picks, id];
+}
+
+// payCardsFull reports whether no more picks may be made: the count is
+// reached. A repeatable payment's picker then clears an option instead
+// (#6189, togglePayCard).
+export function payCardsFull(pc: PayCardsView, picks: string[]): boolean {
+  return picks.length >= pc.count;
+}
+
+// payCardPicksOf is how many times `id` pays, for the picker's badge.
+export function payCardPicksOf(picks: string[], id: string): number {
+  return picks.filter((c) => c === id).length;
+}
+
+// isPlayerPicks reports whether a payment's options are seats (#6189).
+export function isPlayerPicks(pc: PayCardsView): boolean {
+  return pc.picks === "players";
 }
 
 // payCardsOptions resolves the option IDs to the cards they name: the
@@ -34,6 +59,8 @@ export function payCardsOptions(
   battlefield: CardView[] | undefined,
   chooser: PlayerView | undefined,
 ): CardView[] {
+  // #6189: a player payment names seats, which are not cards at all.
+  if (isPlayerPicks(pc)) return [];
   const pool =
     pc.action === "discard"
       ? (chooser?.hand?.cards ?? [])
@@ -51,5 +78,22 @@ export function payCardsVerb(pc: PayCardsView): string {
   if (pc.action === "exile_graveyard") return `Choose ${n} from your graveyard to exile.`;
   if (pc.action === "tap") return `Choose ${n} to tap.`;
   if (pc.action === "minus_one_counter") return `Choose ${n} to put a -1/-1 counter on.`;
+  // #6189, the cumulative-upkeep payments.
+  if (pc.action === "counter_opponent_creature")
+    return pc.count === 1
+      ? "Choose a creature an opponent controls to put a counter on."
+      : `Choose ${pc.count} creatures opponents control to put a counter on — the same one more than once if you like.`;
+  if (pc.action === "opponent_gains_life")
+    return pc.count === 1
+      ? "Choose an opponent to gain the life."
+      : `Choose an opponent ${pc.count} times — the same one more than once if you like.`;
+  if (pc.action === "opponent_creates_token")
+    return pc.count === 1
+      ? "Choose an opponent to create the token."
+      : `Choose an opponent ${pc.count} times — the same one more than once if you like.`;
+  if (pc.action === "gain_control_land")
+    return pc.count === 1
+      ? "Choose a land you don't control to gain control of."
+      : `Choose ${pc.count} lands you don't control to gain control of.`;
   return `Choose ${n} to sacrifice.`;
 }

@@ -1356,6 +1356,10 @@ var pendingChoiceFields = plan(
 	"ChooseLiveZone", carried, "",
 	// #4264: a keyed pay-unless's non-mana payment.
 	"PayActionClause", carried, "",
+	// #6189: the mana spend purpose a cumulative upkeep's prompt pays
+	// under, so Snowfall's upkeep-only mana still funds it after a
+	// restore.
+	"PaySpendPurpose", carried, "",
 	// #4264: the item that queued a keyed pay-unless or any-player
 	// prompt, as the data a branch reads off it.
 	"Asked", carried, "",

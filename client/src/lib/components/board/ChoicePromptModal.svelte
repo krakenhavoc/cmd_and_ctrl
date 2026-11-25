@@ -141,6 +141,9 @@
   } from "../../outsideCollection";
   import {
     canPayCards,
+    isPlayerPicks,
+    payCardPicksOf,
+    payCardsFull,
     payCardsOptions,
     payCardsReady,
     payCardsVerb,
@@ -1110,6 +1113,15 @@
       snap.seats?.find((s) => s.id === viewerID),
     );
   });
+  // #6189: a payment whose picks are players lists the seats it names
+  // (an opponent to gain the life, an opponent to create the token).
+  const payPlayerOptions = $derived.by((): { id: string; name: string }[] => {
+    if (!payCards || !isPlayerPicks(payCards)) return [];
+    return payCards.options.map((id) => ({
+      id,
+      name: snap.seats?.find((s) => s.id === id)?.name ?? "A player",
+    }));
+  });
   // ADR 0129 §3: the viewer's energy, for an energy payment's Pay (and
   // the pay_amount stepper's ceiling, which the server sends as max).
   const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
@@ -1121,7 +1133,10 @@
       (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
       (isPayUnless && energyShortBy(active, viewerEnergy) > 0) ||
       (isPayUnless &&
-        ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)),
+        ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)) ||
+      // #6189: a payment that names nothing and is not mana says
+      // whether it can be made at all (CR 118.3).
+      (isPayUnless && active?.pay_state?.payable === false),
   );
   const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
   const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
@@ -2903,6 +2918,30 @@
         </p>
         {#if !canPayCards(payCards)}
           <p class="prompt-hint">You don't have enough to pay this.</p>
+        {:else if isPlayerPicks(payCards)}
+          <!-- #6189: the payment names players, not cards. -->
+          <p class="prompt-hint sub">{payCardsVerb(payCards)}</p>
+          <ul class="prompt-options">
+            {#each payPlayerOptions as seat (seat.id)}
+              <li>
+                <button
+                  type="button"
+                  class="prompt-opt"
+                  class:on={payCardPicks.includes(seat.id)}
+                  disabled={payCardsFull(payCards, payCardPicks) && !payCardPicks.includes(seat.id)}
+                  aria-pressed={payCardPicks.includes(seat.id)}
+                  onclick={() => (payCardPicks = togglePayCard(payCards, payCardPicks, seat.id))}
+                >
+                  <span class="prompt-radio" aria-hidden="true"></span>
+                  <span class="name">{seat.name}</span>
+                  {#if payCardPicksOf(payCardPicks, seat.id) > 1}
+                    <span class="sub">×{payCardPicksOf(payCardPicks, seat.id)}</span>
+                  {/if}
+                </button>
+              </li>
+            {/each}
+          </ul>
+          <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
         {:else}
           <p class="prompt-hint sub">{payCardsVerb(payCards)}</p>
           <ul class="prompt-options">
@@ -2912,7 +2951,7 @@
                   type="button"
                   class="prompt-opt"
                   class:on={payCardPicks.includes(c.instance_id)}
-                  disabled={payCardPicks.length >= payCards.count &&
+                  disabled={payCardsFull(payCards, payCardPicks) &&
                     !payCardPicks.includes(c.instance_id)}
                   aria-pressed={payCardPicks.includes(c.instance_id)}
                   onclick={() =>
@@ -2920,6 +2959,9 @@
                 >
                   <span class="prompt-radio" aria-hidden="true"></span>
                   <span class="name">{c.name}</span>
+                  {#if payCardPicksOf(payCardPicks, c.instance_id) > 1}
+                    <span class="sub">×{payCardPicksOf(payCardPicks, c.instance_id)}</span>
+                  {/if}
                 </button>
               </li>
             {/each}
@@ -2943,6 +2985,15 @@
             active.source,
           )} do its thing.
         </p>
+      {:else if active.pay_state}
+        <!-- #6189: a payment that names nothing and is not mana. -->
+        <p class="prompt-hint">
+          {active.pay_cost ?? "Pay the cost"} — or don't and let {triggerSourceName(active.source)} do
+          its thing.
+        </p>
+        {#if !active.pay_state.payable}
+          <p class="prompt-hint">You can't pay this.</p>
+        {/if}
       {:else}
         <!-- A waterbend tap list without card picks (#1311). -->
         <p class="prompt-hint">
