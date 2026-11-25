@@ -4355,6 +4355,7 @@ tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
+tail mass/hour-of-glory-god-hand
 tail mass/indomitable-creativity-reveal
 tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
@@ -5332,6 +5333,7 @@ tail then/vision-charm-land-type-chosen
 tail then/volcanic-offering-damage
 tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
+tail then/wasp-of-the-bitter-end-destroy
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled
