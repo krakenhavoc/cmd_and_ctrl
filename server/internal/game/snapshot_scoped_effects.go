@@ -522,6 +522,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextCombatPhaseModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6147: an enters-tapped filter naming a non-permanent type.
+			if problem := permanentsEnterTappedModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #5718: the table-wide targeting bar is a game record that
 			// names nothing.
 			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {

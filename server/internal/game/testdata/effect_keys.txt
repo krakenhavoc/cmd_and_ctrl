@@ -3215,6 +3215,7 @@ run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
 run prompt-run/multiple-choice-bounce
 run prompt-run/myrkuls-edict-done
+run prompt-run/nahiris-lithoforming-sacrifice
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
@@ -4954,6 +4955,7 @@ tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/nahiris-lithoforming-draw
 tail then/necromentia-named
 tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal

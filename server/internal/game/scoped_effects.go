@@ -1243,6 +1243,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6147: Due Respect's and Nahiri's Lithoforming's "<permanents>
+	// enter tapped this turn" (scoped_permanents_enter_tapped.go).
+	ModPermanentsEnterTapped: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
