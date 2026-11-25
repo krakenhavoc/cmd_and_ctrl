@@ -365,6 +365,13 @@ type DelayedTrigger struct {
 	// stack item as they resolved, as snapshot records. Nil on every other
 	// trigger. Plain data, never mutated once scheduled.
 	CopiesSpell *EpicSpell
+
+	// PayToCancel is "… unless they pay {N} before that step" (#6220):
+	// the named player may pay the cost any time they have priority
+	// while the trigger waits (the pay_to_cancel special action,
+	// pay_to_cancel.go), and paying removes it. Nil for every other
+	// trigger. Data, carried in the snapshot.
+	PayToCancel *PayToCancel
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -622,6 +629,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
+		PayToCancel:           clonePayToCancel(dt.PayToCancel),
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration

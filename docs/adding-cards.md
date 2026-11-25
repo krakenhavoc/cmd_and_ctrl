@@ -9363,6 +9363,16 @@ window. The body reads its payload off the item it is handed
 (`item.Targets`, `item.Controller`) and its data off its params, and
 captures nothing — it cannot.
 
+**"… unless they pay {N} before that step" (#6220, ADR 0026 amendment
+2026-11-25).** Nafs Asp's "that player loses 1 life at the beginning of
+their next draw step unless they pay {1} before that draw step" is the
+delayed trigger with the payment on it:
+`ScheduleDelayedTrigger{Label, At: game.StepDraw, TurnOf: player, Body,
+Params, PayToCancel: &game.PayToCancel{Player: player, Cost: "{1}"}}`.
+The player may pay any time they have priority until the step begins (the
+`pay_to_cancel` special action, a button on their panel); paying removes
+the trigger, so the body runs only when nobody paid and need not check.
+
 **Event-conditioned delayed triggers (#663, CR 603.7b):** "When you
 next cast an instant or sorcery spell this turn, copy that spell"
 (Doublecast, Galvanic Iteration) waits for a THING TO HAPPEN rather

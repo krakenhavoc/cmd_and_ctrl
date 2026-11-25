@@ -357,6 +357,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}IgnoreEffects.svelte`],
     doc: "the CR 116.2d special action (#1986): sacrifice a permanent of your choice to ignore a static ability's effect until end of turn (Damping Engine); on your own panel while the effect bears on you, and it opens the sacrifice picker",
   }),
+  payToCancel: dynamicLabel({
+    stem: " before that step",
+    match: "suffix",
+    shape: "Pay <cost> (<card name>) before that step",
+    make: (what: string) => `Pay ${what} before that step`,
+    example: ["{1} (Nafs Asp)"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}PayToCancel.svelte`],
+    doc: '#6220: pay a cost now so a delayed trigger waiting on you never happens ("… unless they pay {1} before that draw step", Nafs Asp); on your own panel while it waits, live while you have priority and can pay',
+  }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
     match: "prefix",

@@ -3282,6 +3282,14 @@ type PlayerView struct {
 	// almost every seat in almost every game.
 	IgnorableEffects []IgnorableEffectView `json:"ignorable_effects,omitempty"`
 
+	// PayToCancel are the "… unless they pay {N} before that step"
+	// payments waiting on this player (#6220, Nafs Asp, Sabertooth
+	// Cobra): each a button on the seat's own panel that sends
+	// `special_action {kind: "pay_to_cancel", card_id: id, auto_tap: true}`
+	// while they have priority. The seat's own (and its controller's),
+	// as ignorable_effects is. Empty for almost every seat.
+	PayToCancel []PayToCancelView `json:"pay_to_cancel,omitempty"`
+
 	// HandRevealed names why this player plays with their hand revealed
 	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
 	// #3953). Public: the cards themselves reach every seat through the
@@ -11970,6 +11978,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
 		IgnorableEffects:    viewOfIgnorableEffects(g, p.ID),
+		PayToCancel:         viewOfPayToCancel(g, p.ID),
 		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
@@ -12392,6 +12401,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// controller's), as the companion's {3} row is.
 		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
 			out.IgnorableEffects = nil
+			out.PayToCancel = nil
 		}
 		// #5868: an emblem's ability rows are its owner's (or the
 		// controller's of the owner's whole turn), for the reason a

@@ -56,6 +56,7 @@ func (e *enumerator) specialActionMoves() {
 	}
 	e.outsidePlayMove()
 	e.ignoreEffectMoves()
+	e.payToCancelMoves()
 	e.planarDieMove()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
@@ -298,4 +299,35 @@ func turnFaceUpOffers(offers []game.SpecialAction) int {
 		}
 	}
 	return n
+}
+
+// payToCancelMoves offers each "… unless they pay {N} before that step"
+// payment waiting on the seat (#6220, game/pay_to_cancel.go) that it can
+// afford, priced with the zero spend context the engine pays it with. Any
+// time the seat has priority, split second or not: paying is neither a
+// cast nor an activation.
+func (e *enumerator) payToCancelMoves() {
+	g := e.g
+	for _, o := range g.PayToCancelOffersLocked(e.seat) {
+		cost, ok := g.PayToCancelCostForEffect(e.seat, o.ID)
+		if !ok || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+			continue
+		}
+		label := "Pay " + o.Cost
+		if o.Label != "" {
+			label += ": " + o.Label
+		}
+		e.add(Move{
+			Type:   TypeSpecialAction,
+			Player: e.seat,
+			Kind:   KindSpecialAction,
+			Label:  label,
+			Params: mustJSON(specialActionParams{
+				CardID:  o.ID.String(),
+				Kind:    string(game.SpecialActionPayToCancel),
+				Strict:  true,
+				AutoTap: true,
+			}),
+		})
+	}
 }
