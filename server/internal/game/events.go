@@ -2031,6 +2031,14 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
+	// LandOrdinal is, on a Played entry, how many lands its player has
+	// played this turn counting this one (#6213): 1 for the turn's first
+	// land play, 2 for the second. Fastbond's "if it wasn't the first
+	// land you played this turn" reads it, so the answer is the play's
+	// own and not the tally as some later reader finds it. Zero on every
+	// entry that is not a land play.
+	LandOrdinal int `json:"land_ordinal,omitempty"`
+
 	// BecameToken marks the EventZoneMove from no zone onto the
 	// battlefield that announces the token a copy of a permanent spell
 	// becomes as it resolves (CR 608.3f, CR 707.10f, #4994). That token
