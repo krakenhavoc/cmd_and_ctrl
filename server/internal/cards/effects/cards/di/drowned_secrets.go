@@ -22,14 +22,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(effects.WheneverYouCast(effects.OfColor("U"), "Drowned Secrets — target player mills two cards",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					who, ok := effects.FirstLegalPlayerTarget(ctx)
-					if !ok {
-						return nil
-					}
-					return effects.MillCards{Player: who, N: 2}.Apply(ctx)
-				}),
+				effects.TargetPlayerMillsEffect(2)),
 				effects.TargetPlayer("target player")),
 		},
 	})

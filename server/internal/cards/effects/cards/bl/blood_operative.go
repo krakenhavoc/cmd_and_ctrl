@@ -28,7 +28,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
-			effects.Targeting(effects.Optional(effects.WhenThisEnters("Blood Operative — exile target card from a graveyard", bloodOperativeExile),
+			effects.Targeting(effects.Optional(effects.WhenThisEnters("Blood Operative — exile target card from a graveyard", effects.SocB37ExileTheLegalTarget),
 				"Blood Operative — exile target card from a graveyard?"),
 				effects.TargetCardInGraveyard("target card from a graveyard")),
 			effects.InGraveyard(effects.Cmdr2B27WheneverYouSurveil("Blood Operative — you may pay 3 life to return it to your hand",
@@ -45,17 +45,6 @@ func init() {
 				})),
 		},
 	})
-}
-
-// bloodOperativeExile exiles the chosen card, if it is still in a graveyard.
-func bloodOperativeExile(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return effects.ExileTarget{Target: t.ID}.Apply(ctx)
-		}
-	}
-	return nil
 }
 
 // bloodOperativePaid is "return this card to your hand", once the life is paid.
