@@ -85081,6 +85081,7 @@ seats[].statics[].cantAttack.scope.playerOnly	bool
 seats[].statics[].cantAttack.scope.subtype	string
 seats[].statics[].cantBeCountered	object
 seats[].statics[].cantBeCountered.active	bool
+seats[].statics[].cantBeCountered.byColors	string
 seats[].statics[].cantBeCountered.except	object
 seats[].statics[].cantBeCountered.except.epoch	number:int
 seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)

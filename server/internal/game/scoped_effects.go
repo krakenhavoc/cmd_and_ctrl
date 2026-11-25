@@ -618,6 +618,14 @@ const (
 	// ability still targets, and nothing about the objects changes. The
 	// targeting choke point reads it (targeting_bar_table.go).
 	ModCantBeTargetedBySpellsOrActivated ModKind = "cantBeTargetedBySpellsOrActivated"
+	// ModCantBeTargetedBySpellsOfColors is "<affected> can't be the
+	// targets of <colour> spells [this turn]" (Autumn's Veil's "creatures
+	// you control can't be the targets of blue or black spells this
+	// turn", #6263). Mod.Colors names the colours (uppercase WUBRG). It
+	// refuses a SPELL that has one of them, whoever controls it, and no
+	// ability. Not hexproof and not protection. The targeting choke point
+	// reads it (targeting_bar_colors.go).
+	ModCantBeTargetedBySpellsOfColors ModKind = "cantBeTargetedBySpellsOfColors"
 )
 
 // ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
@@ -1356,6 +1364,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5718: Peace Talks' table-wide bar on spells and activated
 	// abilities.
 	ModCantBeTargetedBySpellsOrActivated: {reader: readerTargeting},
+	// #6263: Autumn's Veil's bar on blue and black spells.
+	ModCantBeTargetedBySpellsOfColors: {reader: readerTargeting},
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},

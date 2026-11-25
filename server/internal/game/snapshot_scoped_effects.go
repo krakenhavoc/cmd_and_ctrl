@@ -543,6 +543,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6263: a colour bar naming no colour, or a non-colour.
+			if problem := colorSpellTargetingBarModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #2567: an attack-this-permanent requirement naming no
 			// permanent, or a turn stamp on another kind.
 			if problem := attackPermanentModProblem(m); problem != "" {

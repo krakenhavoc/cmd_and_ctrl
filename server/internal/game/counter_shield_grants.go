@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // counter_shield_grants.go — ADR 0106 §4 decisions 2 to 4 (#1806),
 // delivery PR 3: the three "can't be countered" shapes that are not a
@@ -78,6 +82,17 @@ type CounterShieldGrant struct {
 	// that left the stack and was cast again is a new object (CR 400.7)
 	// and is covered. The zero ref excepts nothing.
 	Except ObjectRef `json:"except"`
+	// ByColors narrows the grant to counters by SPELLS of these colours
+	// (uppercase WUBRG letters run together, "UB"; a string so the grant
+	// stays comparable and its value copy a deep copy): "Spells you control can't be countered
+	// by blue or black spells this turn" (Autumn's Veil, #6263). The gate
+	// asks it of the spell resolving as the counter happens
+	// (counteringSpellColorsLocked): a spell that shares one of these
+	// colours can't counter, and a spell of another colour, a colourless
+	// spell or an ability (Mystic Snake's trigger is not a spell) still
+	// can. Empty is every counter, which is every grant before it.
+	// Additive within the schema version.
+	ByColors string `json:"byColors,omitempty"`
 
 	// Text is the clause as printed ("The next creature spell you cast
 	// this turn can't be countered."), for the player panel's line.
@@ -176,6 +191,9 @@ func (g *Game) counterShieldGrantedLocked(item *StackItem, spell Card) bool {
 				continue
 			}
 			if !gr.covers(p.ID, item, spell) {
+				continue
+			}
+			if gr.ByColors != "" && !g.counteringSpellSharesColorLocked(gr.ByColors) {
 				continue
 			}
 			return true
@@ -305,4 +323,25 @@ func (g *Game) CounterShieldGrantsForEffect(p *Player) []CounterShieldGrantSourc
 		})
 	}
 	return out
+}
+
+// counteringSpellSharesColorLocked reports whether the counter being
+// made now is made by a SPELL that has one of `colors` (#6263): the
+// spell resolving in the resolving slot (resolving_item.go), read as the
+// stack held it, so its layered colours count (CR 105.2). An ability
+// resolving, or no resolution at all (the view's chip asking whether the
+// spell can't be countered by anything), is not a spell of any colour.
+//
+// Caller must hold g.mu.
+func (g *Game) counteringSpellSharesColorLocked(colors string) bool {
+	r := g.resolving
+	if r == nil || !r.hasCard || r.item == nil || r.item.Kind != StackItemSpell {
+		return false
+	}
+	for _, have := range r.card.EffectiveColors() {
+		if len(have) == 1 && strings.Contains(colors, strings.ToUpper(have)) {
+			return true
+		}
+	}
+	return false
 }

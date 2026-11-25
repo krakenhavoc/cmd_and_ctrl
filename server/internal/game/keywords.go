@@ -575,6 +575,11 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if g.scopedTargetingBarLocked(c, src.Controller) {
 		return false
 	}
+	// #6263: "can't be the targets of blue or black spells" -- a record
+	// that asks the source's colours, spells only (targeting_bar_colors.go).
+	if g.colorSpellTargetingBarLocked(c, src) {
+		return false
+	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
