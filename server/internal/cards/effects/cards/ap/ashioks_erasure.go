@@ -30,24 +30,11 @@ func init() {
 	leave := effects.On(game.EventLTB, effects.Self, "Ashiok's Erasure — return the exiled card to its owner's hand",
 		effects.B36ReturnCardsExiledWithToOwnersHands)
 	effects.Register(effects.Spec{
-		OracleID:        "13cf3ef7-d88e-4cc7-a4d8-cedc671f356a",
-		Name:            "Ashiok's Erasure",
-		Completeness:    effects.CompletenessFull,
-		PrintedKeywords: []string{"flash"},
-		Triggered:       []game.TriggeredAbility{exile, leave},
-		CastRestrictions: []game.CastRestriction{{
-			Label: "Your opponents can't cast spells with the same name as the exiled card.",
-			Forbids: func(q game.CastQuery) bool {
-				if q.Game == nil || q.Controller == q.Source.Controller {
-					return false
-				}
-				for _, c := range q.Game.ExiledWithForEffect(game.PermissionCardRef{ID: q.Source.InstanceID, Epoch: q.Source.ObjectEpoch}) {
-					if c.Name != "" && (game.PermissionFilter{Named: c.Name}).Matches(q.Card) {
-						return true
-					}
-				}
-				return false
-			},
-		}},
+		OracleID:         "13cf3ef7-d88e-4cc7-a4d8-cedc671f356a",
+		Name:             "Ashiok's Erasure",
+		Completeness:     effects.CompletenessFull,
+		PrintedKeywords:  []string{"flash"},
+		Triggered:        []game.TriggeredAbility{exile, leave},
+		CastRestrictions: []game.CastRestriction{effects.OpponentsCantCastSpellsNamedLikeTheExiledCard()},
 	})
 }
