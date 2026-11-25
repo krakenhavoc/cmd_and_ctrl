@@ -1,0 +1,6 @@
+---
+title: "Alternative cost: have an opponent gain life"
+date: 2026-11-25
+issues: [6256]
+---
+**Alternative cost: have an opponent gain life** (#6256, CR 118.9, 614.17b) — `game.AlternativeCost.OpponentGainsLife` is Invigorate's "rather than pay this spell's mana cost, you may have an opponent gain 3 life". The caster names the opponent on `CastSpellParams.AltCostOpponent` (wire `alt_cost_opponent`), as gift's recipient and an "an opponent gains 5 life" splice cost's are named, and it is paid as that opponent's life change through `gainLifeAsCostLocked`, the path a splice cost's gain already uses. Who may be named is `SpliceOpponentsLocked` — the opponents still in the game who can gain life — so the offer is withheld when there is nobody left to give it to (CR 614.17b), a claim naming the caster or a stranger is refused, and a stray opponent on a printed-cost cast is refused rather than ignored. The view ships `opponent_gains_life` with `opponent_options`, the enumerator makes one announcement per candidate opponent (which opponent is part of paying the cost), and the client's cost picker asks for it beside the offer. The card's own "if you control a Forest" gate stays a `Condition`. No snapshot change. **Cards:** Invigorate (OLD b281) waits for its batch.

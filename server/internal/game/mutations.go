@@ -378,6 +378,13 @@ type CastSpellParams struct {
 	// Added in ADR 0089 (#1267).
 	GiftOpponent uuid.UUID
 
+	// AltCostOpponent is the opponent an alternative cost's "have an
+	// opponent gain N life" names (#6256, Invigorate). Required exactly
+	// when the claimed offer has that component, and rejected, not
+	// ignored, when it does not. Must be an opponent who can gain life
+	// (game.SpliceOpponentsLocked, CR 614.17b).
+	AltCostOpponent uuid.UUID
+
 	// TapIDs names the untapped permanents the caster is tapping to
 	// help pay for the spell — convoke's "your creatures can help
 	// cast this spell", waterbend's "you can tap your artifacts and
@@ -1100,6 +1107,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// pitched or bounced to pay it. Validated here, next to the claim
 	// it belongs to; paid further down with the spell already on the
 	// stack, so a Blood Artist watching the pitch triggers above it.
+	// #6256: the opponent half of the claim ("have an opponent gain 3
+	// life"), validated beside the rest of the offer's payment.
+	if err := g.validateAltCostOpponentLocked(playerID, alt, params.AltCostOpponent); err != nil {
+		slog.Warn("cast_spell rejected: bad alternative cost opponent",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"alternative_cost", params.AlternativeCost,
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost payment",
 			"card_name", card.Name,
@@ -2577,7 +2595,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			item.Paid.ReturnedAttacking = g.sneakDefenderLocked(params.AltCostIDs[0])
 		}
 	}
-	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.commanderAnswers); err != nil {
+	if err := g.payAlternativeCostLocked(playerID, cardID, alt, params.AltCostIDs, params.AltCostOpponent, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: alternative cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
