@@ -187,6 +187,16 @@ describe("the commander's price tag", () => {
     expect(commanderCostBadge(card, 2)!.symbols).toEqual(["5", "G"]);
   });
 
+  it("names a commander tax paid in life (Liesa, #6151)", () => {
+    const card = commander("l", "Liesa, Shroud of Dusk", [
+      { cost: "{2}{W}{W}{B}", life: 4, commander_tax_life: 4 },
+    ]);
+    const b = commanderCostBadge(card, 2)!;
+    expect(b.life).toBe(4);
+    expect(b.title).toContain("commander tax 4 life (cast 2 times before)");
+    expect(b.title).not.toContain("+{4}");
+  });
+
   it("has no tag on a frame that carries no price", () => {
     expect(commanderCostBadge(commander("k", "Kenrith"), 3)).toBeNull();
   });
