@@ -38,14 +38,7 @@ func init() {
 		Grants: []effects.AbilityGrant{{
 			Key: key,
 			Triggered: []game.TriggeredAbility{
-				effects.On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					return effects.Self(ev, source, lki, g) && g.TriggeredThisTurn(source.InstanceID, label) < 1
-				}, label, func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					return effects.CounterTarget{StackID: item.Trigger.Event.StackItemID}.Apply(effects.NewContext(g, item))
-				}),
+				effects.WhenFirstTargetedEachTurnCounterIt(label),
 			},
 			Text: text,
 		}},
