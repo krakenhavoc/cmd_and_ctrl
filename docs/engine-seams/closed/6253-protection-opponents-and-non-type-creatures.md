@@ -1,6 +1,0 @@
----
-title: "Protection from creatures your opponents control, and from non-<type> creatures"
-date: 2026-11-25
-issues: [6253]
----
-**Protection from creatures your opponents control, and from non-<type> creatures** (#6253, CR 702.16a, 702.16b, 702.16f) — Crypsis's "gains protection from creatures your opponents control until end of turn" and Spare from Evil's "Creatures you control gain protection from non-Human creatures until end of turn". The closed protection grammar gains `ProtectionQualityOpponentsCreatures` (wire `opponents_creatures`): a creature source, a creature spell included (CR 702.16a's exception to 109.2), whose controller is not the protected permanent's controller, bound by the reader as "each of your opponents" is. It also gains `ProtectionQualityNonSubtypeCreatures` (wire `non_subtype_creatures`): a creature source without the type, where a changeling has every type. Tokens are `game.ProtectionFromOpponentsCreatures` and `game.ProtectionFromNonSubtypeCreatures(type)`, and every DEBT check reads them through `MatchedProtection`. The client badge falls back to the first three letters of the printed quality, and the tooltip shows the whole quality. **Cards:** Crypsis (b377) and Spare from Evil (b449) are built by their OLD batches.
