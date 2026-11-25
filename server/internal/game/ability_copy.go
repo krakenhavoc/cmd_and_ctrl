@@ -268,6 +268,7 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 	// watching for, and what the ordinary activation path emits at
 	// the same point in its own announcement.
 	g.emitBecameTargetLocked(controller, meta.SourceCardID, meta.ID, meta.Targets)
+	g.emitTargetsChosenLocked(controller, meta.SourceCardID, meta.ID, meta.Targets, "")
 
 	// "Whenever a spell or ability is put onto the stack" (Grip of
 	// Chaos, #4050) counts the copy, and neither kind above is for it.

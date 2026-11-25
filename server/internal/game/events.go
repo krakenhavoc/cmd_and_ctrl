@@ -820,6 +820,27 @@ const (
 	// without one keeps the event log it had before the kind existed.
 	EventAbilityCopied EventKind = "ability_copied"
 
+	// EventTargetsChosen — a player chose one or more targets for a
+	// spell or ability (#6228): CR 601.2c for a cast spell, 602.2b for an
+	// activated ability, 603.3d for a triggered one as it is put on the
+	// stack, CR 707.10c for a copy, and CR 115.7 when an effect changes
+	// targets or has new ones chosen. ONE event per announcement, after
+	// that announcement's EventBecomesTarget fan-out: Actor is the player
+	// who chose (the controller, or the retargeting effect's chooser),
+	// Source the item's source card, StackItemID the item.
+	//
+	// RetargetSourceName names the card whose effect changed the targets
+	// on a retarget, so "changing targets this way doesn't trigger
+	// abilities of permanents named Psychic Battle" can be read off the
+	// event. Empty for every first announcement.
+	//
+	// "Whenever a player chooses one or more targets" (Psychic Battle)
+	// watches it. Emitted only while a permanent on the battlefield
+	// watches it (battlefieldWatchesLocked), like EventTriggerPlaced, so a
+	// table without one keeps the event log it had before the kind
+	// existed.
+	EventTargetsChosen EventKind = "targets_chosen"
+
 	// EventActivateAbility — a player ACTIVATED an activated ability
 	// (CR 602.2b), announced onto the stack. Actor is the activator,
 	// Source and CardID are the permanent (or, since #660, the hand
@@ -1835,6 +1856,12 @@ type Event struct {
 	// Empty for a spell, an activated ability, a hand-written trigger and
 	// every other event.
 	TargeterKeyword string `json:"targeter_keyword,omitempty"`
+
+	// RetargetSourceName is the name of the card whose effect changed a
+	// spell's or ability's targets, on an EventTargetsChosen a retarget
+	// emitted (#6228). Empty on a first announcement and on every other
+	// event.
+	RetargetSourceName string `json:"retarget_source_name,omitempty"`
 
 	// ResolvedStackItemID names the item that left the stack, on an
 	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public

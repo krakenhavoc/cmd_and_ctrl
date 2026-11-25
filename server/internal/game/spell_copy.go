@@ -811,6 +811,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// at have become the target of one (CR 115.3), which is what a
 	// ward trigger or Monk Gyatso is watching for.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
+	g.emitTargetsChosenLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets, "")
 
 	// The copy is created, not cast (no EventCast), but "whenever you
 	// cast or copy" watches for it (magecraft). After the targets event
