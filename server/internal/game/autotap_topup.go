@@ -154,7 +154,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			snow = append(snow, i)
 			continue
 		}
-		if req.AnyMana || len(req.Options) != 1 {
+		if req.AnyMana || req.SnowAny || len(req.Options) != 1 {
 			flexible = append(flexible, i)
 			continue
 		}
@@ -196,6 +196,18 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			key := takeCredit(c, false)
 			credit(k + 1)
 			giveCredit(key)
+		}
+		// #6161: a slot widened to snow mana of any colour also takes
+		// snow mana of the colours it does not print.
+		if r := cost.Required[i]; r.SnowAny && !r.AnyMana {
+			for _, c := range genericColorOrder {
+				if containsFold(r.Options, c) || !has(c, true) {
+					continue
+				}
+				key := takeCredit(c, true)
+				credit(k + 1)
+				giveCredit(key)
+			}
 		}
 		unpaid[i] = true
 		credit(k + 1)
@@ -312,6 +324,9 @@ func requirementKey(r ColorRequirement) string {
 	b.WriteString(r.String())
 	if r.AnyMana {
 		b.WriteString("+any")
+	}
+	if r.SnowAny {
+		b.WriteString("+snowany")
 	}
 	return b.String()
 }

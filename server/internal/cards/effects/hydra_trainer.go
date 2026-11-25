@@ -72,9 +72,5 @@ func CountersOnPermanentsControlledBy(g *game.Game, controller uuid.UUID) int {
 // adaptTwo is "Adapt 2" (CR 701.46a): if the source has no +1/+1
 // counters on it as the ability resolves, put two on it.
 func AdaptTwo(g *game.Game, item *game.StackItem) error {
-	src, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || src.Counters[game.CounterPlusOne] > 0 {
-		return nil
-	}
-	return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(NewContext(g, item))
+	return AdaptN(g, item, 2)
 }

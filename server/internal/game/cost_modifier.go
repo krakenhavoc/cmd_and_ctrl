@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -1240,6 +1241,10 @@ func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Ca
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AbilityManaCostAtXForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef, x int) (ParsedCost, error) {
+	// #6240, CR 107.3c: an X the text defines is a number by now.
+	if ab.Cost.ManaValueOfExiledWith && ab.Cost.Mana == "" {
+		ab.Cost.Mana = "{" + strconv.Itoa(g.exiledWithManaValueLocked(source)) + "}"
+	}
 	base, err := ParseCost(ab.Cost.Mana)
 	if err != nil {
 		return ParsedCost{}, err

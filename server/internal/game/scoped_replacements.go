@@ -236,7 +236,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchMoveOrDiscard
 	case ModShuffleInsteadOfEnteringFromExile:
 		return watchZoneMove
-	case ModCreaturesEnterTappedForOpponents, ModPermanentsEnterTapped:
+	case ModCreaturesEnterTappedForOpponents, ModPermanentsEnterTapped, ModCreaturesEnterUnderYourControl:
+		// #6260 (Gather Specimens) watches an entry too.
 		// #6093: Cone of Cold's timed enters-tapped replacement; #6147,
 		// its "this turn" sibling.
 		return watchZoneMove
@@ -665,6 +666,9 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 		// reads them (unpreventable_damage.go). The two exile
 		// redirects and "gains no life instead" are replacements.
 		Prevention: scopedKindPrevents(kind),
+		// CR 616.1b: a change of the entering controller is applied
+		// before the window's other effects (#6260).
+		ChangesEntryController: kind == ModCreaturesEnterUnderYourControl,
 		AppliesTo: func(ev *ReplacementEvent, g *Game, _ *Card) bool {
 			e, m, ok := g.scopedReplacementModLocked(seq, mod, kind)
 			return ok && scopedReplacementAppliesLocked(g, e, mod, m, ev)
@@ -805,6 +809,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
 	case ModCreaturesEnterTappedForOpponents:
 		return creaturesEnterTappedForOpponentsAppliesLocked(g, e, ev)
+	case ModCreaturesEnterUnderYourControl:
+		return creaturesEnterUnderYourControlAppliesLocked(g, e, ev)
 	case ModNextEntersAsCopies:
 		return nextEntersAsCopiesAppliesLocked(g, m, ev)
 	case ModPermanentsEnterTapped:
@@ -907,6 +913,10 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.NewZone = ZoneLibrary
 		ev.NewZoneOwner = uuid.Nil
 		ev.ShuffleDestinationLibrary = true
+	case ModCreaturesEnterUnderYourControl:
+		// #6260: "it enters under your control instead" (CR 614.12,
+		// CR 110.2a's "unless the effect states otherwise").
+		g.setEntryControllerLocked(ev, e.Controller, e.Controller)
 	case ModCreaturesEnterTappedForOpponents, ModPermanentsEnterTapped:
 		// "Enter tapped" (CR 614.1c): the permanent is tapped as it
 		// enters, so nothing sees it untapped.

@@ -403,6 +403,9 @@ type entryLanding struct {
 	// entry that is a land PLAY (CR 305.1), false for every "put"
 	// path and for a token, which was never played. See Event.Played.
 	played bool
+	// landOrdinal is, for a land play, how many lands its player has
+	// played this turn counting this one (#6213, Event.LandOrdinal).
+	landOrdinal int
 	// playedFromExile is the card as it sat in exile, for a land PLAYED
 	// from exile (#2651): its CR 607.2a link, which MoveCard clears, is
 	// copied onto the Played EventZoneMove. Nil for every other entry.
@@ -634,18 +637,20 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	if landPlayer == uuid.Nil {
 		landPlayer = ev.Actor
 	}
+	landOrdinal := 0
 	if ev.landPlay && landPlayer != uuid.Nil {
 		if g.LandsPlayedThisTurn == nil {
 			g.LandsPlayedThisTurn = make(map[uuid.UUID]int)
 		}
 		g.LandsPlayedThisTurn[landPlayer]++
+		landOrdinal = g.LandsPlayedThisTurn[landPlayer]
 	}
 	if doors != 0 {
 		if c := findBattlefieldCard(g, entered); c != nil {
 			moved = *c
 		}
 	}
-	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, srcOwner: srcOwner, entered: entered, played: ev.landPlay, doors: doors, playedFromExile: playedFromExile}, true, nil
+	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, srcOwner: srcOwner, entered: entered, played: ev.landPlay, landOrdinal: landOrdinal, doors: doors, playedFromExile: playedFromExile}, true, nil
 }
 
 // announceEntryLocked emits what a landed permanent's arrival owes the
@@ -694,6 +699,8 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 			Source: ev.Source,
 			CardID: l.entered,
 			Played: l.played,
+			// #6213: which land play of the turn this was.
+			LandOrdinal: l.landOrdinal,
 		})
 	} else {
 		move := Event{
@@ -703,6 +710,8 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 			OldZone: l.srcKind,
 			NewZone: ZoneBattlefield,
 			Played:  l.played,
+			// #6213: which land play of the turn this was.
+			LandOrdinal: l.landOrdinal,
 		}
 		if l.played {
 			// #2651: a land played from exile carries its link.

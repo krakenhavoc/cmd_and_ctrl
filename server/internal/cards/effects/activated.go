@@ -510,6 +510,10 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaValueFromSource {
 			out.ManaValueFromSource = true
 		}
+		// Soul Foundry: and "X is the mana value of the exiled card".
+		if c.ManaValueOfExiledWith {
+			out.ManaValueOfExiledWith = true
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {

@@ -64,6 +64,16 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 		// before the payment is named. Every slot asks its mana_pick.
 		return nil
 	}
+	if TapOthersUntaps(ab.TapOthers) {
+		// #6208: WHICH colours the slot offers is decided by which
+		// permanent the activator untaps — Benthic Explorers' "one mana
+		// of any type that land could produce" is {U} off an Island and
+		// {R} off a Mountain. A list published before the payment is
+		// named would be one candidate's, and the client would pick a
+		// colour the land it chose cannot make. The slot asks its
+		// mana_pick instead.
+		return nil
+	}
 	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return nil
