@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // spend_any_color.go — "you may spend mana as though it were mana of any
 // color" as a PLAYER's static (#1600, ADR 0066's 2026-10-02 amendment):
@@ -89,6 +93,21 @@ type AnyColorSpendStatic struct {
 	// and no other mana. Empty is every colour of mana, which is every
 	// grant written before it.
 	From string
+	// To narrows a From grant to symbols of ONE colour (an uppercase
+	// WUBRG letter): "You may spend white mana as though it were RED
+	// mana" (Sunglasses of Urza, #6202). The From colour then pays a
+	// symbol only when that symbol admits To — a {R}, an {R/G} hybrid's
+	// red half — and never a {U}. Empty is "as though it were mana of any
+	// color". Meaningless without From.
+	To string
+	// OthersOnlyColorless is the second sentence of Celestial Dawn
+	// (#6202): "You may spend other mana only as though it were
+	// colorless mana." It is a restriction, not a grant: mana of every
+	// colour but From pays only generic mana and {C} symbols, and a
+	// coloured symbol admits only From. Colourless mana is unaffected
+	// (it already is colourless). CR 609.4b: the costs and the mana are
+	// unchanged; only how the player may pay is.
+	OthersOnlyColorless bool
 	// OwnAbilities narrows the grant to the activation costs of THIS
 	// permanent's abilities — "to pay the activation costs of this
 	// creature's abilities" (Quicksilver Elemental): a payment whose
@@ -119,23 +138,60 @@ type spendGrant struct {
 	// anyType: of any type, so a {C} too.
 	any, anyType bool
 	// from lists the colours of mana a one-colour grant (From) lets
-	// stand for any colour.
-	from []string
+	// stand for another colour (spendPair.to) or any colour.
+	from []spendPair
+	// colorlessOnly is a Celestial Dawn restriction (OthersOnlyColorless)
+	// covering the payment: mana of a colour not in exempt may be spent
+	// only as though it were colourless.
+	colorlessOnly bool
+	exempt        []string
+}
+
+// spendPair is one one-colour grant: mana of colour `from` may be spent
+// as though it were mana of colour `to`, or of any colour when `to` is
+// empty.
+type spendPair struct {
+	from, to string
 }
 
 // note folds one covering grant in.
 func (s *spendGrant) note(anyType bool, from string) {
+	s.noteTo(anyType, from, "")
+}
+
+// noteTo is note for a grant narrowed to one target colour (To).
+func (s *spendGrant) noteTo(anyType bool, from, to string) {
 	if from == "" {
 		s.any = true
 		s.anyType = s.anyType || anyType
 		return
 	}
 	for _, f := range s.from {
-		if f == from {
+		if f.from == from && f.to == to {
 			return
 		}
 	}
-	s.from = append(s.from, from)
+	s.from = append(s.from, spendPair{from: from, to: to})
+}
+
+// restrict folds one "other mana only as though it were colorless"
+// restriction in: mana of colour `exempt` is spared. Two restrictions
+// both bind, so only a colour both spare is spared.
+func (s *spendGrant) restrict(exempt string) {
+	if !s.colorlessOnly {
+		s.colorlessOnly = true
+		if exempt != "" {
+			s.exempt = []string{exempt}
+		}
+		return
+	}
+	var kept []string
+	for _, e := range s.exempt {
+		if e == exempt {
+			kept = append(kept, e)
+		}
+	}
+	s.exempt = kept
 }
 
 // spendGrantLocked is the reader behind spendsManaAsAnyColorLocked and
@@ -181,10 +237,10 @@ func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) spendGran
 			if s.Covers != nil && !s.Covers(withPayer(ctx, payer)) {
 				continue
 			}
-			out.note(s.AnyType, s.From)
-			if out.anyType {
-				return out
+			if s.OthersOnlyColorless {
+				out.restrict(s.From)
 			}
+			out.noteTo(s.AnyType, s.From, s.To)
 		}
 	}
 	return out
@@ -331,11 +387,76 @@ func (g *Game) foldAndWidenLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 	grant := g.spendGrantLocked(payer, ctx)
 	switch {
 	case grant.any:
-		return widenForAnyColorSpend(cost, grant.anyType)
+		cost = widenForAnyColorSpend(cost, grant.anyType)
 	case len(grant.from) > 0:
-		return widenFromColors(cost, grant.from)
+		cost = widenFromPairs(cost, grant.from)
+	}
+	if grant.colorlessOnly {
+		cost = restrictToColorless(cost, grant.exempt)
 	}
 	return cost
+}
+
+// restrictToColorless is `cost` as a player under "you may spend other
+// mana only as though it were colorless mana" (Celestial Dawn, #6202)
+// may pay it: mana of a colour not in `exempt` pays only what
+// colourless mana pays, which is generic mana (never a requirement)
+// and a {C}. So a slot that admits {C} admits every non-exempt colour
+// too, and a slot that admits a colour (or was widened to any mana)
+// admits only the exempt colours. Snow {S} is paid by its source, not
+// a colour (CR 107.4h), and is left alone, as is a slot no mana pays.
+// Applied after the widening, so the grant the same card prints
+// ("white mana as though it were mana of any color") is what lets
+// white pay a {R}.
+func restrictToColorless(cost ParsedCost, exempt []string) ParsedCost {
+	isExempt := func(c string) bool {
+		for _, e := range exempt {
+			if e == c {
+				return true
+			}
+		}
+		return false
+	}
+	restrict := func(r ColorRequirement) ColorRequirement {
+		if r.Snow || len(r.Options) == 0 || unpayableByAnyMana(r) {
+			return r
+		}
+		colourless, coloured := r.AnyMana, r.AnyMana
+		for _, o := range r.Options {
+			if o == "C" {
+				colourless = true
+			} else {
+				coloured = true
+			}
+		}
+		var opts []string
+		if coloured {
+			opts = append(opts, exempt...)
+		}
+		if colourless {
+			opts = append(opts, "C")
+			for _, c := range []string{"W", "U", "B", "R", "G"} {
+				if !isExempt(c) {
+					opts = append(opts, c)
+				}
+			}
+		}
+		if len(opts) == 0 {
+			opts = []string{noManaColor}
+		}
+		r.Options = opts
+		r.AnyMana = false
+		return r
+	}
+	out := cost
+	out.Required = make([]ColorRequirement, len(cost.Required))
+	for i, r := range cost.Required {
+		out.Required[i] = restrict(r)
+	}
+	if out.folded.n > 0 {
+		out.folded.req = restrict(out.folded.req)
+	}
+	return out
 }
 
 // widenFromColors is widenForAnyColorSpend for a grant narrowed to some
@@ -346,6 +467,17 @@ func (g *Game) foldAndWidenLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 // colourless), and so is a symbol already widened to any mana. Returns
 // `cost` itself when nothing changes.
 func widenFromColors(cost ParsedCost, from []string) ParsedCost {
+	pairs := make([]spendPair, len(from))
+	for i, f := range from {
+		pairs[i] = spendPair{from: f}
+	}
+	return widenFromPairs(cost, pairs)
+}
+
+// widenFromPairs is widenFromColors with each colour's target: a pair
+// with a `to` widens only the symbols that admit `to` (Sunglasses of
+// Urza's white-as-red pays a {R} and an {R/G}, never a {U}).
+func widenFromPairs(cost ParsedCost, from []spendPair) ParsedCost {
 	// widen is r admitting `from` too, and whether that changed it.
 	widen := func(r ColorRequirement) (ColorRequirement, bool) {
 		if r.AnyMana || len(r.Options) == 0 || requiresColorless(r) || unpayableByAnyMana(r) {
@@ -353,8 +485,11 @@ func widenFromColors(cost ParsedCost, from []string) ParsedCost {
 		}
 		var add []string
 		for _, f := range from {
-			if !matchColor(f, r.Options) {
-				add = append(add, f)
+			if f.to != "" && !matchColor(f.to, r.Options) {
+				continue
+			}
+			if !matchColor(f.from, r.Options) && !slices.Contains(add, f.from) {
+				add = append(add, f.from)
 			}
 		}
 		if len(add) == 0 {
@@ -376,6 +511,50 @@ func widenFromColors(cost ParsedCost, from []string) ParsedCost {
 	}
 	// The folded run is widened whole, as each of its identical
 	// requirements was (#3909).
+	var tail ColorRequirement
+	tailChanged := false
+	if cost.folded.n > 0 {
+		tail, tailChanged = widen(cost.folded.req)
+	}
+	if out == nil && !tailChanged {
+		return cost
+	}
+	widened := cost
+	if out != nil {
+		widened.Required = out
+	}
+	if tailChanged {
+		widened.folded.req = tail
+	}
+	return widened
+}
+
+// widenSnowAny is widenFromColors for a grant narrowed by the mana's
+// source rather than its colour (CastPermission.AnyColorFromSnow, #6161):
+// each coloured symbol also takes any mana a snow source produced
+// (ColorRequirement.SnowAny). A {C} is left alone (colourless is not a
+// colour, CR 106.1b), and so is an {S} (snow is neither a colour nor a
+// type, CR 107.4h) and a symbol already widened to any mana. Returns
+// `cost` itself when nothing changes.
+func widenSnowAny(cost ParsedCost) ParsedCost {
+	widen := func(r ColorRequirement) (ColorRequirement, bool) {
+		if r.AnyMana || r.Snow || r.SnowAny || len(r.Options) == 0 || requiresColorless(r) || unpayableByAnyMana(r) {
+			return r, false
+		}
+		r.SnowAny = true
+		return r, true
+	}
+	var out []ColorRequirement
+	for i, r := range cost.Required {
+		r, changed := widen(r)
+		if !changed {
+			continue
+		}
+		if out == nil {
+			out = append([]ColorRequirement(nil), cost.Required...)
+		}
+		out[i] = r
+	}
 	var tail ColorRequirement
 	tailChanged := false
 	if cost.folded.n > 0 {

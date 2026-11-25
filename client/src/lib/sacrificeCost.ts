@@ -228,6 +228,10 @@ export function sacrificeRangeShortfall(
   label: string,
 ): string {
   if (!opts) return "";
+  // #2097 / #6208: a "sacrifice all" clause is paid by whatever it
+  // lists, none included, so it is never a shortfall — an empty board
+  // pays it in full (CR 118.3).
+  if (sacrificesAll(opts)) return "";
   const have = opts.cards?.length ?? 0;
   const need = sacrificeRange(opts).min;
   if (have >= need && canFillEachOf(opts.each_of) && canFillDifferent(opts.different, need)) {
