@@ -1704,6 +1704,7 @@ choose choose-cards/verdant-mastery-mine
 choose choose-cards/verdant-mastery-opponents-land
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
+choose choose-cards/vivien-arkbow-ranger-creature
 choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vohar-vodalian-desecrator-discarded
 choose choose-cards/vow-to-erebor-attach
@@ -4862,6 +4863,7 @@ tail then/abdel-adrian-exiled-one
 tail then/academic-probation-named
 tail then/acolyte-hybrid-controller-draws
 tail then/addle-color-chosen
+tail then/ajani-inspiring-leader-controller-gains
 tail then/ajanis-last-stand-avatar
 tail then/ancient-vendetta-named
 tail then/and-they-shall-know-no-fear-type-chosen
@@ -4910,6 +4912,7 @@ tail then/chain-lightning-offer-red-payment
 tail then/chain-of-acid-offer-copy
 tail then/chain-of-vapor-offer-chain
 tail then/chain-sacrificed-offer-copy
+tail then/chandra-acolyte-of-flame-elementals
 tail then/change-creature-type-word-replace
 tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
