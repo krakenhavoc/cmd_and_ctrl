@@ -749,6 +749,16 @@ type PendingChoiceView struct {
 	// with that many cards in hand.
 	PayRandomDiscard *int `json:"pay_random_discard,omitempty"`
 
+	// PayState is a payment that names nothing and is not mana (#6189):
+	// "put three -1/-1 counters on this permanent", "draw a card",
+	// "exile the top card of your library". The answer is a plain yes or
+	// no; PayCost holds the payment's printed words, and Payable is
+	// whether the chooser can make it (CR 118.3) — the client greys
+	// "Pay" when it cannot, as it does for a short energy payment.
+	// At most one of PayCards / PayEnergy / PayLife / PayDamage /
+	// PayNothing / PayState / PayEither is present.
+	PayState *PayStateView `json:"pay_state,omitempty"`
+
 	// PayEither is an either payment (ADR 0187 §5): one offer with two
 	// or more ways to pay, Worms of the Earth's "sacrifice two lands or
 	// have it deal 5 damage to you". Each entry is one branch; the
@@ -2389,6 +2399,15 @@ type PayCardsView struct {
 	// graveyard's are public. Present-and-empty when there is nothing
 	// to pay with.
 	Options []string `json:"options"`
+	// Picks is "players" when Options are SEAT ids and not cards
+	// (#6189: "an opponent gains 1 life", "have an opponent create a
+	// token"). Absent for every card payment.
+	Picks string `json:"picks,omitempty"`
+	// Repeats marks a payment one option may pay more than once
+	// (#6189, CR 702.24a: a cumulative upkeep makes each choice
+	// separately for each age counter, so one creature may take two
+	// counters). Absent for every other payment.
+	Repeats bool `json:"repeats,omitempty"`
 	// TotalPower is set for a "sacrifice_total_power" payment (#6187,
 	// Phyrexian Dreadnought): the answer names any number of Options,
 	// at least one, whose Powers add up to TotalPower or more. Count is
@@ -2397,6 +2416,20 @@ type PayCardsView struct {
 	// Powers is each option's power now, keyed by instance ID, for a
 	// "sacrifice_total_power" payment. Absent for every other.
 	Powers map[string]int `json:"powers,omitempty"`
+}
+
+// PayStateView is a pay-unless payment that names nothing and is not
+// mana (#6189): what it does, how much of it, and whether the chooser
+// can make it right now.
+type PayStateView struct {
+	// Action is "counters_on_source", "draw" or "exile_library_top".
+	Action string `json:"action"`
+	// Count is how many counters, cards drawn or cards exiled.
+	Count int `json:"count"`
+	// Payable is whether the chooser can pay (CR 118.3): a library with
+	// the cards, a permanent that can have counters put on it. A draw is
+	// always payable.
+	Payable bool `json:"payable"`
 }
 
 // PayOptionView is one branch of an either payment (ADR 0187 §5).
@@ -10901,6 +10934,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PayDamage = &n
 			case game.PayActionNothing:
 				v.PayNothing = true
+			case game.PayActionCountersOnSource, game.PayActionDraw, game.PayActionExileLibraryTop:
+				// #6189: a payment that names nothing and is not mana.
+				v.PayState = &PayStateView{
+					Action:  string(a.Kind),
+					Count:   a.Count,
+					Payable: g.PayActionPayableForEffect(c.Chooser, a),
+				}
 			case game.PayActionDiscardRandom:
 				v.PayRandomDiscard = &n
 			}
@@ -10913,6 +10953,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if v.PayCards.Options == nil {
 				v.PayCards.Options = []string{}
 			}
+			// #6189: whose ids these are, and whether one may pay twice.
+			if a.PicksPlayers {
+				v.PayCards.Picks = "players"
+			}
+			v.PayCards.Repeats = a.Repeats
 			if a.Kind == game.PayActionSacrificeTotalPower {
 				// #6187: the total and what each option adds to it.
 				v.PayCards.TotalPower = a.TotalPower

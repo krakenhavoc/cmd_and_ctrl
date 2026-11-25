@@ -2263,6 +2263,11 @@ export interface PendingChoiceView {
   // #6187: "discard N cards at random" (CR 701.9b). A yes or no; the
   // server picks the cards. "Yes" pays only with N cards in hand.
   pay_random_discard?: number;
+  // #6189: a payment that names nothing and is not mana — "put three
+  // -1/-1 counters on this permanent", "draw a card", "exile the top
+  // card of your library". pay_cost holds its printed words, and
+  // `payable` is whether the chooser can make it (CR 118.3).
+  pay_state?: PayStateView;
   // ADR 0187 §5: an either payment — one offer with two or more ways to
   // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
   // One entry per branch, in the card's order; pay_cost holds the whole
@@ -3872,11 +3877,30 @@ export interface PayCardsView {
     | "tap"
     | "minus_one_counter"
     | "hand_to_library_top"
-    | "sacrifice_total_power";
+    | "sacrifice_total_power"
+    // #6189, the cumulative-upkeep payments: a counter on a creature an
+    // opponent controls, an opponent gaining life, an opponent creating
+    // a token, and gaining control of a land you don't control.
+    | "counter_opponent_creature"
+    | "opponent_gains_life"
+    | "opponent_creates_token"
+    | "gain_control_land";
   count: number;
   options: string[];
+  // #6189: `picks: "players"` means the options are SEAT ids, not
+  // cards; `repeats` means one option may pay more than once (CR
+  // 702.24a: each choice is made separately for each age counter).
+  picks?: "players";
+  repeats?: boolean;
   total_power?: number;
   powers?: Record<string, number>;
+}
+
+// A pay-unless payment that names nothing and is not mana (#6189).
+export interface PayStateView {
+  action: "counters_on_source" | "draw" | "exile_library_top";
+  count: number;
+  payable: boolean;
 }
 
 // One branch of an either payment (ADR 0187 §5).

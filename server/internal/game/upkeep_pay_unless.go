@@ -91,6 +91,18 @@ type UpkeepPayUnlessPrompt struct {
 	// Question is the dialog header.
 	Question string
 
+	// LifeCost is life paid WITH the mana cost as one payment (#6189):
+	// Infernal Darkness' "Cumulative upkeep—Pay {B} and 1 life", whose
+	// two age counters are "{B}{B} and 2 life". A payer who cannot pay
+	// the life cannot pay the cost at all (CR 118.3, CR 119.4), so the
+	// "yes" is a decline. Zero for every other payment.
+	LifeCost int
+
+	// SpendPurpose is the ManaSpendPurpose the payment is made under
+	// (#6189): SpendPurposeCumulativeUpkeep on a cumulative upkeep's
+	// prompt. Zero for every other upkeep pay-unless.
+	SpendPurpose ManaSpendPurpose
+
 	// Then is the "or else" (sacrifice the permanent, lose the game) and
 	// the payment's own branch, if the card has one (echo's
 	// EventEchoPaid, ADR 0108 §5), as REGISTERED branches
@@ -124,6 +136,7 @@ func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
 	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
 		Chooser: p.Chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
 		Then: p.Then.orNothing(), Carry: p.Carry, Action: p.Action, InThisStep: true, Asked: p.Asked,
+		LifeCost: p.LifeCost, SpendPurpose: p.SpendPurpose,
 	})
 }
 

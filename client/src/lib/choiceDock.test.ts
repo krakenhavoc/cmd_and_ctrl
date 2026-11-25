@@ -29,6 +29,7 @@ import {
   voteRequest,
   mayEndVote,
   payPhrase,
+  payStateWords,
 } from "./choiceDock";
 import { dockKeyAction } from "./dock";
 import { L } from "./labels";
@@ -938,6 +939,20 @@ describe("#6187 random discard payment", () => {
     expect(payPhrase({ pay_random_discard: 1 })).toBe("discard a card at random");
     expect(payPhrase({ pay_random_discard: 2, pay_cost: "Discard two cards at random" })).toBe(
       "discard two cards at random",
+    );
+  });
+});
+
+describe("#6189 a payment that names nothing and is not mana", () => {
+  it("reads as the card's own words, and says when it can't be paid", () => {
+    const draw = { pay_state: { action: "draw" as const, count: 1, payable: true } };
+    expect(payPhrase({ ...draw, pay_cost: "Draw a card" })).toBe("draw a card");
+    expect(payPhrase(draw)).toBe("draw a card");
+    expect(payPhrase({ pay_state: { action: "exile_library_top", count: 2, payable: true } })).toBe(
+      "exile the top 2 cards of your library",
+    );
+    expect(payStateWords({ action: "counters_on_source", count: 3, payable: true })).toBe(
+      "put 3 counters on this permanent",
     );
   });
 });
