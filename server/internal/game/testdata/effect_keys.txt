@@ -1749,6 +1749,7 @@ choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/ryan-sinclair-rest
 choose resolution-cast/s82-gap-b200-ripple-bottom
 choose resolution-cast/s82-mom-b21-rashmi-after
+choose resolution-cast/s82-old-b162-exiled-rest-to-bottom
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
@@ -4466,6 +4467,8 @@ tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-old-b046/culmination-of-studies-exiled
 tail s82-old-b117/return-lesser-creature
 tail s82-old-b117/return-up-to-two-permanents
+tail s82-old-b162/collected-conjuring-exiled
+tail s82-old-b162/force-of-rage-sacrifice-the-elementals
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
