@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
+  - ["As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)](#as-long-as-this-is-on-the-stack-adr-0048-amendment-2026-11-25-6222)
   - ["Counter target spell if it would destroy a land you control" (ADR 0228, #6225)](#counter-target-spell-if-it-would-destroy-a-land-you-control-adr-0228-6225)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
@@ -5071,6 +5072,22 @@ right, and the replacement knows who is countering. Declare
 - **It can pause.** Two replacements that disagree are ordered by the
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
+
+### "As long as this is on the stack" (ADR 0048 amendment 2026-11-25, #6222)
+
+A spell's ability that functions while the spell is on the stack (CR
+113.6b). The source is the spell, and "you" is its controller.
+
+- **A cost modifier** (Kaervek's Torch's "spells that target it cost {2}
+  more to cast") goes on `Spec.CostModifiers` as
+  `effects.SpellsThatTargetThisCostMore(2, label)`; mark any other with
+  `effects.WhileOnTheStack(m)`. An `OnStack` modifier is never read from
+  the battlefield.
+- **Any other static** (Torrent of Lava's "each creature has '{T}: …'")
+  is a `game.StaticAbility` with `Zones: []game.ZoneKind{game.ZoneStack}`.
+  A granted ability's stack item carries the granting spell in
+  `item.GrantedBy`, so "damage … by Torrent of Lava" is a shield
+  against that object (`PreventNextDamageFromSource{From: …}`).
 
 ### "Counter target spell if it would destroy a land you control" (ADR 0228, #6225)
 
