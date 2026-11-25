@@ -2528,11 +2528,22 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return removeKeywordPrefixesApply(copyStrings(m.Keywords))
 	case ModRemoveKeywords:
 		keywords := m.Keywords
+		// CR 702.22b (#6142): a permanent that loses banding loses every
+		// "bands with other" ability as well.
+		losesBanding := false
+		for _, kw := range keywords {
+			if strings.EqualFold(kw, KeywordBanding) {
+				losesBanding = true
+			}
+		}
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			kept := make([]string, 0, len(ch.Abilities))
 			for _, a := range ch.Abilities {
-				drop := false
+				drop := losesBanding && strings.HasPrefix(strings.ToLower(a), KeywordBandsWithOtherPrefix)
 				for _, kw := range keywords {
+					if drop {
+						break
+					}
 					if strings.EqualFold(a, kw) {
 						drop = true
 						break
