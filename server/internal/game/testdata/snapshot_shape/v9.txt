@@ -5927,6 +5927,7 @@ frozenEntries[].event.damageTail.sourceLki.CantBeBeamedUp	bool
 frozenEntries[].event.damageTail.sourceLki.CantBeSacrificed	bool
 frozenEntries[].event.damageTail.sourceLki.CantHave	array
 frozenEntries[].event.damageTail.sourceLki.CantHaveCounters	bool
+frozenEntries[].event.damageTail.sourceLki.CantHavePlusOneCounters	bool
 frozenEntries[].event.damageTail.sourceLki.CantHave[]	string
 frozenEntries[].event.damageTail.sourceLki.CantTransform	bool
 frozenEntries[].event.damageTail.sourceLki.Colors	array
@@ -15837,6 +15838,7 @@ frozenEntries[].event.sourceLki.CantBeBeamedUp	bool
 frozenEntries[].event.sourceLki.CantBeSacrificed	bool
 frozenEntries[].event.sourceLki.CantHave	array
 frozenEntries[].event.sourceLki.CantHaveCounters	bool
+frozenEntries[].event.sourceLki.CantHavePlusOneCounters	bool
 frozenEntries[].event.sourceLki.CantHave[]	string
 frozenEntries[].event.sourceLki.CantTransform	bool
 frozenEntries[].event.sourceLki.Colors	array
@@ -23294,6 +23296,7 @@ heldCombatDamage.answers[].frame.SourceLKI.CantBeBeamedUp	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantBeSacrificed	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantHave	array
 heldCombatDamage.answers[].frame.SourceLKI.CantHaveCounters	bool
+heldCombatDamage.answers[].frame.SourceLKI.CantHavePlusOneCounters	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantHave[]	string
 heldCombatDamage.answers[].frame.SourceLKI.CantTransform	bool
 heldCombatDamage.answers[].frame.SourceLKI.Colors	array
@@ -23595,6 +23598,7 @@ lastKnownBattlefield{}.CantBeBeamedUp	bool
 lastKnownBattlefield{}.CantBeSacrificed	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHaveCounters	bool
+lastKnownBattlefield{}.CantHavePlusOneCounters	bool
 lastKnownBattlefield{}.CantHave[]	string
 lastKnownBattlefield{}.CantTransform	bool
 lastKnownBattlefield{}.Colors	array
@@ -23901,6 +23905,7 @@ lastKnownPermanents{}[].characteristic.CantBeBeamedUp	bool
 lastKnownPermanents{}[].characteristic.CantBeSacrificed	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHaveCounters	bool
+lastKnownPermanents{}[].characteristic.CantHavePlusOneCounters	bool
 lastKnownPermanents{}[].characteristic.CantHave[]	string
 lastKnownPermanents{}[].characteristic.CantTransform	bool
 lastKnownPermanents{}[].characteristic.Colors	array
@@ -28804,6 +28809,7 @@ movesAwaitingTokens[].damageTail.sourceLki.CantBeBeamedUp	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantBeSacrificed	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantHave	array
 movesAwaitingTokens[].damageTail.sourceLki.CantHaveCounters	bool
+movesAwaitingTokens[].damageTail.sourceLki.CantHavePlusOneCounters	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantHave[]	string
 movesAwaitingTokens[].damageTail.sourceLki.CantTransform	bool
 movesAwaitingTokens[].damageTail.sourceLki.Colors	array
@@ -38714,6 +38720,7 @@ movesAwaitingTokens[].sourceLki.CantBeBeamedUp	bool
 movesAwaitingTokens[].sourceLki.CantBeSacrificed	bool
 movesAwaitingTokens[].sourceLki.CantHave	array
 movesAwaitingTokens[].sourceLki.CantHaveCounters	bool
+movesAwaitingTokens[].sourceLki.CantHavePlusOneCounters	bool
 movesAwaitingTokens[].sourceLki.CantHave[]	string
 movesAwaitingTokens[].sourceLki.CantTransform	bool
 movesAwaitingTokens[].sourceLki.Colors	array
@@ -50834,6 +50841,7 @@ pendingChoices[].damageAssignment.SourceLKI.CantBeBeamedUp	bool
 pendingChoices[].damageAssignment.SourceLKI.CantBeSacrificed	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHaveCounters	bool
+pendingChoices[].damageAssignment.SourceLKI.CantHavePlusOneCounters	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
 pendingChoices[].damageAssignment.SourceLKI.CantTransform	bool
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
@@ -51909,6 +51917,7 @@ pendingChoices[].divideShield.staged[].lki.CantBeBeamedUp	bool
 pendingChoices[].divideShield.staged[].lki.CantBeSacrificed	bool
 pendingChoices[].divideShield.staged[].lki.CantHave	array
 pendingChoices[].divideShield.staged[].lki.CantHaveCounters	bool
+pendingChoices[].divideShield.staged[].lki.CantHavePlusOneCounters	bool
 pendingChoices[].divideShield.staged[].lki.CantHave[]	string
 pendingChoices[].divideShield.staged[].lki.CantTransform	bool
 pendingChoices[].divideShield.staged[].lki.Colors	array
@@ -52199,6 +52208,7 @@ pendingChoices[].divideShield.staged[].sourceLki.CantBeBeamedUp	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantBeSacrificed	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantHave	array
 pendingChoices[].divideShield.staged[].sourceLki.CantHaveCounters	bool
+pendingChoices[].divideShield.staged[].sourceLki.CantHavePlusOneCounters	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantHave[]	string
 pendingChoices[].divideShield.staged[].sourceLki.CantTransform	bool
 pendingChoices[].divideShield.staged[].sourceLki.Colors	array
@@ -58916,6 +58926,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeBeamedUp	boo
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantBeSacrificed	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHave	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHaveCounters	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHavePlusOneCounters	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHave[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantTransform	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Colors	array
@@ -68826,6 +68837,7 @@ pendingChoices[].replacementResume.event.sourceLki.CantBeBeamedUp	bool
 pendingChoices[].replacementResume.event.sourceLki.CantBeSacrificed	bool
 pendingChoices[].replacementResume.event.sourceLki.CantHave	array
 pendingChoices[].replacementResume.event.sourceLki.CantHaveCounters	bool
+pendingChoices[].replacementResume.event.sourceLki.CantHavePlusOneCounters	bool
 pendingChoices[].replacementResume.event.sourceLki.CantHave[]	string
 pendingChoices[].replacementResume.event.sourceLki.CantTransform	bool
 pendingChoices[].replacementResume.event.sourceLki.Colors	array
@@ -78077,6 +78089,7 @@ pendingChoices[].targetWalk.frame.lki.CantBeBeamedUp	bool
 pendingChoices[].targetWalk.frame.lki.CantBeSacrificed	bool
 pendingChoices[].targetWalk.frame.lki.CantHave	array
 pendingChoices[].targetWalk.frame.lki.CantHaveCounters	bool
+pendingChoices[].targetWalk.frame.lki.CantHavePlusOneCounters	bool
 pendingChoices[].targetWalk.frame.lki.CantHave[]	string
 pendingChoices[].targetWalk.frame.lki.CantTransform	bool
 pendingChoices[].targetWalk.frame.lki.Colors	array
@@ -79016,6 +79029,7 @@ pendingChoices[].triggerFrame.lki.CantBeBeamedUp	bool
 pendingChoices[].triggerFrame.lki.CantBeSacrificed	bool
 pendingChoices[].triggerFrame.lki.CantHave	array
 pendingChoices[].triggerFrame.lki.CantHaveCounters	bool
+pendingChoices[].triggerFrame.lki.CantHavePlusOneCounters	bool
 pendingChoices[].triggerFrame.lki.CantHave[]	string
 pendingChoices[].triggerFrame.lki.CantTransform	bool
 pendingChoices[].triggerFrame.lki.Colors	array
@@ -88887,6 +88901,8 @@ turnTally.becameCrewed[].epoch	number:int
 turnTally.becameCrewed[].id	custom(uuid.UUID)
 turnTally.becameTapped	map:string
 turnTally.becameTapped{}	number:int
+turnTally.blocked	map:string
+turnTally.blocked{}	number:int
 turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatBlocks	array

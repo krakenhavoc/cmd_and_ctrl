@@ -827,7 +827,7 @@ func (g *Game) canPlaceCounterLocked(playerID, cardID uuid.UUID, ac *CounterAddC
 	c := findBattlefieldCard(g, cardID)
 	// #4692: "can't have counters put on it" is the prohibition this
 	// predicate was waiting for (CR 118.3).
-	return c != nil && c.Controller == playerID && !g.cantHaveCountersLocked(c)
+	return c != nil && c.Controller == playerID && !g.cantHaveCounterKindLocked(c, ac.Counter)
 }
 
 // CanPlaceCounterForEffect is canPlaceCounterLocked on the *ForEffect
