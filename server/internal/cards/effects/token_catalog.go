@@ -428,6 +428,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedGapB154BananaToken,
 	// Svella, Ice Shaper's Icy Manalith: a colorless snow artifact (Kaldheim, S82 OLD batch 071, #5505).
 	printedOldB071IcyManalithToken,
+	// Tezzeret the Schemer's Etherium Cell (Aether Revolt, S82 OLD batch 254, #5536).
+	printedS82OldB254EtheriumCellToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.

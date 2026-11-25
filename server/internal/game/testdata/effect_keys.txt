@@ -4828,6 +4828,7 @@ tail scroll-rack/take
 tail scuttlemutt/colors-chosen
 tail search-for-azcanta/after-surveil
 tail search-then/tend-the-sprigs
+tail secret-salvage/after-exile
 tail seed-of-hope/after-mill
 tail seek-thrills/after-mill
 tail selesnya-eulogist/after-exile

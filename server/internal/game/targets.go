@@ -938,6 +938,16 @@ type TargetSpec struct {
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
 
+	// DealtCombatDamageBySource is "target player who was dealt combat
+	// damage by this creature this turn" (Hope of Ghirapur): a player
+	// candidate must have been dealt combat damage this turn by the
+	// clause's own source object (damaged_by_source.go). DATA, judged
+	// beside PlayerOK in the player walk, so the legal set, the announce
+	// check (CR 601.2c) and the resolution re-check (CR 608.2b) are one
+	// answer; a walk with no source object admits nobody. Build it with
+	// effects.DealtCombatDamageBySource.
+	DealtCombatDamageBySource bool
+
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
 	// only on the value copies AnnouncedClauses hands out, like xBound.
@@ -1633,7 +1643,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
-			if !spec.playerChooserAdmits(g, src, p) {
+			if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) {
 				continue
 			}
 			out.Players = append(out.Players, p.ID)
@@ -1909,7 +1919,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
 			return false
 		}
-		if !spec.playerChooserAdmits(g, src, p) {
+		if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
