@@ -4,6 +4,7 @@ import {
   castSacrificeFloor,
   castSacrificeRange,
   sacrificeAllWarning,
+  sacrificeRangeShortfall,
   sacrificesAll,
 } from "./sacrificeCost";
 
@@ -32,6 +33,26 @@ describe("sacrifice all", () => {
       min: 0,
       max: 0,
     });
+  });
+
+  // #6208: an ACTIVATED ability prints the clause too (Tomb of Urami's
+  // "Sacrifice all lands you control"), and the menu row reads the same
+  // flag: the cost is paid by whatever it lists, so it is never a
+  // shortfall and the row is never greyed for it (CR 118.3).
+  it("never greys an ability row, even with nothing to sacrifice", () => {
+    expect(
+      sacrificeRangeShortfall({ all: true, cards: [], min: 0, max: 0 }, "all lands you control"),
+    ).toBe("");
+    expect(
+      sacrificeRangeShortfall(
+        { all: true, cards: ["a", "b"], min: 2, max: 2 },
+        "all lands you control",
+      ),
+    ).toBe("");
+    // A clause WITHOUT the flag is still judged against its count.
+    expect(sacrificeRangeShortfall({ cards: [], min: 1, max: 1 }, "a creature")).toBe(
+      "nothing to sacrifice (a creature)",
+    );
   });
 
   it("warns how many permanents go", () => {

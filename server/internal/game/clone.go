@@ -159,6 +159,7 @@ func (g *Game) cloneLocked() *Game {
 			out.ForetoldThisTurn[k] = v
 		}
 	}
+	out.PilesOrGuessesThisTurn = copyUUIDs(g.PilesOrGuessesThisTurn)
 	if len(g.DilemmasFacedThisTurn) > 0 {
 		out.DilemmasFacedThisTurn = make(map[uuid.UUID]int, len(g.DilemmasFacedThisTurn))
 		for k, v := range g.DilemmasFacedThisTurn {
@@ -990,6 +991,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		CastOrdinal:      s.CastOrdinal,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -1371,6 +1373,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
+	g.PilesOrGuessesThisTurn = src.PilesOrGuessesThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn

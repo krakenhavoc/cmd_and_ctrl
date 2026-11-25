@@ -197,6 +197,10 @@ func (e *enumerator) choiceMoves() bool {
 				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
 			}
 			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+				// #6271: one card per filter of an EachOf pick.
+				if !g.RevealedPickSlotsFitLocked(c, set) {
+					continue
+				}
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": " + verb

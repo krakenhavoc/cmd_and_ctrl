@@ -154,9 +154,12 @@ func init() {
 // runs. One keyed pick serves both cards, told which rider by its first
 // number.
 const (
-	Cmdr2S34RiderGoad     = 0 // Agitator Ant: goad each creature that got counters
-	Cmdr2S34RiderCantAtk  = 1 // Orzhov Advokist: that player's creatures can't attack you
-	cmdr2S34CounterAmount = 2
+	Cmdr2S34RiderGoad    = 0 // Agitator Ant: goad each creature that got counters
+	Cmdr2S34RiderCantAtk = 1 // Orzhov Advokist: that player's creatures can't attack you
+	// Noble Heritage (#6098): you gain protection from each opponent who
+	// did until your next turn. Persisted in a pick's Nums: never renumber.
+	Cmdr2S34RiderProtection = 2
+	cmdr2S34CounterAmount   = 2
 )
 
 // cmdr2S34EachPlayerMayPutCounters starts the fan-out for `rider`.
@@ -275,6 +278,27 @@ func cmdr2S34ApplyCounters(ctx *Context, chosen, choosers []uuid.UUID, rider int
 			g.RegisterScopedRuleEffectForEffect(ctx.Source(), game.ScopeYourCreatures, player,
 				[]game.Mod{game.CantAttackPlayerMod(you)}, DurationUntilYourNextTurn(ctx, you),
 				"Orzhov Advokist — creatures that player controls can't attack you or your planeswalkers until your next turn")
+		}
+	case Cmdr2S34RiderProtection:
+		// "For each opponent who does, you gain protection from that
+		// player until your next turn." Eon Frolicker's player keyword
+		// (CR 702.16k), one per opponent whose creature really got the
+		// counters; the trigger's controller is the "you".
+		you := ctx.Controller()
+		seen := map[uuid.UUID]bool{}
+		for _, player := range gotBy {
+			if player == uuid.Nil || player == you || seen[player] {
+				continue
+			}
+			seen[player] = true
+			if err := (GainPlayerKeyword{
+				Player:   you,
+				Keyword:  game.ProtectionFromPlayer(player),
+				Label:    "Noble Heritage — you have protection from that player until your next turn",
+				Duration: DurationUntilYourNextTurn(ctx, you),
+			}).Apply(ctx); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

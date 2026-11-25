@@ -81,6 +81,8 @@ var gollumSchemingGuideGuesser = effects.ChoosePlayerThen("option-pick/gollum-sc
 	}}
 	var carry []uuid.UUID
 	if opp != uuid.Nil {
+		// #6175: an opponent guesses. With none left nobody does.
+		effects.NotePileOrGuess(ctx)
 		asks = append(asks, game.VoteAsk{
 			Voter:    opp,
 			Allowed:  []int{gollumYes, gollumNo},

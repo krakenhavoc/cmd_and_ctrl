@@ -3409,6 +3409,12 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 				return fmt.Sprintf("The game is a draw: %s's loop repeats with no way to stop (CR 732.4)", cardName)
 			}
 			return "The game is a draw: a loop repeats with no way to stop (CR 732.4)"
+		case game.OutcomeCauseDrawEffect:
+			// #6198, CR 104.4c: an effect stated that the game is a draw.
+			if cardName != "" {
+				return fmt.Sprintf("The game is a draw (%s)", cardName)
+			}
+			return "The game is a draw"
 		case game.OutcomeCauseEffect:
 			if cardName != "" {
 				return fmt.Sprintf("%s won the game (%s)", actor, cardName)

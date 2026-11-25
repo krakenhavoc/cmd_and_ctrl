@@ -426,3 +426,36 @@ Terror of the Peaks ships `full`. Back-out: drop the validation in `castSpellLoc
 `TestTerrorOfThePeaksTaxesAnOpponentsSpellThatTargetsIt` fails; drop the enumerator's `CanPayLifeLocked(setReserved)` and
 `TestEnumeratorDropsACastTheSeatCannotPayTheTaxFor` fails; drop `-c.TargetTaxLife` from the heuristic and
 `TestHeuristicPrefersTheUntaxedTargetOfTwoEqualOnes` fails.
+
+## Amendment (2026-11-25, #6206): a spell that charges ITSELF per target (Phyrexian Purge)
+
+Phyrexian Purge prints "Destroy any number of target creatures. This spell costs 3 life more to cast for each
+target." That is the 2026-10-15 amendment's cost — non-mana, charged at CR 601.2f once the targets are announced
+(CR 601.2c) — with a different owner: the spell charges it rather than somebody's permanent. So it is one more LINE
+in the same sum rather than a second mechanism.
+
+**`Spec.LifePerTarget`** (`game.LifePerTargetCost{Life, Label}`, `effects.CostsLifePerTarget(n, label)`) is read for
+the spell being cast through `game.LifePerTargetFor` under `CatalogKey` — the rule a spell's own cost modifier
+follows (ADR 0048 addendum §11), not `CatalogAbilityKey`: a spell on the stack is not a permanent, so no CR 613.1f
+ability-removing effect on the battlefield reaches it. `castTargetTaxLinesLocked` prepends it as a
+`TargetTaxLine{Self: true}`, so the four askers above learn it at once and none of them needed a line of its own:
+`CastSpell`'s CR 119.4 check against the sum of every life cost of the announcement and the payment with the spell
+on the stack; the enumerator's per-target-set pricing, which reserves it and drops the sets the seat cannot pay and
+names it in the move; the view's `life_taxes` beside each candidate; and the bot's `Cost.TargetTaxLife`. The
+refusal's sentence reads the `Self` flag, because naming the spell among the permanents "targeting" it would be
+nonsense.
+
+It counts TARGETS, not targeted permanents: "for each target" is `RealTargetCount`, the number Fireball's "{1} more
+for each target beyond the first" counts, so a clause that names a player or a spell pays for those too. `Register`
+refuses a clause with no label or no life, as it does a target tax's.
+
+Tests (`internal/game/partial_cost_change_test.go`, `internal/legal/per_target_life_test.go`,
+`internal/protocol/per_target_life_view_test.go`): `TestPerTargetLifeChargesOncePerTarget`,
+`TestPerTargetLifeIsRefusedWhenItCannotBePaid`, `TestPerTargetLifeMayBePaidExactly`,
+`TestPerTargetLifeIsSummedWithTheOtherLifeCostsOfTheCast`,
+`TestPerTargetLifeCountsEveryTargetNotJustPermanents`, `TestPerTargetLifeRefusalReadsAsTheSpellsOwnCost`,
+`TestPerTargetLifeOffersEveryArityItCanPay`, `TestPerTargetLifeDropsTheSetsItCannotPay`,
+`TestLegalTargetsCarryTheSpellsOwnPerTargetLife`.
+
+Back-out: drop the `Self` line from `castTargetTaxLinesLocked` and the surcharge is charged nowhere — Phyrexian
+Purge would have to leave the catalog or ship stronger than printed, which is the wrong direction.

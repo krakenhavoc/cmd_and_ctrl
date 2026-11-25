@@ -511,6 +511,10 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 	case BlockReasonCantBlockAlone:
 		// #5396. About the blocker alone: which attacker it was
 		// pointed at does not matter, a second blocker anywhere does.
+		if e.Label != "" {
+			// #6197: a companion rule wider than "alone".
+			return blocker + " can't block unless " + e.Label + "."
+		}
 		return blocker + " can't block alone: declare another blocker with it."
 	}
 	return blocker + " can't block " + attacker + "."

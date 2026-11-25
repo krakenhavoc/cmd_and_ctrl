@@ -73,3 +73,41 @@ export function discardNamesDiffer(options: Named[], chosen: readonly string[]):
   }
   return true;
 }
+
+// #6264: "with the same name" (Sphinx of the Chimes), the mirror rule.
+// One name every picked card has (CR 201.2a); a card with no name shares
+// none.
+function sharedKeys(keys: string[][]): string[] {
+  if (keys.length === 0) return [];
+  return keys.slice(1).reduce((acc, k) => acc.filter((n) => k.includes(n)), keys[0]);
+}
+
+// Whether the picked cards share a name.
+export function discardNamesShared(options: Named[], chosen: readonly string[]): boolean {
+  const picked = options.filter((c) => chosen.includes(c.instance_id)).map(cardNameKeys);
+  return picked.length > 0 && sharedKeys(picked).length > 0;
+}
+
+// Whether picking `id` beside the already `chosen` cards keeps a name in
+// common. A card already chosen can always be un-picked.
+export function discardNameJoins(options: Named[], chosen: readonly string[], id: string): boolean {
+  if (chosen.includes(id)) return true;
+  const mine = cardNameKeys(options.find((c) => c.instance_id === id));
+  if (mine.length === 0) return false;
+  const picked = options.filter((c) => chosen.includes(c.instance_id)).map(cardNameKeys);
+  return sharedKeys([mine, ...picked]).length > 0;
+}
+
+// Whether `need` of the options share a name: the shortfall check.
+export function canPickSameName(options: Named[], need: number): boolean {
+  if (need <= 0) return true;
+  const counts = new Map<string, number>();
+  for (const k of options.map(cardNameKeys)) {
+    for (const n of k) {
+      const c = (counts.get(n) ?? 0) + 1;
+      if (c >= need) return true;
+      counts.set(n, c);
+    }
+  }
+  return false;
+}

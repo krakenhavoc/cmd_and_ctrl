@@ -136,6 +136,11 @@ func (g *Game) replaceLossLocked(p *Player, cause LossCause) bool {
 	if p == nil || p.Eliminated || cause == LossConcede || g.State != StateActive {
 		return false
 	}
+	// #6244: a resolution's one-shot "the next time you would lose the
+	// game this turn, instead …" (next_loss_replacement.go).
+	if g.replaceLossByRecordLocked(p, cause) {
+		return true
+	}
 	ids, rows := g.gameActionReplacementSourcesLocked(p, ReplaceLoseGameExileThisLifeBecomes)
 	if len(ids) == 0 {
 		return false

@@ -106,6 +106,20 @@ describe("gameOverText", () => {
     expect(gameOverText(unnamed).text).toBe("The game is a draw — a loop can't be stopped.");
   });
 
+  it("names the card in an effect's draw (CR 104.4c)", () => {
+    const v = view("ended", [alice, bob], {
+      kind: "draw",
+      cause: "draw_effect",
+      source_name: "Divine Intervention",
+    });
+    expect(gameOverText(v)).toEqual({
+      winner: null,
+      text: "The game is a draw — Divine Intervention.",
+    });
+    const unnamed = view("ended", [alice, bob], { kind: "draw", cause: "draw_effect" });
+    expect(gameOverText(unnamed).text).toBe("The game is a draw.");
+  });
+
   it("keeps the old sentence for an ended view with nobody to name", () => {
     const v = view("ended", [alice, bob]);
     expect(gameOverText(v)).toEqual({ winner: null, text: "Game ended — no survivors." });
