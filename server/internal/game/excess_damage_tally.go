@@ -59,7 +59,7 @@ func creatureExcessDamage(c *Card, amount int, deathtouch bool) int {
 	if !c.ToughnessIsKnown() {
 		return 0
 	}
-	need := max(c.CurrentToughness()-c.DamageMarked, 0)
+	need := max(c.LethalDamageThreshold()-c.DamageMarked, 0)
 	if deathtouch && need > 1 {
 		need = 1
 	}

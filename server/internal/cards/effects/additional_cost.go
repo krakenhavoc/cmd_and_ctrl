@@ -31,6 +31,29 @@ func DiscardLandCost() *game.AdditionalCost {
 	return &game.AdditionalCost{DiscardCards: 1, DiscardLand: true, Label: "Discard a land card"}
 }
 
+// DiscardXCost is "As an additional cost to cast this spell, discard X
+// cards" (Channeled Force, Firestorm, #6145); DiscardXLandCost and
+// DiscardXCreatureCost are the "X land cards" (Scorched Earth) and "X
+// creature cards" (Aether Tide) spellings. The count is the X announced
+// with the cast (CR 107.3a), the same X the spell's text reads back with
+// ctx.X(), so "Destroy X target lands" is the existing CountFromX target
+// clause. The discarded cards are read back with ctx.Discarded(). The
+// mandatory slot only; Register refuses it beside another claimant on X.
+// See game.AdditionalCost.DiscardX.
+func DiscardXCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardX: true, Label: "Discard X cards"}
+}
+
+// DiscardXLandCost is "discard X land cards"; see DiscardXCost.
+func DiscardXLandCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardX: true, DiscardLand: true, Label: "Discard X land cards"}
+}
+
+// DiscardXCreatureCost is "discard X creature cards"; see DiscardXCost.
+func DiscardXCreatureCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardX: true, DiscardCreature: true, Label: "Discard X creature cards"}
+}
+
 // discardLabel spells the clause the way the card prints it, since
 // the client shows it verbatim above the picker.
 func discardLabel(n int) string {
@@ -636,11 +659,12 @@ func checkTapListAlone(spec Spec) {
 // PayLife is a branch's or an optional cost's (KickerPayLife,
 // BuybackPayLife; ADR 0100's 2026-11-20 amendment).
 func CheckEitherCost(spec Spec) {
-	if ac := spec.AdditionalCost; ac != nil && ac.DiscardLand && ac.DiscardCards <= 0 {
-		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land cards but discards nothing (DiscardLandCost)", spec.Name))
+	if ac := spec.AdditionalCost; ac != nil && ac.DiscardFiltered() && ac.DiscardCards <= 0 && !ac.DiscardX {
+		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land or creature cards but discards nothing (DiscardLandCost)", spec.Name))
 	}
+	checkDiscardX(spec)
 	for _, oc := range spec.OptionalCosts {
-		if oc.DiscardLand {
+		if oc.DiscardLand || oc.DiscardCreature || oc.DiscardX {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q discards a land card — only the mandatory slot may (#5457)", spec.Name, oc.Key))
 		}
 		if oc.ExileFromHand != nil {
@@ -720,8 +744,10 @@ func CheckEitherCost(spec Spec) {
 			} else if rc.Chosen {
 				// Monstrous Emergence's "choose a creature you control or reveal a
 				// creature card from your hand" (ChooseOrRevealCost): a behold of a
-				// card type that records its pick, alone on the slot.
-				if (!rc.Behold && !rc.Colorless) || rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+				// card type that records its pick, alone on the slot. Without
+				// Behold it is a plain reveal from the hand (Charge of the
+				// Forever-Beast, S82OldB116RevealACreatureCardCost).
+				if rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
 					panic(fmt.Sprintf("effects.Register: %q declares a malformed choose-or-reveal cost — build it with ChooseOrRevealCost, alone on the mandatory slot", spec.Name))
 				}
 			} else if !rc.Exile {
@@ -777,7 +803,7 @@ func CheckEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s beholds and exiles — only the mandatory slot may (BeholdAndExileCost, #4687)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):
 			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no creature type, or one narrowed by colour — a cast's reveal branch names a creature type only", spec.Name, where))
-		case b.DiscardLand:
+		case b.DiscardLand || b.DiscardCreature || b.DiscardX:
 			panic(fmt.Sprintf("effects.Register: %q %s discards a land card — only the mandatory slot may (#5457)", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
@@ -1160,4 +1186,21 @@ func WhenPaid(cost game.AdditionalCost, clause *game.TargetSpec) game.Additional
 	}
 	cost.Targets = clause
 	return cost
+}
+
+// checkDiscardX refuses a "discard X cards" cost (#6145) the cast path
+// has no shape for: a fixed count beside it (one clause, one count), or
+// another component claiming the same announced X (CR 107.3a makes X one
+// number, and no printed card pays two costs with it).
+func checkDiscardX(spec Spec) {
+	ac := spec.AdditionalCost
+	if ac == nil || !ac.DiscardX {
+		return
+	}
+	if ac.DiscardCards != 0 {
+		panic(fmt.Sprintf("effects.Register: %q discards X cards AND a fixed count — build it with DiscardXCost alone", spec.Name))
+	}
+	if ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) || game.SacrificeCountFromX(ac.Sacrifice) {
+		panic(fmt.Sprintf("effects.Register: %q discards X cards beside another cost paid with X — one announced X cannot pay both", spec.Name))
+	}
 }

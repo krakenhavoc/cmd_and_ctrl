@@ -92,6 +92,13 @@ type Characteristic struct {
 	// a copy of one) rather than an ability or a permanent: "protection from
 	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
 	SourceIsSpell bool
+	// SourceCounters are the counters on a permanent source (#6149):
+	// "protection from permanents with corruption counters on them" reads
+	// it. Written only by the source-snapshot builders, like the facts
+	// above, and never serialized: a source snapshot is built when a
+	// protection check is made and never stored, and a departed permanent's
+	// record keeps its counters in PermanentInfo.Counters.
+	SourceCounters map[string]int `json:"-"`
 
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless
@@ -487,6 +494,15 @@ type Characteristic struct {
 	// creature's abilities. The combat damage pass reads it through
 	// Card.assignsAsThoughUnblocked.
 	AssignsAsThoughUnblocked bool `json:",omitempty"`
+
+	// LethalByPower is "lethal damage dealt to <this creature> is determined
+	// by its power rather than its toughness" (Zilortha, Strength Incarnate,
+	// IKO): CR 120.6 and 704.5g compare the damage marked on it (and the
+	// damage assigned to it, CR 702.19b) with its power, not its toughness.
+	// A fact about how lethal damage is judged, not a number a layer
+	// computes, so it is only ever set by a layer 6 static that says so.
+	// Read through Card.LethalDamageThreshold. Additive within the schema.
+	LethalByPower bool `json:",omitempty"`
 
 	// CostPower is how much this creature counts for when it is tapped
 	// to pay a crew or saddle cost (ADR 0186 Decision 4, #2705): "this

@@ -128,6 +128,8 @@ export interface ChoiceDockContext {
   rejection?: string | null;
   // ADR 0129 §3: the viewer's energy, for an energy payment's Pay.
   energy?: number;
+  // choose_color with color_multi (#6146): the colours toggled so far.
+  colorPicks?: readonly string[];
   // pay_amount: the stepper's value, and whether the server takes it.
   payAmount?: number;
   payAmountAnswerable?: boolean;
@@ -154,6 +156,8 @@ export interface ChoiceDockHandlers {
   onLoop: (iterations: number) => void;
   // pay_amount (ADR 0129 §3): { amount }.
   onAmount?: (amount: number) => void;
+  // choose_color with color_multi (#6146): send the toggled colours.
+  onColors?: () => void;
 }
 
 // A key the inline prompt answers by itself (ChoicePromptModal's
@@ -354,7 +358,9 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
       };
     case "choose_color": {
       const copy = colorPromptCopy(c.color_purpose);
-      return { title: reason || copy.title, tag: "color", hint: copy.hint };
+      // #6146: "the color or colors of your choice" takes a set.
+      const hint = c.color_multi ? `Pick one or more colors, then Choose. ${copy.hint}` : copy.hint;
+      return { title: reason || copy.title, tag: "color", hint };
     }
     case "option_pick":
       return {
@@ -555,6 +561,22 @@ function answersFor(
           onPress: () => h.onOption(i),
         })),
       };
+    case "choose_color":
+      // #6146: "the color or colors of your choice" toggles symbols in
+      // the body, and Choose sends them; never an empty set.
+      if (c.color_multi) {
+        return {
+          primary: {
+            id: "choose",
+            label: L.chooseColors,
+            disabled: (ctx.colorPicks?.length ?? 0) === 0,
+            title: (ctx.colorPicks?.length ?? 0) === 0 ? "Pick at least one color" : undefined,
+            onPress: () => h.onColors?.(),
+          },
+          secondary: [],
+        };
+      }
+      return { primary: null, secondary: [] };
     default:
       // mana_pick, choose_color: the symbols in the body are the answer.
       return { primary: null, secondary: [] };

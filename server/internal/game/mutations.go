@@ -1227,7 +1227,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		otherX := !g.tapCostForCastParamsLocked(playerID, card, params).Empty()
 		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
-			otherX = otherX || ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
+			otherX = otherX || ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
 		}
 		if err := validateOptionalCostX(optionalCosts, params.OptionalCosts, params.XValue, paidHasX, otherX); err != nil {
 			slog.Warn("cast_spell rejected: X does not fit the optional cost",
@@ -1599,8 +1599,27 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	for _, l := range targetTaxLines {
 		targetTax += l.Life
 	}
+	// #6151, CR 903.8 / 119.4: a commander tax paid in life is checked
+	// against the life total with every other life cost of this cast, and
+	// paid with them below.
+	_, commanderLife := commanderTaxLocked(p, card, params.FromZone)
+	if commanderLife > 0 {
+		owed := commanderLife + targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
+		if alt != nil {
+			owed += alt.Life
+		}
+		if !g.CanPayLifeToCastOrActivateLocked(p, owed) {
+			slog.Warn("cast_spell rejected: can't pay the commander tax in life",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"tax_life", commanderLife,
+				"owed", owed,
+			)
+			return ErrInvalidParam
+		}
+	}
 	if targetTax > 0 {
-		owed := targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
+		owed := commanderLife + targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
 		if alt != nil {
 			owed += alt.Life
 		}
@@ -2418,7 +2437,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// The life the whole plan pays — a "pay X life" at the announced X,
 	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
 	// sum the validator checked against CR 119.4.
-	payLife := planLife(costPlan, params.XValue) + targetTax
+	payLife := planLife(costPlan, params.XValue) + targetTax + commanderLife
 	// #5390: the alternative cost's counters, first of the board costs.
 	// CR 601.2h lets the caster pay the costs in any order, so a creature
 	// that is also sacrificed to the cast pays its counters before it
@@ -4239,10 +4258,10 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
-	if params.FromZone == "command" {
-		tax := p.CommanderCasts[card.InstanceID]
-		cost.Generic += tax * 2
-	}
+	// #6151: a commander whose tax is paid in life adds no mana here
+	// (commanderTaxLocked); CastSpell charges the life.
+	taxMana, _ := commanderTaxLocked(p, card, params.FromZone)
+	cost.Generic += taxMana
 	// ADR 0073 §3, CR 601.2f: the mana half of the optional additional
 	// costs the caster announced. Added AFTER the alternative-cost
 	// swap and the commander tax and BEFORE the cost modifiers, which
@@ -5956,7 +5975,7 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 					// The damage stays marked either way — see
 					// indestructible.go.
 					indestructible := IsIndestructible(&c)
-					if c.DamageMarked >= curT && !indestructible {
+					if c.DamageMarked >= c.LethalDamageThreshold() && !indestructible {
 						doom = true
 					}
 					// S18 sub-PR 3: CR 702.2c — a creature hit by any
@@ -11135,6 +11154,19 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
+// LethalDamageThreshold is the amount of damage that is lethal to this
+// creature before damage already marked on it is counted: its toughness
+// (CR 120.6, 704.5g), or its power when an effect says lethal damage is
+// determined by power rather than toughness (Characteristic.LethalByPower).
+// By power it is never below 1, because damage is only lethal once some is
+// marked. Read through the layered view.
+func (c *Card) LethalDamageThreshold() int {
+	if c.effective != nil && c.effective.LethalByPower {
+		return max(c.CurrentPower(), 1)
+	}
+	return c.CurrentToughness()
+}
+
 // assignsAsThoughUnblocked reports whether the creature may assign its
 // combat damage as though it weren't blocked (Characteristic.
 // AssignsAsThoughUnblocked, CR 510.1c), read through the layered view.
@@ -11387,7 +11419,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 					// CR 702.19b: lethal counts the damage other
 					// attackers have already been assigned to it in
 					// this step, which is not marked yet (#3665).
-					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked - assignedTo(blkID)
+					lethalThreshold := blk.LethalDamageThreshold() - blk.DamageMarked - assignedTo(blkID)
 					if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
 						lethalThreshold = 1
 					}

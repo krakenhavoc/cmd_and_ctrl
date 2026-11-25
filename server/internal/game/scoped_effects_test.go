@@ -322,6 +322,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// pricer. Its cases are in scoped_cost_tax_test.go here and in
 		// cards/effects.
 		ModSpellsCostMoreForOpponents: true,
+		// #5514: noncreature-only twin; cases in scoped_cost_tax_test.go.
+		ModNoncreatureSpellsCostMoreForOpponents: true,
 		// #6093: the timed reduction, read by the cast pricer too. Its
 		// cases are in scoped_cost_reduction_test.go here and in
 		// cards/effects.
@@ -404,6 +406,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6160: Mystic Reflection's one-shot entry copy. Its cases are in
 		// scoped_enter_as_copies_test.go.
 		ModNextEntersAsCopies: true,
+		// #6147: its "this turn" sibling over any permanents. Its cases
+		// are in scoped_permanents_enter_tapped_test.go.
+		ModPermanentsEnterTapped: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
@@ -474,6 +479,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5838 (Blinding Angel): a player's next combat phase skipped.
 		// Its cases are in skip_next_combat_phase_test.go.
 		ModSkipNextCombatPhase: true,
+		// #6144 (Avizoa, Ivory Gargoyle): a player's next untap or draw
+		// step skipped. Its cases are in skip_next_step_test.go.
+		ModSkipNextStep: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

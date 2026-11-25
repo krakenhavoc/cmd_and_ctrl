@@ -1158,6 +1158,7 @@ var delayedTriggerFields = plan(
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
+	"CopiesSpell", carried, "", // #6141, CR 702.50a: epic's spell record
 )
 
 var pendingChoiceFields = plan(
@@ -1174,6 +1175,8 @@ var pendingChoiceFields = plan(
 	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
 	"ColorPurpose", carried, "",
+	// #6146: "the color or colors of your choice" answers a set.
+	"ColorMulti", carried, "",
 	// ADR 0102: an entry_controller prompt's purpose, carried beside
 	// ColorPurpose for the same reason.
 	"ControlPurpose", carried, "",

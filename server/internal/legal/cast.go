@@ -971,6 +971,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
 	}
+	if dx := e.discardXCeiling(card.InstanceID, addCost); dx != noXCeiling {
+		// #6145: and "discard X cards" — X is what the hand can pay.
+		xLifeCeiling = dx
+	}
 	if ex := e.exileXCeiling(card.InstanceID, addCost); ex != noXCeiling {
 		// #1948: and "exile X cards from your graveyard" — X is what the
 		// graveyard can pay. Skeletal Scrying's {X} in its mana cost is
@@ -1013,6 +1017,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// (castCostBranches): an optional payment that would leave the seat
 	// at 0 life is never offered, because the next state-based check
 	// would kill it (CR 704.5a) for a kicker or a buyback.
+	// #6151: a commander tax paid in life (CR 903.8, Liesa) is owed by
+	// every move from the command zone, under the same policy: never at
+	// the cost of the seat's last life.
+	if owed := e.g.CommanderTaxLifeForEffect(e.seat, card, from); owed > 0 {
+		lifeReserved += owed
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
+			return
+		}
+	}
 	if owed := optionalLife(optional, chosen); owed > 0 {
 		lifeReserved += owed
 		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
@@ -1078,6 +1091,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// a mandatory one would. The wire lists are flat and the engine
 	// walks them in the same order.
 	discards, sacrifice, discardLand, ok := costPaymentDemands(addCost, optional, chosen)
+	// #6145: a "discard X cards" clause beside a fixed discard (an
+	// optional cost's, escalate's) would need the two pools walked in the
+	// engine's order. No printed card has both, so it is not enumerated.
+	if addCost != nil && addCost.DiscardX && (discards > 0 || (modeSpec != nil && extra > 0 && modeSpec.Escalate.DiscardCards > 0)) {
+		return
+	}
 	// #5457: a land-only discard clause beside another discard (a second
 	// clause, escalate's) needs two pools walked in the engine's order.
 	// No printed card has both, so it is not enumerated.
@@ -1696,7 +1715,7 @@ modeLoop:
 					// the graveyard cards an "exile X cards" cost names
 					// (#1948), which number exactly the announced X.
 					var xv *MoveValue
-					exileX := addCost != nil && addCost.ExileCards != nil && addCost.ExileCards.CountFromX
+					exileX := addCost != nil && ((addCost.ExileCards != nil && addCost.ExileCards.CountFromX) || addCost.DiscardX)
 					if (modeCost.XSlots > 0 || (addCost != nil && (addCost.PayLifeX || addCost.BlightX))) &&
 						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 && !exileX {
 						xv = openX(xFloor, payX)
@@ -1894,6 +1913,10 @@ func (e *enumerator) castMoveEmitter(
 	ownAnswers := game.CardPurposeOfPtr(&card).Answers
 	permType := e.permType
 	exilePool := exileCardIDs
+	var discardXPool []uuid.UUID
+	if paying != nil && paying.DiscardX {
+		discardXPool = g.AdditionalDiscardOptionsForEffect(e.seat, card.InstanceID, paying)
+	}
 	// #5390: the offer's counter removal, ONE payment by the activation's
 	// own rule (counterPaymentChoices: drain the creatures holding the
 	// most first), from the walk the engine validates against. An offer
@@ -1907,6 +1930,8 @@ func (e *enumerator) castMoveEmitter(
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
+		// #6145: a "discard X cards" cost names exactly the announced X.
+		discards = append(discards, discardCardsForX(paying, discardXPool, setX)...)
 		// #5240: or the cards a collect evidence X sized by these targets
 		// exiles. The target loop has already dropped a set the graveyard
 		// cannot pay for.
@@ -2026,7 +2051,7 @@ func (e *enumerator) castMoveEmitter(
 			// cast always carries a Cost.
 			// #5390: and the counters the offer removes, priced against
 			// the creatures they come off as an activation's are.
-			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen), 0), phyLife),
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen)+g.CommanderTaxLifeForEffect(e.seat, card, from), 0), phyLife),
 				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is

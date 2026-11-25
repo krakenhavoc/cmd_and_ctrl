@@ -947,6 +947,14 @@ type Spec struct {
 	// (game/equip_cost_alternative.go). Nil for nearly every card.
 	EquipCostAlternatives []game.EquipCostAlternative
 
+	// CyclingCostAlternatives is "you may pay {0} rather than pay cycling
+	// costs" (New Perspectives): a CR 118.9 alternative cost this permanent
+	// offers its controller for cycling and typecycling abilities, read from
+	// the battlefield. The engine derives a twin row for each cycling
+	// ability, the equip twin's way, replacing the ability's mana and leaving
+	// the rest of its cost (the discard). Nil for nearly every card.
+	CyclingCostAlternatives []game.EquipCostAlternative
+
 	// TargetTaxes is a cost a permanent adds to spells that TARGET
 	// something: "Spells your opponents cast that target this creature
 	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
@@ -1152,6 +1160,12 @@ type Spec struct {
 	// charges both, and a player with less life than that cannot cast
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
+
+	// CommanderTaxInLife is "Rather than pay {2} for each previous time
+	// you've cast this spell from the command zone this game, pay 2 life
+	// that many times" (Liesa, Shroud of Dusk, #6151): the commander tax
+	// (CR 903.8) is charged as 2 life per previous cast instead of {2}.
+	CommanderTaxInLife bool
 
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
@@ -2279,6 +2293,13 @@ type ActivatedAbility struct {
 	// Register refuses it outside a bundle and beside the other named
 	// activators. See game.ActivatedAbilityShape.GrantorOnly.
 	GrantorOnly bool
+	// DefendingPlayerOnly is "Only the player this creature is attacking
+	// may activate this ability" (Capricopian, #6170): the only activator
+	// is the player the source is attacking right now. Register refuses it
+	// beside the other named activators, with the components and zones
+	// AnyPlayer refuses, and with a Purpose. See
+	// game.ActivatedAbilityShape.DefendingPlayerOnly.
+	DefendingPlayerOnly bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does

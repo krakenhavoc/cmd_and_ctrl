@@ -53,6 +53,7 @@ func TestTextWordsTranslateKeywordsAndSubtypes(t *testing.T) {
 		"hexproof from black":   "hexproof from green",
 		"protection from red":   "protection from red",
 		"swampwalk":             "islandwalk",
+		"snow swampwalk":        "snow islandwalk",
 		"forestwalk":            "forestwalk",
 		"nonbasic landwalk":     "nonbasic landwalk",
 		"flying":                "flying",

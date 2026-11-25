@@ -161,12 +161,14 @@
     castLocksXAtZero,
     isModal,
     discardCostOf,
+    discardXCount,
     castAdditionalCost,
     assistOf,
     costBranchesOf,
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
+    kicksOf,
     optionalCostXFloor,
     castTeamworkOffer,
     castBlightOffer,
@@ -681,7 +683,8 @@
     // TOP of whichever that turns out to be. They compose, so neither
     // branch of `key` drops the other.
     let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
-    if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    if (optional.length > 0)
+      next = { ...next, optionalCosts: optional, kicks: kicksOf(card, optional) };
     // #1267: the gift's opponent is part of the same announcement; the
     // modal only hands one back when the gift toggle is on.
     if (giftOpponent !== undefined) next = { ...next, giftOpponent };
@@ -791,6 +794,10 @@
   // ADR 0100: the additional cost this cast pays, settled when the
   // prompt opens — the chosen either/or branch, or the card's own.
   let discardPromptCost = $state<AdditionalCostView | undefined>(undefined);
+  // #6145: "discard X cards" — the count is the X announced before the
+  // picker opened, and the picker hands back to afterXCost.
+  let discardPromptNeed = $state<number | undefined>(undefined);
+  let discardPromptAfterX = false;
 
   // Everything in the caster's hand except the spell itself — CR
   // 601.2a puts it on the stack before costs are paid, so it can't
@@ -813,6 +820,13 @@
     discardPromptCard = null;
     discardPromptChoices = {};
     if (!card) return;
+    // #6145: a "discard X cards" picker opens after the X prompt, so its
+    // answer goes back to the step after X.
+    if (discardPromptAfterX) {
+      discardPromptAfterX = false;
+      afterXCost(card, { ...choices, discardIDs: ids });
+      return;
+    }
     afterDiscardCost(card, { ...choices, discardIDs: ids });
   }
 
@@ -1483,6 +1497,8 @@
     // ADR 0100: an either/or cost's discard is the chosen branch's.
     if (discardCostOf(card, choices) > 0) {
       discardPromptCost = castAdditionalCost(card, choices);
+      discardPromptNeed = undefined;
+      discardPromptAfterX = false;
       discardPromptChoices = choices;
       discardPromptCard = card;
       return;
@@ -1546,6 +1562,22 @@
   // its picker until X is known, so this step has to come after the X
   // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
+    // #6145: "discard X cards" — the picker's count is the X just
+    // announced. X = 0 discards nothing, so there is nothing to ask.
+    const dx = castAdditionalCost(card, choices);
+    if (dx?.discard_x && choices.discardIDs === undefined) {
+      const need = discardXCount(card, choices);
+      if (need === 0) {
+        afterXCost(card, { ...choices, discardIDs: [] });
+        return;
+      }
+      discardPromptCost = dx;
+      discardPromptNeed = need;
+      discardPromptAfterX = true;
+      discardPromptChoices = choices;
+      discardPromptCard = card;
+      return;
+    }
     // #1948: "exile X cards from your graveyard" — the picker's count is
     // the X just announced. X = 0 names nothing; a graveyard holding
     // exactly X matching cards has nothing to ask.
@@ -4925,12 +4957,15 @@
   <DiscardCostModal
     card={discardPromptCard}
     options={discardCostOptions}
-    need={discardPromptCost?.discard_cards}
-    label={discardPromptCost?.label}
+    need={discardPromptNeed ?? discardPromptCost?.discard_cards}
+    label={discardPromptNeed !== undefined
+      ? (discardPromptCost?.label ?? "Discard X cards").replace(/\bX\b/, String(discardPromptNeed))
+      : discardPromptCost?.label}
     onConfirm={confirmDiscardCost}
     onCancel={() => {
       discardPromptCard = null;
       discardPromptChoices = {};
+      discardPromptAfterX = false;
     }}
   />
   <!-- #2598: "Reveal X black cards from your hand" (Martyr of Bones),
