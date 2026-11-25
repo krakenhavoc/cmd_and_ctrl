@@ -1,0 +1,12 @@
+---
+title: "Turn records: spell names cast, the last spell's colours, lands tapped for mana, the last card drawn, permanents tapped to pay a source"
+date: 2026-11-25
+issues: [6217]
+---
+**Turn records: spell names cast, the last spell's colours, lands tapped for mana, the last card drawn, permanents tapped to pay a source** (#6217, CR 601.2i / 105.2 / 106.12 / 201.2a / 118.3 / 400.7) — five clauses asked about this turn in a way the turn tally did not keep. Each is recorded as it happens and reset with the rest of `game.TurnTally` when the turn begins (game/turn_records.go); all are plain data, additive in the snapshot.
+- **The names of the spells each player cast** (Grim Reminder's "each opponent who cast a spell this turn with the same name as that card"): `TurnTally.SpellNames`, one record per name per spell as it was on the stack (both names of a split spell, CR 201.2a), read with `Game.CastSpellNamedThisTurnForEffect(player, card)`.
+- **The colours of the spell most recently cast** (Mana Maze): `TurnTally.LastSpellCast`, read with `Game.LastSpellCastColorsThisTurnForEffect`. `effects.CantCastSharingAColorWithTheLastSpell(label)` is Mana Maze's whole cast restriction: a colourless spell on either side shares nothing, and the turn's first spell is open.
+- **Tapped a land for mana** (Desolation, CR 106.12): `PlayerTurnTally.TappedLandForMana`, set wherever a land's mana ability with {T} in its cost is activated — by hand, by the auto-tapper and by an exiled source's materialisation — read with `Game.TappedLandForManaThisTurnForEffect`.
+- **The last card drawn** (Jandor's Ring's "Discard the last card you drew this turn"): `Game.DrawnThisTurn` already kept every draw in order; `game.DiscardCost.LastDrawn`, built with `effects.DiscardTheLastCardYouDrewThisTurn()`, accepts that card and no other, only while it is in hand (CR 118.3), through the one per-card verdict the options walk and the validator share.
+- **Permanents tapped to pay a source's costs** (Vodalian War Machine's "destroy all Merfolk tapped this turn to pay for its abilities"): `TurnTally.TappedToPay`, each permanent an activated ability's tap-others cost tapped, with the ability's source as the object it was (CR 400.7), read with `Game.TappedToPaySourceThisTurnForEffect(source)`.
+- **Cards** (0 here): Grim Reminder (OLD b605), Mana Maze (b665), Desolation (b786), Vodalian War Machine (b854) and Jandor's Ring (b891) are their batches', none pushed yet.

@@ -41,6 +41,10 @@ import (
 // PlayerTurnTally is what one player has done, or had done to them,
 // this turn.
 type PlayerTurnTally struct {
+	// TappedLandForMana is whether this player tapped a land for mana
+	// this turn (CR 106.12: activated a mana ability of a land with {T}
+	// in its cost; #6217, Desolation). Additive.
+	TappedLandForMana bool `json:"tappedLandForMana,omitempty"`
 	// LifeGained is the sum of positive life changes.
 	LifeGained int `json:"lifeGained,omitempty"`
 	// LifeLost is the sum of negative life changes plus the life that
@@ -305,6 +309,21 @@ type EnteredFlierRecord struct {
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
 type TurnTally struct {
+	// LastSpellCast is the spell most recently cast this turn, by anyone
+	// (#6217, Mana Maze's "spells that share a color with the spell most
+	// recently cast this turn"): its colours as it was cast. Nil before
+	// the turn's first spell. Additive.
+	LastSpellCast *LastSpellCastRecord `json:"lastSpellCast,omitempty"`
+	// SpellNames are the names of the spells cast this turn, by caster, in
+	// cast order, each as the spell had it on the stack (#6217, Grim
+	// Reminder's "each opponent who cast a spell this turn with the same
+	// name as that card"). See turn_records.go. Additive.
+	SpellNames []CastNameRecord `json:"spellNames,omitempty"`
+	// TappedToPay records each permanent tapped to pay a cost of an
+	// activated ability this turn, with the ability's source (#6217,
+	// Vodalian War Machine's "destroy all Merfolk tapped this turn to pay
+	// for its abilities"). Additive.
+	TappedToPay []TappedToPayRecord `json:"tappedToPay,omitempty"`
 	// Players holds each player's tally; a player with nothing
 	// counted has no entry. Read through Game.TurnTallyFor.
 	Players map[uuid.UUID]PlayerTurnTally `json:"players,omitempty"`
@@ -2283,6 +2302,12 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
+	if t.LastSpellCast != nil {
+		last := LastSpellCastRecord{Colors: append([]string(nil), t.LastSpellCast.Colors...)}
+		out.LastSpellCast = &last
+	}
+	out.TappedToPay = append([]TappedToPayRecord(nil), t.TappedToPay...)
+	out.SpellNames = append([]CastNameRecord(nil), t.SpellNames...)
 	out.PrevNoncombatVictims = append([]uuid.UUID(nil), t.PrevNoncombatVictims...)
 	out.PrevLifeLosers = append([]uuid.UUID(nil), t.PrevLifeLosers...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
