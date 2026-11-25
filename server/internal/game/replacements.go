@@ -553,6 +553,12 @@ type ReplacementEvent struct {
 	// declares none.
 	ExileCounter string
 
+	// ExileCounterCount is how many ExileCounter counters the card lands with:
+	// Darigaaz Reincarnated's "instead exile it with three egg counters on
+	// it". Zero is one, the declaration before this field existed. Carried
+	// and stamped exactly as ExileCounter is.
+	ExileCounterCount int
+
 	// Destruction says this battlefield exit is a DESTRUCTION
 	// (CR 701.7a), as opposed to the other things that take the same
 	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally
