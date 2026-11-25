@@ -59,7 +59,12 @@ func (g *Game) GainControlForEffect(sourceID, target, controller uuid.UUID, d Du
 	if controller == uuid.Nil {
 		return false
 	}
-	if _, ok := g.battlefieldCardLocked(target); !ok {
+	c, ok := g.battlefieldCardLocked(target)
+	if !ok {
+		return false
+	}
+	// #6203: "other players can't gain control of" (Guardian Beast).
+	if othersCantGainControlLocked(c, controller) {
 		return false
 	}
 	return g.RegisterScopedEffectForEffect(sourceID, g.PinnedObjectsLocked(target),
@@ -98,6 +103,10 @@ func (g *Game) ExchangeControlForEffect(sourceID, a, b uuid.UUID, label string) 
 	}
 	aTo, bTo := cb.Controller, ca.Controller
 	if aTo == uuid.Nil || bTo == uuid.Nil {
+		return false
+	}
+	// #6203, CR 701.12b: a half that can't happen means no exchange.
+	if othersCantGainControlLocked(ca, aTo) || othersCantGainControlLocked(cb, bTo) {
 		return false
 	}
 	ts := timeNowUnixNano()
