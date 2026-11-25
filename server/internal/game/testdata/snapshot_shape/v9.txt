@@ -319,6 +319,8 @@ battlefield.cards[].perpetualKeywords[]	string
 battlefield.cards[].phaseInBarredBy	custom(uuid.UUID)
 battlefield.cards[].phaseInBarredEpoch	number:int
 battlefield.cards[].phaseInBarredFor	custom(uuid.UUID)
+battlefield.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+battlefield.cards[].phaseInBarredThroughTurn	number:int
 battlefield.cards[].phaseInBarredWhileTapped	bool
 battlefield.cards[].phaseInLockedBy	custom(uuid.UUID)
 battlefield.cards[].phasedOutBy	custom(uuid.UUID)
@@ -912,6 +914,8 @@ enteringTokens[].perpetualKeywords[]	string
 enteringTokens[].phaseInBarredBy	custom(uuid.UUID)
 enteringTokens[].phaseInBarredEpoch	number:int
 enteringTokens[].phaseInBarredFor	custom(uuid.UUID)
+enteringTokens[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+enteringTokens[].phaseInBarredThroughTurn	number:int
 enteringTokens[].phaseInBarredWhileTapped	bool
 enteringTokens[].phaseInLockedBy	custom(uuid.UUID)
 enteringTokens[].phasedOutBy	custom(uuid.UUID)
@@ -1476,6 +1480,8 @@ exile.cards[].perpetualKeywords[]	string
 exile.cards[].phaseInBarredBy	custom(uuid.UUID)
 exile.cards[].phaseInBarredEpoch	number:int
 exile.cards[].phaseInBarredFor	custom(uuid.UUID)
+exile.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+exile.cards[].phaseInBarredThroughTurn	number:int
 exile.cards[].phaseInBarredWhileTapped	bool
 exile.cards[].phaseInLockedBy	custom(uuid.UUID)
 exile.cards[].phasedOutBy	custom(uuid.UUID)
@@ -9541,6 +9547,8 @@ frozenEntries[].event.keywordActionTail.armyToken.perpetualKeywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredThroughTurn	number:int
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredWhileTapped	bool
 frozenEntries[].event.keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
@@ -12069,6 +12077,8 @@ frozenEntries[].event.millTail.run.planned[].perpetualKeywords[]	string
 frozenEntries[].event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.millTail.run.planned[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
@@ -12510,6 +12520,8 @@ frozenEntries[].event.millTail.run.seen[].perpetualKeywords[]	string
 frozenEntries[].event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.millTail.run.seen[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
@@ -14960,6 +14972,8 @@ frozenEntries[].event.tokenGroups[].template.perpetualKeywords[]	string
 frozenEntries[].event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.phaseInBarredThroughTurn	number:int
 frozenEntries[].event.tokenGroups[].template.phaseInBarredWhileTapped	bool
 frozenEntries[].event.tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
@@ -16103,6 +16117,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.perpetualKeywords[]	st
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredThroughTurn	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredWhileTapped	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -16557,6 +16573,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	str
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
@@ -16998,6 +17016,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
@@ -20986,6 +21006,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
@@ -22210,6 +22232,8 @@ lastKnownStack[].card.perpetualKeywords[]	string
 lastKnownStack[].card.phaseInBarredBy	custom(uuid.UUID)
 lastKnownStack[].card.phaseInBarredEpoch	number:int
 lastKnownStack[].card.phaseInBarredFor	custom(uuid.UUID)
+lastKnownStack[].card.phaseInBarredThroughPlayer	custom(uuid.UUID)
+lastKnownStack[].card.phaseInBarredThroughTurn	number:int
 lastKnownStack[].card.phaseInBarredWhileTapped	bool
 lastKnownStack[].card.phaseInLockedBy	custom(uuid.UUID)
 lastKnownStack[].card.phasedOutBy	custom(uuid.UUID)
@@ -23162,6 +23186,8 @@ match.decks[].fixed[].perpetualKeywords[]	string
 match.decks[].fixed[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].fixed[].phaseInBarredEpoch	number:int
 match.decks[].fixed[].phaseInBarredFor	custom(uuid.UUID)
+match.decks[].fixed[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+match.decks[].fixed[].phaseInBarredThroughTurn	number:int
 match.decks[].fixed[].phaseInBarredWhileTapped	bool
 match.decks[].fixed[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].fixed[].phasedOutBy	custom(uuid.UUID)
@@ -23601,6 +23627,8 @@ match.decks[].main[].perpetualKeywords[]	string
 match.decks[].main[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].main[].phaseInBarredEpoch	number:int
 match.decks[].main[].phaseInBarredFor	custom(uuid.UUID)
+match.decks[].main[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+match.decks[].main[].phaseInBarredThroughTurn	number:int
 match.decks[].main[].phaseInBarredWhileTapped	bool
 match.decks[].main[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].main[].phasedOutBy	custom(uuid.UUID)
@@ -24043,6 +24071,8 @@ match.decks[].side[].perpetualKeywords[]	string
 match.decks[].side[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].side[].phaseInBarredEpoch	number:int
 match.decks[].side[].phaseInBarredFor	custom(uuid.UUID)
+match.decks[].side[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+match.decks[].side[].phaseInBarredThroughTurn	number:int
 match.decks[].side[].phaseInBarredWhileTapped	bool
 match.decks[].side[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].side[].phasedOutBy	custom(uuid.UUID)
@@ -31169,6 +31199,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.perpetualKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
@@ -33697,6 +33729,8 @@ movesAwaitingTokens[].millTail.run.planned[].perpetualKeywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
@@ -34138,6 +34172,8 @@ movesAwaitingTokens[].millTail.run.seen[].perpetualKeywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
@@ -36588,6 +36624,8 @@ movesAwaitingTokens[].tokenGroups[].template.perpetualKeywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
@@ -37731,6 +37769,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.perpetualKeywords[]	st
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -38185,6 +38225,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	str
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
@@ -38626,6 +38668,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
@@ -42614,6 +42658,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
@@ -44658,6 +44704,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.perpetualKeywords[]	strin
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phasedOutBy	custom(uuid.UUID)
@@ -45119,6 +45167,8 @@ pendingChoices[].attackSplit.settled.groups[].template.perpetualKeywords[]	strin
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].attackSplit.settled.groups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -46242,6 +46292,8 @@ pendingChoices[].attackSplit.template.perpetualKeywords[]	string
 pendingChoices[].attackSplit.template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.phaseInBarredThroughTurn	number:int
 pendingChoices[].attackSplit.template.phaseInBarredWhileTapped	bool
 pendingChoices[].attackSplit.template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phasedOutBy	custom(uuid.UUID)
@@ -47111,6 +47163,8 @@ pendingChoices[].copyWalk.src.perpetualKeywords[]	string
 pendingChoices[].copyWalk.src.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phaseInBarredEpoch	number:int
 pendingChoices[].copyWalk.src.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.phaseInBarredThroughTurn	number:int
 pendingChoices[].copyWalk.src.phaseInBarredWhileTapped	bool
 pendingChoices[].copyWalk.src.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phasedOutBy	custom(uuid.UUID)
@@ -59724,6 +59778,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.perpetualKe
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
@@ -62252,6 +62308,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].perpetualKeyword
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
@@ -62693,6 +62751,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].perpetualKeywords[]
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
@@ -65143,6 +65203,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.perpetualKeyword
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
@@ -66286,6 +66348,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.per
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -66740,6 +66804,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].perp
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
@@ -67181,6 +67247,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].perpetu
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
@@ -71169,6 +71237,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].perpetualK
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
@@ -73590,6 +73660,8 @@ pendingChoices[].targetWalk.frame.source.perpetualKeywords[]	string
 pendingChoices[].targetWalk.frame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phaseInBarredEpoch	number:int
 pendingChoices[].targetWalk.frame.source.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.phaseInBarredThroughTurn	number:int
 pendingChoices[].targetWalk.frame.source.phaseInBarredWhileTapped	bool
 pendingChoices[].targetWalk.frame.source.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phasedOutBy	custom(uuid.UUID)
@@ -74450,6 +74522,8 @@ pendingChoices[].triggerFrame.source.perpetualKeywords[]	string
 pendingChoices[].triggerFrame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phaseInBarredEpoch	number:int
 pendingChoices[].triggerFrame.source.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.phaseInBarredThroughTurn	number:int
 pendingChoices[].triggerFrame.source.phaseInBarredWhileTapped	bool
 pendingChoices[].triggerFrame.source.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phasedOutBy	custom(uuid.UUID)
@@ -75683,6 +75757,8 @@ phasedOut.cards[].perpetualKeywords[]	string
 phasedOut.cards[].phaseInBarredBy	custom(uuid.UUID)
 phasedOut.cards[].phaseInBarredEpoch	number:int
 phasedOut.cards[].phaseInBarredFor	custom(uuid.UUID)
+phasedOut.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+phasedOut.cards[].phaseInBarredThroughTurn	number:int
 phasedOut.cards[].phaseInBarredWhileTapped	bool
 phasedOut.cards[].phaseInLockedBy	custom(uuid.UUID)
 phasedOut.cards[].phasedOutBy	custom(uuid.UUID)
@@ -76127,6 +76203,8 @@ planechase.deck.cards[].perpetualKeywords[]	string
 planechase.deck.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.deck.cards[].phaseInBarredEpoch	number:int
 planechase.deck.cards[].phaseInBarredFor	custom(uuid.UUID)
+planechase.deck.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+planechase.deck.cards[].phaseInBarredThroughTurn	number:int
 planechase.deck.cards[].phaseInBarredWhileTapped	bool
 planechase.deck.cards[].phaseInLockedBy	custom(uuid.UUID)
 planechase.deck.cards[].phasedOutBy	custom(uuid.UUID)
@@ -76571,6 +76649,8 @@ planechase.faceUp.cards[].perpetualKeywords[]	string
 planechase.faceUp.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phaseInBarredEpoch	number:int
 planechase.faceUp.cards[].phaseInBarredFor	custom(uuid.UUID)
+planechase.faceUp.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+planechase.faceUp.cards[].phaseInBarredThroughTurn	number:int
 planechase.faceUp.cards[].phaseInBarredWhileTapped	bool
 planechase.faceUp.cards[].phaseInLockedBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phasedOutBy	custom(uuid.UUID)
@@ -77272,6 +77352,8 @@ resolving.card.perpetualKeywords[]	string
 resolving.card.phaseInBarredBy	custom(uuid.UUID)
 resolving.card.phaseInBarredEpoch	number:int
 resolving.card.phaseInBarredFor	custom(uuid.UUID)
+resolving.card.phaseInBarredThroughPlayer	custom(uuid.UUID)
+resolving.card.phaseInBarredThroughTurn	number:int
 resolving.card.phaseInBarredWhileTapped	bool
 resolving.card.phaseInLockedBy	custom(uuid.UUID)
 resolving.card.phasedOutBy	custom(uuid.UUID)
@@ -78363,6 +78445,8 @@ seats[].attractionDeck.cards[].perpetualKeywords[]	string
 seats[].attractionDeck.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phaseInBarredEpoch	number:int
 seats[].attractionDeck.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].attractionDeck.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].attractionDeck.cards[].phaseInBarredThroughTurn	number:int
 seats[].attractionDeck.cards[].phaseInBarredWhileTapped	bool
 seats[].attractionDeck.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phasedOutBy	custom(uuid.UUID)
@@ -78993,6 +79077,8 @@ seats[].command.cards[].perpetualKeywords[]	string
 seats[].command.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].command.cards[].phaseInBarredEpoch	number:int
 seats[].command.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].command.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].command.cards[].phaseInBarredThroughTurn	number:int
 seats[].command.cards[].phaseInBarredWhileTapped	bool
 seats[].command.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].command.cards[].phasedOutBy	custom(uuid.UUID)
@@ -79439,6 +79525,8 @@ seats[].companion.cards[].perpetualKeywords[]	string
 seats[].companion.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].companion.cards[].phaseInBarredEpoch	number:int
 seats[].companion.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].companion.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].companion.cards[].phaseInBarredThroughTurn	number:int
 seats[].companion.cards[].phaseInBarredWhileTapped	bool
 seats[].companion.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].companion.cards[].phasedOutBy	custom(uuid.UUID)
@@ -79894,6 +79982,8 @@ seats[].emblems.cards[].perpetualKeywords[]	string
 seats[].emblems.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].emblems.cards[].phaseInBarredEpoch	number:int
 seats[].emblems.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].emblems.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].emblems.cards[].phaseInBarredThroughTurn	number:int
 seats[].emblems.cards[].phaseInBarredWhileTapped	bool
 seats[].emblems.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].emblems.cards[].phasedOutBy	custom(uuid.UUID)
@@ -80436,6 +80526,8 @@ seats[].graveyard.cards[].perpetualKeywords[]	string
 seats[].graveyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phaseInBarredEpoch	number:int
 seats[].graveyard.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].graveyard.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].graveyard.cards[].phaseInBarredThroughTurn	number:int
 seats[].graveyard.cards[].phaseInBarredWhileTapped	bool
 seats[].graveyard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phasedOutBy	custom(uuid.UUID)
@@ -80878,6 +80970,8 @@ seats[].hand.cards[].perpetualKeywords[]	string
 seats[].hand.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].hand.cards[].phaseInBarredEpoch	number:int
 seats[].hand.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].hand.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].hand.cards[].phaseInBarredThroughTurn	number:int
 seats[].hand.cards[].phaseInBarredWhileTapped	bool
 seats[].hand.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].hand.cards[].phasedOutBy	custom(uuid.UUID)
@@ -81325,6 +81419,8 @@ seats[].junkyard.cards[].perpetualKeywords[]	string
 seats[].junkyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phaseInBarredEpoch	number:int
 seats[].junkyard.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].junkyard.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].junkyard.cards[].phaseInBarredThroughTurn	number:int
 seats[].junkyard.cards[].phaseInBarredWhileTapped	bool
 seats[].junkyard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phasedOutBy	custom(uuid.UUID)
@@ -81793,6 +81889,8 @@ seats[].library.cards[].perpetualKeywords[]	string
 seats[].library.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].library.cards[].phaseInBarredEpoch	number:int
 seats[].library.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].library.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].library.cards[].phaseInBarredThroughTurn	number:int
 seats[].library.cards[].phaseInBarredWhileTapped	bool
 seats[].library.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].library.cards[].phasedOutBy	custom(uuid.UUID)
@@ -82277,6 +82375,8 @@ seats[].sideboard.cards[].perpetualKeywords[]	string
 seats[].sideboard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phaseInBarredEpoch	number:int
 seats[].sideboard.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].sideboard.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].sideboard.cards[].phaseInBarredThroughTurn	number:int
 seats[].sideboard.cards[].phaseInBarredWhileTapped	bool
 seats[].sideboard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phasedOutBy	custom(uuid.UUID)
@@ -83128,6 +83228,8 @@ stack.cards[].perpetualKeywords[]	string
 stack.cards[].phaseInBarredBy	custom(uuid.UUID)
 stack.cards[].phaseInBarredEpoch	number:int
 stack.cards[].phaseInBarredFor	custom(uuid.UUID)
+stack.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+stack.cards[].phaseInBarredThroughTurn	number:int
 stack.cards[].phaseInBarredWhileTapped	bool
 stack.cards[].phaseInLockedBy	custom(uuid.UUID)
 stack.cards[].phasedOutBy	custom(uuid.UUID)

@@ -313,6 +313,7 @@ func (g *Game) phaseInLocked(ids []uuid.UUID) []uuid.UUID {
 		c.PhaseInLockedBy = uuid.Nil
 		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 		c.PhaseInBarredWhileTapped = false
+		c.PhaseInBarredThroughPlayer, c.PhaseInBarredThroughTurn = uuid.Nil, 0
 		if c.TapOnPhaseIn {
 			// Oubliette. Written directly rather than through
 			// untapPermanentLocked's twin: this is not the CR 701.21a
@@ -583,6 +584,17 @@ func (g *Game) sweepPhaseInLocksLocked() bool {
 //
 // Caller must hold g.mu.
 func (g *Game) phaseInBarredLocked(c *Card) bool {
+	if c.PhaseInBarredThroughPlayer != uuid.Nil {
+		// "Until the end of your next turn": barred until that player has
+		// begun their turn N, and through that turn itself. After it, the
+		// next player's untap step is on the ordinary clock again.
+		n := g.turnsBegunForLocked(c.PhaseInBarredThroughPlayer)
+		active := g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil &&
+			g.Seats[g.Turn.ActiveSeat].ID == c.PhaseInBarredThroughPlayer
+		if n < c.PhaseInBarredThroughTurn || (n == c.PhaseInBarredThroughTurn && active) {
+			return true
+		}
+	}
 	if c.PhaseInBarredBy == uuid.Nil {
 		return false
 	}
@@ -616,9 +628,10 @@ func (g *Game) sweepPhaseInBarsLocked() {
 	}
 	for i := range g.PhasedOut.Cards {
 		c := &g.PhasedOut.Cards[i]
-		if c.PhaseInBarredBy != uuid.Nil && !g.phaseInBarredLocked(c) {
+		if (c.PhaseInBarredBy != uuid.Nil || c.PhaseInBarredThroughPlayer != uuid.Nil) && !g.phaseInBarredLocked(c) {
 			c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 			c.PhaseInBarredWhileTapped = false
+			c.PhaseInBarredThroughPlayer, c.PhaseInBarredThroughTurn = uuid.Nil, 0
 		}
 	}
 }
@@ -703,6 +716,29 @@ func (g *Game) CantPhaseInWhileControlledForEffect(source, player uuid.UUID, ids
 		for _, id := range ids {
 			if c.InstanceID == id {
 				c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = source, src.ObjectEpoch, player
+			}
+		}
+	}
+}
+
+// CantPhaseInThroughYourNextTurnForEffect is "Until the end of your next
+// turn, they can't phase in" (Teferi, Timeless Voyager's -8), said of
+// permanents that have just phased out: they stay out through every untap
+// step until `player`'s next turn is over (CR 502.1), then are back on the
+// ordinary clock and phase in during the next untap step of the player they
+// phased out under. An id that is not phased out is skipped.
+//
+// Caller must hold g.mu.
+func (g *Game) CantPhaseInThroughYourNextTurnForEffect(player uuid.UUID, ids ...uuid.UUID) {
+	if player == uuid.Nil || g.PhasedOut == nil {
+		return
+	}
+	through := g.turnsBegunForLocked(player) + 1
+	for i := range g.PhasedOut.Cards {
+		c := &g.PhasedOut.Cards[i]
+		for _, id := range ids {
+			if c.InstanceID == id {
+				c.PhaseInBarredThroughPlayer, c.PhaseInBarredThroughTurn = player, through
 			}
 		}
 	}

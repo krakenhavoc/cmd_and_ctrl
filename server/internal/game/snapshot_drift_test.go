@@ -759,6 +759,8 @@ var cardFields = plan(
 	"PhaseInBarredBy", carried, "",
 	"PhaseInBarredEpoch", carried, "",
 	"PhaseInBarredFor", carried, "",
+	"PhaseInBarredThroughPlayer", carried, "",
+	"PhaseInBarredThroughTurn", carried, "",
 	// #6095: The Pandorica's "remains tapped" form of the bar.
 	"PhaseInBarredWhileTapped", carried, "",
 	"PhasedOutIndirect", carried, "",
