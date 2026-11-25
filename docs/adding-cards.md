@@ -3260,9 +3260,13 @@ Static: []game.StaticAbility{CantBeTargetedBySpellsUnlessItAttackedOrBlocked(tex
 
 They sit ahead of hexproof in `canBeTargetedBy`, so a "may be targeted
 as though it didn't have hexproof" waiver does not lift them, and both
-the CR 601.2c announce check and the CR 608.2b re-check read them. A
-clause that reads the SPELL'S TARGET SPEC rather than a characteristic
-of it — Wall of Shadows' "spells that can target only Walls" — is not
+the CR 601.2c announce check and the CR 608.2b re-check read them.
+Lurker's condition reads the turn's combat records — `TurnTally.Attacks`
+for the attack half and the per-pair block record
+(`TurnTally.CombatBlocks`, #6193) for the block half — so the bar stays
+lifted once combat is over, which is what "attacked or blocked this
+turn" says. A clause that reads the SPELL'S TARGET SPEC rather than a
+characteristic of it — Wall of Shadows' "spells that can target only Walls" — is not
 expressible: a clause's predicate is a closure, so that needs a declared
 flag on the target clause itself.
 
