@@ -3849,6 +3849,25 @@ OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
 Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
 Ideal's.
 
+### "Exiles it with X delay counters … puts it onto the stack as a copy" (#6221, CR 707.10)
+
+Ertai's Meddling's resolution is one call on the target spell:
+
+```go
+_, err := g.ExileSpellWithDelayCountersForEffect(spellID, x, item.SourceCardID, "")
+```
+
+The spell's controller exiles it (not countered) with X delay counters,
+and the spell is remembered as it stood on the stack, as epic remembers it
+(`DelayedTrigger.CopiesSpell`). At each of that player's upkeeps, while the
+card is still that object in exile (`DelayedTrigger.WhileExiled`, CR
+603.4), a delay counter is removed; when none is left the card itself goes
+onto the stack with the original's targets, modes, X and paid costs. It is
+not cast, so cast triggers don't see it. "X can't be 0" is the card's own
+`MinX`.
+
+Tests: [delayed_recast_test.go](../server/internal/game/delayed_recast_test.go).
+
 ### Tribute (#6251, CR 702.104)
 
 `effects.Tribute(name, n)` is the whole keyword, two entry replacements
