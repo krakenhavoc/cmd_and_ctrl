@@ -1119,14 +1119,27 @@ func CastEnergyOwed(alt *AlternativeCost, mandatory *AdditionalCost, optional []
 // unparseable printed cost does (#289): there is no price for the
 // player to have paid. Register refuses the same string at boot, so
 // reaching this branch means a card was built around the catalog.
-func AdditionalCostMana(cost ParsedCost, mandatory *AdditionalCost, optional []AdditionalCost, chosen []int) (ParsedCost, error) {
-	for _, pay := range castCostPayments(mandatory, optional, chosen) {
+//
+// `priced` is #6206's component prices: entry k, when it is there, is
+// what payment k charges after the cost modifiers aimed at THAT
+// component ("Buyback costs cost {2} less", Memory Crystal), so the
+// component joins the total at the price its own CR 601.2f pass left it
+// (component_cost_modifier.go). The zero value is every board without
+// such a modifier, where every payment joins at its printed mana.
+func AdditionalCostMana(cost ParsedCost, mandatory *AdditionalCost, optional []AdditionalCost, chosen []int, priced PricedComponents) (ParsedCost, error) {
+	for i, pay := range castCostPayments(mandatory, optional, chosen) {
 		if pay.cost.ManaCost == "" {
 			continue
 		}
 		add, err := ParseCost(pay.cost.ManaCost)
 		if err != nil {
 			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, pay.cost.Label, err)
+		}
+		// #6206: what a modifier aimed at this component left of it. The
+		// printed string is still parsed first, so an unparseable cost is
+		// refused whether or not anything reprices it.
+		if repriced, ok := priced.at(i); ok {
+			add = repriced
 		}
 		cost.Generic += add.Generic
 		cost.Required = append(cost.Required, add.Required...)

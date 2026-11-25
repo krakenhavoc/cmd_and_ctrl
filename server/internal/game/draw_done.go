@@ -44,11 +44,13 @@ type parkedDraw struct {
 	pending []pendingDraw
 	tail    int
 	then    DrawThen
+	// cycled is the draw's ReplacementEvent.DrawCycled (#6169).
+	cycled uuid.UUID
 }
 
 // newParkedDraw copies the tail a draw owes out of its event.
 func newParkedDraw(ev *ReplacementEvent) *parkedDraw {
-	p := &parkedDraw{actor: ev.Actor, tail: ev.drawTail, then: ev.drawThen}
+	p := &parkedDraw{actor: ev.Actor, tail: ev.drawTail, then: ev.drawThen, cycled: ev.DrawCycled}
 	for _, d := range ev.drawPending {
 		d.applied = append([]ReplacementEffectID(nil), d.applied...)
 		p.pending = append(p.pending, d)
@@ -58,7 +60,7 @@ func newParkedDraw(ev *ReplacementEvent) *parkedDraw {
 
 // event is the frame finishDrawTailLocked reads, rebuilt from the data.
 func (p *parkedDraw) event() *ReplacementEvent {
-	ev := &ReplacementEvent{Kind: RepEventDraw, Actor: p.actor, drawTail: p.tail, drawThen: p.then}
+	ev := &ReplacementEvent{Kind: RepEventDraw, Actor: p.actor, drawTail: p.tail, drawThen: p.then, DrawCycled: p.cycled}
 	for _, d := range p.pending {
 		d.applied = append([]ReplacementEffectID(nil), d.applied...)
 		ev.drawPending = append(ev.drawPending, d)
@@ -85,6 +87,25 @@ func (d DrawDone) Park(g *Game) uuid.UUID {
 	}
 	g.parkedDraws[id] = cloneParkedDraw(d.frame)
 	return id
+}
+
+// Cycled is the card whose cycling ability made the replaced draw
+// (ReplacementEvent.DrawCycled, #6169), uuid.Nil for any other draw: what a
+// draw-instead body reads for "the cycled card". A parked handle reads its
+// stored frame.
+//
+// Caller must hold g.mu.
+func (d DrawDone) Cycled(g *Game) uuid.UUID {
+	if d.id != uuid.Nil {
+		if p := g.parkedDraws[d.id]; p != nil {
+			return p.cycled
+		}
+		return uuid.Nil
+	}
+	if d.frame == nil {
+		return uuid.Nil
+	}
+	return d.frame.cycled
 }
 
 // DrawDoneByID is the handle for a frame Park stored. Running a handle whose
@@ -146,6 +167,8 @@ type parkedDrawSnapshot struct {
 	Pending []pendingDrawSnapshot `json:"pending,omitempty"`
 	Tail    int                   `json:"tail,omitempty"`
 	Then    *drawThenSnapshot     `json:"then,omitempty"`
+	// Cycled is parkedDraw.cycled (#6169).
+	Cycled *uuid.UUID `json:"cycled,omitempty"`
 }
 
 // snapshotParkedDraws writes the parked frames, ordered by ID so two captures
@@ -156,7 +179,7 @@ func snapshotParkedDraws(in map[uuid.UUID]*parkedDraw) []parkedDrawSnapshot {
 	}
 	out := make([]parkedDrawSnapshot, 0, len(in))
 	for id, p := range in {
-		s := parkedDrawSnapshot{ID: id, Actor: p.actor, Tail: p.tail}
+		s := parkedDrawSnapshot{ID: id, Actor: p.actor, Tail: p.tail, Cycled: uuidPtrOrNil(p.cycled)}
 		for _, d := range p.pending {
 			s.Pending = append(s.Pending, pendingDrawSnapshot{Player: d.player, Count: d.count, Applied: append([]ReplacementEffectID(nil), d.applied...)})
 		}
@@ -180,7 +203,7 @@ func restoreParkedDraws(in []parkedDrawSnapshot) map[uuid.UUID]*parkedDraw {
 	}
 	out := make(map[uuid.UUID]*parkedDraw, len(in))
 	for _, s := range in {
-		p := &parkedDraw{actor: s.Actor, tail: s.Tail}
+		p := &parkedDraw{actor: s.Actor, tail: s.Tail, cycled: uuidOrNil(s.Cycled)}
 		for _, d := range s.Pending {
 			p.pending = append(p.pending, pendingDraw{player: d.Player, count: d.Count, applied: append([]ReplacementEffectID(nil), d.Applied...)})
 		}

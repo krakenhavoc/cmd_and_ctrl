@@ -1314,6 +1314,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	// #4678: "can't attack or block unless its power is N or greater",
 	// read off the finished power (CR 613.11).
 	g.foldPowerFloorLocked()
+	// #6098: "creatures ... with power less than ~'s power are goaded",
+	// read off both finished powers (CR 613.11).
+	g.foldPowerGatedGoadsLocked()
 	// "Creatures without flying or islandwalk can't attack": read off the
 	// finished ability list, like the folds above.
 	g.foldAttackNeedsKeywordLocked()
