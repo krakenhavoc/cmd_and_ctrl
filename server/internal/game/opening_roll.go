@@ -504,6 +504,8 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 	// The one turn that does not begin through the rotation seam
 	// still counts as a turn begun (ADR 0063 Decision 3).
 	g.noteTurnBegunLocked(startingSeat)
+	// #6164: and every player's life as it began.
+	g.stampLifeAsTurnBeganLocked()
 }
 
 // cloneOpeningRoll deep-copies the window, so an undo entry or a

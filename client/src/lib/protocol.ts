@@ -1907,7 +1907,9 @@ export interface PendingChoiceView {
     // opponents ride pick_options, one per seat with `player` set, and
     // the answer is {option_index: N} as for option_pick.
     // control_purpose says whether the permanent hurts or helps the
-    // seat that receives it.
+    // seat that receives it, or is "tribute" (CR 702.104a, #6251): the
+    // chosen opponent decides whether to pay the tribute, and the
+    // control does not change.
     | "entry_controller"
     // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
     // asked before the permanent enters. The {choice_id, apply} payload
@@ -2104,7 +2106,7 @@ export interface PendingChoiceView {
   // ADR 0102: populated for kind "entry_controller" — what giving the
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
-  control_purpose?: "harm" | "benefit" | string;
+  control_purpose?: "harm" | "benefit" | "tribute" | string;
   // #3309: populated for kind "aura_host" — what the entering Aura does
   // to the permanent it enchants. Absent when the card declares none.
   // The bot reads it; the client ignores it.
@@ -2406,6 +2408,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -4531,6 +4536,10 @@ export interface ActivatedAbilityView {
   // permanent now. Absent on every other row.
   grantor_only?: boolean;
   activator?: string;
+  // #6170: "Only the player this creature is attacking may activate this
+  // ability" (Capricopian). Open to the viewer only while the card's
+  // `attacking_target` is the viewer's seat. Absent on every other row.
+  defending_player_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
@@ -5161,6 +5170,9 @@ export interface CastPriceView {
   cost: string;
   // Life charged on top (CR 119.4). Absent for every exile price today.
   life?: number;
+  // #6151: the part of `life` that is a commander tax paid in life
+  // (Liesa, Shroud of Dusk), 2 per earlier cast from the command zone.
+  commander_tax_life?: number;
   // ADR 0129 §5: energy charged on top (Amped Raptor's "an amount of {E}
   // equal to its mana value"). Absent for every price that charges none.
   energy?: number;
@@ -5945,7 +5957,9 @@ export interface ProtectionView {
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
   // (#4307), "multicolored" (#4834), "mana_value_at_least" (value = N)
-  // or "colorless" (a source with no colour, #5650).
+  // or "colorless" (a source with no colour, #5650), "mana_value"
+  // (exactly N, #6149) or "permanents_with_counter" (value = the
+  // counter kind, #6149).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
@@ -6027,6 +6041,13 @@ export interface ManaAbilityView {
   // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #6208: `tap_others_untap` turns the clause over here too, "Untap a
+  // tapped land an opponent controls" (Benthic Explorers): the options
+  // are the TAPPED permanents that could be untapped to pay — an
+  // OPPONENT's, for the one printed mana ability — and the picker's verb
+  // is "Untap". There is no `tap_others_frees_source` twin, because the
+  // activator never controls the permanent.
+  tap_others_untap?: boolean;
   // #1600: "Exile a creature you control" on a mana ability (Food
   // Chain). Same fields as ActivatedAbilityView's; the answer rides
   // activate_mana_ability as `exile_permanent_ids`.

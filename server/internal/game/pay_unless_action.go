@@ -292,7 +292,8 @@ type PayAction struct {
 	// CardType narrows a discard to cards of one card type ("creature"):
 	// Crypt Lurker's "discard a creature card". Only a card of that type in
 	// the payer's hand is an option, so a hand without one can't pay (CR
-	// 118.3). Unused by every other kind. Additive (#522).
+	// 118.3). A graveyard exile reads it the same way (#6194). Unused by
+	// every other kind. Additive (#522).
 	CardType string `json:",omitempty"`
 	// Except is a permanent a sacrifice may not take: the "other" of
 	// "sacrifice three other nonland permanents", the ability's own
@@ -302,6 +303,13 @@ type PayAction struct {
 	// Mana is a PayActionMana branch's cost ("{2}"), parsed when it is
 	// paid (#4566). Unused by every other kind.
 	Mana string `json:",omitempty"`
+	// TopOnly is "unless you exile the top creature card of your
+	// graveyard" (#6194: Barrow Ghoul, Circling Vultures): a graveyard
+	// exile whose cards are not the payer's to pick but the topmost Count
+	// that match CardType (CR 404.2, the pile's order). The options are
+	// exactly those, so a graveyard with fewer can't pay (CR 118.3).
+	// Unused by every other kind. Additive (#522).
+	TopOnly bool `json:",omitempty"`
 	// Forage marks an Either as the forage keyword action (CR 701.61a,
 	// #5184; ForagePayAction): paying either branch is a forage, so the
 	// answer emits EventForage once the payment is made. Unused by every
@@ -443,7 +451,14 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 			return nil
 		}
 		for _, c := range p.Graveyard.Cards {
+			// #6194: "a creature card" narrows a graveyard exile too.
+			if a.CardType != "" && !c.HasCardType(a.CardType) {
+				continue
+			}
 			out = append(out, c.InstanceID)
+		}
+		if a.TopOnly {
+			out = topOfPileOrder(out, a.Count)
 		}
 	case PayActionSacrifice, PayActionSacrificeTotalPower:
 		if g.Battlefield == nil {

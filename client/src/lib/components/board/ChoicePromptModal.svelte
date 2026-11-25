@@ -1230,9 +1230,11 @@
   // dock when the labels are short; this is its sheet.
   const isEntryAttackTarget = $derived(active?.kind === "entry_attack_target");
   const entryControllerHint = $derived(
-    active?.control_purpose === "benefit"
-      ? "Whoever you choose will control it and get what it does."
-      : "Whoever you choose will control it and live with what it does.",
+    active?.control_purpose === "tribute"
+      ? "The opponent you choose decides whether to pay its tribute."
+      : active?.control_purpose === "benefit"
+        ? "Whoever you choose will control it and get what it does."
+        : "Whoever you choose will control it and live with what it does.",
   );
 
   // #764 mode_pick — CR 603.3c. A modal TRIGGERED ability's bullet,
@@ -2825,7 +2827,11 @@
       </ul>
     {:else if isEntryController}
       <p class="prompt-hint">
-        It hasn't entered yet: it enters under the control of the opponent you choose.
+        {#if active?.control_purpose !== "tribute"}
+          It hasn't entered yet: it enters under the control of the opponent you choose.
+        {:else}
+          It hasn't entered yet.
+        {/if}
         {entryControllerHint}
       </p>
       <ul class="pick-options">

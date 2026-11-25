@@ -88,6 +88,12 @@ const (
 	// ControlForBenefit — the permanent helps whoever controls it:
 	// Pendant of Prosperity. A bot gives it to its weakest opponent.
 	ControlForBenefit ControlPurpose = "benefit"
+	// ControlForTribute — tribute's "choose an opponent" (CR 702.104a,
+	// #6251). Nobody is given the permanent: the chosen opponent is
+	// recorded on ReplacementEvent.TributeOpponent, who is then asked
+	// whether to pay the tribute (tribute.go). The control does not
+	// change, and the effect is not in CR 616.1b's tier.
+	ControlForTribute ControlPurpose = "tribute"
 )
 
 // EntryControllerChoice is the declaration on ReplacementEffect: "this
@@ -185,7 +191,7 @@ func (g *Game) offerEntryControllerLocked(ev *ReplacementEvent, chosen activeRep
 		return false
 	}
 	if len(candidates) == 1 || ev.mustSettleNow || !ev.entryResumable || g.chooserGoneLocked(chooser) || chooser == uuid.Nil {
-		g.setEntryControllerLocked(ev, chooser, candidates[0])
+		g.answerEntryControllerLocked(ev, chosen.effect.EntryController, chooser, candidates[0])
 		return false
 	}
 	spec := chosen.effect.EntryController
@@ -223,7 +229,7 @@ func (g *Game) offerEntryControllerLocked(ev *ReplacementEvent, chosen activeRep
 	if id == uuid.Nil {
 		// QueueChoiceForEffect refused the chooser (#864). The default
 		// stands rather than a paused entry nobody can resume.
-		g.setEntryControllerLocked(ev, chooser, candidates[0])
+		g.answerEntryControllerLocked(ev, spec, chooser, candidates[0])
 		return false
 	}
 	return true
@@ -239,8 +245,23 @@ func (g *Game) offerEntryControllerLocked(ev *ReplacementEvent, chosen activeRep
 func (g *Game) settleEntryControllerByDefaultLocked(ev *ReplacementEvent, chosen activeReplacement) {
 	chooser := g.entryChoicePlayerLocked(ev, chosen)
 	if candidates := g.entryControllerCandidatesLocked(chooser); len(candidates) > 0 {
-		g.setEntryControllerLocked(ev, chooser, candidates[0])
+		g.answerEntryControllerLocked(ev, chosen.effect.EntryController, chooser, candidates[0])
 	}
+}
+
+// answerEntryControllerLocked applies the opponent an entry-controller
+// effect settled on: the would-be controller for "enters under the
+// control of an opponent of your choice", or, for tribute
+// (ControlForTribute, CR 702.104a), the opponent who decides whether to
+// pay it, recorded on the event and nothing else.
+//
+// Caller must hold g.mu.
+func (g *Game) answerEntryControllerLocked(ev *ReplacementEvent, spec *EntryControllerChoice, chooser, player uuid.UUID) {
+	if spec != nil && spec.Purpose == ControlForTribute {
+		g.setTributeOpponentLocked(ev, chooser, player)
+		return
+	}
+	g.setEntryControllerLocked(ev, chooser, player)
 }
 
 // setEntryControllerLocked makes `player` the would-be controller of
@@ -380,7 +401,11 @@ func (g *Game) ResolveEntryController(choiceID, chooserID uuid.UUID, index int) 
 		return nil
 	}
 	ev := frame.ev
-	g.setEntryControllerLocked(ev, chooserID, seat)
+	var spec *EntryControllerChoice
+	if len(frame.applicable) > 0 {
+		spec = frame.applicable[0].effect.EntryController
+	}
+	g.answerEntryControllerLocked(ev, spec, chooserID, seat)
 	return g.resumeEntryControllerEventLocked(ev)
 }
 

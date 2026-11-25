@@ -453,6 +453,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6160: Mystic Reflection's entry copy names its object.
+			if problem := nextEntersAsCopiesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// ADR 0108 §3: a multiplier's vocabulary (Sources,
 			// Recipients) is as much a key as its kind, and its fields
 			// on another kind are a newer binary's shape.
@@ -524,6 +528,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			}
 			// #6144: a next-step skip naming no player or another step.
 			if problem := skipNextStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6147: an enters-tapped filter naming a non-permanent type.
+			if problem := permanentsEnterTappedModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 			// #5718: the table-wide targeting bar is a game record that

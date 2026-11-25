@@ -393,10 +393,14 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         title: reason || "Choose an opponent",
         tag: "opponent",
         hint:
-          "It hasn't entered yet: it enters under the control of the opponent you choose. " +
-          (c.control_purpose === "benefit"
-            ? "Whoever you choose will control it and get what it does."
-            : "Whoever you choose will control it and live with what it does."),
+          // #6251: tribute's opponent decides whether to pay it; nobody
+          // is given the permanent.
+          c.control_purpose === "tribute"
+            ? "It hasn't entered yet: the opponent you choose decides whether to pay its tribute."
+            : "It hasn't entered yet: it enters under the control of the opponent you choose. " +
+              (c.control_purpose === "benefit"
+                ? "Whoever you choose will control it and get what it does."
+                : "Whoever you choose will control it and live with what it does."),
       };
     default:
       return { title: reason || "Choose", tag: "choose" };
