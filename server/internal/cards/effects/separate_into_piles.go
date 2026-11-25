@@ -227,17 +227,27 @@ func pilesAnswer(g *game.Game, r game.CardsChosen) error {
 		piles = append(piles, pile+count*at)
 	}
 	head[pilesPileAt] = pile + 1
-	return pilesStep(ctx, []string{r.Word}, players, placed, head, piles)
+	return pileSplits.step(ctx, []string{r.Word}, players, placed, head, piles)
 }
 
-// pilesPicked is the keyed answer to every pile prompt. Registered in init,
-// not a var initialiser, because the step refers to it and it refers to
-// the step.
-var pilesPicked game.ChooseCardsThen
+// pilesPicked is the keyed answer to every pile prompt. The answer goes on
+// through pileSplits, an interface, rather than calling pilesStep: a call
+// through an interface is not an initialisation reference, so the key can
+// be a var initialiser (a core file holds no init()) though the step
+// refers to it.
+var pilesPicked = game.RegisterChooseCardsThen("choose-cards/separate-into-piles", pilesAnswer)
 
-func init() {
-	pilesPicked = game.RegisterChooseCardsThen("choose-cards/separate-into-piles", pilesAnswer)
+type pileStepper interface {
+	step(ctx *Context, words []string, players, placed []uuid.UUID, head, piles []int) error
 }
+
+type pileSteps struct{}
+
+func (pileSteps) step(ctx *Context, words []string, players, placed []uuid.UUID, head, piles []int) error {
+	return pilesStep(ctx, words, players, placed, head, piles)
+}
+
+var pileSplits pileStepper = pileSteps{}
 
 // SacrificeARandomPileEach is Whims of the Fates' rest: "Then each player
 // chooses one of their piles at random and sacrifices those permanents."
