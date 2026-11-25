@@ -1371,6 +1371,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// Origin of Spider-Man's "becomes a legendary … in addition to its
 	// other types" (become_named.go).
 	ModAddSupertypes: {layer: Layer4Type},
+	// #6199: "is no longer snow".
+	ModRemoveSupertypes: {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #4072: "isn't a Human" (lose_subtypes.go).
@@ -2468,6 +2470,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		supertypes := m.Supertypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.addSupertypes(supertypes)
+		}
+	case ModRemoveSupertypes:
+		supertypes := m.Supertypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.RemoveSupertypes(supertypes)
 		}
 	case ModLoseSubtypes:
 		subtypes := m.Subtypes
