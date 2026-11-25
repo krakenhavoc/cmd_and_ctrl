@@ -504,6 +504,7 @@ func (g *Game) onTurnBeganLocked() {
 	g.LoyaltyExtraActivationsThisTurn = nil
 	g.LoyaltyExtraActivationsUsedThisTurn = nil
 	g.LoyaltyTwiceThisTurn = nil
+	g.TapForeignLandsThisTurn = nil
 	g.LoyaltyPermanentTwiceThisTurn = nil
 	g.LoyaltyPermanentExtraThisTurn = nil
 	g.LoyaltyPermanentExtraUsedThisTurn = nil

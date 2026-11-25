@@ -832,6 +832,16 @@ see them:
   permanent that was not cast rolls nothing (CR 107.3m). One such clause
   per card.
 
+**"You may tap lands you don't control for mana" (ADR 0106 §1 amendment 2026-11-25, #6204).**
+Piracy's "Until end of turn, you may tap lands you don't control for
+mana. Spend this mana only to cast spells." is a player's permission,
+not a row: the effect calls
+`ctx.Game.AllowTapForeignLandsThisTurnForEffect(item.Controller)`. The
+engine does the rest: the player may activate the `{T}` mana rows of
+any land another player controls until the turn ends, the mana goes to
+their pool tagged `purpose:cast`, the auto-tapper plans those lands for
+their casts, and the client shows the rows on their copy of the land.
+
 ### Adding a mana ability (S15+)
 
 Mana abilities live on the same `Spec{}` struct via the optional
@@ -3838,6 +3848,25 @@ OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
 
 Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
 Ideal's.
+
+### "Exiles it with X delay counters … puts it onto the stack as a copy" (#6221, CR 707.10)
+
+Ertai's Meddling's resolution is one call on the target spell:
+
+```go
+_, err := g.ExileSpellWithDelayCountersForEffect(spellID, x, item.SourceCardID, "")
+```
+
+The spell's controller exiles it (not countered) with X delay counters,
+and the spell is remembered as it stood on the stack, as epic remembers it
+(`DelayedTrigger.CopiesSpell`). At each of that player's upkeeps, while the
+card is still that object in exile (`DelayedTrigger.WhileExiled`, CR
+603.4), a delay counter is removed; when none is left the card itself goes
+onto the stack with the original's targets, modes, X and paid costs. It is
+not cast, so cast triggers don't see it. "X can't be 0" is the card's own
+`MinX`.
+
+Tests: [delayed_recast_test.go](../server/internal/game/delayed_recast_test.go).
 
 ### Tribute (#6251, CR 702.104)
 
@@ -10609,6 +10638,17 @@ lethal damage, the cards that fill a hand). The bot answers it when the
 life it costs leaves it at 10 or more, and a person's stepper opens on
 it, so declare it whenever the card has one. `Marks` are other numbers
 worth offering a bot.
+
+**Life bidding** (#6212, ADR 0129 amendment 2026-11-25,
+[life_bidding.go](../server/internal/cards/effects/life_bidding.go)):
+"You start the bidding with a bid of 0. In turn order, each player may top
+the high bid. The bidding ends if the high bid stands." is
+`LifeBidding{Opening: 0, Then: won}` (`OpeningChosen: true` for "a bid of
+any number"; `Bidders` for "you and target spell's controller"). `won` is
+a `NumberThen` that gets the high bidder as `r.Chooser` (`uuid.Nil` if they
+left) and the high bid as `r.Number`, with the resolving item as
+`ctx.Item`; it does the rest of the card ("loses life equal to the high
+bid and draws four cards", "if you win the bidding, counter that spell").
 
 **A payment with {X} in it** (#2727, the same ADR's next amendment,
 [may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is
