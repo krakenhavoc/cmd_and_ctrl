@@ -301,6 +301,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 083 (#5507).
 	"Nevinyrral, Urborg Tyrant": "a 3/6 creature cast to be a creature: the destroy-all is the optional {1} reflexive trigger of its dies trigger, which nobody can plan a turn around",
 	"Szat's Will":               "one mode is an edict (each opponent sacrifices one creature, the one with the greatest power) and the other exiles graveyards: no board is swept",
+
+	// S82 OLD batch 110 (#5511).
+	"Idol of Endurance": "exiles only the controller's own small creature cards from their graveyard, no permanents: not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

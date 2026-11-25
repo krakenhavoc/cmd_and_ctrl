@@ -166,6 +166,10 @@ var knownUnmatchedTokens = map[string]string{
 	// token". The printed token card is */*, which a fixed size can never match; the template is
 	// 0/0 and the card sets X/X as it creates the token.
 	"0/0 colorless Horror artifact": "the printed token card is */*; Profane Transfusion sets X/X as it creates it",
+	// Experimental Overload (Core Set 2021) creates "an X/X blue and red Weird creature token". The printed
+	// token card is */*, which a fixed size can never match; the template is 0/0 and the card sets X/X as it
+	// creates the token.
+	"0/0 blue and red Weird": "the printed token card is */*; Experimental Overload sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

@@ -700,4 +700,8 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 083: Profane Transfusion's X/X Horror (printed */*; a 0/0 placeholder, set to the
 	// difference between the life totals as it is created).
 	"0/0 colorless Horror artifact": {Name: "Horror", TypeLine: "Token Artifact Creature — Horror", PrintedPTKnown: true},
+
+	// S82 OLD batch 110 (#5511): Experimental Overload's X/X blue and red Weird (printed */*; a 0/0
+	// placeholder, set to the instants and sorceries in your graveyard as it is created).
+	"0/0 blue and red Weird": {Name: "Weird", TypeLine: "Token Creature — Weird", Colors: []string{"U", "R"}, PrintedPTKnown: true},
 }
