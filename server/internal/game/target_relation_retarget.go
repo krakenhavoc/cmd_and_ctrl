@@ -71,5 +71,5 @@ func (g *Game) queueRelatedRetargetLocked(offer RetargetOffer, from int, next []
 		})
 		return nil
 	}
-	return g.RetargetStackItemForEffect(offer.ItemID, offer.Chooser, offer.Policy, next)
+	return g.retargetStackItemLocked(offer.ItemID, offer.Chooser, offer.Source, offer.Policy, next)
 }
