@@ -4505,7 +4505,15 @@ type CastSurfaceView struct {
 	// keyed off target_mode alone. An empty-but-present entry means
 	// "no legal target right now", which the client treats as
 	// uncastable. Added in S20 sub-PR 1.
-	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// CastCreatureTypes marks a spell that names a creature type as it is
+	// cast (#6245, CR 601.2c: Selective Snare's "of the creature type of
+	// your choice"): one option per type a creature on the battlefield
+	// has and that its target clause can find, with that clause's legal
+	// cards under it. The client asks for the type before the targets,
+	// narrows the picker to that type's cards and sends the type as
+	// `chosen_creature_type`. Absent on every other spell.
+	CastCreatureTypes []BeholdTypeOption `json:"cast_creature_types,omitempty"`
+	LegalTargets      *LegalTargetsView  `json:"legal_targets,omitempty"`
 	// Clauses is every clause of a MULTI-clause target statement, in
 	// printed order, each with its own legal set, count and printed
 	// wording — Bite Down's "target creature you control" then
@@ -7239,6 +7247,7 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	// answer about their own budget.
 	s.PermissionTypes = nil
 	s.LegalTargets = nil
+	s.CastCreatureTypes = nil
 	s.Clauses = nil
 	// #1389: a price is one seat's answer — a cost modifier may be
 	// scoped to one player.
@@ -8228,6 +8237,31 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	spec = flashIf.TargetSpecUnder(spec)
 	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
+	out.CastCreatureTypes = viewOfCastCreatureTypes(g, src, spec)
+	return out
+}
+
+// viewOfCastCreatureTypes is CastSurfaceView.CastCreatureTypes (#6245):
+// for a spell that names a creature type as it is cast, each candidate
+// type with the clause's legal cards when the spell has that type
+// stamped, as CastSpell stamps it. Nil for every other spell. Caller must
+// hold g.mu.
+func viewOfCastCreatureTypes(g *game.Game, src game.TargetSource, spec *game.TargetSpec) []BeholdTypeOption {
+	if src.Object == nil || spec == nil || !game.ChoosesCreatureTypeAsCast(*src.Object) {
+		return nil
+	}
+	var out []BeholdTypeOption
+	for _, t := range g.CastCreatureTypeCandidatesForEffect() {
+		typed := *src.Object
+		typed.NamedTribe = t
+		tsrc := src
+		tsrc.Object = &typed
+		lt := g.LegalTargetsForEffect(tsrc, spec)
+		if len(lt.Cards) == 0 {
+			continue
+		}
+		out = append(out, BeholdTypeOption{Type: t, Cards: cardIDStrings(lt.Cards)})
+	}
 	return out
 }
 
@@ -13053,6 +13087,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Modes = nil
 	out.AdditionalCost = nil
 	out.LegalTargets = nil
+	out.CastCreatureTypes = nil
 	out.Clauses = nil
 	out.CantCast = ""
 	out.TapCost = nil
@@ -13165,6 +13200,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// player who can read the card, and each one quotes it: a mode
 	// prompt, an additional-cost label, a target clause's bounds.
 	out.LegalTargets = nil
+	out.CastCreatureTypes = nil
 	// #764: the per-clause legal sets name the card as loudly as the
 	// single one does — "target creature you control, then target
 	// creature or planeswalker you don't control" is the card.

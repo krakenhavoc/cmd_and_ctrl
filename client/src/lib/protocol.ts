@@ -4963,6 +4963,12 @@ export interface CastSurfaceView {
   // structured TargetSpec — the players and card instance IDs its
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
+  // #6245: a spell that names a creature type as it is cast (Selective
+  // Snare's "of the creature type of your choice", CR 601.2c). One option
+  // per type with the target clause's legal cards under it; the client
+  // asks for the type before the targets, narrows the picker to that
+  // type's cards and sends the type as `chosen_creature_type`.
+  cast_creature_types?: BeholdTypeOption[];
   legal_targets?: LegalTargetsView;
   // #764: every clause of a MULTI-clause target statement, in
   // printed order, each with its own legal set, count and printed
