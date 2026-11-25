@@ -2051,6 +2051,7 @@ confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
+confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -3147,6 +3148,7 @@ run prompt-run/entrapment-maneuver-soldiers
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
 run prompt-run/euru-acorn-scrounger-acorns
+run prompt-run/excavating-anurid-sacrifice
 run prompt-run/exploit-colonel-autumn
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
@@ -4521,6 +4523,7 @@ tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/dreamshaper-shaman-sacrifice
 tail sacrificed-one/prompt-run/enigmatic-incarnation-sacrificed
 tail sacrificed-one/prompt-run/euru-acorn-scrounger-acorns
+tail sacrificed-one/prompt-run/excavating-anurid-sacrifice
 tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
@@ -4745,6 +4748,7 @@ tail tail/necromentia-exiled
 tail tail/old-b051-will-elementals
 tail tail/old-b070-open-the-omenpaths-first-color
 tail tail/old-b070-open-the-omenpaths-second-color
+tail tail/old-b159-ask-shuffle
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
