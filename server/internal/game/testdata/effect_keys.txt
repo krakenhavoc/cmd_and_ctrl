@@ -413,6 +413,7 @@ body old-b050/blocker-controller-loses-1
 body old-b059/draw-two-then-discard-one
 body old-b059/look-at-that-hand-and-draw
 body old-b193/adarkar-valkyrie-return
+body old-b270/burn-away-exile-graveyard
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
