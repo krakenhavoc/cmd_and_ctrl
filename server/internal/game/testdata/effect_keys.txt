@@ -1525,6 +1525,7 @@ choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
 choose choose-cards/scion-of-halaster-pick
+choose choose-cards/scroll-rack-exile
 choose choose-cards/search-for-blex-take
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
@@ -4595,6 +4596,8 @@ tail sauron-lord-of-the-rings/mill-then-return
 tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
+tail scroll-rack/put-back
+tail scroll-rack/take
 tail scuttlemutt/colors-chosen
 tail search-for-azcanta/after-surveil
 tail search-then/tend-the-sprigs
