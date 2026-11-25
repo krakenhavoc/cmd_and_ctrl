@@ -2854,7 +2854,11 @@
       const options = ability.discard_cost_options ?? [];
       // #4896: "with different names" asks even at exactly N options:
       // they may share a name, and the picker says so.
-      if (options.length > ability.discard_cost_n || ability.discard_cost_different_names) {
+      if (
+        options.length > ability.discard_cost_n ||
+        ability.discard_cost_different_names ||
+        ability.discard_cost_same_name
+      ) {
         abilityDiscardPrompt = { card, ability };
         return;
       }
@@ -4998,6 +5002,7 @@
     label={abilityDiscardPrompt?.ability.discard_cost_label}
     variable={abilityDiscardPrompt?.ability.discard_cost_count_from_x}
     differentNames={abilityDiscardPrompt?.ability.discard_cost_different_names}
+    sameName={abilityDiscardPrompt?.ability.discard_cost_same_name}
     onConfirm={confirmAbilityDiscardCost}
     onCancel={() => {
       abilityDiscardPrompt = null;

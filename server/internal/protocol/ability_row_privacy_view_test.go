@@ -86,7 +86,7 @@ var activatedRowScopes = map[string]rowScope{
 	// The printed discard clause: the count in "Discard two cards"
 	// and the clause's words. Public — the issue's own line. #4896:
 	// "with different names" is printed text too.
-	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic, "DiscardCostDifferentNames": rowPublic,
+	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic, "DiscardCostDifferentNames": rowPublic, "DiscardCostSameName": rowPublic,
 	"SacrificeLabel": rowPublic, "ReturnLabel": rowPublic, "TapOthersLabel": rowPublic,
 	// Verdicts over public state: whose turn it is, the stack, the
 	// battlefield, the ability's own activation record.

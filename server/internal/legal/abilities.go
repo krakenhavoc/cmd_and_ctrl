@@ -669,6 +669,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if discardIDs == nil {
 					continue
 				}
+			} else if dc.SameName {
+				// #6264: "with the same name" — the cheapest N that share
+				// a name, or no move when no name is held N times.
+				discardIDs = g.DiscardSameNamePaymentForEffect(e.seat, dc, e.cheapestFuelFirst(opts))
+				if discardIDs == nil {
+					continue
+				}
 			} else {
 				discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
 			}
