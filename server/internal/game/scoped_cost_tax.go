@@ -23,6 +23,18 @@ import "github.com/google/uuid"
 // it.
 const ModSpellsCostMoreForOpponents ModKind = "spellsCostMoreForOpponents"
 
+// ModNoncreatureSpellsCostMoreForOpponents is the same increase for noncreature
+// spells only: "noncreature spells your opponents cast cost {Amount} more to cast
+// until your next turn" (Elspeth Conquers Death's chapter II, #5514). A spell is
+// noncreature by its types as cast (CR 205.2a), so an artifact creature spell is
+// not taxed. Reads Amount (at least 1); "you" is the record's Controller.
+const ModNoncreatureSpellsCostMoreForOpponents ModKind = "noncreatureSpellsCostMoreForOpponents"
+
+// NoncreatureSpellsCostMoreForOpponentsMod is that mod for a generic increase of n.
+func NoncreatureSpellsCostMoreForOpponentsMod(n int) Mod {
+	return Mod{Kind: ModNoncreatureSpellsCostMoreForOpponents, Amount: n}
+}
+
 // SpellsCostMoreForOpponentsMod is the record's mod for a generic increase of n.
 func SpellsCostMoreForOpponentsMod(n int) Mod {
 	return Mod{Kind: ModSpellsCostMoreForOpponents, Amount: n}
@@ -32,6 +44,9 @@ func SpellsCostMoreForOpponentsMod(n int) Mod {
 func scopedCostTaxModProblem(m Mod) string {
 	if m.Kind == ModSpellsCostMoreForOpponents && m.Amount < 1 {
 		return "a spellsCostMoreForOpponents mod needs an Amount of at least 1"
+	}
+	if m.Kind == ModNoncreatureSpellsCostMoreForOpponents && m.Amount < 1 {
+		return "a noncreatureSpellsCostMoreForOpponents mod needs an Amount of at least 1"
 	}
 	return ""
 }
@@ -43,14 +58,18 @@ func (g *Game) appendScopedCostTaxLocked(out []boundCostModifier, q CostQuery) [
 	for i := range g.ScopedEffects {
 		e := g.ScopedEffects[i]
 		for _, m := range e.Mods {
-			if m.Kind != ModSpellsCostMoreForOpponents {
+			if m.Kind != ModSpellsCostMoreForOpponents && m.Kind != ModNoncreatureSpellsCostMoreForOpponents {
 				continue
 			}
 			you, n := e.Controller, m.Amount
+			noncreatureOnly := m.Kind == ModNoncreatureSpellsCostMoreForOpponents
 			cm := CostModifier{
 				Kind:  CostIncrease,
 				Label: e.Label,
 				AppliesTo: func(q CostQuery) bool {
+					if noncreatureOnly && q.Card.HasCardType("creature") {
+						return false
+					}
 					return you != uuid.Nil && q.Controller != uuid.Nil && q.Controller != you
 				},
 				Amount: func(CostQuery) int { return n },

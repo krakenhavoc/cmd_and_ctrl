@@ -55,3 +55,40 @@ func TestSpellsCostMoreForOpponentsNeedsAnAmount(t *testing.T) {
 		t.Error("a sound tax is refused")
 	}
 }
+
+// #5514: the noncreature twin taxes a noncreature spell and leaves a creature
+// spell (an artifact creature too) and the taxer's own casts alone.
+func TestNoncreatureSpellsCostMoreForOpponentsSkipsCreatureSpells(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedRuleEffectForEffect(uuid.Nil, ScopeGame, me.ID, []Mod{NoncreatureSpellsCostMoreForOpponentsMod(2)}, g.UntilEndOfTurnDuration(), "test tax") {
+			t.Fatal("the tax was not registered")
+		}
+	})
+	price := func(typeLine string, caster uuid.UUID) string {
+		card := Card{InstanceID: uuid.New(), Name: "Test Spell", TypeLine: typeLine, ManaCost: "{1}{R}", Owner: caster, Controller: caster}
+		base, _ := ParseCost("{1}{R}")
+		var out ParsedCost
+		g.WithWriteLock(func() {
+			var err error
+			out, err = g.ApplyCostModifiersForEffect(base, CostQuery{Game: g, Card: card, Controller: caster, FromZone: ZoneHand})
+			if err != nil {
+				t.Fatalf("ApplyCostModifiers: %v", err)
+			}
+		})
+		return out.String()
+	}
+	if got := price("Sorcery", opp.ID); got != "{3}{R}" {
+		t.Errorf("an opponent's sorcery costs %q, want {3}{R}", got)
+	}
+	if got := price("Artifact Creature — Golem", opp.ID); got != "{1}{R}" {
+		t.Errorf("an opponent's artifact creature costs %q, want {1}{R}", got)
+	}
+	if got := price("Sorcery", me.ID); got != "{1}{R}" {
+		t.Errorf("the taxer's own sorcery costs %q, want {1}{R}", got)
+	}
+	if scopedCostTaxModProblem(NoncreatureSpellsCostMoreForOpponentsMod(0)) == "" {
+		t.Error("a zero tax is accepted")
+	}
+}
