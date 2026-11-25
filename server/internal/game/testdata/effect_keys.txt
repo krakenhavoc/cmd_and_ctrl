@@ -3161,6 +3161,7 @@ run prompt-run/exploit-qarsi-sadist
 run prompt-run/exploit-repository-skaab
 run prompt-run/exploit-rot-tide-gargantua
 run prompt-run/exploit-silumgar-butcher
+run prompt-run/exploit-silumgar-scavenger
 run prompt-run/exploit-skull-skaab
 run prompt-run/exploit-stitched-assistant
 run prompt-run/exploit-vulturous-aven
@@ -4535,6 +4536,7 @@ tail sacrificed-one/prompt-run/exploit-qarsi-sadist
 tail sacrificed-one/prompt-run/exploit-repository-skaab
 tail sacrificed-one/prompt-run/exploit-rot-tide-gargantua
 tail sacrificed-one/prompt-run/exploit-silumgar-butcher
+tail sacrificed-one/prompt-run/exploit-silumgar-scavenger
 tail sacrificed-one/prompt-run/exploit-skull-skaab
 tail sacrificed-one/prompt-run/exploit-stitched-assistant
 tail sacrificed-one/prompt-run/exploit-vulturous-aven
