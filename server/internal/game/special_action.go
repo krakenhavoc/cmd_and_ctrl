@@ -187,6 +187,12 @@ type SpecialAction struct {
 	// amendment 2026-09-24). The cost query reads it, so a cost
 	// modifier sees where the action is taken from.
 	Zone ZoneKind
+
+	// RevealColor is a turn_face_up offer whose cost is "reveal a
+	// <colour> card in your hand" (#6249, FaceDownCast.FaceUpReveal):
+	// the colour letter the revealed card must have. Empty on every
+	// other offer. The card is named on SpecialActionParams.RevealID.
+	RevealColor string
 }
 
 // CatalogSpecialActions is the catalog hook the effects package wires
@@ -348,6 +354,11 @@ type SpecialActionParams struct {
 	// has an {X}. Only turn_face_up takes one; it is refused on every
 	// other kind, none of which prints an {X} the engine pays.
 	XValue int
+
+	// RevealID is the card in the actor's hand a turn_face_up whose
+	// cost is "reveal a <colour> card in your hand" reveals (#6249,
+	// CR 702.37e). Required for that offer, refused on every other.
+	RevealID uuid.UUID
 }
 
 // SpecialActionTimingOKLocked is the per-kind timing table, and the
@@ -544,6 +555,10 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if params.SacrificeID != uuid.Nil {
 		return ErrInvalidParam
 	}
+	// #6249: a reveal is named only for turn_face_up.
+	if params.RevealID != uuid.Nil && kind != SpecialActionTurnFaceUp {
+		return ErrInvalidParam
+	}
 	// WHERE the card is, is the kind's business (specialActionZone).
 	// Foretell and suspend act on a card in its owner's HAND
 	// (CR 702.143a, CR 702.62a), and a hand in this engine holds only
@@ -577,6 +592,13 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// client is confused about which action it is taking.
 	if params.XValue != 0 && !SpecialActionDemandsX(*sa) {
 		return ErrInvalidParam
+	}
+	// #6249, CR 702.37e: a morph cost of "reveal a <colour> card in
+	// your hand" is paid with the card the actor names, and only with a
+	// matching card in their hand; a reveal named for an offer whose
+	// cost is not one is refused, as an X is.
+	if err := g.checkFaceUpRevealLocked(p, *sa, params.RevealID); err != nil {
+		return err
 	}
 	taken := *sa
 	taken.X = params.XValue
@@ -637,6 +659,9 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 			return err
 		}
 	}
+	// #6249: the reveal is the rest of the cost, paid with the mana
+	// (CR 702.37e: pay that cost, then turn the permanent face up).
+	g.payFaceUpRevealLocked(p, cardID, taken, params.RevealID)
 	if err := perform(g, p, cardID, taken); err != nil {
 		return err
 	}

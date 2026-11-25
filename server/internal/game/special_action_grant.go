@@ -164,7 +164,7 @@ func (g *Game) SpecialActionsOfferedLocked(actor uuid.UUID, card Card, zone Zone
 	var out []SpecialAction
 	own := SpecialActionsOfferedByCard(card)
 	for _, sa := range own {
-		if specialActionZone(sa.Kind) == zone {
+		if specialActionZone(sa.Kind) == zone && g.faceUpRevealPayableLocked(actor, sa) {
 			out = append(out, sa)
 		}
 	}

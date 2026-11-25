@@ -30,6 +30,9 @@ type specialActionParams struct {
 	// largest the seat can pay, and the move's Value says every X from
 	// 0 up to it is payable too.
 	XValue int `json:"x_value,omitempty"`
+	// RevealID is the hand card a reveal morph cost shows (#6249,
+	// CR 702.37e). The enumerator names the first that can pay it.
+	RevealID string `json:"reveal_id,omitempty"`
 }
 
 // specialActionMoves enumerates the CR 116.2 special actions the seat
@@ -178,6 +181,11 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		}
 		if xv != nil {
 			label += fmt.Sprintf(" for X=%d", x)
+		}
+		// #6249: a reveal morph cost names a card to show; the offer is
+		// made only while one exists, so the first is always there.
+		if opts := g.FaceUpRevealOptionsForEffect(e.seat, sa); len(opts) > 0 {
+			params.RevealID = opts[0].String()
 		}
 		// #1391: an offer a grant opened in another zone names its
 		// price, because the card may offer the same kind twice
