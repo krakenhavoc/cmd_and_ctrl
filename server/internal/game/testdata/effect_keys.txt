@@ -185,6 +185,7 @@ body elkin-lair/unplayed-card-to-graveyard
 body end-blaze-epiphany/exile-and-choose
 body enlist/pump
 body erica-ortegas/return-a-land-you-control
+body escape-protocol/blink
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
 body etched-slith/you-may-remove-a-counter
@@ -1498,6 +1499,7 @@ choose choose-cards/s82-old-b106-siege-striker-tap
 choose choose-cards/s82-old-b113-counter-on-a-creature
 choose choose-cards/s82-old-b114-counter-pick-chain
 choose choose-cards/s82-old-b114-counter-pick-last
+choose choose-cards/s82-old-b117-return-to-hand
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2722,6 +2724,7 @@ payunless pay-unless/energy-plus-one-counter-on-this
 payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/equilibrium-bounce
 payunless pay-unless/era-of-innovation-get-energy
+payunless pay-unless/escape-protocol-blink
 payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/estwald-shieldbasher-indestructible
@@ -4435,6 +4438,8 @@ tail s82-gap-b144/monkey-cage-tokens
 tail s82-gap-b21/anax-kynaios-land-then-draw
 tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-old-b046/culmination-of-studies-exiled
+tail s82-old-b117/return-lesser-creature
+tail s82-old-b117/return-up-to-two-permanents
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -4820,6 +4825,7 @@ tail then/descendants-fury-sacrificed
 tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
 tail then/dimir-machinations-put-back
+tail then/dire-tactics-lose-life
 tail then/discard-at-random
 tail then/distant-melody-type-chosen
 tail then/disturbing-mirth-draw-two
@@ -4947,6 +4953,7 @@ tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
+tail then/offsprings-revenge-copy
 tail then/old-b071-cosima-draw
 tail then/old-b081-fact-or-fiction-take
 tail then/old-man-willow-sacrificed
