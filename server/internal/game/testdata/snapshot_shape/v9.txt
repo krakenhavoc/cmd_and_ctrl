@@ -6956,6 +6956,7 @@ frozenEntries[].event.entersAs.addTypes[]	string
 frozenEntries[].event.entersAs.basePT	object
 frozenEntries[].event.entersAs.basePT.power	number:int
 frozenEntries[].event.entersAs.basePT.toughness	number:int
+frozenEntries[].event.entersAs.chosenPlayer	custom(uuid.UUID)
 frozenEntries[].event.entersAs.creatureTypes	array
 frozenEntries[].event.entersAs.creatureTypes[]	string
 frozenEntries[].event.entersAs.grants	array
@@ -6964,6 +6965,10 @@ frozenEntries[].event.entersAs.keywords	array
 frozenEntries[].event.entersAs.keywords[]	string
 frozenEntries[].event.entersAs.label	string
 frozenEntries[].event.entersAs.loseAllAbilities	bool
+frozenEntries[].event.entersAs.loseKeywords	array
+frozenEntries[].event.entersAs.loseKeywords[]	string
+frozenEntries[].event.entersAs.loseSubtypes	array
+frozenEntries[].event.entersAs.loseSubtypes[]	string
 frozenEntries[].event.entersAs.name	string
 frozenEntries[].event.entersAs.subtypes	array
 frozenEntries[].event.entersAs.subtypes[]	string
@@ -7821,6 +7826,7 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.addTypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT	object
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT.power	number:int
 frozenEntries[].event.entryTail.batch.opts.entersAs.basePT.toughness	number:int
+frozenEntries[].event.entryTail.batch.opts.entersAs.chosenPlayer	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.opts.entersAs.creatureTypes	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.creatureTypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.grants	array
@@ -7829,6 +7835,10 @@ frozenEntries[].event.entryTail.batch.opts.entersAs.keywords	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.keywords[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.label	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.loseAllAbilities	bool
+frozenEntries[].event.entryTail.batch.opts.entersAs.loseKeywords	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.loseKeywords[]	string
+frozenEntries[].event.entryTail.batch.opts.entersAs.loseSubtypes	array
+frozenEntries[].event.entryTail.batch.opts.entersAs.loseSubtypes[]	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.name	string
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes	array
 frozenEntries[].event.entryTail.batch.opts.entersAs.subtypes[]	string
@@ -30451,6 +30461,7 @@ movesAwaitingTokens[].entersAs.addTypes[]	string
 movesAwaitingTokens[].entersAs.basePT	object
 movesAwaitingTokens[].entersAs.basePT.power	number:int
 movesAwaitingTokens[].entersAs.basePT.toughness	number:int
+movesAwaitingTokens[].entersAs.chosenPlayer	custom(uuid.UUID)
 movesAwaitingTokens[].entersAs.creatureTypes	array
 movesAwaitingTokens[].entersAs.creatureTypes[]	string
 movesAwaitingTokens[].entersAs.grants	array
@@ -30459,6 +30470,10 @@ movesAwaitingTokens[].entersAs.keywords	array
 movesAwaitingTokens[].entersAs.keywords[]	string
 movesAwaitingTokens[].entersAs.label	string
 movesAwaitingTokens[].entersAs.loseAllAbilities	bool
+movesAwaitingTokens[].entersAs.loseKeywords	array
+movesAwaitingTokens[].entersAs.loseKeywords[]	string
+movesAwaitingTokens[].entersAs.loseSubtypes	array
+movesAwaitingTokens[].entersAs.loseSubtypes[]	string
 movesAwaitingTokens[].entersAs.name	string
 movesAwaitingTokens[].entersAs.subtypes	array
 movesAwaitingTokens[].entersAs.subtypes[]	string
@@ -31316,6 +31331,7 @@ movesAwaitingTokens[].entryTail.batch.opts.entersAs.addTypes[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.basePT	object
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.basePT.power	number:int
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.basePT.toughness	number:int
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.chosenPlayer	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.creatureTypes	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.creatureTypes[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.grants	array
@@ -31324,6 +31340,10 @@ movesAwaitingTokens[].entryTail.batch.opts.entersAs.keywords	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.keywords[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.label	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.loseAllAbilities	bool
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.loseKeywords	array
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.loseKeywords[]	string
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.loseSubtypes	array
+movesAwaitingTokens[].entryTail.batch.opts.entersAs.loseSubtypes[]	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.name	string
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.subtypes	array
 movesAwaitingTokens[].entryTail.batch.opts.entersAs.subtypes[]	string
@@ -61207,6 +61227,7 @@ pendingChoices[].replacementResume.event.entersAs.addTypes[]	string
 pendingChoices[].replacementResume.event.entersAs.basePT	object
 pendingChoices[].replacementResume.event.entersAs.basePT.power	number:int
 pendingChoices[].replacementResume.event.entersAs.basePT.toughness	number:int
+pendingChoices[].replacementResume.event.entersAs.chosenPlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entersAs.creatureTypes	array
 pendingChoices[].replacementResume.event.entersAs.creatureTypes[]	string
 pendingChoices[].replacementResume.event.entersAs.grants	array
@@ -61215,6 +61236,10 @@ pendingChoices[].replacementResume.event.entersAs.keywords	array
 pendingChoices[].replacementResume.event.entersAs.keywords[]	string
 pendingChoices[].replacementResume.event.entersAs.label	string
 pendingChoices[].replacementResume.event.entersAs.loseAllAbilities	bool
+pendingChoices[].replacementResume.event.entersAs.loseKeywords	array
+pendingChoices[].replacementResume.event.entersAs.loseKeywords[]	string
+pendingChoices[].replacementResume.event.entersAs.loseSubtypes	array
+pendingChoices[].replacementResume.event.entersAs.loseSubtypes[]	string
 pendingChoices[].replacementResume.event.entersAs.name	string
 pendingChoices[].replacementResume.event.entersAs.subtypes	array
 pendingChoices[].replacementResume.event.entersAs.subtypes[]	string
@@ -62072,6 +62097,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.addTypes[
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT	object
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT.power	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.basePT.toughness	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.chosenPlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.creatureTypes	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.creatureTypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.grants	array
@@ -62080,6 +62106,10 @@ pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords	
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.label	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.loseAllAbilities	bool
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.loseKeywords	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.loseKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.loseSubtypes	array
+pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.loseSubtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.name	string
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes	array
 pendingChoices[].replacementResume.event.entryTail.batch.opts.entersAs.subtypes[]	string

@@ -733,6 +733,7 @@ choose choose-cards/ashling-flame-dancer-then
 choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/astor-bearer-of-blades-take
 choose choose-cards/atraxa-grand-unifier-card-type
+choose choose-cards/aura-returns-on-host-death
 choose choose-cards/author-of-shadows-picked
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature

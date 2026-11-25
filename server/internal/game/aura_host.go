@@ -129,6 +129,11 @@ func (g *Game) enteringAuraLocked(ev *ReplacementEvent) (Card, *TargetSpec, bool
 	} else if ev.EntersAsCopyOf != nil {
 		return Card{}, nil, false
 	}
+	if ev.entersAs.losesAura() {
+		// #6235: it enters as a non-Aura enchantment, which enchants
+		// nothing.
+		return Card{}, nil, false
+	}
 	var card Card
 	found := false
 	if z := g.findCardZoneLocked(ev.CardID); z != nil {

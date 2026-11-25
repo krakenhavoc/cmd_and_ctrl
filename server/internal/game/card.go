@@ -893,7 +893,9 @@ type Card struct {
 	// SOURCE'S CONTROLLER rather than any characteristic of it — the
 	// one quality in the grammar that does. Read it with
 	// ChosenPlayerOf; written by ResolveOptionPick through the
-	// as-enters prompt in choose_player.go and by nothing else.
+	// as-enters prompt in choose_player.go, and by an entry overwrite that
+	// names a player as the permanent lands (EntersAs.ChosenPlayer,
+	// Takklemaggot's "that player", #6235).
 	// Added for #980; see ADR 0072 §7.
 	ChosenPlayer uuid.UUID
 
