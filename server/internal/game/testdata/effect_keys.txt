@@ -4889,6 +4889,7 @@ tail tail/old-b159-ask-shuffle
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
+tail tail/rowdy-crew-counters
 tail tail/s82-mom-b12-guerrilla-after-mill
 tail tail/s82-mom-b12-guerrilla-exiled
 tail tail/s82-mom-b12-skaab-after-mill
