@@ -218,7 +218,17 @@ const (
 	// artifact, or a legendary creature spell's non-creature copy) is not
 	// stopped. Appended last so every earlier kind keeps its value.
 	ProtectionQualityLegendaryCreatures
+	// ProtectionQualityCardName is "protection from the card named X"
+	// (Runed Halo's "protection from the chosen card name", CR 702.16a):
+	// the source has that name (a split or modal card by either face's
+	// name is reached through the characteristic's own Name). Value is the
+	// name as chosen. Appended last so every earlier kind keeps its value.
+	ProtectionQualityCardName
 )
+
+// protectionCardNamed heads the token of ProtectionQualityCardName,
+// lowercase: "protection from the card named Lightning Bolt".
+const protectionCardNamed = "the card named "
 
 // protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
 // lowercase: "protection from creatures of type Vampire".
@@ -570,6 +580,13 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	if ct, ok := protectionCardTypes[lower]; ok {
 		return ProtectionQuality{Kind: ProtectionQualityCardType, Value: ct, Printed: printed}, true
 	}
+	if strings.HasPrefix(lower, protectionCardNamed) {
+		// The name keeps its printed case; matching ignores it.
+		if name := strings.TrimSpace(printed[len(protectionCardNamed):]); name != "" {
+			return ProtectionQuality{Kind: ProtectionQualityCardName, Value: name, Printed: printed}, true
+		}
+		return ProtectionQuality{}, false
+	}
 	if rest, ok := strings.CutPrefix(lower, protectionCreaturesOfType); ok {
 		if ct, ok := CanonicalCreatureType(strings.TrimSpace(rest)); ok {
 			return ProtectionQuality{Kind: ProtectionQualityCreatureSubtype, Value: ct, Printed: printed}, true
@@ -832,6 +849,23 @@ func ProtectionFromCardType(cardType string) string {
 // it grants nothing.
 const ProtectionFromTheChosenCardType = protectionPrefix + "the chosen card type"
 
+// ProtectionFromCardName is the token for "protection from the card named
+// X" (Runed Halo). Empty for an empty name.
+func ProtectionFromCardName(name string) string {
+	if strings.TrimSpace(name) == "" {
+		return ""
+	}
+	return protectionPrefix + protectionCardNamed + strings.TrimSpace(name)
+}
+
+// ProtectionFromTheChosenCardName is "protection from the chosen card name"
+// as a PLAYER keyword (Runed Halo's "You have protection from the chosen
+// card name"): a placeholder in a Spec's PlayerKeywords that the player walk
+// replaces with ProtectionFromCardName of the granting permanent's chosen
+// name (Card.ChosenName), as ProtectionFromTheChosenCardType does for a card
+// type. Unanswered, it grants nothing.
+const ProtectionFromTheChosenCardName = protectionPrefix + "the chosen card name"
+
 // ProtectionQualities is THE reader: every protection this card has
 // right now, parsed.
 //
@@ -994,6 +1028,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:
 		return typeListHas(src.Types, q.Value)
+	case ProtectionQualityCardName:
+		return strings.EqualFold(strings.TrimSpace(src.Name), strings.TrimSpace(q.Value))
 	case ProtectionQualityCreatureSubtype:
 		return typeListHas(src.Types, "creature") &&
 			(typeListHas(src.Subtypes, q.Value) || (src.AllCreatureTypes && IsCreatureType(q.Value)))
