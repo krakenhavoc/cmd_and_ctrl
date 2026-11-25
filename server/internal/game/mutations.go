@@ -3379,13 +3379,20 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// sacrifice cost can only eat what you control, so the
 		// component this function now pays makes the re-check load-
 		// bearing rather than tidy.
-		if card.Controller != p.ID {
+		//
+		// #6204: the one exception is a land the payer may tap under a
+		// Piracy permission, for a cast; its row is re-asked below.
+		foreign := card.Controller != p.ID
+		if foreign && (spend.Purpose != SpendPurposeCast || !card.IsLand() || !g.MayTapForeignLandsLocked(p.ID)) {
 			continue
 		}
 		// #2455: a Costed entry re-finds its ability through the costed
 		// picker, every other through autoTapAbilityForRef.
 		ab := g.plannedAbilityLocked(p.ID, *card, planned, &spend)
 		if ab == nil {
+			continue
+		}
+		if foreign && !g.MayActivateManaLocked(p.ID, *card, ZoneBattlefield, *ab) {
 			continue
 		}
 		// #1242: tapped-out, asked AFTER the pick and only of an ability
@@ -8482,7 +8489,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// for a non-controller, unless some row says "Any player may
 		// activate this ability" (Mana Cache). The row actually named is
 		// held to MayActivateMana after the index lookup below.
-		if card.Controller != playerID && !HasAnyPlayerManaAbility(*card) {
+		if card.Controller != playerID && !g.MayReachManaAcrossLocked(playerID, *card) {
 			return ErrCardCallerMismatch
 		}
 		// CR 602.5: an effect that stops this permanent's activated
@@ -8511,7 +8518,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 	// ADR 0166: Word of Command's forced play lets the player activate
 	// only their lands' mana abilities.
-	if g.LandManaOnlyLocked(playerID) && (srcZone != ZoneBattlefield || !card.IsLand()) {
+	// "…from lands that player controls": not another player's land
+	// under a Piracy permission (#6204).
+	if g.LandManaOnlyLocked(playerID) && (srcZone != ZoneBattlefield || !card.IsLand() || card.Controller != playerID) {
 		return ErrCantActivate
 	}
 	// Resolve the ability shape — catalog first, synthetic basic-land
@@ -8550,7 +8559,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
 	// controller, or anyone for an any-player row.
-	if !MayActivateMana(playerID, *card, srcZone, ab) {
+	// #6204: or the activator under a Piracy permission, for a land's {T}
+	// row.
+	if !g.MayActivateManaLocked(playerID, *card, srcZone, ab) {
 		return ErrCardCallerMismatch
 	}
 	// CR 113.6 (#1228): the ability has to function from the zone the

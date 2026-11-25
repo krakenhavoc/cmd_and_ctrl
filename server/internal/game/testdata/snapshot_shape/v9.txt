@@ -5920,6 +5920,7 @@ frozenEntries[].event.damageTail.sourceLki.AbilitiesRemoved	bool
 frozenEntries[].event.damageTail.sourceLki.Abilities[]	string
 frozenEntries[].event.damageTail.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.damageTail.sourceLki.AllCreatureTypes	bool
+frozenEntries[].event.damageTail.sourceLki.AllNonlegendaryCreatureNames	bool
 frozenEntries[].event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 frozenEntries[].event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
@@ -6126,6 +6127,7 @@ frozenEntries[].event.damageTail.sourceLki.CantHaveCounters	bool
 frozenEntries[].event.damageTail.sourceLki.CantHavePlusOneCounters	bool
 frozenEntries[].event.damageTail.sourceLki.CantHave[]	string
 frozenEntries[].event.damageTail.sourceLki.CantTransform	bool
+frozenEntries[].event.damageTail.sourceLki.ColorlessDamageSourceColors	string
 frozenEntries[].event.damageTail.sourceLki.Colors	array
 frozenEntries[].event.damageTail.sourceLki.Colors[]	string
 frozenEntries[].event.damageTail.sourceLki.ControlSource	custom(uuid.UUID)
@@ -15991,6 +15993,7 @@ frozenEntries[].event.sourceLki.AbilitiesRemoved	bool
 frozenEntries[].event.sourceLki.Abilities[]	string
 frozenEntries[].event.sourceLki.AdditionalBlocks	number:int
 frozenEntries[].event.sourceLki.AllCreatureTypes	bool
+frozenEntries[].event.sourceLki.AllNonlegendaryCreatureNames	bool
 frozenEntries[].event.sourceLki.AssignsAsThoughUnblocked	bool
 frozenEntries[].event.sourceLki.AttackBlockNeedsOtherPower	number:int
 frozenEntries[].event.sourceLki.AttackBlockPowerFloor	number:int
@@ -16197,6 +16200,7 @@ frozenEntries[].event.sourceLki.CantHaveCounters	bool
 frozenEntries[].event.sourceLki.CantHavePlusOneCounters	bool
 frozenEntries[].event.sourceLki.CantHave[]	string
 frozenEntries[].event.sourceLki.CantTransform	bool
+frozenEntries[].event.sourceLki.ColorlessDamageSourceColors	string
 frozenEntries[].event.sourceLki.Colors	array
 frozenEntries[].event.sourceLki.Colors[]	string
 frozenEntries[].event.sourceLki.ControlSource	custom(uuid.UUID)
@@ -23695,6 +23699,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AbilitiesRemoved	bool
 heldCombatDamage.answers[].frame.SourceLKI.Abilities[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AdditionalBlocks	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AllCreatureTypes	bool
+heldCombatDamage.answers[].frame.SourceLKI.AllNonlegendaryCreatureNames	bool
 heldCombatDamage.answers[].frame.SourceLKI.AssignsAsThoughUnblocked	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockNeedsOtherPower	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackBlockPowerFloor	number:int
@@ -23901,6 +23906,7 @@ heldCombatDamage.answers[].frame.SourceLKI.CantHaveCounters	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantHavePlusOneCounters	bool
 heldCombatDamage.answers[].frame.SourceLKI.CantHave[]	string
 heldCombatDamage.answers[].frame.SourceLKI.CantTransform	bool
+heldCombatDamage.answers[].frame.SourceLKI.ColorlessDamageSourceColors	string
 heldCombatDamage.answers[].frame.SourceLKI.Colors	array
 heldCombatDamage.answers[].frame.SourceLKI.Colors[]	string
 heldCombatDamage.answers[].frame.SourceLKI.ControlSource	custom(uuid.UUID)
@@ -23997,6 +24003,7 @@ lastKnownBattlefield{}.AbilitiesRemoved	bool
 lastKnownBattlefield{}.Abilities[]	string
 lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
+lastKnownBattlefield{}.AllNonlegendaryCreatureNames	bool
 lastKnownBattlefield{}.AssignsAsThoughUnblocked	bool
 lastKnownBattlefield{}.AttackBlockNeedsOtherPower	number:int
 lastKnownBattlefield{}.AttackBlockPowerFloor	number:int
@@ -24203,6 +24210,7 @@ lastKnownBattlefield{}.CantHaveCounters	bool
 lastKnownBattlefield{}.CantHavePlusOneCounters	bool
 lastKnownBattlefield{}.CantHave[]	string
 lastKnownBattlefield{}.CantTransform	bool
+lastKnownBattlefield{}.ColorlessDamageSourceColors	string
 lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
@@ -24304,6 +24312,7 @@ lastKnownPermanents{}[].characteristic.AbilitiesRemoved	bool
 lastKnownPermanents{}[].characteristic.Abilities[]	string
 lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
+lastKnownPermanents{}[].characteristic.AllNonlegendaryCreatureNames	bool
 lastKnownPermanents{}[].characteristic.AssignsAsThoughUnblocked	bool
 lastKnownPermanents{}[].characteristic.AttackBlockNeedsOtherPower	number:int
 lastKnownPermanents{}[].characteristic.AttackBlockPowerFloor	number:int
@@ -24510,6 +24519,7 @@ lastKnownPermanents{}[].characteristic.CantHaveCounters	bool
 lastKnownPermanents{}[].characteristic.CantHavePlusOneCounters	bool
 lastKnownPermanents{}[].characteristic.CantHave[]	string
 lastKnownPermanents{}[].characteristic.CantTransform	bool
+lastKnownPermanents{}[].characteristic.ColorlessDamageSourceColors	string
 lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
@@ -29400,6 +29410,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AbilitiesRemoved	bool
 movesAwaitingTokens[].damageTail.sourceLki.Abilities[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AllCreatureTypes	bool
+movesAwaitingTokens[].damageTail.sourceLki.AllNonlegendaryCreatureNames	bool
 movesAwaitingTokens[].damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackBlockPowerFloor	number:int
@@ -29606,6 +29617,7 @@ movesAwaitingTokens[].damageTail.sourceLki.CantHaveCounters	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantHavePlusOneCounters	bool
 movesAwaitingTokens[].damageTail.sourceLki.CantHave[]	string
 movesAwaitingTokens[].damageTail.sourceLki.CantTransform	bool
+movesAwaitingTokens[].damageTail.sourceLki.ColorlessDamageSourceColors	string
 movesAwaitingTokens[].damageTail.sourceLki.Colors	array
 movesAwaitingTokens[].damageTail.sourceLki.Colors[]	string
 movesAwaitingTokens[].damageTail.sourceLki.ControlSource	custom(uuid.UUID)
@@ -39471,6 +39483,7 @@ movesAwaitingTokens[].sourceLki.AbilitiesRemoved	bool
 movesAwaitingTokens[].sourceLki.Abilities[]	string
 movesAwaitingTokens[].sourceLki.AdditionalBlocks	number:int
 movesAwaitingTokens[].sourceLki.AllCreatureTypes	bool
+movesAwaitingTokens[].sourceLki.AllNonlegendaryCreatureNames	bool
 movesAwaitingTokens[].sourceLki.AssignsAsThoughUnblocked	bool
 movesAwaitingTokens[].sourceLki.AttackBlockNeedsOtherPower	number:int
 movesAwaitingTokens[].sourceLki.AttackBlockPowerFloor	number:int
@@ -39677,6 +39690,7 @@ movesAwaitingTokens[].sourceLki.CantHaveCounters	bool
 movesAwaitingTokens[].sourceLki.CantHavePlusOneCounters	bool
 movesAwaitingTokens[].sourceLki.CantHave[]	string
 movesAwaitingTokens[].sourceLki.CantTransform	bool
+movesAwaitingTokens[].sourceLki.ColorlessDamageSourceColors	string
 movesAwaitingTokens[].sourceLki.Colors	array
 movesAwaitingTokens[].sourceLki.Colors[]	string
 movesAwaitingTokens[].sourceLki.ControlSource	custom(uuid.UUID)
@@ -52035,6 +52049,7 @@ pendingChoices[].damageAssignment.SourceLKI.AbilitiesRemoved	bool
 pendingChoices[].damageAssignment.SourceLKI.Abilities[]	string
 pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
+pendingChoices[].damageAssignment.SourceLKI.AllNonlegendaryCreatureNames	bool
 pendingChoices[].damageAssignment.SourceLKI.AssignsAsThoughUnblocked	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackBlockPowerFloor	number:int
@@ -52241,6 +52256,7 @@ pendingChoices[].damageAssignment.SourceLKI.CantHaveCounters	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHavePlusOneCounters	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
 pendingChoices[].damageAssignment.SourceLKI.CantTransform	bool
+pendingChoices[].damageAssignment.SourceLKI.ColorlessDamageSourceColors	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
@@ -53113,6 +53129,7 @@ pendingChoices[].divideShield.staged[].lki.AbilitiesRemoved	bool
 pendingChoices[].divideShield.staged[].lki.Abilities[]	string
 pendingChoices[].divideShield.staged[].lki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].lki.AllCreatureTypes	bool
+pendingChoices[].divideShield.staged[].lki.AllNonlegendaryCreatureNames	bool
 pendingChoices[].divideShield.staged[].lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].divideShield.staged[].lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].lki.AttackBlockPowerFloor	number:int
@@ -53319,6 +53336,7 @@ pendingChoices[].divideShield.staged[].lki.CantHaveCounters	bool
 pendingChoices[].divideShield.staged[].lki.CantHavePlusOneCounters	bool
 pendingChoices[].divideShield.staged[].lki.CantHave[]	string
 pendingChoices[].divideShield.staged[].lki.CantTransform	bool
+pendingChoices[].divideShield.staged[].lki.ColorlessDamageSourceColors	string
 pendingChoices[].divideShield.staged[].lki.Colors	array
 pendingChoices[].divideShield.staged[].lki.Colors[]	string
 pendingChoices[].divideShield.staged[].lki.ControlSource	custom(uuid.UUID)
@@ -53404,6 +53422,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AbilitiesRemoved	bool
 pendingChoices[].divideShield.staged[].sourceLki.Abilities[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AdditionalBlocks	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AllCreatureTypes	bool
+pendingChoices[].divideShield.staged[].sourceLki.AllNonlegendaryCreatureNames	bool
 pendingChoices[].divideShield.staged[].sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackBlockPowerFloor	number:int
@@ -53610,6 +53629,7 @@ pendingChoices[].divideShield.staged[].sourceLki.CantHaveCounters	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantHavePlusOneCounters	bool
 pendingChoices[].divideShield.staged[].sourceLki.CantHave[]	string
 pendingChoices[].divideShield.staged[].sourceLki.CantTransform	bool
+pendingChoices[].divideShield.staged[].sourceLki.ColorlessDamageSourceColors	string
 pendingChoices[].divideShield.staged[].sourceLki.Colors	array
 pendingChoices[].divideShield.staged[].sourceLki.Colors[]	string
 pendingChoices[].divideShield.staged[].sourceLki.ControlSource	custom(uuid.UUID)
@@ -60141,6 +60161,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AbilitiesRemoved	b
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AllCreatureTypes	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AllNonlegendaryCreatureNames	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackBlockPowerFloor	number:int
@@ -60347,6 +60368,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHaveCounters	b
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHavePlusOneCounters	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantHave[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CantTransform	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.ColorlessDamageSourceColors	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Colors	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Colors[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.ControlSource	custom(uuid.UUID)
@@ -70212,6 +70234,7 @@ pendingChoices[].replacementResume.event.sourceLki.AbilitiesRemoved	bool
 pendingChoices[].replacementResume.event.sourceLki.Abilities[]	string
 pendingChoices[].replacementResume.event.sourceLki.AdditionalBlocks	number:int
 pendingChoices[].replacementResume.event.sourceLki.AllCreatureTypes	bool
+pendingChoices[].replacementResume.event.sourceLki.AllNonlegendaryCreatureNames	bool
 pendingChoices[].replacementResume.event.sourceLki.AssignsAsThoughUnblocked	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackBlockPowerFloor	number:int
@@ -70418,6 +70441,7 @@ pendingChoices[].replacementResume.event.sourceLki.CantHaveCounters	bool
 pendingChoices[].replacementResume.event.sourceLki.CantHavePlusOneCounters	bool
 pendingChoices[].replacementResume.event.sourceLki.CantHave[]	string
 pendingChoices[].replacementResume.event.sourceLki.CantTransform	bool
+pendingChoices[].replacementResume.event.sourceLki.ColorlessDamageSourceColors	string
 pendingChoices[].replacementResume.event.sourceLki.Colors	array
 pendingChoices[].replacementResume.event.sourceLki.Colors[]	string
 pendingChoices[].replacementResume.event.sourceLki.ControlSource	custom(uuid.UUID)
@@ -79712,6 +79736,7 @@ pendingChoices[].targetWalk.frame.lki.AbilitiesRemoved	bool
 pendingChoices[].targetWalk.frame.lki.Abilities[]	string
 pendingChoices[].targetWalk.frame.lki.AdditionalBlocks	number:int
 pendingChoices[].targetWalk.frame.lki.AllCreatureTypes	bool
+pendingChoices[].targetWalk.frame.lki.AllNonlegendaryCreatureNames	bool
 pendingChoices[].targetWalk.frame.lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].targetWalk.frame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].targetWalk.frame.lki.AttackBlockPowerFloor	number:int
@@ -79918,6 +79943,7 @@ pendingChoices[].targetWalk.frame.lki.CantHaveCounters	bool
 pendingChoices[].targetWalk.frame.lki.CantHavePlusOneCounters	bool
 pendingChoices[].targetWalk.frame.lki.CantHave[]	string
 pendingChoices[].targetWalk.frame.lki.CantTransform	bool
+pendingChoices[].targetWalk.frame.lki.ColorlessDamageSourceColors	string
 pendingChoices[].targetWalk.frame.lki.Colors	array
 pendingChoices[].targetWalk.frame.lki.Colors[]	string
 pendingChoices[].targetWalk.frame.lki.ControlSource	custom(uuid.UUID)
@@ -80700,6 +80726,7 @@ pendingChoices[].triggerFrame.lki.AbilitiesRemoved	bool
 pendingChoices[].triggerFrame.lki.Abilities[]	string
 pendingChoices[].triggerFrame.lki.AdditionalBlocks	number:int
 pendingChoices[].triggerFrame.lki.AllCreatureTypes	bool
+pendingChoices[].triggerFrame.lki.AllNonlegendaryCreatureNames	bool
 pendingChoices[].triggerFrame.lki.AssignsAsThoughUnblocked	bool
 pendingChoices[].triggerFrame.lki.AttackBlockNeedsOtherPower	number:int
 pendingChoices[].triggerFrame.lki.AttackBlockPowerFloor	number:int
@@ -80906,6 +80933,7 @@ pendingChoices[].triggerFrame.lki.CantHaveCounters	bool
 pendingChoices[].triggerFrame.lki.CantHavePlusOneCounters	bool
 pendingChoices[].triggerFrame.lki.CantHave[]	string
 pendingChoices[].triggerFrame.lki.CantTransform	bool
+pendingChoices[].triggerFrame.lki.ColorlessDamageSourceColors	string
 pendingChoices[].triggerFrame.lki.Colors	array
 pendingChoices[].triggerFrame.lki.Colors[]	string
 pendingChoices[].triggerFrame.lki.ControlSource	custom(uuid.UUID)
@@ -91434,6 +91462,8 @@ stepRecords[].record.strs	array
 stepRecords[].record.strs[]	string
 tableRollNext	number:uint64
 takenAt	custom(time.Time)
+tapForeignLandsThisTurn	map:array
+tapForeignLandsThisTurn{}	bool
 turn	object
 turn.ActiveSeat	number:int
 turn.Extra	bool

@@ -832,6 +832,16 @@ see them:
   permanent that was not cast rolls nothing (CR 107.3m). One such clause
   per card.
 
+**"You may tap lands you don't control for mana" (ADR 0106 §1 amendment 2026-11-25, #6204).**
+Piracy's "Until end of turn, you may tap lands you don't control for
+mana. Spend this mana only to cast spells." is a player's permission,
+not a row: the effect calls
+`ctx.Game.AllowTapForeignLandsThisTurnForEffect(item.Controller)`. The
+engine does the rest: the player may activate the `{T}` mana rows of
+any land another player controls until the turn ends, the mana goes to
+their pool tagged `purpose:cast`, the auto-tapper plans those lands for
+their casts, and the client shows the rows on their copy of the land.
+
 ### Adding a mana ability (S15+)
 
 Mana abilities live on the same `Spec{}` struct via the optional
@@ -5472,6 +5482,15 @@ damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
 zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
+
+**Colourless sources of damage (#6230, CR 105.2c, CR 120.2).** Ghostly
+Flame's "Black and/or red permanents and spells are colorless sources of
+damage" is `Static: []game.StaticAbility{ColorlessDamageSources("BR", label)}`,
+a world rule the permanent carries on itself
+(`Characteristic.ColorlessDamageSourceColors`). The damage event's source
+is read with no colour, so protection from black or red, prevention that
+names a colour and "a red source of your choice" all see a colourless
+source; the permanents and spells keep their colours otherwise.
 
 **Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
 can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,

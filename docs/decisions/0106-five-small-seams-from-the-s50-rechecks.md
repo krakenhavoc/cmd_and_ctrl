@@ -619,3 +619,20 @@ Autumn's Veil prints "Spells you control can't be countered by blue or black spe
 Snapshot impact: additive under v9 (`seats[].statics[].cantBeCountered.byColors`; the mod kind is a new string value).
 
 Cards: Autumn's Veil is built by its OLD batch (b452).
+
+---
+
+## Amendment (2026-11-25): "You may tap lands you don't control for mana" (#6204)
+
+Piracy: "Until end of turn, you may tap lands you don't control for mana. Spend this mana only to cast spells." CR 602.2 lets only an object's controller activate its abilities "unless the object specifically says otherwise"; here an effect says otherwise, for a player rather than for a row, so this is not the `AnyPlayer` bit. The owner decided (2026-11-24) to build it, with the auto-tapper and the client tap affordance reaching another seat's lands.
+
+- **The state.** `Game.TapForeignLandsThisTurn`, a set of players, written by `AllowTapForeignLandsThisTurnForEffect(player)` and flushed at the turn boundary with the other "this turn" sets. Snapshot: additive (`tapForeignLandsThisTurn`). Data, no func field, so the closure census is unchanged.
+- **Which rows.** "Tap … for mana" is activating a mana ability with `{T}` in its cost (CR 106.12), so a land's `{T}` rows and nothing else; a row that also sacrifices the land is refused (CR 701.21a: you can sacrifice only what you control). Lands only, read live, so a land that changes hands this turn is covered. A row the card already opens to any player keeps its own, unrestricted, answer.
+- **The gate.** `Game.MayActivateManaLocked(player, source, zone, ab)` is `MayActivateMana` widened by the permission, and `MayReachManaAcrossLocked` is the fast negative. `ActivateManaAbility`, the enumerator's `manaMoves` and the view ask them, so the bot and the client are offered what the engine accepts (#544). Word of Command's "only from lands that player controls" refuses another player's land.
+- **What the activator does.** As for an any-player row: the activator pays and gets the mana (CR 106.4), and controls the ability (CR 113.8), so a painland's "deals 1 damage to you" hits the activator.
+- **"Spend this mana only to cast spells."** `restrictionsFor`, the one reader every mint uses (the click, a colour pick, the auto-tapper's executor), adds `ManaRestrictCast` to mana a player makes with a land they don't control under the permission. Tags are ANDed, so a land's own restriction stays.
+- **The auto-tapper.** For a cast only (the payment whose spend context the restriction admits), another player's land under the permission is a candidate, marked restricted so the restricted-first ranking applies; never for an activation, the costed pass or a prompt's payment. The executor re-asks the permission and the row before it taps.
+- **The view and the client.** The holder's per-seat copy of the land (the `abilityOffers` carrier) marks its `{T}` rows `any_player`, which the client reads as "this viewer may activate it", with the `purpose:cast` tag on the row. The existing any-player click and popover then tap it as the viewer. No wire field is added.
+- **Bots.** No new prompt. A bot's casts go through the auto-tapper, which now plans the lands; the heuristic never takes a bare mana move.
+
+Cards: Piracy (OLD b701, built by its batch on `AllowTapForeignLandsThisTurnForEffect`).
