@@ -2405,6 +2405,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything

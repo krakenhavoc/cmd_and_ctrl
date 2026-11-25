@@ -134,3 +134,35 @@ func TestEntrySacrificeWithoutDevourStillPicksTheCheapest(t *testing.T) {
 		t.Fatalf("chose %q", got)
 	}
 }
+
+// #6267: Devour X (Thromok the Insatiable). Three 1/1 tokens buy nine
+// counters, so all three are eaten; one alone buys only one, which a
+// nontoken 2/2 is not worth.
+func TestDevourXGrowsWithTheNumberEaten(t *testing.T) {
+	a, b, c := token(cardID(1), 1, 1), token(cardID(2), 1, 1), token(cardID(3), 1, 1)
+	if got, want := devourXDecision(t, a, b, c), devourLabel(a, b, c); got != want {
+		t.Fatalf("chose %q, want %q: three tokens buy nine counters", got, want)
+	}
+	bear := creature(cardID(4), 0, "Grizzly Bears", 2, 2)
+	if got, want := devourXDecision(t, bear), devourLabel(); got != want {
+		t.Fatalf("chose %q, want to keep a lone 2/2 for one counter", got)
+	}
+}
+
+func devourXDecision(t *testing.T, fodder ...protocol.CardView) string {
+	t.Helper()
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(fodder...),
+		withChoice(protocol.PendingChoiceView{
+			ID:        devourChoiceID,
+			Kind:      "entry_sacrifice",
+			Chooser:   seatID(0).String(),
+			Reason:    "devour X",
+			Options:   fodder,
+			ChooseMin: 0,
+			ChooseMax: len(fodder),
+			DevourX:   true,
+		}))
+	in := input(0, v, devourSubsets(t, fodder)...)
+	return chose(t, in, decide(t, heuristic.New(), in))
+}
