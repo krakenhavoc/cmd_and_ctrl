@@ -522,6 +522,7 @@ body s82-old-b088/plague-reaver-return
 body s82-old-b107/basri-devoted-paladin-attacker-counter
 body s82-old-b166/cabal-therapist-name
 body s82-old-b198/viviens-invocation-damage
+body s82-old-b199/skyrider-patrol-counter-and-flying
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2241,6 +2242,7 @@ confirm s82-bns-b28/draugr-to-graveyard
 confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
 confirm s82-dmu-b16/ajani-bottom
+confirm s82-old-b199/dryad-greenseeker-take-land
 confirm s82-rpr-b04/aid-from-the-cowl-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-put
 confirm spark-of-creativity/damage-or-play
@@ -2989,6 +2991,7 @@ payunless pay-unless/s82-old-b022-leshracs-sigil
 payunless pay-unless/s82-old-b024-depala-reveal
 payunless pay-unless/s82-old-b046-lisette-counters
 payunless pay-unless/s82-old-b046-valentin-pest
+payunless pay-unless/s82-old-b199-skyrider-patrol
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4239,6 +4242,7 @@ tail incarnation-technique/milled
 tail incubate/next-round
 tail incubate/transform-all-incubators
 tail indoctrination-attendant/mite
+tail infernal-reckoning/gain-life
 tail infernal-vessel/demon
 tail inquisitorial-rosette/menace
 tail insidious-roots/counter-on-each-plant

@@ -1308,6 +1308,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventNextCombatFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
+	// Mistcaller: nontoken creatures that weren't cast are exiled as they enter.
+	ModExileUncastCreatures: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
 	ModMultiplyDamage: {reader: readerReplacement},
 	// #4468: damage increased by N this turn (add_damage.go).
