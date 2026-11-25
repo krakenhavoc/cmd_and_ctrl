@@ -1180,6 +1180,12 @@ type Spec struct {
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
 
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148): N
+	// loyalty combined into the printed loyalty cost of every loyalty
+	// ability its controller activates (CR 606.5).
+	LoyaltyCostAdd int
+
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
 	// that many times" (Liesa, Shroud of Dusk, #6151): the commander tax
@@ -1929,6 +1935,13 @@ type Spec struct {
 	// it is a fact about players' hands, derived from the battlefield on
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
+
+	// RevealsChosenPlayersDraws declares "The chosen player reveals each
+	// card they draw" (Booby Trap, #6238): every card the permanent's
+	// chosen player draws is revealed to the table as it is drawn
+	// (game.CardDef.RevealsChosenPlayersDraws). The player is the one
+	// its "as this enters, choose an opponent" stored.
+	RevealsChosenPlayersDraws bool
 
 	// AttackOnlyNearestOpponentInChosenDirection declares "each player
 	// may attack only the nearest opponent in the chosen direction and

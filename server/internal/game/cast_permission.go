@@ -768,6 +768,14 @@ type CastPermission struct {
 	// exception it would be.
 	TopOfLibraryOnly bool `json:"topOfLibraryOnly,omitempty"`
 
+	// TopOfGraveyardOnly restricts a ZoneGraveyard permission to the card
+	// currently on top of its owner's graveyard (#6194, CR 404.2: the pile
+	// keeps its order): Bösium Strip's "you may cast instant and sorcery
+	// spells from the top of your graveyard". A card below the top, even
+	// one the filter accepts, is not opened. Graveyards are public, so
+	// there is no visibility half as there is for a library. Additive.
+	TopOfGraveyardOnly bool `json:"topOfGraveyardOnly,omitempty"`
+
 	// SeesLibraryTop is CR 401.5's other half, carried by the grant
 	// rather than by a permanent: "you may LOOK at the top card of
 	// their library any time" (Xanathar, Guild Kingpin), which is
@@ -867,6 +875,15 @@ type CastPermission struct {
 	// which is every permission written before it. Additive within a
 	// snapshot version.
 	CostMoreMana string `json:"costMoreMana,omitempty"`
+
+	// CostMoreUnlessTargetsYourCreature is "If that spell doesn't target a
+	// creature you control, it costs {N} more to cast this way" (Mavinda,
+	// Students' Advocate, #6157): CostMore read with the announced targets
+	// (CR 601.2c before 601.2f), N added unless one of them is a creature
+	// the caster controls (TargetSurchargeFor). Zero is no surcharge, which
+	// is every permission written before it. Additive within a snapshot
+	// version.
+	CostMoreUnlessTargetsYourCreature int `json:"costMoreUnlessTargetsYourCreature,omitempty"`
 
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
@@ -2877,6 +2894,14 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 //
 // Caller must hold g.mu.
 func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission, card Card) bool {
+	if perm.TopOfGraveyardOnly {
+		// #6194: the top of the graveyard the card is in (CR 404.2).
+		owner := g.playerByIDLocked(card.Owner)
+		if owner == nil || owner.Graveyard == nil || len(owner.Graveyard.Cards) == 0 ||
+			owner.Graveyard.Cards[len(owner.Graveyard.Cards)-1].InstanceID != card.InstanceID {
+			return false
+		}
+	}
 	if !perm.TopOfLibraryOnly {
 		return true
 	}
@@ -3694,7 +3719,11 @@ func requiresColorless(req ColorRequirement) bool {
 // the price and the announce path ask it with, so all three judge the
 // cast under the same permission. Caller must hold g.mu.
 func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
-	if from == ZoneHand || from == ZoneCommand {
+	// #6231: a copy of a card in a hand exists only because an offer made
+	// it there (CR 707.12, CardCopyOffer.InHand), and is cast through that
+	// offer's permission, so its reduction is read; a real hand card's
+	// ordinary cast claims no permission.
+	if (from == ZoneHand && !card.CardCopy) || from == ZoneCommand {
 		return 0
 	}
 	// #4509: `card` is the face being cast; a permission that does not
@@ -3724,10 +3753,11 @@ func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind,
 		return 0
 	}
 	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
-	if grant == nil || grant.CostMore <= 0 {
+	if grant == nil {
 		return 0
 	}
-	return grant.CostMore
+	// #6157: and the surcharge that reads this announcement's targets.
+	return max(grant.CostMore, 0) + g.TargetSurchargeFor(grant, playerID, params.Targets)
 }
 
 // CreatureCountersLabel is the clause of a "removing N counters from among

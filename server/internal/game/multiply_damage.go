@@ -380,7 +380,9 @@ func spentNextTimeMod(m Mod, batch uint64) bool {
 	if m.SpentBatch == 0 || m.SpentBatch == batch {
 		return false
 	}
-	return isNextFromSourceKind(m.Kind) || ((m.Kind == ModMultiplyDamage || m.Kind == ModRedirectDamage) && m.Next)
+	// #6160: a spent "the next time … enter" copy is done too.
+	return isNextFromSourceKind(m.Kind) || ((m.Kind == ModMultiplyDamage || m.Kind == ModRedirectDamage) && m.Next) ||
+		m.Kind == ModNextEntersAsCopies
 }
 
 // DamageMultiplierLines is the game banner's line for each live

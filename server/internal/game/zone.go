@@ -352,6 +352,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.ChosenCard = ObjectRef{}
 		c.Notes = nil
 		c.Devoured = 0
+		c.TributePaid = false
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage
