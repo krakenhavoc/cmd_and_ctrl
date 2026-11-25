@@ -24,6 +24,7 @@ func init() {
 		OracleID:     "cd3d79e9-c72e-4321-bca1-54505d51331a",
 		Name:         "Conduit of Ruin",
 		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Tutors: 1},
 		CostModifiers: []game.CostModifier{
 			effects.CostsLess(2, "The first creature spell you cast each turn costs {2} less to cast.",
 				effects.YourSpell(), effects.CreatureSpell(), effects.NoCreatureSpellCastYetThisTurn()),
