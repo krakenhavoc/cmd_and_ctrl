@@ -1444,6 +1444,7 @@ choose choose-cards/realms-uncharted-settle
 choose choose-cards/reanimate-one-milled
 choose choose-cards/reckoner-shakedown-counters
 choose choose-cards/recruit-discarded
+choose choose-cards/redcap-raiders-tap
 choose choose-cards/reinterpret-cast
 choose choose-cards/rejoin-the-fight-pick
 choose choose-cards/relentless-pursuit-take
@@ -5148,6 +5149,7 @@ tail then/volcanic-offering-damage
 tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/winds-of-change-shuffled
+tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
 tail then/zaffai-after-scry
