@@ -2945,6 +2945,7 @@ payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/miara-draw
 payunless pay-unless/minds-aglow-paid
 payunless pay-unless/mirrorworks-copy
+payunless pay-unless/mishras-self-replicator-copy
 payunless pay-unless/mizzix-replica-rider-copy
 payunless pay-unless/mohiam-imperial-truthsayer-exile
 payunless pay-unless/monstrosity-of-the-lake-stun
