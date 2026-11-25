@@ -498,6 +498,13 @@ type Spec struct {
 	// A card that reads the board at RESOLUTION does not belong here.
 	CastTimeValues []game.CastTimeValue
 
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): the caster names a
+	// creature type as they cast the spell (CR 601.2c), stamped on the
+	// spell as its chosen type, which OfTheChosenType target clauses read
+	// at announce and again at resolution (CR 608.2b).
+	ChoosesCreatureTypeAsCast bool
+
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered": "If X is 5 or more, this spell can't be countered"
 	// (Banefire), "Hellbent — If you have no cards in hand, this spell

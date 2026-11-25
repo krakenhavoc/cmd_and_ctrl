@@ -60,6 +60,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"FlashWithCleanupSacrifice":  "the spell's own cast timing, read by the cast gate (#3156)",
 	"FlashIf":                    "the spell's own conditional cast timing, read by the cast gate (#5207)",
 	"CastTimeValues":             "a number the spell fixes as it is cast, read by its own resolution (#3781)",
+	"ChoosesCreatureTypeAsCast":  "a creature type the spell names as it is cast, read by its own target clauses (#6245)",
 	"SpellDamageCantBePrevented": "a property of the spell's damage",
 	"Emblem":                     "an emblem's presentation",
 	"TokenText":                  "a token's printed text, already token_text",

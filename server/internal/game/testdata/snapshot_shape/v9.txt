@@ -45116,6 +45116,7 @@ pendingChoices[].assist.announce.params.AutoTap	bool
 pendingChoices[].assist.announce.params.BeholdType	string
 pendingChoices[].assist.announce.params.BlightIDs	array
 pendingChoices[].assist.announce.params.BlightIDs[]	custom(uuid.UUID)
+pendingChoices[].assist.announce.params.ChosenCreatureType	string
 pendingChoices[].assist.announce.params.ConspireIDs	array
 pendingChoices[].assist.announce.params.ConspireIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.CostBranch	number:int
@@ -52835,6 +52836,7 @@ pendingChoices[].parked.cast.params.AutoTap	bool
 pendingChoices[].parked.cast.params.BeholdType	string
 pendingChoices[].parked.cast.params.BlightIDs	array
 pendingChoices[].parked.cast.params.BlightIDs[]	custom(uuid.UUID)
+pendingChoices[].parked.cast.params.ChosenCreatureType	string
 pendingChoices[].parked.cast.params.ConspireIDs	array
 pendingChoices[].parked.cast.params.ConspireIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.CostBranch	number:int
