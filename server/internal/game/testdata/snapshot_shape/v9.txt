@@ -87338,6 +87338,7 @@ spellsCastThisTurn{}.cardTypes	string
 spellsCastThisTurn{}.colors	string
 spellsCastThisTurn{}.dragonSpells	number:int
 spellsCastThisTurn{}.enchantment	number:int
+spellsCastThisTurn{}.faceDownCreatureSpells	number:int
 spellsCastThisTurn{}.flyingCreatureSubtypes	string
 spellsCastThisTurn{}.fromExile	number:int
 spellsCastThisTurn{}.instantSorcery	number:int

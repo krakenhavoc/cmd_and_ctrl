@@ -3,7 +3,7 @@
 # when the server runs — so a dev running `make dev` from server/
 # creates server/data/, while /data/ at the repo root covers the
 # other common case.
-/data/
+/data
 /server/data/
 *.log
 

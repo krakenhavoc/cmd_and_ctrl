@@ -2782,6 +2782,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasSubtype(ch, "Dragon") {
 				tally.DragonSpells++
 			}
+			// Kadena, Slinking Sorcerer's "first face-down creature spell".
+			if sc.FaceDown && characteristicHasType(ch, "Creature") {
+				tally.FaceDownCreatureSpells++
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
 				tally.InstantSorceryVillain++
@@ -4089,7 +4093,11 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	}
 	// ADR 0150 §4: what an assist helper pays comes off the generic the
 	// caster owes. Only the parked cast's re-run carries an answer.
-	return params.assistPaid.lessFrom(cost, params.XValue), nil
+	cost = params.assistPaid.lessFrom(cost, params.XValue)
+	if err := cantSpendManaToCastLocked(card, cost, params.XValue); err != nil {
+		return ParsedCost{}, err
+	}
+	return cost, nil
 }
 
 // costAfterModifiersLocked is effectiveCostLocked's tail: the board's

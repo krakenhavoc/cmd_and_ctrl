@@ -299,6 +299,11 @@ type CardDef struct {
 	// but not from anywhere else" (Spec.CastsOnlyFromGraveyard), read by
 	// aftermathZoneRule.
 	CastsOnlyFromGraveyard bool
+	// CantSpendManaToCast is "You can't spend mana to cast this spell"
+	// (Hogaak, Arisen Necropolis; Spec.CantSpendManaToCast), read through
+	// cantSpendManaToCastLocked: the spell can be cast only when convoke,
+	// delve and the other non-mana payments settle its whole cost.
+	CantSpendManaToCast bool
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -1173,6 +1178,12 @@ func init() {
 	CatalogCastsOnlyFromGraveyard = func(key string) bool {
 		if d := catalogDef(key); d != nil {
 			return d.CastsOnlyFromGraveyard
+		}
+		return false
+	}
+	CatalogCantSpendManaToCast = func(key string) bool {
+		if d := catalogDef(key); d != nil {
+			return d.CantSpendManaToCast
 		}
 		return false
 	}

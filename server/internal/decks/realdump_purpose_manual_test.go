@@ -309,6 +309,12 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 110 (#5511).
 	"Idol of Endurance": "exiles only the controller's own small creature cards from their graveyard, no permanents: not a board wipe",
 
+	// S82 OLD batch 152 (#5517).
+	"Ghastly Conscription": "exiles creature cards from one graveyard and manifests them: it sweeps no permanents, it puts creatures onto the battlefield",
+
+	// S82 OLD batch 157 (#5518).
+	"Thought Distortion": "exiles noncreature, nonland cards from one opponent's hand and graveyard, no permanents: not a board wipe",
+
 	// S82 seam #6098.
 	"Emrakul, the World Anew": "its leaves-the-battlefield drawback sacrifices only its controller's own creatures: not a board wipe",
 }
