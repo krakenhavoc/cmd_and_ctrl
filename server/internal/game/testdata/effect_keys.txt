@@ -772,6 +772,7 @@ choose choose-cards/cataclysmic-gearhulk-keep-creature-planeswalker
 choose choose-cards/cataclysmic-gearhulk-keep-enchantment
 choose choose-cards/cataclysmic-gearhulk-keep-enchantment-planeswalker
 choose choose-cards/cataclysmic-gearhulk-keep-planeswalker
+choose choose-cards/cauldrons-gift-return
 choose choose-cards/cecily-haunted-mage-cast
 choose choose-cards/celestial-judgment-pick
 choose choose-cards/celestus-sanctifier-put
