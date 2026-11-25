@@ -1167,6 +1167,12 @@ type Spec struct {
 	// ability its controller activates (CR 606.5).
 	LoyaltyCostAdd int
 
+	// CommanderTaxInLife is "Rather than pay {2} for each previous time
+	// you've cast this spell from the command zone this game, pay 2 life
+	// that many times" (Liesa, Shroud of Dusk, #6151): the commander tax
+	// (CR 903.8) is charged as 2 life per previous cast instead of {2}.
+	CommanderTaxInLife bool
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice
