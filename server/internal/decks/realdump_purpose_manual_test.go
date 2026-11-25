@@ -329,6 +329,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 214 (#5530).
 	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
+
+	// S82 OLD batch 296 (#5545).
+	"Inverter of Truth": "exiles the cards of its controller's own library, face down, and shuffles their graveyard in: it touches no permanent, so there is no board to wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -2021,6 +2021,7 @@ confirm confirm/deadly-complication-unsuspect
 confirm confirm/decoy-gambit-draw-or-bounce
 confirm confirm/delifs-cone-gain-life
 confirm confirm/delina-roll-again
+confirm confirm/dimensional-infiltrator-return
 confirm confirm/dire-blunderbuss-sacrifice
 confirm confirm/disorienting-choice-exile
 confirm confirm/doors-of-durin-reveal
@@ -2789,6 +2790,7 @@ payunless pay-unless/azra-oddsmaker-choose
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/battlemages-bracers-copy-ability
+payunless pay-unless/bearer-of-silence-sacrifice
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
@@ -2853,6 +2855,7 @@ payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
 payunless pay-unless/edgars-awakening-return
 payunless pay-unless/eirdu-transform
+payunless pay-unless/eldrazi-obligator-threaten
 payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
@@ -5074,6 +5077,7 @@ tail then/deputy-of-detention-exiled-one
 tail then/descendants-fury-sacrificed
 tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
+tail then/dimensional-infiltrator-exiled
 tail then/dimir-machinations-put-back
 tail then/dire-tactics-lose-life
 tail then/discard-at-random
