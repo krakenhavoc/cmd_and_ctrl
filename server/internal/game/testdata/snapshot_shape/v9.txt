@@ -6048,6 +6048,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].Controller
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -16163,6 +16164,7 @@ frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -23909,6 +23911,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].Controller
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -24215,6 +24218,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].Supert
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -24526,6 +24530,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMust
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -29659,6 +29664,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].Controller
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -39774,6 +39780,7 @@ movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -52413,6 +52420,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Controlle
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -53496,6 +53504,7 @@ pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].Controller
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -53791,6 +53800,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Cont
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -60541,6 +60551,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestri
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -70656,6 +70667,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].Co
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -80200,6 +80212,7 @@ pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustC
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -81198,6 +81211,7 @@ pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustContr
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControl[].Types	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControl[].Types[]	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControl[].Untapped	bool
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustBeMonarch	bool
@@ -87445,6 +87459,8 @@ seats[].departedPermanents[].source.attachedTo.splice	number:int
 seats[].departedPermanents[].source.attackingTarget	custom(uuid.UUID)
 seats[].departedPermanents[].source.attractionLights	array
 seats[].departedPermanents[].source.attractionLights[]	number:int
+seats[].departedPermanents[].source.auraFormEndBy	custom(uuid.UUID)
+seats[].departedPermanents[].source.auraFormEndCost	string
 seats[].departedPermanents[].source.baseController	custom(uuid.UUID)
 seats[].departedPermanents[].source.battleX	number:float64
 seats[].departedPermanents[].source.battleY	number:float64
