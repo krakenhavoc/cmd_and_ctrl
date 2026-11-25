@@ -70,9 +70,18 @@ var ruinProcessorPick = game.RegisterChooseCardsThen("choose-cards/s82-old-b313-
 		if !r.Answered || len(r.Picked) != 1 {
 			return nil
 		}
-		if err := g.PutIntoGraveyardForEffect(r.Picked[0]); err != nil {
-			return err
-		}
-		ctx, _ := effects.AskedContext(g, nil, r.Chooser, r.Source, nil)
-		return effects.GainLife{Player: r.Chooser, Amount: 5}.Apply(ctx)
+		// "If you do" waits for the move: a replacement's prompt on the card
+		// pauses it, and the life is gained only once it is in a graveyard.
+		return g.PutCardsIntoGraveyardKeyedForEffect(r.Picked,
+			game.KeyedTail{Ref: ruinProcessorMoved, Player: r.Chooser, Source: r.Source})
 	})
+
+// ruinProcessorMoved gains the 5 life if the card reached a graveyard. An
+// on-disk key.
+var ruinProcessorMoved = game.RegisterTail("then/s82-old-b313-ruin-processor-life", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) != 1 {
+		return nil
+	}
+	ctx, _ := effects.AskedContext(g, nil, o.Tail.Player, o.Tail.Source, nil)
+	return effects.GainLife{Player: o.Tail.Player, Amount: 5}.Apply(ctx)
+})
