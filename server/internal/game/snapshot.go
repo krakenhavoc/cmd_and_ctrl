@@ -5089,6 +5089,7 @@ func copyCharacteristic(in *Characteristic) *Characteristic {
 	out.Supertypes = copyStrings(in.Supertypes)
 	out.Colors = copyStrings(in.Colors)
 	out.Abilities = copyStrings(in.Abilities)
+	out.SourceCounters = copyCounterMap(in.SourceCounters)
 	if len(in.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]GrantedAbility(nil), in.GrantedAbilities...)
 	}
