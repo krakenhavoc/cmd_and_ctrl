@@ -990,6 +990,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		CastOrdinal:      s.CastOrdinal,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,

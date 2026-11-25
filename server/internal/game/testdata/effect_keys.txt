@@ -2222,6 +2222,7 @@ drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
 drawinstead scion-of-halaster
 drawinstead underrealm-lich
+drawinstead unpredictable-cyclone
 drawthen aetherflux-conduit-after-draw
 drawthen alpharael-discard-two-unless-artifact
 drawthen aminatou-the-fateshifter-put-back
@@ -4680,6 +4681,8 @@ tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
+tail soulfire-eruption/dealt
+tail soulfire-eruption/exiled
 tail soundwave/copy-exiled
 tail spare-dagger/sacrificed
 tail spark-of-creativity/exiled
@@ -5307,6 +5310,7 @@ vote secret/call-to-the-void
 vote secret/gollum-scheming-guide
 vote secret/itazura-lingering-wick
 vote secret/toymakers-trap
+vote secret/wheel-of-misfortune
 vote vote/bite-of-the-black-rose
 vote vote/capital-punishment
 vote vote/cirdan-the-shipwright
