@@ -111,7 +111,7 @@ const (
 	//   - by the declaration verbs (attackLimitRefusalLocked), only as a
 	//     dead end: the source joining an empty declaration is refused
 	//     when no other creature could be added beside it at all
-	//     (attackCompanionAvailableLocked, a tax the player could pay
+	//     (companionsReachableLocked, a tax the player could pay
 	//     counted), so a declaration that can never become legal is
 	//     never begun and the enumerator never offers it;
 	//   - at the declaration's checkpoint (attackCheckpointLocked), on
@@ -154,7 +154,23 @@ type AttackLimit struct {
 	// it runs inside the read-only check the legal-move enumerator
 	// shares.
 	While func(g *Game, source *Card) bool
+
+	// MinOthers and OthersPowerGreater widen AttackLimitNotAlone from
+	// "can't attack alone" to the companion family (#6197, CR 508.1c):
+	// Orcish Conscripts' "can't attack unless at least two other
+	// creatures attack" is MinOthers 2, and Okk's "can't attack unless a
+	// creature with greater power also attacks" is OthersPowerGreater
+	// (one companion whose power, read at declaration, is greater than
+	// the source's). MinOthers below 1 is 1, so the zero value is Pet
+	// Sehlat's "can't attack alone". Plain data; ignored for any other
+	// scope.
+	MinOthers          int
+	OthersPowerGreater bool
 }
+
+// companionsNeeded is how many other attackers a NotAlone limit asks
+// for: MinOthers, at least one.
+func (l AttackLimit) companionsNeeded() int { return max(l.MinOthers, 1) }
 
 // counts reports whether an attack naming `target` counts toward this
 // limit, read off `source`, the permanent that prints it.
@@ -246,6 +262,10 @@ type AttackLimitError struct {
 	// counts, so the client has a card to point at.
 	Attacker     uuid.UUID
 	AttackerName string
+	// MinOthers and OthersPowerGreater are a NotAlone limit's companion
+	// rule (#6197), for its sentence; zero for "can't attack alone".
+	MinOthers          int
+	OthersPowerGreater bool
 }
 
 // Error is the debug form: the sentence as a third party reads it.
@@ -278,13 +298,27 @@ func (e *AttackLimitError) Sentence(viewer uuid.UUID) string {
 	case AttackLimitOnlyAlone:
 		return nameOr(e.SourceName, "That creature") + " can only attack alone."
 	case AttackLimitNotAlone:
-		return nameOr(e.SourceName, "That creature") + " can't attack alone."
+		return nameOr(e.SourceName, "That creature") + notAloneAttackClause(e.MinOthers, e.OthersPowerGreater)
 	}
 	s += " each combat"
 	if e.SourceName != "" {
 		s += " (" + e.SourceName + ")"
 	}
 	return s + "."
+}
+
+// notAloneAttackClause is the end of a NotAlone limit's sentence:
+// " can't attack alone.", " can't attack unless at least two other
+// creatures attack.", " can't attack unless a creature with greater
+// power also attacks." (#6197).
+func notAloneAttackClause(minOthers int, greater bool) string {
+	switch {
+	case greater:
+		return " can't attack unless a creature with greater power also attacks."
+	case minOthers > 1:
+		return " can't attack unless at least " + countWord(minOthers) + " other creatures attack."
+	}
+	return " can't attack alone."
 }
 
 // AttackLimitRefusalForEffect reports whether `decls`, applied on top
@@ -455,6 +489,7 @@ func (g *Game) attackLimitErrorLocked(l attackLimitSource, decls []AttackDeclara
 	if l.limit.Scope == AttackLimitNotAlone && l.source != nil {
 		// The creature that can't attack alone is the one to point at.
 		e.Attacker, e.AttackerName = e.Source, e.SourceName
+		e.MinOthers, e.OthersPowerGreater = l.limit.MinOthers, l.limit.OthersPowerGreater
 		return e
 	}
 	for _, d := range decls {

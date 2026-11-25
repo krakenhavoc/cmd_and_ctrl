@@ -66,6 +66,23 @@ func CantAttackAlone() game.AttackLimit {
 	return game.AttackLimit{Scope: game.AttackLimitNotAlone, Max: 1}
 }
 
+// CantAttackUnlessNOtherCreaturesAttack — "This creature can't attack
+// unless at least N other creatures attack" (Orcish Conscripts, #6197;
+// CR 508.1c). The companion family of CantAttackAlone, which is this
+// with N = 1: a declaration in which fewer than N other creatures
+// attack is illegal, whoever they attack.
+func CantAttackUnlessNOtherCreaturesAttack(n int) game.AttackLimit {
+	return game.AttackLimit{Scope: game.AttackLimitNotAlone, Max: 1, MinOthers: n}
+}
+
+// CantAttackUnlessACreatureWithGreaterPowerAttacks — "This creature
+// can't attack unless a creature with greater power also attacks" (Okk,
+// #6197; CR 508.1c). Power is compared at declaration (CR 208.1), so a
+// pump before attackers are declared counts and one after does not.
+func CantAttackUnlessACreatureWithGreaterPowerAttacks() game.AttackLimit {
+	return game.AttackLimit{Scope: game.AttackLimitNotAlone, Max: 1, OthersPowerGreater: true}
+}
+
 // AsLongAs gates a limit on a condition of its source — "As long as
 // Mirri is tapped, no more than one creature can attack you each
 // combat" (#1534). The condition is read live at every check; one that
