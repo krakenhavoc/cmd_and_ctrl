@@ -145,6 +145,7 @@ body delayed/biolume-egg-return-transformed
 body delayed/daretti-scrap-savant-return
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
+body departed/token-copies-of-artifacts-and-creatures
 body desert-warfare/put-listed-onto-the-battlefield
 body desperate-measures/draw-two
 body destroy/that-creature-and-klingon-warrior
@@ -1894,6 +1895,7 @@ condition damage/old-b071-the-listed-object-dealt
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
+condition departed/player-loses-with-counter
 condition dies/a-creature
 condition dies/a-creature-you-control
 condition dies/another-creature-than-the-source
