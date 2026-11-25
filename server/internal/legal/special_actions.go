@@ -228,6 +228,30 @@ func (e *enumerator) ignoreEffectMoves() {
 		if !e.enter(scope{source: offer.Source}) {
 			continue
 		}
+		if offer.ManaCost != "" {
+			// #6247: paid in mana (Leonin Arbiter's {2}). Offered only
+			// when the seat can pay it, in the special-action spend
+			// context the engine charges with, strict and auto-tapped
+			// like every other special action with mana (#544).
+			cost, err := game.ParseCost(offer.ManaCost)
+			if err != nil || !e.canPay(cost, 0, game.SpecialActionSpendContext(game.SpecialActionIgnoreEffect)) {
+				continue
+			}
+			e.add(Move{
+				Type:   TypeSpecialAction,
+				Player: e.seat,
+				Kind:   KindSpecialAction,
+				Label:  offer.Label,
+				Source: offer.Source,
+				Params: mustJSON(specialActionParams{
+					CardID:  offer.Source.String(),
+					Kind:    string(game.SpecialActionIgnoreEffect),
+					Strict:  true,
+					AutoTap: true,
+				}),
+			})
+			continue
+		}
 		e.add(Move{
 			Type:   TypeSpecialAction,
 			Player: e.seat,

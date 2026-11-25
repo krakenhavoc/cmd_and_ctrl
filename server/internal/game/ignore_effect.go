@@ -60,6 +60,13 @@ type IgnorableEffect struct {
 	// Label is the row as the player reads it ("Sacrifice a permanent:
 	// ignore Damping Engine's effect until end of turn").
 	Label string
+	// ManaCost is the price in mana instead of a sacrifice (#6247): Leonin
+	// Arbiter's "Any player may pay {2} for that player to ignore this
+	// effect until end of turn". Scryfall brace grammar. Empty keeps the
+	// sacrifice. Paid like every other special action's mana (CR 116.2:
+	// the same helper, the special-action spend context), and the action
+	// is offered only to a player who could pay it.
+	ManaCost string
 	// Applies reports whether the ability bears on `player` right now.
 	// An ability that does not bear on a player has nothing for them to
 	// ignore, so nothing is offered. Read-only, under g.mu.
@@ -83,9 +90,13 @@ type IgnoreEffectOffer struct {
 	// it: those they control that can be sacrificed (CR 701.21a, and
 	// "can't be sacrificed" stops one). In payment order
 	// (SacrificePaymentOrderForEffect), so the first is the one a bot or
-	// a "choose for me" button gives up. Never empty: an offer the player
-	// cannot pay is not an offer.
+	// a "choose for me" button gives up. Never empty for a sacrifice
+	// cost: an offer the player cannot pay is not an offer. Nil for a
+	// mana cost.
 	Candidates []uuid.UUID
+	// ManaCost is IgnorableEffect.ManaCost: the ignore is paid in mana and
+	// names no sacrifice (#6247).
+	ManaCost string
 }
 
 // ignorableEffectOf is the declaration the permanent carries right now:
@@ -166,6 +177,20 @@ func (g *Game) ignoreEffectOfferLocked(player uuid.UUID, src *Card) *IgnoreEffec
 	if g.effectIgnoredLocked(player, src) {
 		return nil
 	}
+	if ig.ManaCost != "" {
+		// #6247: paid in mana. Whether the player can pay is the
+		// enumerator's and the payment's question, as for every other
+		// special action with a mana cost; the row is offered.
+		if _, err := ParseCost(ig.ManaCost); err != nil {
+			return nil
+		}
+		return &IgnoreEffectOffer{
+			Source:     src.InstanceID,
+			SourceName: src.Name,
+			Label:      ig.Label,
+			ManaCost:   ig.ManaCost,
+		}
+	}
 	cands := g.ignoreEffectCandidatesLocked(player, src.InstanceID)
 	if len(cands) == 0 {
 		return nil
@@ -227,15 +252,36 @@ func (g *Game) performIgnoreEffectLocked(p *Player, sourceID uuid.UUID, params S
 	if offer == nil {
 		return ErrSpecialActionNotOffered
 	}
-	if params.SacrificeID == uuid.Nil || !slices.Contains(offer.Candidates, params.SacrificeID) {
+	if offer.ManaCost != "" {
+		// #6247: a mana cost names no sacrifice.
+		if params.SacrificeID != uuid.Nil {
+			return ErrInvalidParam
+		}
+	} else if params.SacrificeID == uuid.Nil || !slices.Contains(offer.Candidates, params.SacrificeID) {
 		return ErrInvalidParam
 	}
 	epoch := src.ObjectEpoch
 	// Its own CR 116.2 event, as every special action is (#1341).
 	g.beginEventBatchLocked()
-	// The cost: the sacrifice (CR 701.21a), settled now (a cost is paid
-	// before the action takes effect).
-	if err := g.payCostSacrificesLocked([]uuid.UUID{params.SacrificeID}, nil); err != nil {
+	if offer.ManaCost != "" {
+		// The cost in mana (Leonin Arbiter's {2}), through the helper
+		// every special action's mana goes through: auto-tap, strict
+		// and the EventManaSpent breadcrumb as for a foretell, and the
+		// special-action spend context, so mana that may be spent only
+		// on casts or activations cannot pay it (#259's direction).
+		cost, err := ParseCost(offer.ManaCost)
+		if err != nil {
+			return ErrInvalidParam
+		}
+		if _, err := g.payAbilityManaCostLocked(p, sourceID, src.Name, cost, ActivateAbilityParams{
+			Strict:  params.Strict,
+			AutoTap: params.AutoTap,
+		}, specialActionSpendContext(SpecialActionIgnoreEffect), nil); err != nil {
+			return err
+		}
+	} else if err := g.payCostSacrificesLocked([]uuid.UUID{params.SacrificeID}, nil); err != nil {
+		// The cost: the sacrifice (CR 701.21a), settled now (a cost is
+		// paid before the action takes effect).
 		return err
 	}
 	// The effect: ignore until end of turn. A permanent that has itself

@@ -4685,6 +4685,11 @@ LandPlayRestrictions: []game.LandPlayRestriction{
   alike. The special action, its sacrifice, the per-player record and both
   gates are the engine's (`game/ignore_effect.go`); `Register` refuses one
   without the other. See `damping_engine.go`.
+- **"Any player may pay {2} for that player to ignore this effect until end
+  of turn"** (Leonin Arbiter, #6247): the same `IgnorableEffect` with
+  `ManaCost: "{2}"`. The ignore is then paid in mana and names no sacrifice.
+  "Players can't search libraries" is `Spec.PlayersCantSearchLibraries`, which
+  `Register` counts as the ignorable restriction.
 - **A ban from a resolved spell or ability** ("target player can't play
   lands this turn": Turf Wound, Solfatara, Pardic Miner, Moonhold) is not
   this slot. Its source is gone the moment it resolves, so it is stored:

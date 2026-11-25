@@ -558,6 +558,11 @@ type CardDef struct {
 	// battlefield through CatalogOpponentsCantSearch, keyed by
 	// CatalogAbilityKey; see search_cant.go.
 	OpponentsCantSearchLibraries bool
+	// PlayersCantSearchLibraries is this permanent's printed "Players
+	// can't search libraries" (Leonin Arbiter, #6247): every player, its
+	// controller included, unless they are ignoring it this turn (CR
+	// 116.2d). Read in searchCantLocked through CatalogAbilityKey.
+	PlayersCantSearchLibraries bool
 	// AttackingPlayerChoosesBlocks is this permanent's printed "The
 	// attacking player chooses how each creature blocks each combat"
 	// (Invasion Plans). Read from the battlefield through

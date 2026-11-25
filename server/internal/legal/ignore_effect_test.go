@@ -100,3 +100,63 @@ func TestTheIgnoreIsOfferedUnderSplitSecond(t *testing.T) {
 		t.Errorf("the ignore is not offered under split second: %v", labels(legal.EnumerateFor(g, active.ID)))
 	}
 }
+
+// TestAManaCostIgnoreIsOfferedOnlyWhenPayable — #6247: Leonin Arbiter's
+// "Any player may pay {2} for that player to ignore this effect until end
+// of turn". The move names no sacrifice, is strict and auto-tapped, is
+// offered only to a seat that can pay {2}, and the engine accepts it.
+func TestAManaCostIgnoreIsOfferedOnlyWhenPayable(t *testing.T) {
+	const arbiter = "probe-leonin-arbiter-6247"
+	prev := game.CatalogIgnorableEffect
+	game.CatalogIgnorableEffect = func(key string) *game.IgnorableEffect {
+		if key == arbiter {
+			return &game.IgnorableEffect{
+				Label:    "Pay {2}: ignore Leonin Arbiter's effect until end of turn",
+				ManaCost: "{2}",
+				Applies:  func(*game.Game, *game.Card, uuid.UUID) bool { return true },
+			}
+		}
+		if prev != nil {
+			return prev(key)
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogIgnorableEffect = prev })
+
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	other := g.Seats[1-g.Turn.ActiveSeat]
+	clearHand(active)
+	src := battlefieldCard(g, other, game.Card{Name: "Leonin Arbiter", TypeLine: "Creature — Cat Cleric", OracleID: arbiter})
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	if got := ignoreMoves(g, active.ID); len(got) != 0 {
+		t.Fatalf("offered with no mana to pay {2}: %v", labels(got))
+	}
+	g.WithWriteLock(func() {
+		active.ManaPool.AddMana(game.ManaToken{Color: "C"})
+		active.ManaPool.AddMana(game.ManaToken{Color: "C"})
+	})
+	moves := ignoreMoves(g, active.ID)
+	if len(moves) != 1 || moves[0].Source != src {
+		t.Fatalf("%d ignore moves, want one on the Arbiter", len(moves))
+	}
+	var params struct {
+		SacrificeID string `json:"sacrifice_id"`
+		Strict      bool   `json:"strict"`
+		AutoTap     bool   `json:"auto_tap"`
+	}
+	if err := json.Unmarshal(moves[0].Params, &params); err != nil {
+		t.Fatal(err)
+	}
+	if params.SacrificeID != "" || !params.Strict || !params.AutoTap {
+		t.Errorf("params = %+v, want no sacrifice, strict and auto_tap", params)
+	}
+	if err := g.PerformSpecialAction(active.ID, src, game.SpecialActionIgnoreEffect,
+		game.SpecialActionParams{Strict: true, AutoTap: true}); err != nil {
+		t.Fatalf("the offered move was refused: %v", err)
+	}
+	if got := ignoreMoves(g, active.ID); len(got) != 0 {
+		t.Errorf("offered again while the ignore lasts: %v", labels(got))
+	}
+}

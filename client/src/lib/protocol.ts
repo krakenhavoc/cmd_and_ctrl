@@ -2891,6 +2891,9 @@ export interface IgnorableEffectView {
   source_name: string;
   label: string;
   sacrifice_ids: string[];
+  // #6247: the ignore's price in mana (Leonin Arbiter's "{2}"). Set, the
+  // row pays it with auto-tap and names no sacrifice.
+  mana_cost?: string;
 }
 
 // PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card

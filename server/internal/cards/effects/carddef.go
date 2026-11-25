@@ -288,6 +288,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,
 		OpponentsSearchTopN:                 spec.OpponentsSearchTopN,
 		OpponentsCantSearchLibraries:        spec.OpponentsCantSearchLibraries,
+		PlayersCantSearchLibraries:          spec.PlayersCantSearchLibraries,
 		AttackingPlayerChoosesBlocks:        spec.AttackingPlayerChoosesBlocks,
 		DrawsFromBottom:                     spec.DrawsFromBottom,
 		DamageCantBePrevented:               spec.DamageCantBePrevented,

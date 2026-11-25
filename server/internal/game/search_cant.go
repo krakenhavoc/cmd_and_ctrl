@@ -31,15 +31,25 @@ var CatalogOpponentsCantSearch func(key string) bool
 //
 // Caller must hold g.mu.
 func (g *Game) searchCantLocked(searcher uuid.UUID) bool {
-	if g.Battlefield == nil || CatalogOpponentsCantSearch == nil || searcher == uuid.Nil {
+	if g.Battlefield == nil || searcher == uuid.Nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller == uuid.Nil || c.Controller == searcher || !g.playerInGameLocked(c.Controller) {
+		if c.Controller == uuid.Nil || !g.playerInGameLocked(c.Controller) {
 			continue
 		}
-		if key := catalogAbilityKeyOf(c); key != "" && CatalogOpponentsCantSearch(key) {
+		key := catalogAbilityKeyOf(c)
+		if key == "" {
+			continue
+		}
+		// #6247: "Players can't search libraries" (Leonin Arbiter) bears
+		// on every player, its controller too, unless that player paid to
+		// ignore it this turn (CR 116.2d, ignore_effect.go).
+		if d := catalogDef(key); d != nil && d.PlayersCantSearchLibraries && !g.effectIgnoredLocked(searcher, c) {
+			return true
+		}
+		if c.Controller != searcher && CatalogOpponentsCantSearch != nil && CatalogOpponentsCantSearch(key) {
 			return true
 		}
 	}

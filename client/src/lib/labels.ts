@@ -357,6 +357,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}IgnoreEffects.svelte`],
     doc: "the CR 116.2d special action (#1986): sacrifice a permanent of your choice to ignore a static ability's effect until end of turn (Damping Engine); on your own panel while the effect bears on you, and it opens the sacrifice picker",
   }),
+  ignoreEffectPay: dynamicLabel({
+    stem: "Pay to ignore ",
+    match: "prefix",
+    shape: "Pay to ignore <card name>",
+    make: (card: string) => `Pay to ignore ${card}`,
+    example: ["Leonin Arbiter"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}IgnoreEffects.svelte`],
+    doc: "the CR 116.2d special action paid in mana (#6247): pay the cost (Leonin Arbiter's {2}) to ignore a static ability's effect until end of turn; on your own panel while the effect bears on you, and it pays at once with auto-tap",
+  }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
     match: "prefix",
