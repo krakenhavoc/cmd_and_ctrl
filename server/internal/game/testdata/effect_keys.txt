@@ -5341,6 +5341,7 @@ tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
 tail unlucky-cabbage-merchant/after-search
 tail urborg-scavengers/counter
+tail urgoros/draw-if-no-discard
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled
