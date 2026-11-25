@@ -247,6 +247,14 @@ func (e *enumerator) choiceMoves() bool {
 			// every option is still offered whatever the order: a
 			// policy that wants a different colour still sees all
 			// five. The same function orders the human's buttons.
+			//
+			// A ColorMulti prompt ("the color or colors of your
+			// choice", #6146) accepts any non-empty set, and a single
+			// colour is one: the move list offers the one-colour sets,
+			// in the same order, because the policy prices a colour and
+			// not a set, and none of the printed uses wants more than
+			// one colour to win (a protection dodge, a colour a card
+			// cares about). A human sends any set off the same prompt.
 			for _, color := range e.colorAnswers(c) {
 				p := base()
 				p.Color = color

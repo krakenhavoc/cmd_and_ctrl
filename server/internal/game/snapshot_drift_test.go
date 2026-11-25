@@ -1174,6 +1174,8 @@ var pendingChoiceFields = plan(
 	"CoinWins", carried, "",
 	"ColorOptions", carried, "",
 	"ColorPurpose", carried, "",
+	// #6146: "the color or colors of your choice" answers a set.
+	"ColorMulti", carried, "",
 	// ADR 0102: an entry_controller prompt's purpose, carried beside
 	// ColorPurpose for the same reason.
 	"ControlPurpose", carried, "",

@@ -46523,6 +46523,7 @@ pendingChoices[].coinMaxUsefulWins	number:int
 pendingChoices[].coinWins	number:int
 pendingChoices[].collectionSuggestions	array
 pendingChoices[].collectionSuggestions[]	string
+pendingChoices[].colorMulti	bool
 pendingChoices[].colorOptions	array
 pendingChoices[].colorOptions[]	string
 pendingChoices[].colorPurpose	string

@@ -515,6 +515,12 @@ type PendingChoiceView struct {
 	// every other kind. Added by #780.
 	ColorPurpose string `json:"color_purpose,omitempty"`
 
+	// ColorMulti marks a "choose_color" prompt that asks for "the color
+	// or colors of your choice" (#6146): the answer is a non-empty set of
+	// color_options, sent in resolve_choice's `color` as their letters
+	// ("WU"). Absent on every other prompt, which takes one letter.
+	ColorMulti bool `json:"color_multi,omitempty"`
+
 	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
 	// what giving the entering permanent away does to the seat that
 	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
@@ -11175,6 +11181,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceColor && len(c.ColorOptions) > 0 {
 			v.ColorOptions = legal.OrderColorOptionsLocked(g, c.Chooser, c.ColorOptions, c.ColorPurpose)
 			v.ColorPurpose = string(c.ColorPurpose)
+			v.ColorMulti = c.ColorMulti
 		}
 		// PendingChoiceCreatureType — S26. The option set is the
 		// whole CR 205.3m vocabulary; the clone keeps the engine's

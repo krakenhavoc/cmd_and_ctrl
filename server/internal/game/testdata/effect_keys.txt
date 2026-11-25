@@ -4593,6 +4593,7 @@ tail sauron-lord-of-the-rings/mill-then-return
 tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
+tail scuttlemutt/colors-chosen
 tail search-for-azcanta/after-surveil
 tail search-then/tend-the-sprigs
 tail seed-of-hope/after-mill

@@ -30,6 +30,7 @@ import {
   mayEndVote,
 } from "./choiceDock";
 import { dockKeyAction } from "./dock";
+import { L } from "./labels";
 import type { PendingChoiceView } from "./protocol";
 
 const choice = (over: Partial<PendingChoiceView>): PendingChoiceView =>
@@ -896,5 +897,37 @@ describe("mayEndVote", () => {
   it("opens to any seat once the initiator is eliminated or gone", () => {
     expect(mayEndVote(vote, "a", [{ id: "a" }, { id: "b", eliminated: true }])).toBe(true);
     expect(mayEndVote(vote, "a", [{ id: "a" }])).toBe(true);
+  });
+});
+
+describe("the color or colors of your choice (#6146)", () => {
+  it("refuses an empty set and sends the toggled colours", () => {
+    const onColors = vi.fn();
+    const multi = choice({ kind: "choose_color", color_options: ["W", "U"], color_multi: true });
+    const empty = choiceRequest(
+      multi,
+      { sourceName: "x", colorPicks: [] },
+      { ...handlers(), onColors },
+    );
+    expect(empty.primary?.label).toBe(L.chooseColors);
+    expect(empty.primary?.disabled).toBe(true);
+    expect(empty.hint).toContain("one or more colors");
+    const two = choiceRequest(
+      multi,
+      { sourceName: "x", colorPicks: ["W", "U"] },
+      { ...handlers(), onColors },
+    );
+    expect(two.primary?.disabled).toBe(false);
+    two.primary!.onPress();
+    expect(onColors).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the one-colour prompt a press-to-answer picker", () => {
+    const r = choiceRequest(
+      choice({ kind: "choose_color", color_options: ["W", "U"] }),
+      { sourceName: "x" },
+      handlers(),
+    );
+    expect(r.primary).toBeNull();
   });
 });

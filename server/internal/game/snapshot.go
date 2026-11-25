@@ -2083,6 +2083,7 @@ type pendingChoiceSnapshot struct {
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
+	ColorMulti           bool                   `json:"colorMulti,omitempty"`
 	ControlPurpose       ControlPurpose         `json:"controlPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
@@ -3717,6 +3718,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		CoinWins:              c.CoinWins,
 		ColorOptions:          copyStrings(c.ColorOptions),
 		ColorPurpose:          c.ColorPurpose,
+		ColorMulti:            c.ColorMulti,
 		ControlPurpose:        c.ControlPurpose,
 		ManaRestrictions:      copyStrings(c.ManaRestrictions),
 		ManaRiders:            copyManaRiders(c.ManaRiders),
@@ -4882,6 +4884,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinWins:              c.CoinWins,
 		ColorOptions:          copyStrings(c.ColorOptions),
 		ColorPurpose:          c.ColorPurpose,
+		ColorMulti:            c.ColorMulti,
 		ControlPurpose:        c.ControlPurpose,
 		ManaRestrictions:      copyStrings(c.ManaRestrictions),
 		ManaRiders:            copyManaRiders(c.ManaRiders),
