@@ -4390,6 +4390,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nightmare-shepherd/copy
 tail nine-fingers-keene/rest
+tail nissas-revelation/reveal
 tail nita-forum-conciliator/after-exile
 tail noctis/entered-unblockable
 tail now-for-wrath/vigilance-and-temptation
