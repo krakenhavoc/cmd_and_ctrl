@@ -3036,6 +3036,7 @@ payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rohgahh-kher-keep-overlord-dragon
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
+payunless pay-unless/ruthless-sniper-counter
 payunless pay-unless/s82-gap-b154-isu-counter
 payunless pay-unless/s82-mom-b21-elenda-and-azor-draw-x
 payunless pay-unless/s82-mom-b21-elenda-and-azor-vampire-knights
