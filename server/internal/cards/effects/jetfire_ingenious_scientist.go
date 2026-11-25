@@ -100,10 +100,16 @@ func init() {
 }
 
 // adaptN is "Adapt N" (CR 701.46a): if the source has no +1/+1 counters
-// on it as the ability resolves, put N on it.
+// on it as the ability resolves, put N on it. A creature that "adapts as
+// though it had no +1/+1 counters" this turn (Biomancer's Familiar, #6239)
+// spends that record here and skips the check.
 func AdaptN(g *game.Game, item *game.StackItem, n int) error {
 	src, ok := g.LookupCardForEffect(item.SourceCardID)
-	if !ok || src.Counters[game.CounterPlusOne] > 0 {
+	if !ok {
+		return nil
+	}
+	ignore := g.TakeAdaptIgnoresCountersForEffect(item.SourceCardID)
+	if !ignore && src.Counters[game.CounterPlusOne] > 0 {
 		return nil
 	}
 	return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: n}.Apply(NewContext(g, item))

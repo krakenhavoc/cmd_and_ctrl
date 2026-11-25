@@ -1902,6 +1902,7 @@ type stackItemSnapshot struct {
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
+	Cycling       bool         `json:"cycling,omitempty"`    // #6169
 	// ExileWithCounter (#3213) is Goliath Daydreamer's mark. Carried: a
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
@@ -2170,6 +2171,8 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	// #6271: each candidate's EachOf filters, as bits. Additive.
+	PickSlots []int `json:"pickSlots,omitempty"`
 	// #4256: the word a keyed outside-the-game collection pick's filter
 	// is handed (its key rides pickThen). Additive within the version.
 	PickMatchArg string `json:"pickMatchArg,omitempty"`
@@ -3542,6 +3545,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -3787,6 +3791,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
@@ -4783,6 +4788,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -4957,6 +4963,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,

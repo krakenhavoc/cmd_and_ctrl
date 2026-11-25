@@ -78,6 +78,13 @@ type ChooseFromRevealedHand struct {
 	// back off the chosen card as pick.Measures. See
 	// game.RevealedHandDiscard.Measure for why it is read here.
 	Measure func(g *game.Game, c game.Card) int
+
+	// EachOf is "You choose from it a <A> and a <B>" (#6271, Distended
+	// Mindbender): one card for each predicate, each card standing for a
+	// different one, from one reveal (game.RevealedHandDiscard.EachOf).
+	// Filter and Count are ignored: the count is as many predicates as
+	// the hand can fill at once. Label names the whole choice.
+	EachOf []CardPredicate
 }
 
 // chooseNonlandFromTargetedHand is "target player reveals their hand. You
@@ -139,7 +146,14 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 		g, measure := ctx.Game, e.Measure
 		d.Measure = func(c game.Card) int { return measure(g, c) }
 	}
-	if e.Exile || e.Keep || e.Look || e.Revealed || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil {
+	if len(e.EachOf) > 0 {
+		g := ctx.Game
+		d.Filter, d.Count = nil, len(e.EachOf)
+		for _, pred := range e.EachOf {
+			d.EachOf = append(d.EachOf, func(c game.Card) bool { return pred(g, chooser, c) })
+		}
+	}
+	if e.Exile || e.Keep || e.Look || e.Revealed || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil || len(e.EachOf) > 0 {
 		_, err := ctx.Game.RevealedHandPickForEffect(d)
 		return err
 	}

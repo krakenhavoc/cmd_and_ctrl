@@ -163,10 +163,43 @@ type TapOthersCost struct {
 	// removed instead and the cost is still paid (CR 122.1d, CR 118.11).
 	// Nothing is written to PaidCost.TappedOthers: nothing was tapped.
 	//
-	// An activated ability's cost only (AbilityCost.TapOthers), with a
-	// fixed count; effects.Register refuses it anywhere else. Not the
-	// {Q} symbol, so summoning sickness does not apply (CR 302.6).
+	// An activated ability's cost only (AbilityCost.TapOthers or
+	// ManaAbilityShape.TapOthers, #6208), with a fixed count;
+	// effects.Register refuses it anywhere else. Not the {Q} symbol, so
+	// summoning sickness does not apply (CR 302.6).
 	Untap bool
+
+	// OpponentControls turns the clause's OWNER over (#6208): "Untap a
+	// tapped land AN OPPONENT CONTROLS" (Benthic Explorers' "{T}, Untap
+	// a tapped land an opponent controls: Add one mana of any type that
+	// land could produce"). Everything else is the untap clause's —
+	// Count, Filter, Label, the one candidate walk, the one validator
+	// and the same `tap_ids` list on the wire.
+	//
+	// "You control" is a cost's own clause, enforced by the validator
+	// rather than asked of the filter so that a filter that forgot it
+	// cannot spend an opponent's board (see the validator). This flag is
+	// the one printed clause that inverts it, so it is DATA here rather
+	// than a predicate on Filter: with it the validator demands that the
+	// permanent be controlled by someone OTHER than the activator, and
+	// without it demands the activator, and neither reading can be
+	// reached by a card file that merely forgot a predicate.
+	//
+	// Nothing else about the payment changes. Untapping an opponent's
+	// permanent to pay a cost does not target it (CR 601.2h, CR 602.2b),
+	// so their hexproof land still pays; the permanent must be tapped
+	// (CR 701.26b) and able to become untapped (CR 614.17b); and the
+	// payment is untapPermanentLocked, so a stun counter comes off
+	// instead and the cost is still paid (CR 122.1d, CR 118.11). The
+	// SOURCE can never be a candidate, since the activator controls it,
+	// so ExcludeSource and UntapOthersSourcePaysForEffect have nothing
+	// to say.
+	//
+	// Only beside Untap, and only on an ability's cost;
+	// effects.Register refuses every other combination. A player who has
+	// left the game controls nothing on the battlefield, so no stale
+	// seat can pay.
+	OpponentControls bool
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
@@ -191,6 +224,26 @@ func TapOthersCountFromX(c *TapOthersCost) bool {
 // TapOthersUntaps reports the "Untap N tapped ..." form (#5669).
 func TapOthersUntaps(c *TapOthersCost) bool {
 	return c != nil && c.Filter != nil && c.Untap
+}
+
+// TapOthersFromOpponents reports the "Untap N tapped ... an opponent
+// controls" form (#6208): the clause's permanents are someone else's.
+// Nil-safe.
+func TapOthersFromOpponents(c *TapOthersCost) bool {
+	return TapOthersUntaps(c) && c.OpponentControls
+}
+
+// tapOthersControllerOKLocked is the clause's OWNER question, which the
+// option walk and the validator share: the activator's own permanent,
+// or — for the "an opponent controls" form (#6208) — anyone else's.
+// "You control" is a cost's own clause, enforced here rather than asked
+// of the filter, so a filter that forgot it cannot spend an opponent's
+// board and one that forgot the inverse cannot spend your own.
+func tapOthersControllerOKLocked(tc *TapOthersCost, playerID uuid.UUID, c *Card) bool {
+	if TapOthersFromOpponents(tc) {
+		return c.Controller != playerID
+	}
+	return c.Controller == playerID
 }
 
 // tapOthersStateOKLocked is the one state question of the clause: an
@@ -224,7 +277,9 @@ func (g *Game) tapOthersStateOKLocked(tc *TapOthersCost, c *Card) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) UntapOthersSourcePaysForEffect(playerID, sourceID uuid.UUID, tc *TapOthersCost) bool {
-	if !TapOthersUntaps(tc) || tc.ExcludeSource {
+	// #6208: the opponent form's candidates are never the activator's,
+	// so the source is never one of them.
+	if !TapOthersUntaps(tc) || tc.ExcludeSource || tc.OpponentControls {
 		return false
 	}
 	c := findBattlefieldCard(g, sourceID)
@@ -302,7 +357,7 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 			continue
 		}
 		c := findBattlefieldCard(g, id)
-		if c == nil || c.Controller != playerID || !g.tapOthersStateOKLocked(tc, c) {
+		if c == nil || !tapOthersControllerOKLocked(tc, playerID, c) || !g.tapOthersStateOKLocked(tc, c) {
 			continue
 		}
 		if !g.tapOthersColorOKLocked(tc, sourceID, c) {
@@ -435,8 +490,9 @@ func (g *Game) validateTapOthersCostWithSourceLocked(playerID, sourceID uuid.UUI
 		}
 		// "You control" is a cost's own clause, enforced here rather
 		// than asked of the filter, so a filter that forgot it cannot
-		// spend an opponent's board.
-		if c.Controller != playerID {
+		// spend an opponent's board — and, for the #6208 form that
+		// inverts it ("an opponent controls"), cannot spend your own.
+		if !tapOthersControllerOKLocked(tc, playerID, c) {
 			return ErrCardCallerMismatch
 		}
 		// #5669: the source of a cost that also prints {T}, named for
@@ -534,6 +590,33 @@ func (g *Game) payUntapOthersCostLocked(ids []uuid.UUID, skip uuid.UUID) {
 		}
 		g.untapPermanentLocked(findBattlefieldCard(g, id))
 	}
+}
+
+// untappedRefsLocked names the permanents an untap payment is about to
+// take as the battlefield OBJECTS they are, for PaidCost.UntappedOthers
+// (#6208): one ObjectRef per ID, in the order named, read BEFORE the
+// untap, the way a PaidTap and a sacrifice's refs are, because the epoch
+// is a fact about the object on the battlefield (CR 400.7).
+//
+// Benthic Explorers' "one mana of any type that land could produce" is
+// the one reader: CR 400.7j lets an effect find the object its cost
+// used, and the mana is computed from it a moment later, in the same
+// activation. Nil for no IDs.
+//
+// Caller must hold g.mu.
+func (g *Game) untappedRefsLocked(ids []uuid.UUID) []ObjectRef {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]ObjectRef, 0, len(ids))
+	for _, id := range ids {
+		ref, ok := g.PermanentRefForEffect(id)
+		if !ok {
+			ref = ObjectRef{ID: id}
+		}
+		out = append(out, ref)
+	}
+	return out
 }
 
 // --- The payment record (#759) ----------------------------------------

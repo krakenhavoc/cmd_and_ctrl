@@ -36,14 +36,22 @@ func UntapTapped(n int, label string, preds ...CardPredicate) *game.TapOthersCos
 }
 
 // checkUntapOthersCost keeps the untap form (#5669) where the engine
-// reads it: an activated ability's cost, with a fixed count. Every other
-// owner of a TapOthersCost (a mana ability, a spell's additional,
-// optional, alternative or splice cost) pays through the tap payer, so
-// the flag there would compile and then tap nothing it could find.
+// reads it: an ability's cost, with a fixed count. Every other owner of
+// a TapOthersCost (a spell's additional, optional, alternative or splice
+// cost) pays through the tap payer, so the flag there would compile and
+// then tap nothing it could find.
+//
+// #6208 widened "an activated ability's cost" to a MANA ability's for
+// the opponent form alone (UntapTappedAnOpponentControls): the mana path
+// pays through the same untap payer, and the activator never controls
+// the permanent, so the CR 601.2h ordering the CR 602 path needs when
+// the source pays both the {T} and its own untap clause never arises
+// there. The plain "you control" form on a mana ability would need that
+// ordering, so it stays refused.
 func checkUntapOthersCost(spec Spec) {
 	refuse := func(where string, tc *game.TapOthersCost) {
 		if tc != nil && tc.Untap {
-			panic(fmt.Sprintf("effects.Register: %q %s untaps tapped permanents — only an activated ability's cost may (#5669)", spec.Name, where))
+			panic(fmt.Sprintf("effects.Register: %q %s untaps tapped permanents — only an ability's cost may (#5669)", spec.Name, where))
 		}
 	}
 	for i, ab := range spec.Activated {
@@ -52,6 +60,11 @@ func checkUntapOthersCost(spec Spec) {
 		}
 	}
 	for i, ma := range spec.ManaAbilities {
+		if tc := ma.Cost.TapOthers; tc != nil && tc.Untap && tc.OpponentControls {
+			// #6208: Benthic Explorers. checkUntapFromOpponents holds it
+			// to its own shape.
+			continue
+		}
 		refuse(fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers)
 	}
 	if ac := spec.AdditionalCost; ac != nil {

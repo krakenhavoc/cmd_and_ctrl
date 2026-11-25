@@ -287,6 +287,24 @@ type PaidCost struct {
 	// answer. ADR 0071, addendum 2026-09-23.
 	TappedOthers []PaidTap `json:"tappedOthers,omitempty"`
 
+	// UntappedOthers is what the UNTAP form of a TapOthers component
+	// untapped (#6208, TapOthersCost.Untap): each as the battlefield
+	// object it was when it was named, in the order named. Nil for every
+	// cost without the component, which is nearly all of them, and nil
+	// for the tap form, whose record is TappedOthers.
+	//
+	// It is an ObjectRef list rather than a PaidTap list because nothing
+	// was tapped and no power was spent: the fact a reader wants is
+	// WHICH permanent the cost untapped. Benthic Explorers' "Add one
+	// mana of any type that land could produce" is the first — CR 400.7j
+	// lets an effect find the object its cost used, and the mana is
+	// computed from it a moment later in the same activation, through
+	// ProducedForPaid. Exactly the argument TappedOthers (#759) and
+	// ReturnedObjects (#5948) were added under, which is why it is a
+	// field of this record and not a second mechanism. Additive within
+	// a snapshot version.
+	UntappedOthers []ObjectRef `json:"untappedOthers,omitempty"`
+
 	// Chosen is the object a Chosen behold named (RevealCost.Chosen,
 	// chosen_cost.go): Monstrous Emergence's "choose a creature you control
 	// or reveal a creature card from your hand", read back as "the power of
@@ -544,7 +562,7 @@ func (p PaidCost) IsZero() bool {
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.ReturnedObjects) == 0 && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Chosen) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
+		len(p.TappedOthers) == 0 && len(p.UntappedOthers) == 0 && len(p.Chosen) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
 		p.AssistedBy == uuid.Nil && p.AssistPaid == 0 && len(p.Rolled) == 0
 }
@@ -563,6 +581,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.GrantedOptional) > 0 {
 		out.GrantedOptional = append([]string(nil), p.GrantedOptional...)
+	}
+	if len(p.UntappedOthers) > 0 {
+		out.UntappedOthers = append([]ObjectRef(nil), p.UntappedOthers...)
 	}
 	if len(p.TappedOthers) > 0 {
 		out.TappedOthers = append([]PaidTap(nil), p.TappedOthers...)

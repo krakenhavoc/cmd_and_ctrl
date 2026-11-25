@@ -661,6 +661,15 @@ type StackItem struct {
 	// copy it.
 	Uncopyable bool
 
+	// Cycling marks an activated ability item as a CYCLING ability
+	// (CR 702.29a, ActivatedAbilityShape.Cycling), stamped at activation.
+	// A draw made while it resolves knows it was caused by a cycling ability
+	// and which card was cycled (ReplacementEvent.DrawCycled, #6169):
+	// Unpredictable Cyclone's "If a cycling ability of another nonland card
+	// would cause you to draw a card". On the item for Uncopyable's reason:
+	// the cycled card is in the graveyard by then (CR 702.29c).
+	Cycling bool
+
 	// CantBeCountered is the marks that say this one SPELL can't be
 	// countered (ADR 0106 §4 decision 4, #1806): "Target spell can't
 	// be countered" (Vexing Shusher) resolving against it, and a

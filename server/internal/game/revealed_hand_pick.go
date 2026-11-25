@@ -288,10 +288,22 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 		// reveal and nobody to tell.
 		return uuid.Nil, nil
 	}
+	if len(d.EachOf) > 0 && (d.Filter != nil || d.FromGraveyard || len(d.EachOf) > 8) {
+		// #6271: the filters ARE the restriction, over the hand.
+		return uuid.Nil, fmt.Errorf("%w: a revealed-hand pick with EachOf takes no Filter and no graveyard", ErrInvalidParam)
+	}
 	var hand, options []uuid.UUID
+	var slots []int
 	if p.Hand != nil {
 		for _, c := range p.Hand.Cards {
 			hand = append(hand, c.InstanceID)
+			if len(d.EachOf) > 0 {
+				if bits := eachOfBits(d.EachOf, c); bits != 0 {
+					options = append(options, c.InstanceID)
+					slots = append(slots, bits)
+				}
+				continue
+			}
 			if d.Filter == nil || d.Filter(c) {
 				options = append(options, c.InstanceID)
 			}
@@ -328,6 +340,10 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 		})
 	}
 	count := min(d.Count, len(options))
+	if len(d.EachOf) > 0 {
+		// One card per filter, as many filters as the hand can fill.
+		count = maxSlotMatching(slots, len(d.EachOf))
+	}
 	if count <= 0 {
 		// CR 609.3: nothing to choose. The rest of the card still runs.
 		return uuid.Nil, g.settleRevealedPickLocked(revealedPickSettle{
@@ -362,9 +378,86 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 		PickFromGraveyard: d.FromGraveyard,
 		PickThen:          d.Then.key,
 		PickMeasures:      measures,
+		PickSlots:         slots,
 		PickExiledWith:    PermissionCardRef(d.ExiledWith),
 	})
 	return id, nil
+}
+
+// eachOfBits is the filters of `each` that `c` passes, as bits.
+func eachOfBits(each []func(Card) bool, c Card) int {
+	bits := 0
+	for i, f := range each {
+		if f != nil && f(c) {
+			bits |= 1 << i
+		}
+	}
+	return bits
+}
+
+// maxSlotMatching is the most candidates that can be chosen at once with
+// each standing for a different one of n filters: the size of a maximum
+// matching between the filters and the candidates whose bits name them
+// (augmenting paths, Kuhn's algorithm; n is at most 8).
+func maxSlotMatching(slots []int, n int) int {
+	owner := make([]int, len(slots)) // candidate -> filter+1, 0 for none
+	var try func(f int, seen []bool) bool
+	try = func(f int, seen []bool) bool {
+		for i, bits := range slots {
+			if bits&(1<<f) == 0 || seen[i] {
+				continue
+			}
+			seen[i] = true
+			if owner[i] == 0 || try(owner[i]-1, seen) {
+				owner[i] = f + 1
+				return true
+			}
+		}
+		return false
+	}
+	size := 0
+	for f := 0; f < n; f++ {
+		if try(f, make([]bool, len(slots))) {
+			size++
+		}
+	}
+	return size
+}
+
+// revealedPickSlotsFit reports whether `picks` can each stand for a
+// different filter of the prompt's EachOf (#6271). A prompt with no
+// slots fits any answer. The legal-move enumerator and the resolver both
+// ask it, so the bot is offered only the answers the resolver accepts.
+func revealedPickSlotsFit(c *PendingChoice, picks []uuid.UUID) bool {
+	if c == nil || len(c.PickSlots) == 0 {
+		return true
+	}
+	bits := make([]int, 0, len(picks))
+	for _, id := range picks {
+		i := slices.Index(c.DiscardOptions, id)
+		if i < 0 || i >= len(c.PickSlots) {
+			return false
+		}
+		bits = append(bits, c.PickSlots[i])
+	}
+	var fit func(k, used int) bool
+	fit = func(k, used int) bool {
+		if k == len(bits) {
+			return true
+		}
+		for f := 0; f < 8; f++ {
+			if used&(1<<f) == 0 && bits[k]&(1<<f) != 0 && fit(k+1, used|1<<f) {
+				return true
+			}
+		}
+		return false
+	}
+	return fit(0, 0)
+}
+
+// RevealedPickSlotsFitLocked is revealedPickSlotsFit for internal/legal.
+func (g *Game) RevealedPickSlotsFitLocked(c *PendingChoice, picks []uuid.UUID) bool {
+	return revealedPickSlotsFit(c, picks)
 }
 
 // RevealedPickCandidateLocked reports where a revealed-hand pick's
@@ -439,7 +532,7 @@ func (g *Game) resolveRevealedHandPickLocked(idx int, c *PendingChoice, picks []
 	case len(picks) != 0 && len(picks) != c.Count:
 		return ErrInvalidParam
 	}
-	if !discardOptionsAllow(c, picks) {
+	if !discardOptionsAllow(c, picks) || !revealedPickSlotsFit(c, picks) {
 		return ErrInvalidParam
 	}
 	chosen := make([]Card, 0, len(picks))

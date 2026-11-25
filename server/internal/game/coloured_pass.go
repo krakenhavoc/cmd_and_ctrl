@@ -63,7 +63,7 @@ func sameRequirement(a, b ColorRequirement) bool {
 	return a.Phyrexian == b.Phyrexian && a.NumericAlt == b.NumericAlt &&
 		a.HasNumericAlt == b.HasNumericAlt && a.Snow == b.Snow &&
 		a.AnyMana == b.AnyMana && a.LifeGranted == b.LifeGranted &&
-		slices.Equal(a.Options, b.Options)
+		a.SnowAny == b.SnowAny && slices.Equal(a.Options, b.Options)
 }
 
 // appendReqRun appends n of r, merging them into the last run when it
