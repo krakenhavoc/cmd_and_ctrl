@@ -2582,6 +2582,16 @@ type DamageAssignmentView struct {
 	// controller of attacker_card_id. No trample, and covers_lethal is
 	// never set, so the prompt is never sent unasked.
 	Banding bool `json:"banding,omitempty"`
+	// DefenderAssignsBy names the permanent whose static, rather than
+	// banding, hands an attacker's division to the defending player
+	// (Defensive Formation, #6192). Set with banding; display only.
+	DefenderAssignsBy string `json:"defender_assigns_by,omitempty"`
+	// OneCreature marks an unblocked attacker that may assign its combat
+	// damage to a creature the defending player controls (Cunning Giant,
+	// #6192): blocker_card_ids are those creatures, as_though_unblocked is
+	// set, and the answer is all of attacker_power on exactly one of them
+	// or all of it as trample_to_player.
+	OneCreature bool `json:"one_creature,omitempty"`
 	// #2956 (ADR 0147): the canonical split, legal.CanonicalDamageSplit,
 	// which the bots answer with. The client pre-fills the prompt with
 	// it, and sends it unasked when covers_lethal is set and the
@@ -11615,6 +11625,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				HasDeathtouch:     frame.HasDeathtouch,
 				BlockerDivides:    frame.BlockerDivides,
 				Banding:           frame.Banding,
+				DefenderAssignsBy: frame.DefenderAssignsBy,
+				OneCreature:       frame.OneCreature,
 			}
 			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
 				shares := make([]DamageShareView, len(split.Assignments))

@@ -2288,6 +2288,24 @@ type OfferedDamageSplit struct {
 //
 // Caller must hold g's lock (read or write).
 func DamageSplits(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
+	// #6192, Cunning Giant: all of it to what it attacks (the canonical
+	// answer, what it would do anyway), or all of it to one creature.
+	if pl, ok := planDamage(g, c); ok && pl.f.OneCreature {
+		un := pl.unblocked()
+		out := []OfferedDamageSplit{{Split: un, Label: pl.label(un)}}
+		for i := range pl.f.BlockerIDs {
+			s := DamageSplit{Lethal: pl.cost}
+			for j, other := range pl.f.BlockerIDs {
+				share := DamageShare{BlockerID: other}
+				if j == i {
+					share.Amount = pl.f.AttackerPower
+				}
+				s.Assignments = append(s.Assignments, share)
+			}
+			out = append(out, OfferedDamageSplit{Split: s, Label: pl.label(s)})
+		}
+		return out
+	}
 	out := damageSplitsAmongBlockers(g, c)
 	pl, ok := planDamage(g, c)
 	if !ok || !pl.f.AsThoughUnblocked || len(out) == 0 {
@@ -2434,6 +2452,11 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 	if f.Banding {
 		pl.covers = false
 	}
+	// #6192: Cunning Giant's choice is a real one (a creature or the
+	// player), so it is never sent unasked either.
+	if f.OneCreature {
+		pl.covers = false
+	}
 	return pl, true
 }
 
@@ -2443,6 +2466,11 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 func (pl splitPlan) canonical() (DamageSplit, bool) {
 	if pl.f.Banding {
 		return pl.protective()
+	}
+	// #6192: an unblocked Cunning Giant's damage goes where it would
+	// anyway unless its controller says otherwise.
+	if pl.f.OneCreature {
+		return pl.unblocked(), true
 	}
 	n := len(pl.f.BlockerIDs)
 	if n == 0 && pl.f.AsThoughUnblocked && pl.f.AttackerPower > 0 {

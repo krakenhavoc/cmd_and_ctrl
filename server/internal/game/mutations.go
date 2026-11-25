@@ -11493,7 +11493,10 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		// the first-strike step), skip the whole attacker-side
 		// branch but fall through to blocker damage below.
 		if atkParticipates {
-			if len(liveBlockers) > 0 && g.anyHasBandingLocked(liveBlockers) {
+			// #6192: Defensive Formation hands this attacker's division
+			// to the player it attacks, as banding would.
+			assigner, assignerBy := g.defenderAssignsByLocked(atk)
+			if len(liveBlockers) > 0 && (assigner != uuid.Nil || g.anyHasBandingLocked(liveBlockers)) {
 				// ADR 0224, CR 702.22j: blocked by a creature with banding,
 				// the attacker's damage is divided by the DEFENDING player
 				// among the creatures blocking it — among them only, so
@@ -11503,10 +11506,13 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				if atkPower > 0 && len(liveBlockers) == 1 {
 					mark(liveBlockers[0], atkID, atkPower)
 				} else if atkPower > 0 {
-					atk, blockers, p := atk, liveBlockers, atkPower
-					chooser := g.bandingDefenderLocked(atk, blockers)
+					atk, blockers, p, by := atk, liveBlockers, atkPower, assignerBy
+					chooser := assigner
+					if chooser == uuid.Nil {
+						chooser = g.bandingDefenderLocked(atk, blockers)
+					}
 					prompts = append(prompts, func() {
-						g.queueBandingAssignmentPromptLocked(atk, blockers, p, step, chooser)
+						g.queueBandingAssignmentPromptLocked(atk, blockers, p, step, chooser, by)
 					})
 				}
 			} else if len(liveBlockers) == 0 {
@@ -11528,6 +11534,15 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 					atk, p := atk, atkPower
 					prompts = append(prompts, func() {
 						g.queueDamageAssignmentPromptLocked(atk, nil, p, step)
+					})
+				} else if creatures := g.unblockedCreatureTargetsLocked(atk); atkPower > 0 && !blocked && len(creatures) > 0 {
+					// #6192, Cunning Giant: "If this creature is unblocked,
+					// you may have it assign its combat damage to a creature
+					// defending player controls" — asked, with what it
+					// attacks as the other answer.
+					atk, p := atk, atkPower
+					prompts = append(prompts, func() {
+						g.queueOneCreatureAssignmentPromptLocked(atk, creatures, p, step)
 					})
 				} else if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
 					markAttackTarget(atk.AttackingTarget, atkID, atkPower)
@@ -11681,17 +11696,25 @@ func (g *Game) queueDamageAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UU
 // among the blockers only, and Banding set to say whose choice it is.
 //
 // Caller must hold g.mu.
-func (g *Game) queueBandingAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string, chooser uuid.UUID) {
+//
+// #6192: `by` names the permanent (Defensive Formation) whose static, not
+// banding, hands the division over; "" for banding.
+func (g *Game) queueBandingAssignmentPromptLocked(atk *Card, blockerIDs []uuid.UUID, atkPower int, step string, chooser uuid.UUID, by string) {
 	frame := attackerDamageFrame(atk, blockerIDs, atkPower, step)
 	frame.AllowTrample = false
 	frame.AsThoughUnblocked = false
 	frame.Banding = true
+	frame.DefenderAssignsBy = by
+	reason := "Divide the attacking creature's combat damage among your blockers (banding)"
+	if by != "" {
+		reason = "Divide the attacking creature's combat damage among your blockers (" + by + ")"
+	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceDamageAssignment,
 		Chooser:          chooser,
 		Count:            len(blockerIDs),
 		Source:           atk.InstanceID,
-		Reason:           "Divide the attacking creature's combat damage among your blockers (banding)",
+		Reason:           reason,
 		DamageAssignment: frame,
 	})
 }

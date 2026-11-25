@@ -503,6 +503,18 @@ type CardDef struct {
 	// Teferi). Read from the battlefield through CatalogAbilityKey; see
 	// loyalty_limit.go.
 	YourPlaneswalkersLoyaltyTwiceEachTurn bool
+	// YouAssignAttackersDamage is this permanent's printed "Rather than
+	// the attacking player, you assign the combat damage of each creature
+	// attacking you. You can divide that creature's combat damage as you
+	// choose among any of the creatures blocking it." (Defensive
+	// Formation, #6192). Read from the battlefield through
+	// CatalogAbilityKey; see defender_assigns.go.
+	YouAssignAttackersDamage bool
+	// UnblockedAssignsToACreature is this creature's printed "If this
+	// creature is unblocked, you may have it assign its combat damage to
+	// a creature defending player controls." (Cunning Giant, #6192). Read
+	// off the attacker through CatalogAbilityKey; see defender_assigns.go.
+	UnblockedAssignsToACreature bool
 	// ActivateAsThoughHaste is this permanent's printed "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (CR 302.6, 609.4; Thousand-Year Elixir).
@@ -1378,6 +1390,14 @@ func init() {
 	CatalogYourPlaneswalkersLoyaltyTwiceEachTurn = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.YourPlaneswalkersLoyaltyTwiceEachTurn
+	}
+	CatalogYouAssignAttackersDamage = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.YouAssignAttackersDamage
+	}
+	CatalogUnblockedAssignsToACreature = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.UnblockedAssignsToACreature
 	}
 	CatalogActivateAsThoughHaste = func(key string) bool {
 		d := catalogDef(key)
