@@ -1024,6 +1024,7 @@ choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/journey-to-the-lost-city-land
 choose choose-cards/jungle-basin-return-an-untapped-forest
 choose choose-cards/kaalia-of-the-vast-put
+choose choose-cards/kaalia-zenith-seeker-take
 choose choose-cards/kaito-dancing-shadow-return
 choose choose-cards/kamiz-obscura-oculus-discarded
 choose choose-cards/kamiz-obscura-oculus-double-strike
