@@ -19,6 +19,6 @@ func init() {
 		OracleID:     "e6337404-2978-47a8-a5ae-4a70add2df69",
 		Name:         "Boot Nipper",
 		Completeness: effects.CompletenessFull,
-		AsEnters:     effects.S82OldB114EntersWithChoiceOfCounters("Boot Nipper", []string{game.CounterDeathtouch}, []string{game.CounterLifelink}),
+		AsEnters:     effects.S82OldB113EntersWithChoiceOfCounters("Boot Nipper", []string{game.CounterDeathtouch}, []string{game.CounterLifelink}),
 	})
 }

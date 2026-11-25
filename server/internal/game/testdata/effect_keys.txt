@@ -2528,7 +2528,6 @@ option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-old-b113-enters-with-counters
-option option-pick/s82-old-b114-enters-with-counters
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land

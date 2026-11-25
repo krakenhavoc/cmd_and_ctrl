@@ -23,12 +23,12 @@ func init() {
 		OracleID:     "d8b770c2-0406-4a2d-95d9-e14bb5d3bdc6",
 		Name:         "Duskfang Mentor",
 		Completeness: effects.CompletenessFull,
-		Triggered:    []game.TriggeredAbility{effects.S82OldB114KeywordCounterOnTargetNonHuman("Duskfang Mentor", game.CounterLifelink)},
+		Triggered:    []game.TriggeredAbility{effects.S82OldB113KeywordCounterOnTargetNonHuman("Duskfang Mentor", game.CounterLifelink)},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}{B}, {T}: Put a +1/+1 counter on each creature you control with lifelink.",
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    effects.Plus(effects.ManaCost("{1}{B}"), effects.TapCost()),
-			Effect:  effects.S82OldB114CounterOnEachWithKeyword("lifelink"),
+			Effect:  effects.S82OldB113CounterOnEachWithKeyword("lifelink"),
 		}},
 	})
 }

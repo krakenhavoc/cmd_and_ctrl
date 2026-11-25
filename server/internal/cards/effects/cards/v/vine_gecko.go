@@ -30,7 +30,7 @@ func init() {
 				effects.YourSpell(), effects.S82OldB092FirstKickedSpellThisTurn()),
 		},
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventCast, effects.S82OldB092YouCastAKickedSpell,
+			effects.On(game.EventCast, effects.S82OldB089YouCastAKickedSpell,
 				"Vine Gecko — put a +1/+1 counter on it", effects.Do(effects.CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})

@@ -19,6 +19,6 @@ func init() {
 		OracleID:     "f7db3bd9-ef67-4d64-a503-08a3c03404b2",
 		Name:         "Wingfold Pteron",
 		Completeness: effects.CompletenessFull,
-		AsEnters:     effects.S82OldB114EntersWithChoiceOfCounters("Wingfold Pteron", []string{game.CounterFlying}, []string{game.CounterHexproof}),
+		AsEnters:     effects.S82OldB113EntersWithChoiceOfCounters("Wingfold Pteron", []string{game.CounterFlying}, []string{game.CounterHexproof}),
 	})
 }

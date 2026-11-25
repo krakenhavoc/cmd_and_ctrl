@@ -34,7 +34,7 @@ func init() {
 			Count: func(cast game.CastCounts) int { return cast.ManaSpent },
 		}},
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventCast, effects.S82OldB092YouCastAKickedSpell,
+			effects.On(game.EventCast, effects.S82OldB089YouCastAKickedSpell,
 				"Verazol — you may remove two +1/+1 counters from it; if you do, copy that spell",
 				func(g *game.Game, item *game.StackItem) error {
 					src, ok := g.LookupCardForEffect(item.SourceCardID)

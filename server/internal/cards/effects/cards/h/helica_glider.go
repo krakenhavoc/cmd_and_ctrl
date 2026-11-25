@@ -19,6 +19,6 @@ func init() {
 		OracleID:     "8bcdb107-3827-4280-9e5e-7f1e771ef0c5",
 		Name:         "Helica Glider",
 		Completeness: effects.CompletenessFull,
-		AsEnters:     effects.S82OldB114EntersWithChoiceOfCounters("Helica Glider", []string{game.CounterFlying}, []string{game.CounterFirstStrike}),
+		AsEnters:     effects.S82OldB113EntersWithChoiceOfCounters("Helica Glider", []string{game.CounterFlying}, []string{game.CounterFirstStrike}),
 	})
 }

@@ -23,12 +23,12 @@ func init() {
 		OracleID:     "ec3031ff-93db-48e9-9e09-335786cb85c2",
 		Name:         "Hornbash Mentor",
 		Completeness: effects.CompletenessFull,
-		Triggered:    []game.TriggeredAbility{effects.S82OldB114KeywordCounterOnTargetNonHuman("Hornbash Mentor", game.CounterTrample)},
+		Triggered:    []game.TriggeredAbility{effects.S82OldB113KeywordCounterOnTargetNonHuman("Hornbash Mentor", game.CounterTrample)},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{G}, {T}: Put a +1/+1 counter on each creature you control with trample.",
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    effects.Plus(effects.ManaCost("{2}{G}"), effects.TapCost()),
-			Effect:  effects.S82OldB114CounterOnEachWithKeyword("trample"),
+			Effect:  effects.S82OldB113CounterOnEachWithKeyword("trample"),
 		}},
 	})
 }
