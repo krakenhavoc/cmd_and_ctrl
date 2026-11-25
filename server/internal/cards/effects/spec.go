@@ -939,6 +939,14 @@ type Spec struct {
 	// every card.
 	BlockTaxes []game.BlockTax
 
+	// SingleSourceLethalOnly is "This creature can't be destroyed by
+	// lethal damage unless lethal damage dealt by a single source is
+	// marked on it" (Ogre Enforcer, #6209, CR 704.5g): the one clause
+	// that reads WHICH source marked the damage rather than how much is
+	// marked. Build it with SingleSourceLethalOnly in
+	// single_source_lethal.go. Nil for nearly every card.
+	SingleSourceLethalOnly []game.SingleSourceLethalOnly
+
 	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
 	// cost of the first equip ability you activate each turn" (Kíli the
 	// Resourceful, #4475): a CR 118.9 alternative cost this permanent

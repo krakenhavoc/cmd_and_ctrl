@@ -372,6 +372,19 @@ type Card struct {
 	// together (setBlockingSet, clearBlocking).
 	AlsoBlocking []uuid.UUID
 
+	// MarkedBySource is the per-SOURCE split of DamageMarked (#6209):
+	// how much damage each source has marked on this creature right now,
+	// in the order it was marked. Read by Ogre Enforcer's "can't be
+	// destroyed by lethal damage unless lethal damage dealt by a single
+	// source is marked on it"; see single_source_lethal.go for how it is
+	// maintained and why the turn's damage tally is the wrong record for
+	// that question. Cleared with DamageMarked, and never totalling more
+	// than it. Only meaningful on the battlefield. Additive in the
+	// snapshot: a file written before it restores an empty split, which
+	// reads as "nobody has marked lethal damage on its own" — weaker,
+	// never stronger.
+	MarkedBySource []SourceMark
+
 	// Goads is every player who has goaded this creature and whose goad
 	// has not ended, one entry per goader, oldest goad first (#1598,
 	// CR 701.15c). Nil means "not goaded". Each goaded creature attacks
@@ -1783,6 +1796,11 @@ type Card struct {
 	// alongside DamageMarked. Only meaningful on the battlefield.
 	// Added in S18 sub-PR 3.
 	MarkedLethalByDeathtouch bool
+
+	// MarkedBySource, the per-source split of DamageMarked (#6209), is a
+	// slice and lives above with AlsoBlocking rather than here in the
+	// bool block, where it would leave alignment padding
+	// (TestCardHasNoInteriorPadding).
 
 	// VariableToughness records that the printed toughness is not a
 	// number the engine can use — "*", "1+*", "?", or missing from a

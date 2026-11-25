@@ -544,6 +544,11 @@ var cardFields = plan(
 	// that dropped it would take Q, Stacking the Deck's ability away.
 	"ExileGrants", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
+	// #6209: carried — the per-source split of the marked damage is what
+	// Ogre Enforcer's "lethal damage dealt by a single source" reads, and
+	// nothing rebuilds it from the battlefield (the turn's damage tally
+	// is damage DEALT, not marked).
+	"MarkedBySource", carried, "",
 	"damageInstance", dropped, "restores empty: which damage instance marked the latest damage on this creature (heal_damage.go, #4614). Only Wolverine, Fierce Fighter reads it, to keep damage dealt at the same time; a restore taken inside a damage step gives the rest of the step a new instance anyway (damage_instance.go), so the worst case is a later event of that step healing damage the same step marked before the restore",
 	"damageInstanceMarked", dropped, "restores empty: how much of DamageMarked damageInstance wrote; goes with damageInstance",
 	// #683: carried — a restore that dropped it would let a 0/0 that

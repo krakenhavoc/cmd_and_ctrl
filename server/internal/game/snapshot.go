@@ -1241,12 +1241,19 @@ type cardSnapshot struct {
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
-	SuspendGranted           bool      `json:"suspendGranted,omitempty"`
-	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
-	AttachedAt               int64     `json:"attachedAt,omitempty"`
+	SuspendGranted           bool `json:"suspendGranted,omitempty"`
+	MarkedLethalByDeathtouch bool `json:"markedLethalByDeathtouch"`
+	// MarkedBySource is Card.MarkedBySource (#6209): the per-source split
+	// of the marked damage, for "lethal damage dealt by a single source".
+	// Additive — a file written before it restores an empty split, which
+	// reads as "no single source has marked lethal damage", so a creature
+	// with the clause survives a check it might have been destroyed by.
+	// Weaker, never stronger.
+	MarkedBySource  []SourceMark `json:"markedBySource,omitempty"`
+	LostLastCounter bool         `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown  bool         `json:"printedPTKnown,omitempty"`
+	AttachedTo      TargetRef    `json:"attachedTo,omitempty"`
+	AttachedAt      int64        `json:"attachedAt,omitempty"`
 	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
 	// CR 400.7 epoch of the host at the attach. Additive within v8 and
 	// absent at zero. A file written before #3159 has it only for an
@@ -3307,6 +3314,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		HauntingEpoch:              c.HauntingEpoch,
 		ExileGrants:                exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch:   c.MarkedLethalByDeathtouch,
+		MarkedBySource:             append([]SourceMark(nil), c.MarkedBySource...),
 		LostLastCounter:            c.LostLastCounter,
 		PrintedPTKnown:             c.PrintedPTKnown,
 		AttachedTo:                 c.AttachedTo,
@@ -4503,6 +4511,7 @@ func restoreCard(c *cardSnapshot) Card {
 		HauntingEpoch:              c.HauntingEpoch,
 		ExileGrants:                exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch:   c.MarkedLethalByDeathtouch,
+		MarkedBySource:             append([]SourceMark(nil), c.MarkedBySource...),
 		LostLastCounter:            c.LostLastCounter,
 		PrintedPTKnown:             c.PrintedPTKnown,
 		AttachedTo:                 c.AttachedTo,

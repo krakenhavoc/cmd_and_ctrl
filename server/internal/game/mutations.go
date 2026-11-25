@@ -5988,7 +5988,13 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 					// The damage stays marked either way — see
 					// indestructible.go.
 					indestructible := IsIndestructible(&c)
-					if c.DamageMarked >= c.LethalDamageThreshold() && !indestructible {
+					// #6209: Ogre Enforcer's "unless lethal damage
+					// dealt by a single source is marked on it" is the
+					// one clause that reads WHO marked the damage
+					// rather than how much is marked
+					// (single_source_lethal.go); every other creature
+					// reads CR 704.5g's plain sum.
+					if lethalDamageDestroysLocked(&c) && !indestructible {
 						doom = true
 					}
 					// S18 sub-PR 3: CR 702.2c — a creature hit by any
