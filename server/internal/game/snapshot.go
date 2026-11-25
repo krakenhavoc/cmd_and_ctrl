@@ -964,6 +964,10 @@ type playerSnapshot struct {
 	// zones as they left, plain data. Additive within v9: a file written
 	// before it restores an eliminated player with no final board.
 	FinalBoard *FinalBoard `json:"finalBoard,omitempty"`
+	// DepartedPermanents is Player.DepartedPermanents (#6123): what an
+	// eliminated player controlled as they left, plain data. Additive
+	// within the version: a file written before it restores with none.
+	DepartedPermanents []departedPermanentSnapshot `json:"departedPermanents,omitempty"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -3500,6 +3504,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  string(p.LossCause),
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         snapshotDepartedPermanents(p.DepartedPermanents, cen),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,
@@ -4739,6 +4744,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  LossCause(p.LossCause),
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         restoreDepartedPermanents(p.DepartedPermanents),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,

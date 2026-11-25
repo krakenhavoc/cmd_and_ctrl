@@ -127,6 +127,12 @@ const (
 	// 107.17a, 123.3c). No game-loss condition. See sticker.go and ADR
 	// 0208.
 	CounterTicket = "ticket"
+	// CounterContract is the contract counter (#6123, Miss Highwater: "they
+	// may discard their hand. If they do, they draw seven cards and get a
+	// contract counter. For as long as they have a contract counter, when
+	// they lose the game, …"). A player counter with no rule of its own (CR
+	// 122.1): the card's delayed trigger reads it as the player leaves.
+	CounterContract = "contract"
 )
 
 // PoisonLethal is the poison-counter total at which a player loses
@@ -165,4 +171,5 @@ var KnownPlayerCounters = []string{
 	CounterExperience,
 	CounterRad,
 	CounterTicket,
+	CounterContract,
 }

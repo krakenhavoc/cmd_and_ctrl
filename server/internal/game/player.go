@@ -336,6 +336,17 @@ type Player struct {
 	// Nil while they play. The seat view sends it to everyone.
 	FinalBoard *FinalBoard
 
+	// DepartedPermanents is what the player controlled on the battlefield
+	// when they left the game (#6123, departed_permanents.go): each
+	// permanent as a token copy would copy it (CR 707.2, its copiable
+	// values then) and the card types it had (CR 608.2h, last-known
+	// information), written once by leaveGameLocked before CR 800.4a takes
+	// their objects out of the game, and never changed. Leaving the game is
+	// not a zone change, so no last-known record of the battlefield object
+	// survives it; this is the one record of "each artifact and creature
+	// they controlled" (Miss Highwater). Nil while they play.
+	DepartedPermanents []DepartedPermanent
+
 	// Removed is set when an admin removed this seat from a game that
 	// had started (#3093, ADR 0060's 2026-10-12 amendment). The player
 	// left through Concede, so Eliminated is true as well; Removed is

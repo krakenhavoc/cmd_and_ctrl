@@ -888,6 +888,10 @@ var playerFields = plan(
 	// #4912: what the player had when they left, for the seat view's
 	// final_board. Carried, additive within v9.
 	"FinalBoard", carried, "",
+	// #6123: what the player controlled when they left, for a "when they
+	// lose the game, for each artifact and creature they controlled"
+	// trigger that resolves after CR 800.4a. Carried, additive.
+	"DepartedPermanents", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
 	// it would let the removed player straight back in.
