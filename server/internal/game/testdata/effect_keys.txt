@@ -274,6 +274,7 @@ body gloom-surgeon/exile-that-many
 body glorifier-of-suffering/counters
 body gnawing-crescendo/cant-block-rat
 body goad/clear-listed
+body golden-guardian/return-transformed
 body good-king-mog/copy-a-non-saga-token
 body gorbag-of-minas-morgul/modes
 body graf-reaver/destroy
@@ -4853,6 +4854,7 @@ tail systems-override/schedule-charge-removal
 tail szarekh-the-silent-king/after-mill
 tail szats-will/exiled
 tail tablet-of-discovery/after-mill
+tail tail/angrath-minotaur-pirate-damage
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
 tail tail/anzrags-rampage-exiled
