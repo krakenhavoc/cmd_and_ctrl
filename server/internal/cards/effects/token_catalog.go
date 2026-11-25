@@ -281,6 +281,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Ashiok, Wicked Manipulator's Nightmare (Standard batch 53, #4452).
 	printedStd53NightmareToken,
 
+	// Ashiok, Nightmare Muse's Nightmare (S82 OLD batch 137, #5514).
+	printedOldB137NightmareToken,
+
 	// Scriv, the Obligator's Contract: a white Aura token (#4834).
 	printedContractToken,
 
