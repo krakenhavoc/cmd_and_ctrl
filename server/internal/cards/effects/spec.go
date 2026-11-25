@@ -972,6 +972,24 @@ type Spec struct {
 	// target_tax.go. Nil for nearly every card.
 	TargetTaxes []game.TargetTax
 
+	// LifePerTarget is this spell's OWN per-target life surcharge:
+	// "This spell costs 3 life more to cast for each target"
+	// (Phyrexian Purge, #6206, CR 601.2f).
+	//
+	// The target tax one owner over: the same cost, keyed on the same
+	// thing — what the spell targets, read once the targets are
+	// announced (CR 601.2c) and paid with the other additional costs
+	// (CR 601.2h) — charged by the spell itself rather than by somebody's
+	// permanent. So it joins the same sum, and the cast's CR 119.4
+	// refusal, the enumerator's per-target-set pricing, the picker's note
+	// beside each candidate and the bot's move cost all read it at once.
+	//
+	// It counts TARGETS, not targeted permanents, so a clause that
+	// targets a player or a spell pays for those too. Build it with
+	// CostsLifePerTarget in target_tax.go. The zero value is every other
+	// card.
+	LifePerTarget game.LifePerTargetCost
+
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
 	// (ADR 0045 addendum, Decision 11): "can't be blocked except by

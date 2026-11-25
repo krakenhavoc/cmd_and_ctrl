@@ -45,6 +45,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"SpendOnly":                  "the spell's own spend-only clause on X (#2556): a restriction on how its cost is paid, shown by the cast surface",
 	"SpendOnlySources":           "the spell's own spend-only-by-source clause (#2556): the same, for the mana's source",
 	"SelfCostModifiers":          "what THIS spell costs, shown by the cast surface",
+	"LifePerTarget":              "what THIS spell costs in life for each target it names (#6206), shown by the cast surface and the target picker",
 	"CastableZones":              "where the card may be cast from, shown by the cast surface",
 	"CastsOnlyFromGraveyard":     "the card may be cast from a graveyard and nowhere else (Haakon, Stromgald Scourge), shown by the cast surface",
 	"ForetellOnAnyTurn":          "the foretell special action may be taken on any player's turn (Cosmos Charger), a timing grant read by the special-action table and not an ability row",

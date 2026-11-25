@@ -940,7 +940,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// targets too, so each set is solved against the life it leaves the
 	// seat -- the same rule, and the same reason, as a mana price that
 	// reads targets.
-	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect()
+	// #6206: and a spell that charges ITSELF life for each target
+	// (Phyrexian Purge) prices by the targets for the same reason.
+	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect() ||
+		e.g.CastLifePerTargetForEffect(card) > 0
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
 	// whole of its X, and the mana cost it prints has no {X} slot at

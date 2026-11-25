@@ -231,6 +231,12 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// LifePerTarget is this card's OWN "This spell costs N life more to
+	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
+	// for the spell being cast, through LifePerTargetFor under
+	// CatalogKey, and never from the battlefield: it is the spell's own
+	// cost, as SelfCostModifiers are. The zero value is every other card.
+	LifePerTarget LifePerTargetCost
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
