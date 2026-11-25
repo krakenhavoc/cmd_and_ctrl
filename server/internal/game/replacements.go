@@ -354,6 +354,13 @@ type ReplacementEvent struct {
 	// applied to their parent, so two doublers still produce four cards
 	// while dredge and first-draw exceptions are evaluated per card.
 	DrawCount int
+	// DrawCycled is the card whose CYCLING ability is making this draw
+	// (#6169, CR 702.29a): stamped as the draw is made when the item
+	// resolving is a cycling ability (StackItem.Cycling) and the drawer is
+	// its controller, and uuid.Nil for every other draw. The card has been
+	// discarded by then (CR 702.29c), so it is read in the graveyard (or
+	// wherever a replacement put it). Unpredictable Cyclone reads it.
+	DrawCycled uuid.UUID
 	// DrawInstruction marks the synthetic event Quantum Riddler's kind of
 	// effect is asked about: the WHOLE "draw N cards" instruction, before
 	// any single draw opens its window (draw_instruction.go, CR 121.2).
