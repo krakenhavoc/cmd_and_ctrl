@@ -261,6 +261,7 @@ var TokenTable = map[string]game.Card{
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
 	"2/2 red Soldier":                                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red Dwarf":                                                    {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 2, Toughness: 2, Colors: []string{"R"}}, // The Hobbit (#4475)
+	"2/3 red Minotaur":                                                 {Name: "Minotaur", TypeLine: "Token Creature — Minotaur", Power: 2, Toughness: 3, Colors: []string{"R"}},
 	"2/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 2, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
 	"1/1 white and black Inkling with flying":                          {Name: "Inkling", TypeLine: "Token Creature — Inkling", Power: 1, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}}, // Secrets of Strixhaven (#4456)
 	"2/2 black Phyrexian":                                              {Name: "Phyrexian", TypeLine: "Token Creature — Phyrexian", Power: 2, Toughness: 2, Colors: []string{"B"}},
@@ -425,6 +426,7 @@ var TokenTable = map[string]game.Card{
 	"8/8 blue Scion of the Deep":                                       {Name: "Scion of the Deep", TypeLine: "Token Legendary Creature — Octopus", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"8/8 red Lizard":                                                   {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 8, Toughness: 8, Colors: []string{"R"}},
 	"9/9 blue Kraken":                                                  {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 9, Toughness: 9, Colors: []string{"U"}},
+	"8/8 blue Kraken":                                                  {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 8, Toughness: 8, Colors: []string{"U"}},
 	"4/4 black Legendary God Horror named The Atropal with deathtouch": {Name: "The Atropal", TypeLine: "Token Legendary Creature — God Horror", Power: 4, Toughness: 4, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"20/20 black Marit Lage":                                           {Name: "Marit Lage", TypeLine: "Token Legendary Creature — Avatar", Power: 20, Toughness: 20, Colors: []string{"B"}, Keywords: []string{"flying", "indestructible"}},
 
@@ -704,4 +706,8 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 083: Profane Transfusion's X/X Horror (printed */*; a 0/0 placeholder, set to the
 	// difference between the life totals as it is created).
 	"0/0 colorless Horror artifact": {Name: "Horror", TypeLine: "Token Artifact Creature — Horror", PrintedPTKnown: true},
+
+	// S82 OLD batch 110 (#5511): Experimental Overload's X/X blue and red Weird (printed */*; a 0/0
+	// placeholder, set to the instants and sorceries in your graveyard as it is created).
+	"0/0 blue and red Weird": {Name: "Weird", TypeLine: "Token Creature — Weird", Colors: []string{"U", "R"}, PrintedPTKnown: true},
 }

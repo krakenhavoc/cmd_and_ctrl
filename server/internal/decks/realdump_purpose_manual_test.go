@@ -305,6 +305,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 109 (#5511).
 	"Discontinuity": "ends the turn: it exiles the stack and wears off effects, but sweeps no permanents",
 	"Turn to Slag":  "5 damage to one creature and a destroy of the Equipment attached to it: one target's gear, not a board",
+
+	// S82 OLD batch 110 (#5511).
+	"Idol of Endurance": "exiles only the controller's own small creature cards from their graveyard, no permanents: not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

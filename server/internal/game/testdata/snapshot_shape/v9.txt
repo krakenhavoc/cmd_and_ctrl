@@ -319,6 +319,8 @@ battlefield.cards[].perpetualKeywords[]	string
 battlefield.cards[].phaseInBarredBy	custom(uuid.UUID)
 battlefield.cards[].phaseInBarredEpoch	number:int
 battlefield.cards[].phaseInBarredFor	custom(uuid.UUID)
+battlefield.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+battlefield.cards[].phaseInBarredThroughTurn	number:int
 battlefield.cards[].phaseInBarredWhileTapped	bool
 battlefield.cards[].phaseInLockedBy	custom(uuid.UUID)
 battlefield.cards[].phasedOutBy	custom(uuid.UUID)
@@ -912,6 +914,8 @@ enteringTokens[].perpetualKeywords[]	string
 enteringTokens[].phaseInBarredBy	custom(uuid.UUID)
 enteringTokens[].phaseInBarredEpoch	number:int
 enteringTokens[].phaseInBarredFor	custom(uuid.UUID)
+enteringTokens[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+enteringTokens[].phaseInBarredThroughTurn	number:int
 enteringTokens[].phaseInBarredWhileTapped	bool
 enteringTokens[].phaseInLockedBy	custom(uuid.UUID)
 enteringTokens[].phasedOutBy	custom(uuid.UUID)
@@ -1476,6 +1480,8 @@ exile.cards[].perpetualKeywords[]	string
 exile.cards[].phaseInBarredBy	custom(uuid.UUID)
 exile.cards[].phaseInBarredEpoch	number:int
 exile.cards[].phaseInBarredFor	custom(uuid.UUID)
+exile.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+exile.cards[].phaseInBarredThroughTurn	number:int
 exile.cards[].phaseInBarredWhileTapped	bool
 exile.cards[].phaseInLockedBy	custom(uuid.UUID)
 exile.cards[].phasedOutBy	custom(uuid.UUID)
@@ -2242,6 +2248,7 @@ followUpParks[].then.permission.filter.exiledWithSource	bool
 followUpParks[].then.permission.filter.exiledWithSourceThisTurn	bool
 followUpParks[].then.permission.filter.fromChosenType	bool
 followUpParks[].then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+followUpParks[].then.permission.filter.hasCyclingOnly	bool
 followUpParks[].then.permission.filter.historicOnly	bool
 followUpParks[].then.permission.filter.instantOrSorceryOnly	bool
 followUpParks[].then.permission.filter.keywordsAny	string
@@ -2955,6 +2962,7 @@ frozenEntries[].event.counterTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.counterTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.counterTail.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.counterTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.counterTail.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.keywordsAny	string
@@ -3646,6 +3654,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.exiledWithSource	bo
 frozenEntries[].event.damageTail.each.each.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.fromChosenType	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.historicOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.keywordsAny	string
@@ -4328,6 +4337,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.exiledWithSource	bo
 frozenEntries[].event.damageTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.historicOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.keywordsAny	string
@@ -5235,6 +5245,7 @@ frozenEntries[].event.damageTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.damageTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.damageTail.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.damageTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.damageTail.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.keywordsAny	string
@@ -6042,6 +6053,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiled
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
@@ -6800,6 +6812,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWithSource	bo
 frozenEntries[].event.entryTail.batch.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.keywordsAny	string
@@ -7482,6 +7495,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.exiledWithSource	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.fromChosenType	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.keywordsAny	string
@@ -8198,6 +8212,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWit
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.fromChosenType	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
@@ -8902,6 +8917,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWithSource	b
 frozenEntries[].event.entryTail.tokens.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.historicOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.keywordsAny	string
@@ -9541,6 +9557,8 @@ frozenEntries[].event.keywordActionTail.armyToken.perpetualKeywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredThroughTurn	number:int
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredWhileTapped	bool
 frozenEntries[].event.keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
@@ -10048,6 +10066,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWithSource	
 frozenEntries[].event.keywordActionTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.keywordsAny	string
@@ -10756,6 +10775,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.historicOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.keywordsAny	string
@@ -11441,6 +11461,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.lifeTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.lifeTail.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.lifeTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.lifeTail.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.keywordsAny	string
@@ -12069,6 +12090,8 @@ frozenEntries[].event.millTail.run.planned[].perpetualKeywords[]	string
 frozenEntries[].event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.millTail.run.planned[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
@@ -12510,6 +12533,8 @@ frozenEntries[].event.millTail.run.seen[].perpetualKeywords[]	string
 frozenEntries[].event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.millTail.run.seen[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
@@ -13010,6 +13035,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.millTail.run.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.millTail.run.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.millTail.run.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.millTail.run.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.historicOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.keywordsAny	string
@@ -13690,6 +13716,7 @@ frozenEntries[].event.millTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.millTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.millTail.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.millTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.millTail.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.keywordsAny	string
@@ -14960,6 +14987,8 @@ frozenEntries[].event.tokenGroups[].template.perpetualKeywords[]	string
 frozenEntries[].event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.phaseInBarredThroughTurn	number:int
 frozenEntries[].event.tokenGroups[].template.phaseInBarredWhileTapped	bool
 frozenEntries[].event.tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
@@ -15461,6 +15490,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.exiledWithSource	bool
 frozenEntries[].event.tokenTail.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.tokenTail.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.tokenTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.tokenTail.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.historicOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.keywordsAny	string
@@ -16103,6 +16133,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.perpetualKeywords[]	st
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredThroughTurn	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredWhileTapped	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -16557,6 +16589,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	str
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
@@ -16998,6 +17032,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
@@ -17498,6 +17534,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWith
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
@@ -18214,6 +18251,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exil
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromChosenType	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
@@ -18894,6 +18932,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWithSourc
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
@@ -19594,6 +19633,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWithSou
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
@@ -20363,6 +20403,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSo
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.fromChosenType	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.hasCyclingOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.historicOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.instantOrSorceryOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
@@ -20986,6 +21027,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredThroughTurn	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredWhileTapped	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
@@ -22210,6 +22253,8 @@ lastKnownStack[].card.perpetualKeywords[]	string
 lastKnownStack[].card.phaseInBarredBy	custom(uuid.UUID)
 lastKnownStack[].card.phaseInBarredEpoch	number:int
 lastKnownStack[].card.phaseInBarredFor	custom(uuid.UUID)
+lastKnownStack[].card.phaseInBarredThroughPlayer	custom(uuid.UUID)
+lastKnownStack[].card.phaseInBarredThroughTurn	number:int
 lastKnownStack[].card.phaseInBarredWhileTapped	bool
 lastKnownStack[].card.phaseInLockedBy	custom(uuid.UUID)
 lastKnownStack[].card.phasedOutBy	custom(uuid.UUID)
@@ -23162,6 +23207,8 @@ match.decks[].fixed[].perpetualKeywords[]	string
 match.decks[].fixed[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].fixed[].phaseInBarredEpoch	number:int
 match.decks[].fixed[].phaseInBarredFor	custom(uuid.UUID)
+match.decks[].fixed[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+match.decks[].fixed[].phaseInBarredThroughTurn	number:int
 match.decks[].fixed[].phaseInBarredWhileTapped	bool
 match.decks[].fixed[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].fixed[].phasedOutBy	custom(uuid.UUID)
@@ -23601,6 +23648,8 @@ match.decks[].main[].perpetualKeywords[]	string
 match.decks[].main[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].main[].phaseInBarredEpoch	number:int
 match.decks[].main[].phaseInBarredFor	custom(uuid.UUID)
+match.decks[].main[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+match.decks[].main[].phaseInBarredThroughTurn	number:int
 match.decks[].main[].phaseInBarredWhileTapped	bool
 match.decks[].main[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].main[].phasedOutBy	custom(uuid.UUID)
@@ -24043,6 +24092,8 @@ match.decks[].side[].perpetualKeywords[]	string
 match.decks[].side[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].side[].phaseInBarredEpoch	number:int
 match.decks[].side[].phaseInBarredFor	custom(uuid.UUID)
+match.decks[].side[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+match.decks[].side[].phaseInBarredThroughTurn	number:int
 match.decks[].side[].phaseInBarredWhileTapped	bool
 match.decks[].side[].phaseInLockedBy	custom(uuid.UUID)
 match.decks[].side[].phasedOutBy	custom(uuid.UUID)
@@ -24583,6 +24634,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.keywordsAny	string
@@ -25274,6 +25326,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWithSource	bo
 movesAwaitingTokens[].damageTail.each.each.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.historicOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.keywordsAny	string
@@ -25956,6 +26009,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWithSource	bo
 movesAwaitingTokens[].damageTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.keywordsAny	string
@@ -26863,6 +26917,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.keywordsAny	string
@@ -27670,6 +27725,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiled
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
@@ -28428,6 +28484,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWithSource	bo
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.keywordsAny	string
@@ -29110,6 +29167,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.keywordsAny	string
@@ -29826,6 +29884,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWit
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
@@ -30530,6 +30589,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWithSource	b
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.keywordsAny	string
@@ -31169,6 +31229,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.perpetualKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
@@ -31676,6 +31738,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWithSource	
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.keywordsAny	string
@@ -32384,6 +32447,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.keywordsAny	string
@@ -33069,6 +33133,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.keywordsAny	string
@@ -33697,6 +33762,8 @@ movesAwaitingTokens[].millTail.run.planned[].perpetualKeywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
@@ -34138,6 +34205,8 @@ movesAwaitingTokens[].millTail.run.seen[].perpetualKeywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
@@ -34638,6 +34707,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.keywordsAny	string
@@ -35318,6 +35388,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].millTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].millTail.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].millTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.keywordsAny	string
@@ -36588,6 +36659,8 @@ movesAwaitingTokens[].tokenGroups[].template.perpetualKeywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
@@ -37089,6 +37162,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWithSource	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.keywordsAny	string
@@ -37731,6 +37805,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.perpetualKeywords[]	st
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -38185,6 +38261,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].perpetualKeywords[]	str
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
@@ -38626,6 +38704,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
@@ -39126,6 +39206,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWith
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
@@ -39842,6 +39923,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exil
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
@@ -40522,6 +40604,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWithSourc
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
@@ -41222,6 +41305,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWithSou
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
@@ -41991,6 +42075,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWithSo
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.fromChosenType	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.hasCyclingOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.historicOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.instantOrSorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
@@ -42614,6 +42699,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].perpetualKeywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredThroughTurn	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredWhileTapped	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
@@ -44658,6 +44745,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.perpetualKeywords[]	strin
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phasedOutBy	custom(uuid.UUID)
@@ -45119,6 +45208,8 @@ pendingChoices[].attackSplit.settled.groups[].template.perpetualKeywords[]	strin
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].attackSplit.settled.groups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -45624,6 +45715,7 @@ pendingChoices[].attackSplit.tail.permission.filter.exiledWithSource	bool
 pendingChoices[].attackSplit.tail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].attackSplit.tail.permission.filter.fromChosenType	bool
 pendingChoices[].attackSplit.tail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].attackSplit.tail.permission.filter.hasCyclingOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.historicOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.keywordsAny	string
@@ -46242,6 +46334,8 @@ pendingChoices[].attackSplit.template.perpetualKeywords[]	string
 pendingChoices[].attackSplit.template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.phaseInBarredThroughTurn	number:int
 pendingChoices[].attackSplit.template.phaseInBarredWhileTapped	bool
 pendingChoices[].attackSplit.template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phasedOutBy	custom(uuid.UUID)
@@ -47111,6 +47205,8 @@ pendingChoices[].copyWalk.src.perpetualKeywords[]	string
 pendingChoices[].copyWalk.src.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phaseInBarredEpoch	number:int
 pendingChoices[].copyWalk.src.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.phaseInBarredThroughTurn	number:int
 pendingChoices[].copyWalk.src.phaseInBarredWhileTapped	bool
 pendingChoices[].copyWalk.src.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phasedOutBy	custom(uuid.UUID)
@@ -47936,6 +48032,7 @@ pendingChoices[].diceRoll.then.permission.filter.exiledWithSource	bool
 pendingChoices[].diceRoll.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].diceRoll.then.permission.filter.fromChosenType	bool
 pendingChoices[].diceRoll.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].diceRoll.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.historicOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.keywordsAny	string
@@ -49103,6 +49200,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.exiledWithSource	bool
 pendingChoices[].divideShield.walk.each.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].divideShield.walk.each.permission.filter.fromChosenType	bool
 pendingChoices[].divideShield.walk.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].divideShield.walk.each.permission.filter.hasCyclingOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.historicOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.keywordsAny	string
@@ -49785,6 +49883,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.exiledWithSource	bool
 pendingChoices[].divideShield.walk.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].divideShield.walk.then.permission.filter.fromChosenType	bool
 pendingChoices[].divideShield.walk.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].divideShield.walk.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.historicOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.keywordsAny	string
@@ -50473,6 +50572,7 @@ pendingChoices[].libraryOrder.then.permission.filter.exiledWithSource	bool
 pendingChoices[].libraryOrder.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].libraryOrder.then.permission.filter.fromChosenType	bool
 pendingChoices[].libraryOrder.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].libraryOrder.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.historicOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.keywordsAny	string
@@ -51216,6 +51316,7 @@ pendingChoices[].nameThen.permission.filter.exiledWithSource	bool
 pendingChoices[].nameThen.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].nameThen.permission.filter.fromChosenType	bool
 pendingChoices[].nameThen.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].nameThen.permission.filter.hasCyclingOnly	bool
 pendingChoices[].nameThen.permission.filter.historicOnly	bool
 pendingChoices[].nameThen.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.keywordsAny	string
@@ -52411,6 +52512,7 @@ pendingChoices[].pickTail.permission.filter.exiledWithSource	bool
 pendingChoices[].pickTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].pickTail.permission.filter.fromChosenType	bool
 pendingChoices[].pickTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].pickTail.permission.filter.hasCyclingOnly	bool
 pendingChoices[].pickTail.permission.filter.historicOnly	bool
 pendingChoices[].pickTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.keywordsAny	string
@@ -53138,6 +53240,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exil
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.keywordsAny	string
@@ -53829,6 +53932,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.keywordsAny	string
@@ -54511,6 +54615,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.keywordsAny	string
@@ -55418,6 +55523,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exile
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.keywordsAny	string
@@ -56225,6 +56331,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.keywordsAny	string
@@ -56983,6 +57090,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.keywordsAny	string
@@ -57665,6 +57773,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exile
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.keywordsAny	string
@@ -58381,6 +58490,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.keywordsAny	string
@@ -59085,6 +59195,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.keywordsAny	string
@@ -59724,6 +59835,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.perpetualKe
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phasedOutBy	custom(uuid.UUID)
@@ -60231,6 +60344,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.keywordsAny	string
@@ -60939,6 +61053,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ex
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.keywordsAny	string
@@ -61624,6 +61739,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledW
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.keywordsAny	string
@@ -62252,6 +62368,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].perpetualKeyword
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phasedOutBy	custom(uuid.UUID)
@@ -62693,6 +62811,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].perpetualKeywords[]
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phasedOutBy	custom(uuid.UUID)
@@ -63193,6 +63313,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exi
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.keywordsAny	string
@@ -63873,6 +63994,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledW
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.keywordsAny	string
@@ -65143,6 +65265,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.perpetualKeyword
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phasedOutBy	custom(uuid.UUID)
@@ -65644,6 +65768,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiled
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.keywordsAny	string
@@ -66286,6 +66411,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.per
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phasedOutBy	custom(uuid.UUID)
@@ -66740,6 +66867,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].perp
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phasedOutBy	custom(uuid.UUID)
@@ -67181,6 +67310,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].perpetu
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phasedOutBy	custom(uuid.UUID)
@@ -67681,6 +67812,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.keywordsAny	string
@@ -68397,6 +68529,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.keywordsAny	string
@@ -69077,6 +69210,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.keywordsAny	string
@@ -69777,6 +69911,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.keywordsAny	string
@@ -70546,6 +70681,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.fromChosenType	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.hasCyclingOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.historicOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.keywordsAny	string
@@ -71169,6 +71305,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].perpetualK
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredThroughTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredWhileTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phasedOutBy	custom(uuid.UUID)
@@ -71699,6 +71837,7 @@ pendingChoices[].scryThen.permission.filter.exiledWithSource	bool
 pendingChoices[].scryThen.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].scryThen.permission.filter.fromChosenType	bool
 pendingChoices[].scryThen.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].scryThen.permission.filter.hasCyclingOnly	bool
 pendingChoices[].scryThen.permission.filter.historicOnly	bool
 pendingChoices[].scryThen.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.keywordsAny	string
@@ -72428,6 +72567,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWithSource	b
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.exiledWithSourceThisTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.fromChosenType	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.fromLibraryToGraveyardThisTurn	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.hasCyclingOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.historicOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.instantOrSorceryOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.keywordsAny	string
@@ -73590,6 +73730,8 @@ pendingChoices[].targetWalk.frame.source.perpetualKeywords[]	string
 pendingChoices[].targetWalk.frame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phaseInBarredEpoch	number:int
 pendingChoices[].targetWalk.frame.source.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.phaseInBarredThroughTurn	number:int
 pendingChoices[].targetWalk.frame.source.phaseInBarredWhileTapped	bool
 pendingChoices[].targetWalk.frame.source.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phasedOutBy	custom(uuid.UUID)
@@ -74450,6 +74592,8 @@ pendingChoices[].triggerFrame.source.perpetualKeywords[]	string
 pendingChoices[].triggerFrame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phaseInBarredEpoch	number:int
 pendingChoices[].triggerFrame.source.phaseInBarredFor	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.phaseInBarredThroughPlayer	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.phaseInBarredThroughTurn	number:int
 pendingChoices[].triggerFrame.source.phaseInBarredWhileTapped	bool
 pendingChoices[].triggerFrame.source.phaseInLockedBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phasedOutBy	custom(uuid.UUID)
@@ -75683,6 +75827,8 @@ phasedOut.cards[].perpetualKeywords[]	string
 phasedOut.cards[].phaseInBarredBy	custom(uuid.UUID)
 phasedOut.cards[].phaseInBarredEpoch	number:int
 phasedOut.cards[].phaseInBarredFor	custom(uuid.UUID)
+phasedOut.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+phasedOut.cards[].phaseInBarredThroughTurn	number:int
 phasedOut.cards[].phaseInBarredWhileTapped	bool
 phasedOut.cards[].phaseInLockedBy	custom(uuid.UUID)
 phasedOut.cards[].phasedOutBy	custom(uuid.UUID)
@@ -76127,6 +76273,8 @@ planechase.deck.cards[].perpetualKeywords[]	string
 planechase.deck.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.deck.cards[].phaseInBarredEpoch	number:int
 planechase.deck.cards[].phaseInBarredFor	custom(uuid.UUID)
+planechase.deck.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+planechase.deck.cards[].phaseInBarredThroughTurn	number:int
 planechase.deck.cards[].phaseInBarredWhileTapped	bool
 planechase.deck.cards[].phaseInLockedBy	custom(uuid.UUID)
 planechase.deck.cards[].phasedOutBy	custom(uuid.UUID)
@@ -76571,6 +76719,8 @@ planechase.faceUp.cards[].perpetualKeywords[]	string
 planechase.faceUp.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phaseInBarredEpoch	number:int
 planechase.faceUp.cards[].phaseInBarredFor	custom(uuid.UUID)
+planechase.faceUp.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+planechase.faceUp.cards[].phaseInBarredThroughTurn	number:int
 planechase.faceUp.cards[].phaseInBarredWhileTapped	bool
 planechase.faceUp.cards[].phaseInLockedBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phasedOutBy	custom(uuid.UUID)
@@ -77272,6 +77422,8 @@ resolving.card.perpetualKeywords[]	string
 resolving.card.phaseInBarredBy	custom(uuid.UUID)
 resolving.card.phaseInBarredEpoch	number:int
 resolving.card.phaseInBarredFor	custom(uuid.UUID)
+resolving.card.phaseInBarredThroughPlayer	custom(uuid.UUID)
+resolving.card.phaseInBarredThroughTurn	number:int
 resolving.card.phaseInBarredWhileTapped	bool
 resolving.card.phaseInLockedBy	custom(uuid.UUID)
 resolving.card.phasedOutBy	custom(uuid.UUID)
@@ -78363,6 +78515,8 @@ seats[].attractionDeck.cards[].perpetualKeywords[]	string
 seats[].attractionDeck.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phaseInBarredEpoch	number:int
 seats[].attractionDeck.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].attractionDeck.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].attractionDeck.cards[].phaseInBarredThroughTurn	number:int
 seats[].attractionDeck.cards[].phaseInBarredWhileTapped	bool
 seats[].attractionDeck.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phasedOutBy	custom(uuid.UUID)
@@ -78617,6 +78771,7 @@ seats[].castPermissions[].filter.exiledWithSource	bool
 seats[].castPermissions[].filter.exiledWithSourceThisTurn	bool
 seats[].castPermissions[].filter.fromChosenType	bool
 seats[].castPermissions[].filter.fromLibraryToGraveyardThisTurn	bool
+seats[].castPermissions[].filter.hasCyclingOnly	bool
 seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.keywordsAny	string
@@ -78993,6 +79148,8 @@ seats[].command.cards[].perpetualKeywords[]	string
 seats[].command.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].command.cards[].phaseInBarredEpoch	number:int
 seats[].command.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].command.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].command.cards[].phaseInBarredThroughTurn	number:int
 seats[].command.cards[].phaseInBarredWhileTapped	bool
 seats[].command.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].command.cards[].phasedOutBy	custom(uuid.UUID)
@@ -79439,6 +79596,8 @@ seats[].companion.cards[].perpetualKeywords[]	string
 seats[].companion.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].companion.cards[].phaseInBarredEpoch	number:int
 seats[].companion.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].companion.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].companion.cards[].phaseInBarredThroughTurn	number:int
 seats[].companion.cards[].phaseInBarredWhileTapped	bool
 seats[].companion.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].companion.cards[].phasedOutBy	custom(uuid.UUID)
@@ -79894,6 +80053,8 @@ seats[].emblems.cards[].perpetualKeywords[]	string
 seats[].emblems.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].emblems.cards[].phaseInBarredEpoch	number:int
 seats[].emblems.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].emblems.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].emblems.cards[].phaseInBarredThroughTurn	number:int
 seats[].emblems.cards[].phaseInBarredWhileTapped	bool
 seats[].emblems.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].emblems.cards[].phasedOutBy	custom(uuid.UUID)
@@ -80436,6 +80597,8 @@ seats[].graveyard.cards[].perpetualKeywords[]	string
 seats[].graveyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phaseInBarredEpoch	number:int
 seats[].graveyard.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].graveyard.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].graveyard.cards[].phaseInBarredThroughTurn	number:int
 seats[].graveyard.cards[].phaseInBarredWhileTapped	bool
 seats[].graveyard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phasedOutBy	custom(uuid.UUID)
@@ -80878,6 +81041,8 @@ seats[].hand.cards[].perpetualKeywords[]	string
 seats[].hand.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].hand.cards[].phaseInBarredEpoch	number:int
 seats[].hand.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].hand.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].hand.cards[].phaseInBarredThroughTurn	number:int
 seats[].hand.cards[].phaseInBarredWhileTapped	bool
 seats[].hand.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].hand.cards[].phasedOutBy	custom(uuid.UUID)
@@ -81325,6 +81490,8 @@ seats[].junkyard.cards[].perpetualKeywords[]	string
 seats[].junkyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phaseInBarredEpoch	number:int
 seats[].junkyard.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].junkyard.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].junkyard.cards[].phaseInBarredThroughTurn	number:int
 seats[].junkyard.cards[].phaseInBarredWhileTapped	bool
 seats[].junkyard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phasedOutBy	custom(uuid.UUID)
@@ -81793,6 +81960,8 @@ seats[].library.cards[].perpetualKeywords[]	string
 seats[].library.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].library.cards[].phaseInBarredEpoch	number:int
 seats[].library.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].library.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].library.cards[].phaseInBarredThroughTurn	number:int
 seats[].library.cards[].phaseInBarredWhileTapped	bool
 seats[].library.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].library.cards[].phasedOutBy	custom(uuid.UUID)
@@ -82277,6 +82446,8 @@ seats[].sideboard.cards[].perpetualKeywords[]	string
 seats[].sideboard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phaseInBarredEpoch	number:int
 seats[].sideboard.cards[].phaseInBarredFor	custom(uuid.UUID)
+seats[].sideboard.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+seats[].sideboard.cards[].phaseInBarredThroughTurn	number:int
 seats[].sideboard.cards[].phaseInBarredWhileTapped	bool
 seats[].sideboard.cards[].phaseInLockedBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phasedOutBy	custom(uuid.UUID)
@@ -82484,6 +82655,7 @@ seats[].statics[].cantBeCountered.filter.exiledWithSource	bool
 seats[].statics[].cantBeCountered.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].cantBeCountered.filter.fromChosenType	bool
 seats[].statics[].cantBeCountered.filter.fromLibraryToGraveyardThisTurn	bool
+seats[].statics[].cantBeCountered.filter.hasCyclingOnly	bool
 seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.keywordsAny	string
@@ -82541,6 +82713,7 @@ seats[].statics[].castBan.filter.exiledWithSource	bool
 seats[].statics[].castBan.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].castBan.filter.fromChosenType	bool
 seats[].statics[].castBan.filter.fromLibraryToGraveyardThisTurn	bool
+seats[].statics[].castBan.filter.hasCyclingOnly	bool
 seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.keywordsAny	string
@@ -82655,6 +82828,7 @@ seats[].statics[].nextSpell.filter.exiledWithSource	bool
 seats[].statics[].nextSpell.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].nextSpell.filter.fromChosenType	bool
 seats[].statics[].nextSpell.filter.fromLibraryToGraveyardThisTurn	bool
+seats[].statics[].nextSpell.filter.hasCyclingOnly	bool
 seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.keywordsAny	string
@@ -82720,6 +82894,7 @@ seats[].statics[].timing.filter.exiledWithSource	bool
 seats[].statics[].timing.filter.exiledWithSourceThisTurn	bool
 seats[].statics[].timing.filter.fromChosenType	bool
 seats[].statics[].timing.filter.fromLibraryToGraveyardThisTurn	bool
+seats[].statics[].timing.filter.hasCyclingOnly	bool
 seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.keywordsAny	string
@@ -82833,6 +83008,7 @@ spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
 spellsCastThisTurn{}.instantSorceryVillain	number:int
 spellsCastThisTurn{}.instants	number:int
+spellsCastThisTurn{}.kicked	number:int
 spellsCastThisTurn{}.legendaryCreature	number:int
 spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
@@ -83127,6 +83303,8 @@ stack.cards[].perpetualKeywords[]	string
 stack.cards[].phaseInBarredBy	custom(uuid.UUID)
 stack.cards[].phaseInBarredEpoch	number:int
 stack.cards[].phaseInBarredFor	custom(uuid.UUID)
+stack.cards[].phaseInBarredThroughPlayer	custom(uuid.UUID)
+stack.cards[].phaseInBarredThroughTurn	number:int
 stack.cards[].phaseInBarredWhileTapped	bool
 stack.cards[].phaseInLockedBy	custom(uuid.UUID)
 stack.cards[].phasedOutBy	custom(uuid.UUID)

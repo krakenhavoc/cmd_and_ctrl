@@ -1357,6 +1357,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModLoseSubtypes: {layer: Layer4Type},
 	// #4691: "loses all creature types" (lose_all_creature_types.go).
 	ModLoseAllCreatureTypes: {layer: Layer4Type},
+	// "You may have this creature assign its combat damage as though it
+	// weren't blocked" granted for a duration (assigns_as_unblocked_mod.go).
+	ModAssignsAsThoughUnblocked: {layer: Layer6Ability},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
 	// #5869: its life-priced sibling (Sivitri, Dragon Master).
@@ -2443,6 +2446,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModLoseAllCreatureTypes:
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.loseAllCreatureTypes()
+		}
+	case ModAssignsAsThoughUnblocked:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.AssignsAsThoughUnblocked = true
 		}
 	case ModSetCreatureTypes:
 		subtypes := m.Subtypes

@@ -248,6 +248,12 @@ type PermissionFilter struct {
 	// historic (an artifact or legendary land) qualifies as a play.
 	HistoricOnly bool `json:"historicOnly,omitempty"`
 
+	// HasCyclingOnly is "spells that have a cycling ability" (Abandoned
+	// Sarcophagus, CR 702.29): the card's own activated rows, as the engine
+	// reads them, include a cycling one (typecycling counts, CR 702.29e).
+	// Additive within the snapshot version (#522).
+	HasCyclingOnly bool `json:"hasCyclingOnly,omitempty"`
+
 	// LegendaryOnly is Peter Parker // Amazing Spider-Man's "each
 	// LEGENDARY spell you cast that's one or more colors": the card must
 	// have the legendary supertype (CR 205.4), read from its effective
@@ -569,6 +575,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.HistoricOnly && !c.IsArtifact() && !c.IsLegendary() && !c.HasSubtype("Saga") {
+		return false
+	}
+	if f.HasCyclingOnly && !cardHasCyclingAbility(c) {
 		return false
 	}
 	if f.LegendaryOnly && !c.IsLegendary() {
@@ -3750,6 +3759,17 @@ func CreatureCounterRemovalCost(n int) *CounterRemovalCost {
 func cardHasAnyTypeOf(c Card, types string) bool {
 	for _, t := range strings.Fields(types) {
 		if c.HasCardType(t) {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasCyclingAbility reports whether any activated row the card offers is a
+// cycling one (CR 702.29a, typecycling CR 702.29e).
+func cardHasCyclingAbility(c Card) bool {
+	for _, ab := range ActivatedAbilitiesForCard(c) {
+		if ab.Cycling {
 			return true
 		}
 	}
