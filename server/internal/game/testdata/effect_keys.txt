@@ -3493,6 +3493,7 @@ run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-first-eruption-damage
 run prompt-run/the-fugitive-doctor-sacrifice
 run prompt-run/the-goose-mother-sacrifice-draw
+run prompt-run/the-great-aurora-lands
 run prompt-run/the-huntsmans-redemption-sacrificed
 run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-master-formed-anew-body-thief
@@ -4962,6 +4963,7 @@ tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
 tail tail/tayam-after-mill
+tail tail/the-great-aurora-shuffled
 tail tail/the-moment-then-sacrifice
 tail tail/time-reaper-gain-life
 tail tail/uchuulon-copy

@@ -227,7 +227,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage,
 		ModPreventFromSource, ModRedirectDamage, ModAddDamage:
 		return watchDamage
-	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie, ModExileUncastCreatures:
+	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie, ModExileUncastCreatures,
+		ModExileUncastCreaturesAndTokens:
 		return watchZoneMove
 	case ModGainNoLife:
 		return watchLife
@@ -820,6 +821,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return creaturesEnterTappedForOpponentsAppliesLocked(g, e, ev)
 	case ModExileUncastCreatures:
 		return exileUncastCreaturesAppliesLocked(g, ev)
+	case ModExileUncastCreaturesAndTokens:
+		return exileUncastCreaturesAndTokensAppliesLocked(g, ev)
 	case ModCreaturesEnterUnderYourControl:
 		return creaturesEnterUnderYourControlAppliesLocked(g, e, ev)
 	case ModNextEntersAsCopies:
@@ -913,7 +916,7 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.queuePreventionFollowUpLocked(e, m, ev, prevented, damage)
 	case ModExileInsteadOfLeaving:
 		ev.NewZone = ZoneExile
-	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard, ModExileUncastCreatures:
+	case ModExileIfWouldDie, ModExileInsteadOfYourGraveyard, ModExileUncastCreatures, ModExileUncastCreaturesAndTokens:
 		// "Exile it instead". For exileIfWouldDie the move still leaves
 		// the battlefield, so leaves-the-battlefield triggers see it, but
 		// it is not a death (CR 700.4), so no "dies" trigger does. A
