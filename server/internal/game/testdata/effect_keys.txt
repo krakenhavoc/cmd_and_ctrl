@@ -2925,6 +2925,7 @@ payunless pay-unless/spined-tyrranax-counter
 payunless pay-unless/spirit-cairn-spirit
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
+payunless pay-unless/string-of-disappearances-copy
 payunless pay-unless/subway-train-basic-land
 payunless pay-unless/sunstreak-phoenix-return
 payunless pay-unless/sylvia-tilly-joy-of-discovery-exile
@@ -5076,6 +5077,7 @@ tail then/starseer-mentor-punisher-sacrificed
 tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
+tail then/string-of-disappearances-offer-payment
 tail then/stronghold-arena-lose-life
 tail then/sungold-sentinel-color-chosen
 tail then/surrounded-by-orcs-mill
