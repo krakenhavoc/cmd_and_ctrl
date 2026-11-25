@@ -104,6 +104,28 @@ func IfThisAttacksAllYourCreaturesAttack() game.StaticAbility {
 	}
 }
 
+// AlsoAttacksIfACreatureYouControlAttacks is "If a creature you control
+// attacks, this creature also attacks if able" (Ekundu Cyclops, #6197).
+// Like Viashino Bey's line it is a constraint on declaring an attack,
+// not a trigger: the creature carries one CR 508.1d requirement that
+// exists only in a declaration in which another creature its controller
+// controls is attacking (game.AttackRequirement.IfAnotherYouControlAttacks).
+// It is the creature's own ability, so losing its abilities drops it.
+func AlsoAttacksIfACreatureYouControlAttacks() game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer6Ability,
+		Label: "If a creature you control attacks, this creature also attacks if able.",
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			return target.IsCreature() && SelfOnly(target, g, source)
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			r := requirementFrom(source, uuid.Nil)
+			r.IfAnotherYouControlAttacks = true
+			c.AttackRequirements = append(c.AttackRequirements, r)
+		},
+	}
+}
+
 // AttacksAnOpponentWithTheMostLifeEachCombat is "~ attacks an opponent
 // with the most life among your opponents each combat if able" — a
 // requirement a creature prints on itself (Galactus, Devourer of

@@ -1,0 +1,6 @@
+---
+title: "Flagbearer: opponents must choose a Flagbearer as a target if able"
+date: 2026-11-25
+issues: [6236]
+---
+**Flagbearer: opponents must choose a Flagbearer as a target if able** (#6236, CR 601.2c, 602.2b) — "While an opponent is choosing targets as part of casting a spell they control or activating an ability they control, that player must choose at least one Flagbearer on the battlefield if able" (Coalition Flag, Standard Bearer) is `effects.FlagbearerTargetRule()`, a layer-6 self static that sets `Characteristic.FlagbearerTargetRule` (game/flagbearer.go). It binds each opponent of the permanent's controller. `checkFlagbearerTargetsLocked` runs after the ordinary target gate at the cast and the activation: an announcement whose targets include no Flagbearer on the battlefield is refused with `ErrMustTargetFlagbearer` (an `ErrIllegalTarget`) when one of its steps could legally have chosen one, so a Flagbearer with shroud or protection asks nothing. Triggered abilities, steps chosen by an opponent or at random, and new targets are not judged. The legal-move enumerator drops the announcements the gate refuses (`FlagbearerTargetsAllowedForEffect`), so a bot is never offered one; a human who picks another target reads the refusal. **Cards:** Coalition Flag and Standard Bearer, built by their OLD batches (b631, b635).

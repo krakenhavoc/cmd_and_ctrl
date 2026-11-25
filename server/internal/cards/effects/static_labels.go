@@ -170,6 +170,9 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 			return "Can't attack unless defending player controls " + articleFor(strings.ToLower(n)) + " " + n + "."
 		}
 		return "Can't attack unless defending player controls a certain permanent."
+	case len(r.DefenderMustNotControl) > 0:
+		n := game.PermanentQueriesNoun(r.DefenderMustNotControl)
+		return "Can't attack if defending player controls " + articleFor(strings.ToLower(n)) + " " + n + "."
 	case r.DefenderMustBePoisoned:
 		return "Can't attack unless defending player is poisoned."
 	case r.DefenderMustBeMonarch:

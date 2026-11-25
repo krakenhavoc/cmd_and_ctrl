@@ -706,6 +706,15 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// CombatBlocks is every pair "this creature blocked that attacker"
+	// made this turn (#6193): by the block declaration, by a creature put
+	// onto the battlefield blocking, or by an effect (BlockAttackersForEffect),
+	// each under the combat phase it was made in. "Creatures it was
+	// blocking that hadn't become blocked by another creature this combat
+	// become unblocked" (Balduvian Warlord) reads it after the other
+	// blocker has left combat, which the live blocking fields cannot say.
+	// Additive: an older snapshot reads none.
+	CombatBlocks []CombatBlockRecord `json:"combatBlocks,omitempty"`
 	// CouldAttack is every creature OBJECT that could have been declared
 	// as an attacker in a declare attackers step this turn (#6211, CR
 	// 508.1a, 508.1c): Season of the Witch's "except for creatures that
@@ -2211,6 +2220,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.DiedNames = copyStringIntMap(t.DiedNames)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
+	if len(t.CombatBlocks) > 0 {
+		out.CombatBlocks = append([]CombatBlockRecord(nil), t.CombatBlocks...)
+	}
 	if len(t.CouldAttack) > 0 {
 		out.CouldAttack = append([]ObjectRef(nil), t.CouldAttack...)
 	}

@@ -68,6 +68,7 @@ func (g *Game) stampEntryBlockerLocked(id, attacker uuid.UUID) {
 	}
 	for _, a := range blocked {
 		g.blockedAttackers[a] = true
+		g.noteCombatBlockLocked(id, a)
 	}
 	for i, a := range blocked {
 		if !becomes[i] {

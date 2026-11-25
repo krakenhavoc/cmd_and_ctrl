@@ -221,6 +221,10 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 			if host == nil || (HasProtection(host) && ProtectedFrom(host, quality)) {
 				continue
 			}
+			// #6203: "can't be enchanted" (CR 303.4f's legal choice).
+			if g.auraBarredFromHostLocked(&aura, host, true) {
+				continue
+			}
 			if ev.auraHostCreaturesOnly && !host.IsCreature() {
 				continue
 			}

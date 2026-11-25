@@ -785,8 +785,9 @@ export interface OutcomeView {
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
   // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
   // of only mandatory actions repeated with no way to stop, CR 732.4 —
-  // a draw).
-  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // a draw) or "draw_effect" (an effect stated that the game is a draw,
+  // CR 104.4c — Divine Intervention; `source` is its card).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop" | "draw_effect";
   // The object whose effect won, for an effect win; the loop's card,
   // for a mandatory loop's draw.
   source?: string;
@@ -2250,6 +2251,9 @@ export interface PendingChoiceView {
   pay_life?: number;
   pay_damage?: number;
   pay_nothing?: boolean;
+  // #6187: "discard N cards at random" (CR 701.9b). A yes or no; the
+  // server picks the cards. "Yes" pays only with N cards in hand.
+  pay_random_discard?: number;
   // ADR 0187 §5: an either payment — one offer with two or more ways to
   // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
   // One entry per branch, in the card's order; pay_cost holds the whole
@@ -3848,9 +3852,22 @@ export interface PayCardsView {
   // "minus_one_counter" (#5746): the permanents of the clause's kind the
   // chooser controls that can have a counter put on them; each one named
   // gets a -1/-1 counter.
-  action: "discard" | "sacrifice" | "exile_graveyard" | "tap" | "minus_one_counter";
+  // "hand_to_library_top" (#6187): the chooser's hand, as a discard's;
+  // each one named goes on top of their library. "sacrifice_total_power"
+  // (#6187, Phyrexian Dreadnought): any number of options, at least one,
+  // whose `powers` add up to `total_power` or more; `count` is then 0.
+  action:
+    | "discard"
+    | "sacrifice"
+    | "exile_graveyard"
+    | "tap"
+    | "minus_one_counter"
+    | "hand_to_library_top"
+    | "sacrifice_total_power";
   count: number;
   options: string[];
+  total_power?: number;
+  powers?: Record<string, number>;
 }
 
 // One branch of an either payment (ADR 0187 §5).
@@ -4962,6 +4979,12 @@ export interface CastSurfaceView {
   // structured TargetSpec — the players and card instance IDs its
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
+  // #6245: a spell that names a creature type as it is cast (Selective
+  // Snare's "of the creature type of your choice", CR 601.2c). One option
+  // per type with the target clause's legal cards under it; the client
+  // asks for the type before the targets, narrows the picker to that
+  // type's cards and sends the type as `chosen_creature_type`.
+  cast_creature_types?: BeholdTypeOption[];
   legal_targets?: LegalTargetsView;
   // #764: every clause of a MULTI-clause target statement, in
   // printed order, each with its own legal set, count and printed

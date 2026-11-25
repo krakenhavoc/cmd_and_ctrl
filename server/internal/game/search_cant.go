@@ -53,8 +53,7 @@ func (g *Game) searchCantLocked(searcher uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) skipBlockedSearchLocked(spec SearchLibrarySpec, p *Player) error {
 	if spec.Shuffle {
-		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-		clearKnownInZoneLocked(p.Library)
+		g.shuffleLibraryLocked(p, ShuffleByEffect)
 	}
 	return g.runSearchThenLocked(spec, nil)
 }
