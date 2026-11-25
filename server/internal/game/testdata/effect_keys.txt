@@ -1909,6 +1909,7 @@ confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
 confirm confirm/dawnbreak-reclaimer-return
 confirm confirm/deadly-complication-unsuspect
+confirm confirm/decoy-gambit-draw-or-bounce
 confirm confirm/delifs-cone-gain-life
 confirm confirm/delina-roll-again
 confirm confirm/dire-blunderbuss-sacrifice
@@ -4636,6 +4637,7 @@ tail tail/deadly-cover-up-exiled
 tail tail/devastating-mastery-wipe
 tail tail/dig-deep-counters
 tail tail/eagles-are-coming-birds
+tail tail/fireflux-squad-reveal
 tail tail/fugitive-codebreaker-draw
 tail tail/gap-b213-intellect-devourer-hold
 tail tail/gap-b216-druid-emerald-grove-found
