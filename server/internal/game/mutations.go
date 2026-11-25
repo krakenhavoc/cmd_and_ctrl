@@ -1521,6 +1521,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #6236, CR 601.2c: a Flagbearer an opponent's rule says to choose.
+	g.RecomputeLayersIfStaleLocked()
+	if err := g.checkFlagbearerTargetsLocked(castSrc, oppTargets.check, params.Targets); err != nil {
+		return err
+	}
 	// ADR 0202, CR 702.47d: each spliced text's targets, against its own
 	// clause list and judged from this spell (CR 702.47c: the spell keeps
 	// its own characteristics). A text with a required target that cannot

@@ -2718,7 +2718,15 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 		}
 		out = next
 	}
-	return out
+	// #6236, CR 601.2c: an announcement an opponent's Flagbearer rule
+	// refuses is no move (Coalition Flag, Standard Bearer).
+	kept := out[:0:0]
+	for _, ts := range out {
+		if e.g.FlagbearerTargetsAllowedForEffect(src, steps, ts) {
+			kept = append(kept, ts)
+		}
+	}
+	return kept
 }
 
 // stepsCountedByX lists the indexes of the announcement's steps whose

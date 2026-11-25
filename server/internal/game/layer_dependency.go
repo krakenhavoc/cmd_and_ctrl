@@ -591,6 +591,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.ManaAbilityLifeTax == b.ManaAbilityLifeTax &&
 		a.CantHaveCounters == b.CantHaveCounters &&
 		a.CantBeBeamedUp == b.CantBeBeamedUp &&
+		a.FlagbearerTargetRule == b.FlagbearerTargetRule &&
 		a.AdditionalBlocks == b.AdditionalBlocks &&
 		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		a.DamageByToughness == b.DamageByToughness &&

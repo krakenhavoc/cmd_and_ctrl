@@ -5795,6 +5795,7 @@ frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttac
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].SourceName	string
 frozenEntries[].event.damageTail.sourceLki.ExtraRestrictions	number:uint8
+frozenEntries[].event.damageTail.sourceLki.FlagbearerTargetRule	bool
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities	array
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -15358,6 +15359,7 @@ frozenEntries[].event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 frozenEntries[].event.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.DefenderWaivers[].SourceName	string
 frozenEntries[].event.sourceLki.ExtraRestrictions	number:uint8
+frozenEntries[].event.sourceLki.FlagbearerTargetRule	bool
 frozenEntries[].event.sourceLki.GrantedAbilities	array
 frozenEntries[].event.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -22605,6 +22607,7 @@ heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttac
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].SourceName	string
 heldCombatDamage.answers[].frame.SourceLKI.ExtraRestrictions	number:uint8
+heldCombatDamage.answers[].frame.SourceLKI.FlagbearerTargetRule	bool
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities	array
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[]	object
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -22890,6 +22893,7 @@ lastKnownBattlefield{}.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 lastKnownBattlefield{}.DefenderWaivers[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.DefenderWaivers[].SourceName	string
 lastKnownBattlefield{}.ExtraRestrictions	number:uint8
+lastKnownBattlefield{}.FlagbearerTargetRule	bool
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -23180,6 +23184,7 @@ lastKnownPermanents{}[].characteristic.DefenderWaivers[].OnlyPlayersWhoAttackedY
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].SourceName	string
 lastKnownPermanents{}[].characteristic.ExtraRestrictions	number:uint8
+lastKnownPermanents{}[].characteristic.FlagbearerTargetRule	bool
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -27964,6 +27969,7 @@ movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttac
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].SourceName	string
 movesAwaitingTokens[].damageTail.sourceLki.ExtraRestrictions	number:uint8
+movesAwaitingTokens[].damageTail.sourceLki.FlagbearerTargetRule	bool
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities	array
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -37527,6 +37533,7 @@ movesAwaitingTokens[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].SourceName	string
 movesAwaitingTokens[].sourceLki.ExtraRestrictions	number:uint8
+movesAwaitingTokens[].sourceLki.FlagbearerTargetRule	bool
 movesAwaitingTokens[].sourceLki.GrantedAbilities	array
 movesAwaitingTokens[].sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -49389,6 +49396,7 @@ pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAtta
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.ExtraRestrictions	number:uint8
+pendingChoices[].damageAssignment.SourceLKI.FlagbearerTargetRule	bool
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -50419,6 +50427,7 @@ pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].OnlyPlayersWhoAttac
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].SourceName	string
 pendingChoices[].divideShield.staged[].lki.ExtraRestrictions	number:uint8
+pendingChoices[].divideShield.staged[].lki.FlagbearerTargetRule	bool
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities	array
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -50693,6 +50702,7 @@ pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].OnlyPlayersWh
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].SourceName	string
 pendingChoices[].divideShield.staged[].sourceLki.ExtraRestrictions	number:uint8
+pendingChoices[].divideShield.staged[].sourceLki.FlagbearerTargetRule	bool
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities	array
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -57153,6 +57163,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].SourceName	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.ExtraRestrictions	number:uint8
+pendingChoices[].replacementResume.event.damageTail.sourceLki.FlagbearerTargetRule	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -66716,6 +66727,7 @@ pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].OnlyPlayers
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].SourceName	string
 pendingChoices[].replacementResume.event.sourceLki.ExtraRestrictions	number:uint8
+pendingChoices[].replacementResume.event.sourceLki.FlagbearerTargetRule	bool
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities	array
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -75699,6 +75711,7 @@ pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYo
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].SourceName	string
 pendingChoices[].targetWalk.frame.lki.ExtraRestrictions	number:uint8
+pendingChoices[].targetWalk.frame.lki.FlagbearerTargetRule	bool
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities	array
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[]	object
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -76618,6 +76631,7 @@ pendingChoices[].triggerFrame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bo
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].SourceName	string
 pendingChoices[].triggerFrame.lki.ExtraRestrictions	number:uint8
+pendingChoices[].triggerFrame.lki.FlagbearerTargetRule	bool
 pendingChoices[].triggerFrame.lki.GrantedAbilities	array
 pendingChoices[].triggerFrame.lki.GrantedAbilities[]	object
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
