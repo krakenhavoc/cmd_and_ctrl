@@ -582,6 +582,11 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 		if problem := exceptObjectsScopeProblem(e.Scope, e.Mods); problem != "" {
 			unknown = append(unknown, problem)
 		}
+		// #6237: a query-filtered record's filter rides its mods, and a
+		// record with the scope and no query is a newer shape.
+		if problem := matchingScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}

@@ -761,7 +761,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects:
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects,
+		ScopeCreaturesMatching, ScopeOpponentsCreaturesMatching:
 		return true
 	}
 	return false
@@ -775,6 +776,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 func scopeReadsLayerResult(scope AffectedScope) bool {
 	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands ||
 		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue ||
+		scopeMatchesQueries(scope) ||
 		scope == ScopeCreaturesPowerThreeOrLess
 }
 
@@ -913,8 +915,21 @@ type Mod struct {
 	// to the rest of its instance and to nothing else. Both are written. A
 	// record from before SpentInstance existed has SpentBatch alone and
 	// reads as it did, applying for the rest of that batch.
-	SourceZone    ZoneKind         `json:"sourceZone,omitempty"`
-	Queries       []PermanentQuery `json:"queries,omitempty"`
+	SourceZone ZoneKind         `json:"sourceZone,omitempty"`
+	Queries    []PermanentQuery `json:"queries,omitempty"`
+	// Match is the FILTER of a query-filtered scope (#6237,
+	// scope_matching.go): "creatures with defender", "creatures with
+	// power less than or equal to that number". Any of them matching
+	// puts a creature in the record's affected set, read live at every
+	// layer pass against effective characteristics.
+	//
+	// A field of its own rather than Queries, which is
+	// ModPreventNextFromSource's CR 615.9 recheck and is policed as a
+	// damage-source field: two different questions, two fields, and the
+	// guard that keeps a damage field off any other kind keeps working.
+	// Read only on an addRestrictions mod under a query-filtered scope
+	// (matchingScopeProblem).
+	Match         []PermanentQuery `json:"match,omitempty"`
 	SpentBatch    uint64           `json:"spentBatch,omitempty"`
 	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
 	// Half is ModPreventNextFromSource's "prevent half that damage,
@@ -2060,6 +2075,11 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 	if problem := exceptObjectsScopeProblem(scope, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
+	// #6237: a query-filtered record carries one addRestrictions mod per
+	// filter, each with at least one query (scope_matching.go).
+	if problem := matchingScopeProblem(scope, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
 	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
 	// programming error at registration, caught by the first test.
 	if problem := d.Problem(); problem != "" {
@@ -2102,6 +2122,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
+		m.Match = clonePermanentQueries(m.Match)
 		m.SourceFilter = cloneSourceFilters(m.SourceFilter)
 		m.RecipientFilter = cloneRecipientFilters(m.RecipientFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
@@ -2454,9 +2475,14 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 			continue
 		}
 		applies := scopePredicate(e.Scope, e.Controller)
-		if e.Scope == ScopeCreaturesExceptObjects {
+		switch {
+		case e.Scope == ScopeCreaturesExceptObjects:
 			// #6087: the spared objects ride the record's mods.
 			applies = exceptObjectsPredicate(e.Mods)
+		case scopeMatchesQueries(e.Scope):
+			// #6237: the filter rides the record's mods, as the spared
+			// objects do (scope_matching.go).
+			applies = matchingQueriesPredicate(e.Mods, e.Scope, e.Controller)
 		}
 		for j := range g.Battlefield.Cards {
 			target := &g.Battlefield.Cards[j]
