@@ -49,13 +49,7 @@ func init() {
 // ulamogsNullifierCandidates are the cards in exile an opponent of `you`
 // owns.
 func ulamogsNullifierCandidates(g *game.Game, you uuid.UUID) []uuid.UUID {
-	var out []uuid.UUID
-	for _, c := range g.Exile.Cards {
-		if c.Owner != uuid.Nil && c.Owner != you && !c.IsToken() {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
+	return effects.OldB305OpponentExileCards(g, you)
 }
 
 // ulamogsNullifierYes asks for the two cards. An on-disk key.

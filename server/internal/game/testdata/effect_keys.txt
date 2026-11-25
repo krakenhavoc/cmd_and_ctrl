@@ -1243,6 +1243,7 @@ choose choose-cards/mind-extraction-discard-wubrg
 choose choose-cards/mind-extraction-discard-wug
 choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
+choose choose-cards/mind-raker-picked
 choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
 choose choose-cards/mind-swords-exile-two
@@ -1359,6 +1360,7 @@ choose choose-cards/moorland-rescuer-total-power-unbounded
 choose choose-cards/mordor-on-the-march-exile
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
+choose choose-cards/murk-strider-picked
 choose choose-cards/myr-battlesphere-tap
 choose choose-cards/nael-avizoa-aeronaut-arranged
 choose choose-cards/nahiri-heir-of-the-ancients-attach-equipment
@@ -1734,6 +1736,7 @@ choose choose-cards/twilight-diviner-copy
 choose choose-cards/twilight-prophet-take
 choose choose-cards/tymaret-calls-the-dead-exile
 choose choose-cards/ulamogs-nullifier-picked
+choose choose-cards/ulamogs-reclaimer-picked
 choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
 choose choose-cards/ultimecia-exile
@@ -1770,6 +1773,7 @@ choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
+choose choose-cards/wasteland-strangler-picked
 choose choose-cards/watchers-of-the-dead-keep
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
@@ -2104,6 +2108,7 @@ confirm confirm/magnanimous-magistrate-reprieve
 confirm confirm/mask-of-memory-loot
 confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
+confirm confirm/mind-raker-confirm
 confirm confirm/mindleech-mass-look-and-cast
 confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
@@ -2114,6 +2119,7 @@ confirm confirm/moss-pit-skeleton-top-of-library
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
 confirm confirm/multiform-wonder-pump
+confirm confirm/murk-strider-confirm
 confirm confirm/myr-custodian-scry
 confirm confirm/myriad-copy
 confirm confirm/mystic-remora-draw
@@ -2230,6 +2236,7 @@ confirm confirm/turtles-in-time-ask
 confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
 confirm confirm/ulamogs-nullifier-put
+confirm confirm/ulamogs-reclaimer-confirm
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/urza-assembles-the-titans-reveal
 confirm confirm/uss-enterprise-c-discard-hand
@@ -2250,6 +2257,7 @@ confirm confirm/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
+confirm confirm/wasteland-strangler-confirm
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/wernog-riders-chaplain
 confirm confirm/wheel-of-potential-exile-hand
@@ -5197,10 +5205,12 @@ tail then/memories-returning-bottomed
 tail then/memories-returning-taken
 tail then/metamorphosis-color-chosen
 tail then/midnight-clock-after-tuck
+tail then/mind-raker-then
 tail then/mindbreak-trap-exile-rest
 tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/murk-strider-then
 tail then/mystery-key-draw-three
 tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
@@ -5353,6 +5363,7 @@ tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/ulamogs-nullifier-counter
+tail then/ulamogs-reclaimer-then
 tail then/unmoored-ego-draw
 tail then/unmoored-ego-named
 tail then/unnatural-selection-type-chosen
@@ -5372,6 +5383,7 @@ tail then/vision-charm-land-type-chosen
 tail then/volcanic-offering-damage
 tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
+tail then/wasteland-strangler-then
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled
