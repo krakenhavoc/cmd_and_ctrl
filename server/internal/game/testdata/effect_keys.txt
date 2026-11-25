@@ -2260,6 +2260,7 @@ milluntil until/instant-or-sorcery-card
 milluntil until/land-card
 milluntil until/legendary-card
 milluntil until/nonland-card
+milluntil until/starrix-n-permanent-cards
 milluntil until/strago-and-relm-hit
 milluntil until/total-mana-value
 number assist/help-pay-for-a-spell
@@ -4607,6 +4608,7 @@ tail spiritmonger/color-chosen
 tail ss-botany-bay/then-you
 tail stangg-echo-warrior/copies-created
 tail stangg-echo-warrior/twin-created
+tail starrix/after-exile
 tail std-b26/come-back-wrong-return
 tail std-b26/nashi-after-mill
 tail std-b26/niko-after-exile
