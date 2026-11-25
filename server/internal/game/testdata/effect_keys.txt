@@ -2423,6 +2423,7 @@ option option-pick/copy-for-each-could-target-order
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/craig-boone-damage
+option option-pick/creeping-renaissance-type
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
@@ -2521,6 +2522,7 @@ option option-pick/mercurial-transformation-shape
 option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
+option option-pick/moonlight-bargain-card
 option option-pick/morgul-knife-wound-pay-or-exile
 option option-pick/multiform-wonder-keyword
 option option-pick/multiple-choice-player
@@ -5047,6 +5049,7 @@ tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
+tail then/jeskai-infiltrator-exiled
 tail then/jinx-delayed-draw
 tail then/kaito-dancing-shadow-bounced
 tail then/kaya-intangible-slayer-copy
