@@ -60,6 +60,10 @@ func anyColorSpendRows(v reflect.Value) []string {
 			who = "Players may"
 		}
 		switch {
+		case s.From != "" && s.To != "":
+			out = append(out, fmt.Sprintf("%s spend %s mana as though it were %s mana.", who, manaColorWords[s.From], manaColorWords[s.To]))
+		case s.From != "" && s.OthersOnlyColorless:
+			out = append(out, fmt.Sprintf("%s spend %s mana as though it were mana of any color. %s spend other mana only as though it were colorless mana.", who, manaColorWords[s.From], who))
 		case s.Covers != nil && strings.TrimSpace(s.Label) != "":
 			out = append(out, strings.TrimSpace(s.Label))
 		case s.Covers != nil:

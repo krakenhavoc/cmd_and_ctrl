@@ -193,7 +193,7 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 	quality := SourceCharacteristics(&aura)
 	var out LegalTargets
 	for _, id := range matches.Players {
-		if ev.auraHostCreaturesOnly {
+		if ev.auraHostCreaturesOnly || ev.auraHostYouControlOnly {
 			continue
 		}
 		p := g.playerByIDLocked(id)
@@ -224,7 +224,10 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 			if ev.auraHostCreaturesOnly && !host.IsCreature() {
 				continue
 			}
-		} else if ev.auraHostCreaturesOnly {
+			if ev.auraHostYouControlOnly && host.Controller != chooser {
+				continue
+			}
+		} else if ev.auraHostCreaturesOnly || ev.auraHostYouControlOnly {
 			// "Only creatures can be enchanted this way": a card in a
 			// graveyard is not one (Animate Dead's own clause is skipped).
 			continue

@@ -67,7 +67,7 @@ func DevotionToColors(g *game.Game, controller uuid.UUID, colors ...string) int 
 			}
 		}
 	}
-	return n
+	return n + DevotionBonusFor(g, controller)
 }
 
 func SymbolIsAnyColor(options, colors []string) bool {

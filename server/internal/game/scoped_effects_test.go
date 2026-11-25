@@ -403,6 +403,12 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// #6160: Mystic Reflection's one-shot entry copy. Its cases are in
+		// scoped_enter_as_copies_test.go.
+		ModNextEntersAsCopies: true,
+		// #6147: its "this turn" sibling over any permanents. Its cases
+		// are in scoped_permanents_enter_tapped_test.go.
+		ModPermanentsEnterTapped: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,

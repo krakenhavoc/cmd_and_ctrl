@@ -357,6 +357,16 @@ type ExileCost struct {
 	// client already has (exile_cost_any_number), so the wire is unchanged.
 	// Build it with effects.ExileXFromGraveyardAsCost.
 	CountIsX bool
+
+	// TopOnly is "Exile the top <kind> card of your graveyard" (#6194:
+	// Zombie Scavengers, Necratog, Alms, Nature's Kiss): the clause names
+	// no card of the payer's choosing, but the topmost N cards of the pile
+	// that match it (CR 404.2: a graveyard is kept in order, and the
+	// last card of Zone.Cards is its top). The walk offers exactly those,
+	// so the picker, the payable check and the validator agree. A
+	// graveyard clause with a printed count only; effects.Register
+	// refuses it elsewhere. False is every clause before it, additive.
+	TopOnly bool
 }
 
 // TotalManaValue is the sum of `cards`' mana values as they sit in a
@@ -571,6 +581,10 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 		}
 		out = append(out, c.InstanceID)
 	}
+	if cost.TopOnly {
+		// #6194: only the topmost N matches, never one below them.
+		out = topOfPileOrder(out, g.ExileCostCountForEffect(playerID, cost))
+	}
 	return out
 }
 
@@ -675,6 +689,10 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 			return nil, ErrCardNotFound
 		}
 		if !g.exileCostOwnerOKLocked(playerID, sourceID, cost, c) || !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
+			return nil, ErrInvalidParam
+		}
+		if cost.TopOnly && !slices.Contains(g.ExileCostOptionsForEffect(playerID, sourceID, cost), id) {
+			// #6194: a matching card below the topmost N is not "the top".
 			return nil, ErrInvalidParam
 		}
 		named = append(named, *c)
