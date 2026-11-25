@@ -910,6 +910,12 @@ type playerSnapshot struct {
 	// v9: a file written before it restores with 0, which reads as "has
 	// begun no extra turn this game".
 	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
+	// LifeAsTurnBegan and LifeAsTurnBeganSeq are Player's (#6164): the
+	// life total as the turn began and the turn it was taken on. Additive
+	// within v9: a file written before them restores with seq 0, which
+	// matches no turn, and the reader falls back to the current life.
+	LifeAsTurnBegan    int `json:"lifeAsTurnBegan,omitempty"`
+	LifeAsTurnBeganSeq int `json:"lifeAsTurnBeganSeq,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -3424,6 +3430,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderDamage:            copyIntMap(p.CommanderDamage),
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -4648,6 +4656,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		HasSideboard:               p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),

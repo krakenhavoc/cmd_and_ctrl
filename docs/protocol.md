@@ -3974,6 +3974,15 @@ Feral Hydra, Excavation) says everyone.
   `game: caller does not control this card`. The row rides the per-seat
   copy as an `any_player` row does; the client opens it to the viewer
   whose ID is `activator` and greys it for everyone else.
+- **`defending_player_only: true` on the row** (2026-11-25, #6170). "Only
+  the player this creature is attacking may activate this ability"
+  (Capricopian). Additive, absent on every other row. The server refuses
+  everyone but the seat the card's `attacking_target` names (a player,
+  not a planeswalker or battle), the controller included, with `game:
+  caller does not control this card`, and so everyone while the creature
+  is not attacking a player. The row rides the per-seat copy as an
+  `any_player` row does; the client opens it to that seat and greys it
+  for everyone else.
 - **Each seat's copy is stamped for that seat.** For a seat that does
   not control the permanent, every `any_player` row is computed with that
   seat as the activator: `charged_mana_cost`, `life_cost`,

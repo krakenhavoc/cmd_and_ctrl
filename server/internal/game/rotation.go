@@ -327,6 +327,8 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// also drops any added phase the old turn never reached.
 	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
+	// #6164: every player's life total as this turn began.
+	g.stampLifeAsTurnBeganLocked()
 	// S79 (#5075): "skips all combat phases of their next turn" arms as
 	// that player's turn really begins (skip_combat_phases.go).
 	g.armCombatSkipsLocked()
