@@ -926,6 +926,7 @@ choose choose-cards/ecological-appreciation-settle
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
 choose choose-cards/eivor-wolf-kissed-put
+choose choose-cards/elaborate-firecannon-untap
 choose choose-cards/eladamri-korvecdal-reveal
 choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
