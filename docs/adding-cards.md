@@ -3883,6 +3883,26 @@ d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
 read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
 `CatalogAbilityKey` are what follow the exchange.
 
+### "Has the full text of" the top card of your graveyard (ADR 0160 amendment 2026-11-25, #6233)
+
+Volrath's Shapeshifter (CR 612.6) declares the static as data, and keeps
+its own activated ability through a grant:
+
+```go
+const keep = "volraths-shapeshifter/discard"
+var discard effects.ActivatedAbility // the "{2}: Discard a card." ability
+effects.Spec{
+    FullTextOfTopGraveyardCreature: &game.FullTextStatic{Keep: keep},
+    Activated: []effects.ActivatedAbility{discard},
+    Grants: []effects.AbilityGrant{{Key: keep, Text: "{2}: Discard a card.", Activated: []effects.ActivatedAbility{discard}}},
+}
+```
+
+The engine writes the top creature card's values (name, cost, colour,
+types, abilities, P/T) onto the permanent before every layer pass and
+takes them off when the top card changes (`game/full_text.go`). The
+overlay is not copiable and ends when the permanent leaves.
+
 ### Changing one word of a card's text (ADR 0160 amendment 2026-10-15)
 
 "Replace all instances of one color word / basic land type / creature

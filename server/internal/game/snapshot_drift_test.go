@@ -596,6 +596,9 @@ var cardFields = plan(
 	// entry copy that a Cytoshape overwrote. Not derivable from the
 	// board once the copy has landed, so carried like PrintedSelf.
 	"DurationCopyBase", carried, "",
+	// #6233: the printed values under a full-text overlay (CR 612.6).
+	// Carried for DurationCopyBase's reason.
+	"FullTextBase", carried, "",
 	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
 	// clause granted. Carried, and carriable at all, because it holds
 	// catalog KEYS rather than closures — the abilities themselves
