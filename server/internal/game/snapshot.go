@@ -1342,6 +1342,9 @@ type cardSnapshot struct {
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
+	// TributePaid is CR 702.104a's paid tribute (#6251). Old snapshots
+	// have no key and read "not paid", which only a tribute card reads.
+	TributePaid bool `json:"tributePaid,omitempty"`
 	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
 	// duration. Carried for ChosenPlayer's reason: a player made the
 	// choices and nothing can re-derive them, so a restore that lost
@@ -3327,6 +3330,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenCard:                 objectRefPtr(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
 		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
 		Solved:                     c.Solved,
@@ -4520,6 +4524,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenCard:                 objectRefValue(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
 		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
 		Solved:                     c.Solved,
