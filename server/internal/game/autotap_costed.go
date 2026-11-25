@@ -137,7 +137,7 @@ func (g *Game) autoTapCostedPrice(asker uuid.UUID, source Card, a ManaAbilitySha
 		return ParsedCost{}, false
 	}
 	for _, r := range priced.Required {
-		if r.Phyrexian || r.HasNumericAlt || r.Snow || r.AnyMana || len(r.Options) == 0 {
+		if r.Phyrexian || r.HasNumericAlt || r.Snow || r.SnowAny || r.AnyMana || len(r.Options) == 0 {
 			return ParsedCost{}, false
 		}
 	}
