@@ -46,3 +46,16 @@ func Foretell(cost string) game.SpecialAction {
 func (c *Context) SpellWasForetold() bool {
 	return c.Item != nil && c.Item.Foretold
 }
+
+// DiscardAnyTimeYouCouldCastAnInstant is "You may discard this card any
+// time you could cast an instant." (Circling Vultures, CR 116.2e, #6224):
+// a special action that discards the card from its owner's hand, free,
+// with priority and outside split second (game/discard_special_action.go).
+//
+//	SpecialActions: []game.SpecialAction{DiscardAnyTimeYouCouldCastAnInstant()},
+func DiscardAnyTimeYouCouldCastAnInstant() game.SpecialAction {
+	return game.SpecialAction{
+		Kind:  game.SpecialActionDiscard,
+		Label: "Discard this card",
+	}
+}
