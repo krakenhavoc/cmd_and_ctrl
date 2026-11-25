@@ -1072,6 +1072,7 @@ choose choose-cards/kaya-spirits-justice-exile
 choose choose-cards/kazandu-stomper-return-lands
 choose choose-cards/keldon-flamesage
 choose choose-cards/kellan-the-kid-if-you-dont
+choose choose-cards/kheru-mind-eater-exile
 choose choose-cards/king-narfis-betrayal-exile
 choose choose-cards/kinscaer-sentry-put
 choose choose-cards/kiora-sovereign-of-the-deep-cast
@@ -2803,6 +2804,7 @@ payunless pay-unless/corpses-of-the-lost-return
 payunless pay-unless/counter-guarded
 payunless pay-unless/counter-guarded-exile
 payunless pay-unless/cradle-of-vitality-counters
+payunless pay-unless/crosis-the-purger-color
 payunless pay-unless/crystal-shard-return-to-hand
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cumulative-upkeep-paid-or-sacrificed
@@ -5023,6 +5025,7 @@ tail then/coveted-prize-free-cast
 tail then/created-gain-keyword-until-eot
 tail then/creeping-chill-drain
 tail then/crippling-fear-type-chosen
+tail then/crosis-the-purger-discard-the-color
 tail then/crystal-spray-draw
 tail then/curse-of-silence-draw
 tail then/dance-with-calamity-exiled
