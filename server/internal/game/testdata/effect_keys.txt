@@ -1774,6 +1774,7 @@ choose choose-cards/winter-cynical-opportunist-exile
 choose choose-cards/winter-cynical-opportunist-put
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
+choose choose-cards/wolf-of-devils-breach-damage
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
 choose choose-cards/xenagos-the-reveler-put
@@ -3097,6 +3098,7 @@ payunless pay-unless/wharf-infiltrator-eldrazi-horror
 payunless pay-unless/widespread-thieving-play
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/withdraw-return-to-hand
+payunless pay-unless/wolf-of-devils-breach-discard
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zhentarim-bandit-treasure
 payunless pay-unless/zoraline-cosmos-caller-return
