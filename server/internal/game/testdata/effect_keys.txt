@@ -1788,6 +1788,7 @@ coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
 coinflip coin-flip/mana-crypt-damage
+coinflip coin-flip/mogg-assassin
 coinflip coin-flip/mutalith-vortex-beast-warp-vortex
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
@@ -2402,6 +2403,7 @@ option option-pick/coin-of-fate-opponent
 option option-pick/comet-stellar-pup-damage-player
 option option-pick/contractual-safeguard-kind
 option option-pick/contractual-safeguard-shield
+option option-pick/copy-for-each-could-target-order
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/craig-boone-damage
@@ -2452,6 +2454,7 @@ option option-pick/flicker-return-under-an-opponent
 option option-pick/gap-b82-indoraptor-answer
 option option-pick/gap-b82-owen-grady-counter
 option option-pick/gap-caves-of-androzani-counter
+option option-pick/garth-one-eye-name
 option option-pick/ghostly-dancers-return-or-unlock
 option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first

@@ -6466,12 +6466,17 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	// holds priority; the departed seat is no longer waited for.
 	g.restartPassSuccessionLocked()
 	g.cleanupStackForEliminatedLocked(p.ID)
+	// #6164: Amount is the player's life total as the turn began, which
+	// "that player's life total as the turn began" (Sengir, the Dark
+	// Baron) reads off the event its trigger captured.
+	asBegan, _ := g.LifeAsTurnBeganForEffect(p.ID)
 	g.EmitEvent(Event{
 		Kind:   EventPlayerEliminated,
 		Actor:  p.ID,
 		Source: source,
 		CardID: source,
 		Label:  string(cause),
+		Amount: asBegan,
 	})
 	// #769 / CR 800.4a: everything they own leaves the game, their
 	// control effects end, and anything still controlled by them is
