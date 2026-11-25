@@ -122,6 +122,13 @@ func BlockingSource(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// BlockingOrBlockedBySource is "creature blocking or blocked by this
+// creature" (Steadfast Armasaur): either of the two relations above.
+func BlockingOrBlockedBySource(spec *game.TargetSpec) *game.TargetSpec {
+	spec.CombatWithSource = game.SourceCombat{Of: game.CombatOfSource, Role: game.CombatBlockingOrBlockedBy}
+	return spec
+}
+
 // BlockingEquipped is "creature that's blocking equipped creature" (or
 // enchanted creature): a blocker of the permanent the ability's source
 // is attached to. An unattached source has no such creature and admits

@@ -351,7 +351,7 @@ func TestRegisterRefusesMalformedTapAdditionalCosts(t *testing.T) {
 	xTap.TapOthers.Count = 0
 	xTap.TapOthers.Filter.CountFromX = true
 	optional := *effects.TapUntappedCost(1, "an untapped creature you control", effects.Creature())
-	optional.Optional, optional.Key = true, "kicker"
+	optional.Optional, optional.Key = true, "buyback"
 	branchX := effects.TapUntappedCost(1, "X untapped artifacts you control", effects.Artifact())
 	branchX.TapOthers.Count = 0
 	branchX.TapOthers.Filter.CountFromX = true

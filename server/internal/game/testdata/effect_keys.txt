@@ -113,6 +113,7 @@ body commander/return-listed-to-command-zone
 body conduit-of-emrakul/add-colorless
 body conduit-of-storms/add-red
 body conjure/sigardian-evangel-discard
+body conquerors-galleon/exile-and-return-transformed
 body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/sea-gate-stormcaller-the-spell-just-cast
@@ -863,6 +864,7 @@ choose choose-cards/connive-x-discarded
 choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/contagious-vorrac-take
+choose choose-cards/conundrum-sphinx-take
 choose choose-cards/coral-atoll-return-an-untapped-island
 choose choose-cards/corpse-appraiser-take
 choose choose-cards/cosmic-cube-cast
@@ -930,6 +932,7 @@ choose choose-cards/ecological-appreciation-settle
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
 choose choose-cards/eivor-wolf-kissed-put
+choose choose-cards/elaborate-firecannon-untap
 choose choose-cards/eladamri-korvecdal-reveal
 choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
@@ -975,6 +978,7 @@ choose choose-cards/floriferous-vinewall-take
 choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
 choose choose-cards/formidable-speaker-search
+choose choose-cards/fortunate-few-pick
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/founding-the-third-path-cast
 choose choose-cards/gandalf-party-guest-cast
@@ -1014,6 +1018,7 @@ choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/green-suns-twilight-picked
 choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
+choose choose-cards/grim-captains-call-type
 choose choose-cards/grime-gorger-exile
 choose choose-cards/gruesome-menagerie
 choose choose-cards/guided-passage-picked
@@ -1094,6 +1099,7 @@ choose choose-cards/lazav-wearer-of-faces-copy
 choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
+choose choose-cards/leave-chance-discarded
 choose choose-cards/ledger-shredder-connive
 choose choose-cards/left-right-piles
 choose choose-cards/legion-angel-take
@@ -1764,6 +1770,7 @@ choose choose-cards/ward-sacrifice-a-permanent-with-mana-value-1-or-greater
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
+choose choose-cards/watchers-of-the-dead-keep
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
 choose choose-cards/wick-the-whorled-mind-snail
@@ -1778,6 +1785,7 @@ choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
 choose choose-cards/xenagos-the-reveler-put
+choose choose-cards/yahennis-expertise-cast
 choose choose-cards/yggdrasil-return
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yotia-declares-war-tap
@@ -2133,6 +2141,7 @@ confirm confirm/pay-life-draw
 confirm confirm/peace-in-our-time-draw
 confirm confirm/pemmins-aura-pump
 confirm confirm/phyrexian-dragon-engine-discard-hand
+confirm confirm/pias-revolution-opponent-answer
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
@@ -2353,7 +2362,9 @@ drawthen wiretapping/after-draw
 drawthen yunas-decision/put
 keywordinstead eligeth-draw-instead-of-scry
 keywordinstead return-this-instead-of-learning
+maycast may-cast/free-play-back-land-or-exile
 maycast may-cast/free-play-back-land-or-hand
+maycast may-cast/free-play-land-or-exile
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
@@ -3725,6 +3736,7 @@ tail blighted/blight/sourbread-auntie-tokens
 tail blighted/blight/ward-blight
 tail blighted/blight/warren-torchmaster-when-you-do
 tail blitzwing/convert-if-none-lost
+tail blood-tribute/gain-the-life-lost
 tail bloodthirsty-adversary/copy-and-cast
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
@@ -3771,6 +3783,7 @@ tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail carrion-locust/lose-life
 tail cartographers-hawk/search-for-a-plains
+tail cauldron-dance/entered
 tail cease/gain-and-draw
 tail cemetery-desecrator/exiled
 tail cemetery-tampering/offer-the-exiled-card
@@ -3826,8 +3839,10 @@ tail connive/each
 tail connive/kamiz-obscura-oculus
 tail connive/x
 tail conspiracy/agenda-named
+tail conundrum-sphinx/named
 tail copy-and-cast/cast-copies-then-exile-self
 tail copy-and-cast/mnemonic-deluge-three-copies
+tail copy-and-cast/spelltwine-both-then-exile-self
 tail cori-steel-cutter/offer-attach
 tail corpse-appraiser/look-at-top-three
 tail counter/double-if-grew
@@ -4586,6 +4601,7 @@ tail read-the-runes/sacrificed
 tail reality-fracture-helpers/after-exile
 tail reality-fracture/surveil-keep-noncreature-nonland
 tail realms-uncharted/choose
+tail reason-believe/rest-to-hand
 tail recipient/cant-be-regenerated-if-dealt-damage
 tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to

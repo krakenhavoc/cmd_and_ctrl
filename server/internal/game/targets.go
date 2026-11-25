@@ -2039,6 +2039,10 @@ const (
 	// reference creature, which is itself attacking ("creature
 	// blocking equipped creature").
 	CombatBlocking CombatRole = "blocking"
+	// CombatBlockingOrBlockedBy: the candidate is either of the two
+	// above ("creature blocking or blocked by this creature", Steadfast
+	// Armasaur).
+	CombatBlockingOrBlockedBy CombatRole = "blocking_or_blocked_by"
 )
 
 // SourceCombat is one combat relation between a candidate and the
@@ -2118,6 +2122,18 @@ func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	case CombatBlocking:
 		return ref.attacking && c.IsBlockingAttacker(ref.id)
+	case CombatBlockingOrBlockedBy:
+		if ref.attacking && c.IsBlockingAttacker(ref.id) {
+			return true
+		}
+		if c.AttackingTarget == uuid.Nil {
+			return false
+		}
+		for _, a := range ref.blocks {
+			if a == c.InstanceID {
+				return true
+			}
+		}
 	}
 	return false
 }
