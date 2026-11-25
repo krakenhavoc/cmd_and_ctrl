@@ -2725,6 +2725,7 @@ option option-pick/zara-renegade-recruiter-attack
 option option-pick/zevlor-chosen
 option option-pick/zimones-hypothesis-parity
 option option-pick/zndrsplts-judgment-friend-or-foe
+option option/each-player-chooses-as-enters
 option option/untap-type-choice
 option planechase/bottom-order
 option planechase/order-top-two
