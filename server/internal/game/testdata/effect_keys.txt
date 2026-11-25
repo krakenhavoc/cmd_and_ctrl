@@ -3311,6 +3311,7 @@ run prompt-run/highcliff-felidar-destroy
 run prompt-run/hollow-marauder-draws
 run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
+run prompt-run/idris-soul-of-the-tardis-imprint
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/indoctrination-attendant-return

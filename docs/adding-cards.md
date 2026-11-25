@@ -5898,6 +5898,18 @@ the card. Read "that player" off the trigger (`item.Trigger.Event.Actor` for an
 upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
 library.
 
+### Putting exiled cards onto the battlefield face down (#6092, CR 708.2)
+
+"Put all creature cards exiled with this enchantment onto the battlefield face
+down under your control. They're 2/2 Cyberman artifact creatures." (Death in
+Heaven) is `game.ReturnFromExileFaceDownForEffect(cardID, controller, tapped,
+listed)`, the exile twin of `ReturnFromGraveyardFaceDownForEffect`: the CR 614
+entry with the face-down state on the event, a new object (CR 400.7), known to
+its controller alone (CR 708.5), with `effects.CybermanBody()` (or nil for the
+plain 2/2) as the listed body. Read "exiled with this" with
+`g.ExiledWithForEffect(game.PermissionCardRef(src))`, which needs the exile to
+have been `Linked`.
+
 
 ### Who assigns combat damage, and to what (#6192, ADR 0224 amendment 2026-11-25)
 
