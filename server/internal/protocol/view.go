@@ -6105,6 +6105,18 @@ type ManaAbilityView struct {
 	// the number of permanents picked is the X. Absent for every other mana
 	// ability.
 	DemandsX bool `json:"demands_x,omitempty"`
+	// RevealCostAnyNumber / Label / Options describe a mana ability's
+	// "Reveal any number of <quality> cards from your hand" (#6085,
+	// game.ManaAbilityShape.RevealCards) — Rosheen, Roaring Prophet. The
+	// label and options carry the wire names ActivatedAbilityView's reveal
+	// cost uses; the picker takes any number of the options, none
+	// included, and the chosen cards go back on activate_mana_ability as
+	// `reveal_ids`. The options are the controller's hand, so they are
+	// stamped for the controller only. Absent for every other mana
+	// ability.
+	RevealCostAnyNumber bool     `json:"reveal_cost_any_number,omitempty"`
+	RevealCostLabel     string   `json:"reveal_cost_label,omitempty"`
+	RevealCostOptions   []string `json:"reveal_cost_options,omitempty"`
 	// CostBranches are the ways to pay an either/or part of a mana
 	// ability's cost (#5397, game.ManaAbilityShape.Either): forage,
 	// Thornvault Forager's "{T}, Forage: Add two mana in any combination
@@ -7711,6 +7723,10 @@ func publicManaAbilityRow(v ManaAbilityView) (out ManaAbilityView, private bool)
 		private = private || len(v.ExileCostOptions) > 0
 		v.ExileCostOptions = nil
 	}
+	// #6085: "Reveal any number of …" (Rosheen) lists the controller's
+	// matching hand cards, the leak a CR 602 reveal cost's list is.
+	private = private || len(v.RevealCostOptions) > 0
+	v.RevealCostOptions = nil
 	// #5397: an either/or cost's branches, cleared as a CR 602 row's are.
 	var branchesPrivate bool
 	v.CostBranches, branchesPrivate = publicCostBranches(v.CostBranches)
@@ -10935,6 +10951,13 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 		}
 		// #6125: X in the cost (Wizard's Rockets, Springjack Pasture).
 		views[i].DemandsX = raw[i].DemandsX()
+		// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet), off
+		// the walk the engine validates against.
+		if rc := raw[i].RevealCards; game.RevealCardsAnyNumber(rc) {
+			views[i].RevealCostAnyNumber = true
+			views[i].RevealCostLabel = rc.Label
+			views[i].RevealCostOptions = cardIDStrings(g.RevealCardsOptionsForEffect(controller, card.InstanceID, rc))
+		}
 		// #5397: an either/or cost (forage, Thornvault Forager), each
 		// branch projected through the CR 602 row's projection over the
 		// same fold, so the client runs one branch picker for both

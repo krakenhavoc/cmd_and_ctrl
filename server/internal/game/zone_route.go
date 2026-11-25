@@ -940,7 +940,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// #2530: "exiled with" the permanent whose replacement sent it
 	// here, stamped once the card has actually landed in exile.
 	stampExiledWithLocked(dstZone, ev.CardID, ev.ExiledWith, ev.exiledWithAbility(), g.Turn.Seq)
-	stampExileCounterLocked(dstZone, ev.CardID, ev.ExileCounter)
+	stampExileCounterLocked(dstZone, ev.CardID, ev.ExileCounter, ev.ExileCounterCount)
 	g.stampExiledByAbilityLocked(dstZone, ev.CardID, ev.moveCause())
 	if src.Kind == ZoneStack {
 		// #1318: the source zone decides, not a flag on the route. A

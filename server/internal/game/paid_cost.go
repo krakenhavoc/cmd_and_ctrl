@@ -413,6 +413,13 @@ type PaidCost struct {
 	// X here. Zero on every other record, which keeps its X on the stack
 	// item.
 	XValue int `json:"xValue,omitempty"`
+
+	// Revealed is the cards a mana ability's "Reveal any number of …
+	// cards from your hand" revealed (#6085, ManaAbilityShape.RevealCards),
+	// in the order named: what Rosheen, Roaring Prophet's ProducedForPaid
+	// counts. Only a mana ability's record carries it, and that record
+	// lives for the activation alone (CR 605.3b).
+	Revealed []uuid.UUID `json:"revealed,omitempty"`
 }
 
 // PaidCostBranch reports whether the either/or branch keyed `key` was

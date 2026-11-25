@@ -108,6 +108,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			AddCounter:                a.Cost.AddCounter,
 			DiscardCards:              a.Cost.DiscardCards,
 			ExileCards:                a.Cost.ExileCards,
+			RevealCards:               a.Cost.Reveal,
 			Either:                    manaForageBranches(a.Cost.Forage),
 			Forage:                    a.Cost.Forage,
 			ExilePermanents:           a.Cost.ExilePermanents,

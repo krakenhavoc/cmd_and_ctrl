@@ -6219,6 +6219,15 @@ export interface ManaAbilityView {
   // asks for X (or, for a sacrifice-X clause, takes the number picked) and
   // sends it on activate_mana_ability as `x_value`.
   demands_x?: boolean;
+  // #6085: "Reveal any number of <quality> cards from your hand" — Rosheen,
+  // Roaring Prophet's "{T}: Reveal any number of cards with {X} in their
+  // mana cost in your hand. Add {C}{C} for each card revealed this way."
+  // Any number of `reveal_cost_options`, none included; the picks ride
+  // activate_mana_ability as `reveal_ids`. The options are the
+  // controller's hand, so other viewers never see them.
+  reveal_cost_any_number?: boolean;
+  reveal_cost_label?: string;
+  reveal_cost_options?: string[];
   // #5397: an either/or part of the cost — forage, Thornvault Forager's
   // "{T}, Forage: Add two mana in any combination of colors" (exile three
   // cards from your graveyard, or sacrifice a Food). The same entries

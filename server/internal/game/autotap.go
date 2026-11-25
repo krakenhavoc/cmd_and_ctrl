@@ -1939,6 +1939,11 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.DemandsX() {
 		return false
 	}
+	// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) asks
+	// which cards to show, and keeping them hidden is the player's call.
+	if a.RevealCards != nil {
+		return false
+	}
 	// #1600: and the exile-a-permanent clause one zone over — Food
 	// Chain asks which creature leaves the battlefield, and exiling a
 	// creature the player was keeping is a decision the planner makes
@@ -2051,7 +2056,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.ManaCost != "" {
 		return false
 	}
-	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
+	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.RevealCards != nil || a.ExileSelf {
 		return false
 	}
 	if !a.ExilePermanents.Empty() || a.Branched() {
@@ -2173,7 +2178,7 @@ func (g *Game) autoManaExileAccepts(asker uuid.UUID, source Card, a ManaAbilityS
 	if a.AddCounter != nil || a.RemoveCounters != nil {
 		return false
 	}
-	if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
+	if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || a.RevealCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
 		return false
 	}
 	return true

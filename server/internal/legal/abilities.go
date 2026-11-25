@@ -2467,6 +2467,9 @@ type manaParams struct {
 	// #1600: Food Chain's "Exile a creature you control" — the field
 	// activateParams carries under the same name.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+	// #6085: the cards Rosheen, Roaring Prophet's "Reveal any number of
+	// …" shows — the field activateParams' reveal cost uses.
+	RevealIDs []string `json:"reveal_ids,omitempty"`
 	// #2215: the activation tops up a mana component of its cost from
 	// the seat's other sources. Set on every move whose ability has one.
 	AutoTap bool `json:"auto_tap,omitempty"`
@@ -2794,6 +2797,14 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if !ok {
 			continue
 		}
+		// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) —
+		// ONE move, revealing every matching card, the most mana the
+		// ability can make. Revealing moves nothing, so it does not
+		// compete with the discard or the exile above.
+		var manaRevealIDs []uuid.UUID
+		if game.RevealCardsAnyNumber(ab.RevealCards) {
+			manaRevealIDs = g.RevealCardsOptionsForEffect(e.seat, source.InstanceID, ab.RevealCards)
+		}
 		// #789: the counter components, enumerated by the SAME
 		// functions the activated path uses, because it is the
 		// same component. A Vivid land with no charge counters is
@@ -2895,6 +2906,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								DiscardIDs:        idStrings(manaDiscardIDs),
 								ExileIDs:          idStrings(manaExileIDs),
 								ExilePermanentIDs: idStrings(exiles),
+								RevealIDs:         idStrings(manaRevealIDs),
 								AutoTap:           manaCharged,
 								PhyrexianLife:     manaLife,
 								XValue:            manaMoveX(ab, manaX, sacs),

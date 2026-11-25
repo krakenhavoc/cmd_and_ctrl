@@ -78,7 +78,7 @@ func (g *Game) LandManaOptionsForEffect(player, land uuid.UUID) (opts []LandMana
 		if !ManaAbilityFunctionsFromZone(ab, ZoneBattlefield) {
 			continue
 		}
-		if ab.SacrificeOther != nil || !ab.TapOthers.Empty() || ab.DiscardCards != nil || ab.ExileCards != nil || ab.DemandsX() ||
+		if ab.SacrificeOther != nil || !ab.TapOthers.Empty() || ab.DiscardCards != nil || ab.ExileCards != nil || ab.RevealCards != nil || ab.DemandsX() ||
 			!ab.ExilePermanents.Empty() || ab.ExileSelf || ab.Branched() {
 			continue
 		}

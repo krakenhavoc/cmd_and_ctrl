@@ -490,6 +490,23 @@ type ManaAbilityShape struct {
 	// planner makes none.
 	ExileCards *ExileCost
 
+	// RevealCards is "Reveal any number of <quality> cards from your hand"
+	// (#6085): Rosheen, Roaring Prophet's "{T}: Reveal any number of cards
+	// with {X} in their mana cost in your hand. Add {C}{C} for each card
+	// revealed this way." The reveal is part of the EFFECT, not the cost,
+	// but a mana ability resolves the moment it is activated (CR 605.3b)
+	// with no window between, so the activator names the cards with the
+	// activation (ManaAbilityParams.RevealIDs), as a colour is named up
+	// front (#1443); the cards are revealed as the ability resolves
+	// (CR 701.20a) and recorded on PaidCost.Revealed, which
+	// ProducedForPaid reads. The AnyNumber form only (RevealCardsCost):
+	// zero cards is a legal answer and adds nothing.
+	//
+	// The AUTO-TAPPER never plans an ability that has one, on the
+	// discard's ground: which cards to show is the player's decision, and
+	// keeping them hidden is part of it.
+	RevealCards *RevealCardsCost
+
 	// Either is an either/or part of the activation cost (#5397): the
 	// mana-ability half of AbilityCost.Either, the same plain-data
 	// branches (AbilityCostBranch). The activator announces the branch
