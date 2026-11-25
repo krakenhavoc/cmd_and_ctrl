@@ -334,6 +334,17 @@ type Characteristic struct {
 	// only ever appended to.
 	DefenderWaivers []DefenderWaiver `json:",omitempty"`
 
+	// TargetingBars are this permanent's "can't be the target of <spells
+	// or abilities with a quality>" statics (#6196, source_targeting_bar.go):
+	// Bartel Runeaxe's Aura spells, Raiding Party's white spells and
+	// abilities from white sources, Artifact Ward's abilities from
+	// artifact sources, Anti-Magic Aura's spells, Lurker's spells until
+	// it attacked or blocked. Written by ordinary layer-6 statics — the
+	// permanent's own, or an Aura's over the creature it enchants — and
+	// only ever appended to. Plain data, so a last-known record carries
+	// them.
+	TargetingBars []SourceTargetingBar `json:",omitempty"`
+
 	// CantBeAttacked is "this permanent can't be attacked" (The
 	// Aetherspark, while it is attached to a creature): the target-keyed
 	// twin of AttackTargetRestrictions. Written by an ordinary layer
@@ -677,6 +688,7 @@ func (c Characteristic) clone() Characteristic {
 	out.PowerGatedGoads = append([]PowerGatedGoad(nil), c.PowerGatedGoads...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.DefenderWaivers = append([]DefenderWaiver(nil), c.DefenderWaivers...)
+	out.TargetingBars = append([]SourceTargetingBar(nil), c.TargetingBars...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	out.CantHave = append([]string(nil), c.CantHave...)
 	out.CostPower = append([]CostPowerRule(nil), c.CostPower...)

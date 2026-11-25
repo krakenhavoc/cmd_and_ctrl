@@ -575,6 +575,16 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if g.scopedTargetingBarLocked(c, src.Controller) {
 		return false
 	}
+	// #6196: "can't be the target of Aura spells", "of white spells or
+	// abilities from white sources", "of abilities from artifact
+	// sources", "of spells unless it attacked or blocked this turn" — a
+	// static on the permanent reading a QUALITY of the source, with
+	// protection's matcher and none of protection's other clauses
+	// (source_targeting_bar.go). Ahead of hexproof, as the other bars
+	// are: no hexproof waiver lifts it.
+	if _, barred := g.sourceTargetingBarLocked(c, src); barred {
+		return false
+	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
