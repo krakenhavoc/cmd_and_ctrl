@@ -2748,6 +2748,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	if g.MulligansOpen && (g.Turn.Step == StepUntap || g.Turn.Step == StepUpkeep) {
 		return
 	}
+	// #6144 (CR 614.10a): "you skip your next untap/draw step" is spent
+	// by the first such step of the player's that exists and that the
+	// window above let through; the cursor walks past it as past any
+	// skipped step (CR 500.11), so it never begins (skip_next_step.go).
+	if g.spendNextStepSkipLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// ADR 0059 Decision 8: the step has really begun, so it counts —
 	// Turn.StepOrdinal, and Turn.PhaseOrdinal when it opens a phase.
 	opensPhase := g.noteStepBegunLocked()

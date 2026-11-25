@@ -186,6 +186,7 @@ body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
 body end-blaze-epiphany/exile-and-choose
 body enlist/pump
+body epic/copy
 body erica-ortegas/return-a-land-you-control
 body escape-protocol/blink
 body esoteric-duplicator/copy-the-artifact

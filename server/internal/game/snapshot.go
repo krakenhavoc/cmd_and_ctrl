@@ -2062,6 +2062,12 @@ type delayedTriggerSnapshot struct {
 	// player's tap (stronger than printed for the caster's opponents, so
 	// a stale snapshot is the only way to see it).
 	ManaTapControllerOnly bool `json:"manaTapControllerOnly,omitempty"`
+
+	// #6141, CR 702.50a: the spell an epic trigger copies. Additive: an
+	// older binary drops the key, but the record names the "epic/copy"
+	// body, which that binary lacks, so it refuses the file
+	// (ErrUnknownEffectKey) rather than firing a copy of nothing.
+	CopiesSpell *EpicSpell `json:"copiesSpell,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -3673,6 +3679,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ManaAdds:           d.ManaAdds,
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
+		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -4855,6 +4862,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ManaAdds:         d.ManaAdds,
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
+		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
