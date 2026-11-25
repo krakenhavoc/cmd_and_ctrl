@@ -236,6 +236,7 @@ body flicker/return-exiled-with-a-plus-one-counter
 body flicker/return-exiled-with-additional-counters
 body flicker/return-exiled-with-flying-counter
 body flicker/return-exiled-with-plus-one-counter
+body flicker/s82-old-b167-return-exiled-creature-with-counter
 body flip/the-source
 body foe-razer-regent/two-counters
 body foray-of-orcs/damage
@@ -3271,6 +3272,7 @@ run prompt-run/s82-old-b062-master-skald-exile
 run prompt-run/s82-old-b064-surtland-flinger-sacrifice
 run prompt-run/s82-old-b106-dire-fleet-warmonger-sacrifice
 run prompt-run/s82-old-b108-lilianas-scrounger-loyalty
+run prompt-run/s82-old-b167-the-elderspell-loyalty
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -5043,6 +5045,7 @@ tail then/s82-old-b105-niambi-gain-life
 tail then/s82-old-b105-track-down-reveal
 tail then/s82-old-b107-chandra-heart-of-fire-cast
 tail then/s82-old-b107-liliana-waker-haste
+tail then/s82-old-b167-the-elderspell-destroyed
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
