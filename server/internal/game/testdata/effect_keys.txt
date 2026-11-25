@@ -5132,6 +5132,8 @@ tail then/fact-or-fiction-take
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
+tail then/firemind-s-foresight-second
+tail then/firemind-s-foresight-third
 tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
@@ -5222,6 +5224,7 @@ tail then/memories-returning-taken
 tail then/metamorphosis-color-chosen
 tail then/midnight-clock-after-tuck
 tail then/mindbreak-trap-exile-rest
+tail then/mirror-match-exile-at-end-of-combat
 tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
@@ -5231,6 +5234,7 @@ tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
 tail then/nahiris-lithoforming-draw
+tail then/necromancers-covenant-zombies
 tail then/necromentia-named
 tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
