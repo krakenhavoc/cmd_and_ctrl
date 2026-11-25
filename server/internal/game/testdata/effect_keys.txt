@@ -1579,6 +1579,8 @@ choose choose-cards/s82-old-b209-aim-counters
 choose choose-cards/s82-old-b212-board-the-weatherlight-take
 choose choose-cards/s82-old-b212-urzas-tome-exile
 choose choose-cards/s82-old-b247-benefaction-of-rhonas-take
+choose choose-cards/s82-old-b314-blight-herder
+choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -3442,6 +3444,7 @@ run prompt-run/s82-old-b167-the-elderspell-loyalty
 run prompt-run/s82-old-b198-fraying-omnipotence-sacrifice
 run prompt-run/s82-old-b243-riches-take
 run prompt-run/s82-old-b244-cruel-reality-lose
+run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -5306,6 +5309,8 @@ tail then/s82-old-b206-fumble-gain-and-attach
 tail then/s82-old-b206-rotfeaster-maggot-gain
 tail then/s82-old-b243-comply-named
 tail then/s82-old-b247-dispossess-named
+tail then/s82-old-b314-blight-herder-scions
+tail then/s82-old-b314-pathway-arrows-tap
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
