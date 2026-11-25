@@ -38,6 +38,8 @@ func Register(spec Spec) {
 	CheckSpecPurposes(spec)
 	// ADR 0208 §5: a sticker sheet's ability stickers.
 	registerStickerSheet(spec)
+	// #6150: a target count set by the kicks.
+	checkCountFromKicks(spec)
 	if spec.Modes != nil {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))

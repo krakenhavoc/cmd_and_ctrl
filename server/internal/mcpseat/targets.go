@@ -262,6 +262,8 @@ func bounds(c protocol.LegalTargetsView) string {
 		return "up to X (your announced X)"
 	case c.CountFromX:
 		return "X (your announced X)"
+	case c.CountFromKicks:
+		return "1 plus the number of times you kick it"
 	case c.Max == 0 && c.Min == 0:
 		return "any number"
 	case c.Max == 0:
@@ -486,7 +488,7 @@ func applyTargets(v *protocol.GameView, m legal.Move, params json.RawMessage, pi
 		}
 	}
 	for k, c := range byClause {
-		if c.CountFromX {
+		if c.CountFromX || c.CountFromKicks {
 			continue
 		}
 		n := len(seen[k])

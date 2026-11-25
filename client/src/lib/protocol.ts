@@ -4776,6 +4776,11 @@ export interface LegalTargetsView {
   // With count_from_x: the announced X is a ceiling ("up to X target
   // cards"), so the picker confirms with any number from 0 to X.
   up_to_x?: boolean;
+  // #6150: the clause's count is one plus the number of times the spell
+  // is kicked ("choose another target for each time this spell was
+  // kicked", Comet Storm). min / max are the unkicked count; the picker
+  // adds the kicks collected in the cost prompt (CastChoices.kicks).
+  count_from_kicks?: boolean;
   // #764: the clause's printed wording, shown in the picker banner
   // when a statement has more than one clause and the banner has to
   // say which question it is asking.
