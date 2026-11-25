@@ -2834,6 +2834,7 @@ payunless pay-unless/drake-haven-drake
 payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
+payunless pay-unless/durable-handicraft-counter
 payunless pay-unless/dutiful-replicator-copy
 payunless pay-unless/dwarven-hammer-dwarf-and-attach
 payunless pay-unless/echo-sacrifice-or-announce
@@ -4473,6 +4474,7 @@ tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nightmare-shepherd/copy
 tail nine-fingers-keene/rest
+tail nissa-natures-artisan/rest-to-hand
 tail nissas-revelation/reveal
 tail nita-forum-conciliator/after-exile
 tail noctis/entered-unblockable
