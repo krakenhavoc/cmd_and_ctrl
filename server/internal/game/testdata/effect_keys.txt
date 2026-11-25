@@ -862,6 +862,7 @@ choose choose-cards/connive-x-discarded
 choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/contagious-vorrac-take
+choose choose-cards/conundrum-sphinx-take
 choose choose-cards/coral-atoll-return-an-untapped-island
 choose choose-cards/corpse-appraiser-take
 choose choose-cards/cosmic-cube-cast
@@ -2351,7 +2352,9 @@ drawthen wiretapping/after-draw
 drawthen yunas-decision/put
 keywordinstead eligeth-draw-instead-of-scry
 keywordinstead return-this-instead-of-learning
+maycast may-cast/free-play-back-land-or-exile
 maycast may-cast/free-play-back-land-or-hand
+maycast may-cast/free-play-land-or-exile
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
@@ -3823,6 +3826,7 @@ tail connive/each
 tail connive/kamiz-obscura-oculus
 tail connive/x
 tail conspiracy/agenda-named
+tail conundrum-sphinx/named
 tail copy-and-cast/cast-copies-then-exile-self
 tail copy-and-cast/mnemonic-deluge-three-copies
 tail cori-steel-cutter/offer-attach

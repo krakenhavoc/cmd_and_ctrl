@@ -66,6 +66,10 @@ const (
 	// to its owner's graveyard through the exit primitive. It is not a
 	// discard (CR 701.9a); the card left the hand when it was exiled.
 	LapseToGraveyard PermissionLapse = "graveyard"
+	// LapseToExile is "if you don't, exile it" for a card still in a
+	// library or hand (Djinn of Wishes, #5526): the card goes to exile
+	// through the ordinary route, so it is not a discard.
+	LapseToExile PermissionLapse = "to_exile"
 )
 
 // DiscoverGrant is CastPermission.Discover: the N and the discovering
@@ -412,6 +416,10 @@ func (g *Game) lapseCastPermissionCollectingLocked(holder uuid.UUID, perm CastPe
 		case LapseToGraveyard:
 			if present {
 				_ = g.putIntoOwnersGraveyardLocked(ref.ID)
+			}
+		case LapseToExile:
+			if present {
+				_ = g.ExileCardForEffect(ref.ID)
 			}
 		case LapseToLibraryBottom:
 			if present && bottom != nil && perm.Zone == ZoneExile {

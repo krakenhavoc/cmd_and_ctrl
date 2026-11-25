@@ -80,6 +80,11 @@ type FreePlayFromTop struct {
 	// Reveal is "reveal the top card" rather than "look at": every seat
 	// learns the card, and the prompt is public.
 	Reveal bool
+	// DeclineToExile is "if you don't, exile it" in place of "put that
+	// card into your hand" (Djinn of Wishes, #5526): the card that is
+	// not played or cast, or that cannot be, is exiled from the library.
+	// Everything else about the offer is the same.
+	DeclineToExile bool
 }
 
 // OfferFreePlayFromTopOrHandForEffect looks at (or reveals) the top
@@ -117,7 +122,7 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	// A land the player can play as the card is, its front face, is the
 	// land offer (a plain land; a Town whose Adventure does not fit).
 	if c.IsLand() && o.Land && g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
-		return g.offerFreePlayLandLocked(o, id, c.Name, freePlayLandOrHand)
+		return g.offerFreePlayLandLocked(o, id, c.Name, o.landThen(freePlayLandOrHand, freePlayLandOrExile))
 	}
 	// #4697: a modal DFC whose back face is a land is played as that face
 	// (CR 712.12). Offered alone when no face is a spell that fits; with
@@ -126,7 +131,7 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 		g.CanPlayLandFaceDuringResolutionForEffect(o.Player, id, 1) {
 		back := c
 		back.SetFace(1)
-		return g.offerFreePlayLandLocked(o, id, back.Name, freePlayBackLandOrHand)
+		return g.offerFreePlayLandLocked(o, id, back.Name, o.landThen(freePlayBackLandOrHand, freePlayBackLandOrExile))
 	}
 	// #4697: "a spell with mana value N or less" is about the spell, so
 	// the card is offered when some face a cast may choose is a spell
@@ -209,8 +214,25 @@ func (g *Game) queueFreeCastFromTopOfferLocked(o FreePlayFromTop, id uuid.UUID, 
 		Candidates:   []uuid.UUID{id},
 		Keyword:      keyword,
 		AcceptLabel:  accept,
-		DeclineLabel: "Put it into your hand",
+		DeclineLabel: o.declineLabel(),
 	})
+}
+
+// landThen picks the land offer's answer: to the hand, or to exile for
+// DeclineToExile.
+func (o FreePlayFromTop) landThen(toHand, toExile MayCastThen) MayCastThen {
+	if o.DeclineToExile {
+		return toExile
+	}
+	return toHand
+}
+
+// declineLabel words the decline of every offer of this shape.
+func (o FreePlayFromTop) declineLabel() string {
+	if o.DeclineToExile {
+		return "Exile it"
+	}
+	return "Put it into your hand"
 }
 
 // playLandForResolutionChoiceLocked is the combined offer's land play
@@ -289,7 +311,13 @@ func (g *Game) dropCardPermissionsLocked(holder, cardID uuid.UUID) {
 // reads is on the prompt: the player (the chooser), the source and the
 // card. An on-disk key: never renamed, never reused.
 var freePlayLandOrHand = RegisterMayCastThen("may-cast/free-play-land-or-hand", func(g *Game, r MayCastAnswer) error {
-	return g.freePlayLandFaceOrHandLocked(r, -1)
+	return g.freePlayLandFaceOrHandLocked(r, -1, false)
+})
+
+// freePlayLandOrExile is freePlayLandOrHand for "if you don't, exile it"
+// (Djinn of Wishes). An on-disk key: never renamed, never reused.
+var freePlayLandOrExile = RegisterMayCastThen("may-cast/free-play-land-or-exile", func(g *Game, r MayCastAnswer) error {
+	return g.freePlayLandFaceOrHandLocked(r, -1, true)
 })
 
 // freePlayBackLandOrHand is freePlayLandOrHand for a modal DFC whose
@@ -297,7 +325,13 @@ var freePlayLandOrHand = RegisterMayCastThen("may-cast/free-play-land-or-hand", 
 // its back face (CR 712.12). An on-disk key: never renamed, never
 // reused.
 var freePlayBackLandOrHand = RegisterMayCastThen("may-cast/free-play-back-land-or-hand", func(g *Game, r MayCastAnswer) error {
-	return g.freePlayLandFaceOrHandLocked(r, 1)
+	return g.freePlayLandFaceOrHandLocked(r, 1, false)
+})
+
+// freePlayBackLandOrExile is freePlayBackLandOrHand for "if you don't,
+// exile it". An on-disk key: never renamed, never reused.
+var freePlayBackLandOrExile = RegisterMayCastThen("may-cast/free-play-back-land-or-exile", func(g *Game, r MayCastAnswer) error {
+	return g.freePlayLandFaceOrHandLocked(r, 1, true)
 })
 
 // freePlayLandFaceOrHandLocked is both land answers: play the card as
@@ -305,8 +339,8 @@ var freePlayBackLandOrHand = RegisterMayCastThen("may-cast/free-play-back-land-o
 // owner's hand on a decline or a play the rules end up ignoring.
 //
 // Caller must hold g.mu (write).
-func (g *Game) freePlayLandFaceOrHandLocked(r MayCastAnswer, face int) error {
-	o := FreePlayFromTop{Player: r.Chooser, Source: r.Source}
+func (g *Game) freePlayLandFaceOrHandLocked(r MayCastAnswer, face int, toExile bool) error {
+	o := FreePlayFromTop{Player: r.Chooser, Source: r.Source, DeclineToExile: toExile}
 	if r.Accepted {
 		played, err := g.PlayLandFaceDuringResolutionForEffect(r.Chooser, r.Card, face)
 		if err != nil {
@@ -332,7 +366,7 @@ func (g *Game) offerFreePlayLandLocked(o FreePlayFromTop, id uuid.UUID, name str
 		Question:     o.SourceName + " — play " + name + "?",
 		Keyword:      MayCastKeywordPlayOrHand,
 		AcceptLabel:  "Play it",
-		DeclineLabel: "Put it into your hand",
+		DeclineLabel: o.declineLabel(),
 		Private:      !o.Reveal,
 	}, then, nil)
 }
@@ -363,6 +397,10 @@ func (g *Game) grantFreeCastFromTopLocked(o FreePlayFromTop, cardID uuid.UUID) b
 // Caller must hold g.mu.
 func (g *Game) freeCastFromTopPermissionLocked(o FreePlayFromTop) *CastPermission {
 	limit := o.MaxManaValue
+	lapse := LapseToHand
+	if o.DeclineToExile {
+		lapse = LapseToExile
+	}
 	return &CastPermission{
 		Player:            o.Player,
 		Zone:              ZoneLibrary,
@@ -371,7 +409,7 @@ func (g *Game) freeCastFromTopPermissionLocked(o FreePlayFromTop) *CastPermissio
 		Timing:            TimingFlash,
 		CastOnly:          true,
 		MaxSpellManaValue: &limit,
-		LapseOnPass:       LapseToHand,
+		LapseOnPass:       lapse,
 		Source:            o.Source,
 		SourceName:        o.SourceName,
 		Label:             o.SourceName + " — cast it without paying its mana cost",
@@ -392,9 +430,13 @@ func (g *Game) putLibraryCardIntoHandLocked(o FreePlayFromTop, cardID uuid.UUID)
 	if !ok {
 		return nil
 	}
+	dst := ZoneHand
+	if o.DeclineToExile {
+		dst = ZoneExile
+	}
 	_, err := g.routeCardToZoneLocked(zoneRoute{
 		CardID:   cardID,
-		Dst:      ZoneHand,
+		Dst:      dst,
 		DstOwner: c.Owner,
 		Actor:    o.Player,
 		Source:   o.Source,
