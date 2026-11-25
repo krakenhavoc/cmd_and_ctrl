@@ -303,6 +303,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		ConditionalLandPlays:                conditionalLandPlays(spec),
 		XMatters:                            spec.XMatters,
 		MadnessLife:                         spec.MadnessLife,
+		CommanderTaxInLife:                  spec.CommanderTaxInLife,
 		XCeiling:                            spec.XCeiling,
 		CastPermissions:                     standingCastPermissions(spec.CastPermissions),
 		GatedCastPermissions:                gatedStandingCastPermissions(spec.GatedCastPermissions),

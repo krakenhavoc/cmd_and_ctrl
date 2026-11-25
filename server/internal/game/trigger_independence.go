@@ -1827,7 +1827,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AttachOnlyTo": defFieldOwnRules,
 	"LifeForMana":  defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantedReplacements": defFieldInert, // a grant bundle's own slot: merged into the composite's Replacements (copy_grants.go)
-	"GrantText":           defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
+	"GrantText":           defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "CommanderTaxInLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
