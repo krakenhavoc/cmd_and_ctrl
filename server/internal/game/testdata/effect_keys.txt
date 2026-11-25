@@ -2808,6 +2808,7 @@ payunless pay-unless/arrogant-poet-flying
 payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
+payunless pay-unless/assemble-the-rank-and-vile-zombie
 payunless pay-unless/assimilate-essence-incubate
 payunless pay-unless/aurora-shifter-copy
 payunless pay-unless/avatar-b30-moku-pump-and-haste
