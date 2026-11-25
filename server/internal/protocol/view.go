@@ -6331,6 +6331,9 @@ type BlockTaxView struct {
 	// Labels are the printed clauses that tax this seat's blocks, one
 	// per clause, for the hint.
 	Labels []string `json:"labels"`
+	// Life is the life the blocks staged now cost (#6191, Heat Wave's
+	// "pays 1 life for each blocking creature"); 0 with none.
+	Life int `json:"life,omitempty"`
 }
 
 // viewOfBlockTaxes is TurnView.BlockTaxes. Caller holds g's lock.
@@ -6344,8 +6347,27 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 			continue
 		}
 		seat := g.Seats[idx].ID
-		row := BlockTaxView{Seat: idx, Cost: g.PriceBlockDeclarationForEffect(seat).Cost}
+		staged := g.PriceBlockDeclarationForEffect(seat)
+		row := BlockTaxView{Seat: idx, Cost: staged.Cost, Life: staged.Life}
 		seen := map[string]bool{}
+		addLabels := func(lines []game.BlockTaxLine) {
+			for _, l := range lines {
+				if !seen[l.Label] {
+					seen[l.Label] = true
+					row.Labels = append(row.Labels, l.Label)
+				}
+			}
+		}
+		addLabels(staged.Lines)
+		// #6191: a tax that reads the attacker blocked (Hipparion,
+		// Heat Wave) shows only against an attacker, so each creature is
+		// also priced against every attacking creature for the hint.
+		var attackers []uuid.UUID
+		for i := range g.Battlefield.Cards {
+			if a := &g.Battlefield.Cards[i]; a.AttackingTarget != uuid.Nil {
+				attackers = append(attackers, a.InstanceID)
+			}
+		}
 		each, uniform := "", true
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
@@ -6358,11 +6380,9 @@ func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
 			} else if price.Cost != each {
 				uniform = false
 			}
-			for _, l := range price.Lines {
-				if !seen[l.Label] {
-					seen[l.Label] = true
-					row.Labels = append(row.Labels, l.Label)
-				}
+			addLabels(price.Lines)
+			for _, a := range attackers {
+				addLabels(g.PriceBlockAdditionForEffect(seat, []game.BlockDeclaration{{Blocker: c.InstanceID, Attacker: a}}).Lines)
 			}
 		}
 		if len(row.Labels) == 0 {
@@ -9796,11 +9816,27 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 			break
 		}
 	}
-	if !anyRow && !anyMana {
+	// #6204: a land is reachable by a seat under a Piracy permission
+	// ("you may tap lands you don't control for mana").
+	piracy := func(seat uuid.UUID) bool {
+		return card.IsLand() && len(c.ManaAbilities) > 0 && g.MayTapForeignLandsLocked(seat)
+	}
+	anyPiracy := false
+	for _, p := range g.Seats {
+		if p != nil && p.ID != controller && piracy(p.ID) {
+			anyPiracy = true
+			break
+		}
+	}
+	if !anyRow && !anyMana && !anyPiracy {
 		return
 	}
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller {
+			continue
+		}
+		seatPiracy := piracy(p.ID)
+		if !anyRow && !anyMana && !seatPiracy {
 			continue
 		}
 		rows := c.ActivatedAbilities
@@ -9808,7 +9844,7 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 			rows = c.anyPlayerActivatedRowsFor(g, card, p.ID, restricted)
 		}
 		mana := c.ManaAbilities
-		if anyMana {
+		if anyMana || seatPiracy {
 			mana = c.anyPlayerManaRowsFor(g, card, p.ID, restricted)
 		}
 		if c.abilityOffers == nil {
@@ -9864,15 +9900,25 @@ func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.
 	if tm, ok := g.TapTriggerManaLocked(); ok {
 		stampManaTriggerAdds(tm, &card, seat, mine)
 	}
+	// #6204 (ADR 0106 §1 amendment 2026-11-25): under a Piracy permission
+	// a land's {T} rows are this seat's too. The seat's copy marks them
+	// AnyPlayer, which to the client means "the viewer may activate this
+	// row", and shows the "only to cast spells" tag its mana will carry.
+	piracy := card.IsLand() && g.MayTapForeignLandsLocked(seat)
+	seatsOwn := func(m ManaAbilityView) bool { return m.AnyPlayer || (piracy && m.TapCost) }
 	byIndex := make(map[int]ManaAbilityView, len(mine))
 	for _, m := range mine {
-		if m.AnyPlayer {
+		if seatsOwn(m) {
+			if !m.AnyPlayer {
+				m.AnyPlayer = true
+				m.Restrictions = append(append([]string(nil), m.Restrictions...), game.ManaRestrictCast)
+			}
 			byIndex[m.Index] = m
 		}
 	}
 	rows := make([]ManaAbilityView, len(c.ManaAbilities))
 	for i, m := range c.ManaAbilities {
-		if own, ok := byIndex[m.Index]; ok && m.AnyPlayer {
+		if own, ok := byIndex[m.Index]; ok && seatsOwn(m) {
 			own.GrantedBy = m.GrantedBy
 			own.BorrowedFrom = m.BorrowedFrom
 			rows[i] = own

@@ -740,6 +740,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return p.valueOfTurnFaceUp(st, m, sp)
 		case "ignore_effect":
 			return p.valueOfIgnoreEffect(st, sp)
+		case "discard":
+			// #6224, CR 116.2e: discarding a card from hand (Circling
+			// Vultures) gains nothing this evaluator can see, and loses
+			// the card. Never taken on its own.
+			return -1, "discard as a special action"
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 

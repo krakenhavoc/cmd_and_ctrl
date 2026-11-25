@@ -1554,6 +1554,9 @@ delayedTriggers[].untilLeaves.epoch	number:int
 delayedTriggers[].untilLeaves.id	custom(uuid.UUID)
 delayedTriggers[].untilThen	string
 delayedTriggers[].untilThenLabel	string
+delayedTriggers[].whileExiled	object
+delayedTriggers[].whileExiled.epoch	number:int
+delayedTriggers[].whileExiled.id	custom(uuid.UUID)
 dilemmasFacedThisTurn	map:array
 dilemmasFacedThisTurn{}	number:int
 discardPending	map:array
@@ -91472,6 +91475,8 @@ stepRecords[].record.strs	array
 stepRecords[].record.strs[]	string
 tableRollNext	number:uint64
 takenAt	custom(time.Time)
+tapForeignLandsThisTurn	map:array
+tapForeignLandsThisTurn{}	bool
 turn	object
 turn.ActiveSeat	number:int
 turn.Extra	bool

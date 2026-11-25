@@ -107,6 +107,16 @@ func lookupNumberThen(key string) (NumberFunc, bool) {
 	return fn, ok
 }
 
+// NumberThenOf is the registered number branch under key, for an effect
+// that carries a card's branch as data across several prompts and runs it
+// at the end (effects.LifeBidding, #6212). False for an unknown key.
+func NumberThenOf(key string) (NumberThen, bool) {
+	if !KnownNumberThen(key) {
+		return NumberThen{}, false
+	}
+	return NumberThen{key: key}, true
+}
+
 // KnownNumberThen reports whether this binary has a branch registered
 // under key.
 func KnownNumberThen(key string) bool { _, ok := lookupNumberThen(key); return ok }

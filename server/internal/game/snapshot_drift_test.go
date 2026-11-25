@@ -152,6 +152,7 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsThisTurn", carried, "",
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"LoyaltyTwiceThisTurn", carried, "",
+	"TapForeignLandsThisTurn", carried, "",
 	"LoyaltyPermanentTwiceThisTurn", carried, "",
 	"LoyaltyPermanentExtraThisTurn", carried, "",
 	"LoyaltyPermanentExtraUsedThisTurn", carried, "",
@@ -1178,6 +1179,7 @@ var delayedTriggerFields = plan(
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 	"CopiesSpell", carried, "", // #6141, CR 702.50a: epic's spell record
+	"WhileExiled", carried, "", // #6221, CR 603.4: "if that card is exiled" (delayed_recast.go)
 )
 
 var pendingChoiceFields = plan(

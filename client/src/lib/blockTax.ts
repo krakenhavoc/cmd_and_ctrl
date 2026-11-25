@@ -33,6 +33,10 @@ export function finishBlocksParams(tax: BlockTaxView | null): { auto_tap: true }
 // with nothing taxed staged, what each blocker will cost.
 export function blockTaxNote(tax: BlockTaxView | null): string {
   if (!tax) return "";
+  // #6191: a life price is paid from the life total as you finish.
+  const life = tax.life && tax.life > 0 ? `${tax.life} life` : "";
+  if (tax.cost && life) return `blocking costs ${tax.cost} and ${life}, paid when you finish`;
+  if (life) return `blocking costs ${life}, paid when you finish`;
   if (tax.cost) return `blocking costs ${tax.cost}, paid with your lands when you finish`;
   if (tax.each) return `each blocker costs ${tax.each}`;
   return "blocking has a cost";

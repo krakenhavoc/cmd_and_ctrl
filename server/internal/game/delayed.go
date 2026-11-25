@@ -365,6 +365,14 @@ type DelayedTrigger struct {
 	// stack item as they resolved, as snapshot records. Nil on every other
 	// trigger. Plain data, never mutated once scheduled.
 	CopiesSpell *EpicSpell
+
+	// WhileExiled is CR 603.4's intervening "if that card is exiled" on
+	// a step-conditioned trigger (Ertai's Meddling, #6221;
+	// delayed_recast.go): the trigger triggers only while this object
+	// (instance AND CR 400.7 epoch) is in exile, and once it is not it is
+	// a new object the trigger can never name again, so the trigger is
+	// dropped. Zero for every other trigger.
+	WhileExiled ObjectRef
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -522,6 +530,12 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 			dropped = true
 			continue
 		}
+		if dt.WhileExiled.ID != uuid.Nil && !g.objectInExileLocked(dt.WhileExiled) {
+			// #6221, CR 603.4 / 400.7: "if that card is exiled" can
+			// never be true again.
+			dropped = true
+			continue
+		}
 		if dt.At == step && g.Turn.Seq >= dt.NotBeforeSeq && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) &&
@@ -622,6 +636,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
+		WhileExiled:           dt.WhileExiled,
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
