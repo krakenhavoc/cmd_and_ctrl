@@ -1631,6 +1631,7 @@ choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/split-the-party-return
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/spry-and-mighty-two
+choose choose-cards/srams-expertise-cast
 choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/starseer-mentor-punisher-discarded
 choose choose-cards/std-b15-keep-one-on-top-rest-graveyard

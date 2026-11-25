@@ -735,4 +735,6 @@ var TokenTable = map[string]game.Card{
 	"3/3 green and white Legendary Wolf named Voja, Friend to Elves": {Name: "Voja, Friend to Elves", TypeLine: "Token Legendary Creature — Wolf", Power: 3, Toughness: 3, Colors: []string{"G", "W"}},
 	// S82 OLD batch 205 (#5529): Quest for the Gravelord's Zombie Giant.
 	"5/5 black Zombie Giant": {Name: "Zombie Giant", TypeLine: "Token Creature — Zombie Giant", Power: 5, Toughness: 5, Colors: []string{"B"}},
+	// S82 OLD batch 252 (#5536): Release the Gremlins and Gremlin Infestation's Gremlin.
+	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
 }
