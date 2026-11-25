@@ -329,6 +329,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 214 (#5530).
 	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
+
+	// S82 OLD batch 273 (#5540).
+	"Public Execution": "destroys one target creature; the -2/-0 on the player's other creatures is a combat trick that destroys nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
