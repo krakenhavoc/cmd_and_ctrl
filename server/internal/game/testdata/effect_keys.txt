@@ -1563,6 +1563,7 @@ choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/stitcher-geralf-exile
 choose choose-cards/stonehewer-giant-attach
+choose choose-cards/storm-herald-auras
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/strefan-maurer-progenitor-put
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -4119,6 +4120,7 @@ tail kindred-charge/haste-and-exile-copies
 tail kinscaer-sentry/entered
 tail kinzu-of-the-bleak-coven/copy
 tail kishla-trawlers/after-exile
+tail klothys/exiled
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
@@ -4610,6 +4612,7 @@ tail stitcher-geralf/ask
 tail stitcher-geralf/exiled
 tail stockpiling-celebrant/scry
 tail stonehewer-giant/attach-found-equipment
+tail storm-herald/entered
 tail strago-and-relm/after-mill
 tail strefan-maurer-progenitor/indestructible
 tail study-the-classics/double
