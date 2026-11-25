@@ -100,6 +100,21 @@ describe("a pitch bound to X (Shining Shoal)", () => {
   });
 });
 
+// #6122: Summons of Saruman's "Flashback—{3}{U}{R}, Exile X cards from your
+// graveyard": the number of cards picked is the X, none included.
+describe("a flashback that exiles X cards (Summons of Saruman)", () => {
+  const flashback: AlternativeCostView = {
+    key: "flashback",
+    pay_options: { cards: ["a", "b", "c"], min: 0, max: 3, count_from_x: true },
+  };
+
+  it("announces the number of cards picked as X", () => {
+    expect(altCostPayDefinesX(flashback)).toBe(true);
+    expect(altCostPayX(flashback, ["a", "b"])).toBe(2);
+    expect(altCostPayX(flashback, [])).toBe(0);
+  });
+});
+
 describe("a flashback that removes X counters (Light Up the Night)", () => {
   const flashback: AlternativeCostView = {
     key: "flashback",

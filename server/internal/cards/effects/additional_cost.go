@@ -714,8 +714,13 @@ func CheckEitherCost(spec Spec) {
 		}
 	}
 	// #5247: the activated form's clause check — a count of at least one
-	// over a clause that matches permanents.
-	checkReturnClause(spec.Name, "additional cost", ac.ReturnToHand)
+	// over a clause that matches permanents. #6122: or the X form, which
+	// shares one announced X with nothing else (CR 107.3a).
+	if game.ReturnToHandCountFromX(ac.ReturnToHand) {
+		checkReturnXClause(spec, ac)
+	} else {
+		checkReturnClause(spec.Name, "additional cost", ac.ReturnToHand)
+	}
 	if ec := ac.ExileCards; ec != nil {
 		checkCastExileCardsClause(spec.Name, "additional cost", ec)
 		// #1948: "exile X cards" shares ONE announced X with every other
@@ -1200,7 +1205,45 @@ func checkDiscardX(spec Spec) {
 	if ac.DiscardCards != 0 {
 		panic(fmt.Sprintf("effects.Register: %q discards X cards AND a fixed count — build it with DiscardXCost alone", spec.Name))
 	}
-	if ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) || game.SacrificeCountFromX(ac.Sacrifice) {
+	if ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) || game.SacrificeCountFromX(ac.Sacrifice) ||
+		game.ReturnToHandCountFromX(ac.ReturnToHand) {
 		panic(fmt.Sprintf("effects.Register: %q discards X cards beside another cost paid with X — one announced X cannot pay both", spec.Name))
+	}
+}
+
+// ReturnXToHandCost is "As an additional cost to cast this spell, return
+// X <permanents> you control to their owner's hand" (#6122, Infernal
+// Harvest's "return X Swamps you control"). X is the one number the cast
+// announces (CR 107.3a, 601.2b), so a card with no {X} in its mana cost
+// still announces it; the caster names exactly X permanents on
+// `return_ids`, and the spell reads X back with ctx.X(), so "deals X
+// damage divided as you choose" is the existing DivideX clause. X = 0
+// returns nothing. The largest X is the number of permanents the clause
+// matches (game.ReturnToHandXCeilingForEffect). `label` is the clause
+// without the verb ("X Swamps you control").
+func ReturnXToHandCost(label string, preds ...CardPredicate) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		ReturnToHand: &game.ReturnToHandCost{CountFromX: true, Filter: TargetPermanent(label, preds...), Label: label},
+		Label:        "Return " + label + " to their owner's hand",
+	}
+}
+
+// checkReturnXClause is the boot-time rule for a "return X …" additional
+// cost (#6122): no fixed count beside it, a clause over permanents, the
+// mandatory slot only (the caller), and no other component paid with the
+// same announced X — one X cannot pay two printed costs (CR 107.3a).
+func checkReturnXClause(spec Spec, ac *game.AdditionalCost) {
+	rc := ac.ReturnToHand
+	switch {
+	case rc.Count != 0:
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents AND a fixed count — build it with ReturnXToHandCost alone", spec.Name))
+	case rc.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents with no Label — build it with ReturnXToHandCost", spec.Name))
+	case rc.Filter.CountFromX || rc.Filter.AllowSame || rc.Filter.Players:
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents over a clause that counts by X, repeats or admits players", spec.Name))
+	case ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) || game.SacrificeCountFromX(ac.Sacrifice):
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents beside another cost paid with X — one announced X cannot pay both", spec.Name))
+	case spec.TapCost != nil && spec.TapCost.DemandsX():
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents beside a waterbend {X} — one announced X cannot pay both", spec.Name))
 	}
 }

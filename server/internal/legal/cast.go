@@ -1032,6 +1032,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #6145: and "discard X cards" — X is what the hand can pay.
 		xLifeCeiling = dx
 	}
+	if rx := e.returnXCeiling(card.InstanceID, addCost); rx != noXCeiling {
+		// #6122: and "return X Swamps you control" — X is what the board
+		// can pay.
+		xLifeCeiling = rx
+	}
 	if ex := e.exileXCeiling(card.InstanceID, addCost); ex != noXCeiling {
 		// #1948: and "exile X cards from your graveyard" — X is what the
 		// graveyard can pay. Skeletal Scrying's {X} in its mana cost is
@@ -1200,6 +1205,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 		altCostSets = [][]uuid.UUID{pay}
+	} else if offer.CardCountFromX() {
+		// #6122: "Exile X cards from your graveyard" (Summons of Saruman's
+		// flashback) — the cards ARE the X announcement, so each payment
+		// carries its own X: the cheapest X cards, X from the floor up to
+		// a small ceiling.
+		altCostSets, altXs = e.exileXAltPayments(e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)), xFloor)
+		if len(altCostSets) == 0 {
+			return
+		}
 	} else if want := offer.CardPaymentCount(); want > 0 {
 		// #1013: the candidates come back in ZONE order, which is an
 		// arbitrary answer to "which three cards does this Uro eat".
@@ -1975,6 +1989,13 @@ func (e *enumerator) castMoveEmitter(
 	if paying != nil && paying.DiscardX {
 		discardXPool = g.AdditionalDiscardOptionsForEffect(e.seat, card.InstanceID, paying)
 	}
+	// #6122: "return X …" — the permanents a move at X returns, in the
+	// payment order the view ships.
+	var returnXPool []uuid.UUID
+	if paying != nil && game.ReturnToHandCountFromX(paying.ReturnToHand) {
+		returnXPool = g.SacrificePaymentOrderForEffect(
+			g.ReturnToHandOptionsForEffect(e.seat, card.InstanceID, paying.ReturnToHand), card.InstanceID)
+	}
 	// #5390: the offer's counter removal, ONE payment by the activation's
 	// own rule (counterPaymentChoices: drain the creatures holding the
 	// most first), from the walk the engine validates against. An offer
@@ -1988,6 +2009,8 @@ func (e *enumerator) castMoveEmitter(
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
+		// #6122: and a "return X …" cost names exactly X permanents.
+		returnIDs := append(append([]uuid.UUID(nil), returnIDs...), returnPermanentsForX(paying, returnXPool, setX)...)
 		// #6145: a "discard X cards" cost names exactly the announced X.
 		discards = append(discards, discardCardsForX(paying, discardXPool, setX)...)
 		// #5240: or the cards a collect evidence X sized by these targets

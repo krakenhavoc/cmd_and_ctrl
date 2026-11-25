@@ -250,7 +250,7 @@ func (b AnnouncedBound) valueFor(s *TargetSpec) int {
 // bind-and-recheck mechanism and differ only in the statistic and the
 // comparison boundAdmits makes.
 func hasXBound(s *TargetSpec) bool {
-	return s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX)
+	return s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX)
 }
 
 // boundStatistic is the statistic the clause bounds, or "" for an
@@ -262,7 +262,7 @@ func boundStatistic(s *TargetSpec) string {
 		return ""
 	case s.ManaValueAtMostX || s.ManaValueEqualsX:
 		return BoundStatManaValue
-	case s.PowerAtMostX:
+	case s.PowerAtMostX || s.PowerEqualsX:
 		return BoundStatPower
 	case s.ToughnessAtMostX:
 		return BoundStatToughness
@@ -307,6 +307,10 @@ func boundAdmitsAt(g *Game, s *TargetSpec, c Card, bound int) bool {
 	}
 	if s.ManaValueEqualsX {
 		return v == bound+s.ManaValueEqualsXPlus
+	}
+	// #6122: "with power X" is exact.
+	if s.PowerEqualsX {
+		return v == bound
 	}
 	if s.ManaValueAtMostX {
 		return v <= bound+s.ManaValueAtMostXPlus

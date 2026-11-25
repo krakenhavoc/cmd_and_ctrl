@@ -1012,6 +1012,8 @@
     label: string;
     count: number;
     choices: CastChoices;
+    // #6122: "return X …" — the number picked is the x_value.
+    countFromX?: boolean;
   } | null>(null);
   let returnPromptOptionIDs = $state<string[]>([]);
   const returnPromptOptions = $derived.by(() =>
@@ -1022,7 +1024,9 @@
     const p = returnPrompt;
     returnPrompt = null;
     if (!p) return;
-    afterSacrificeCost(p.card, { ...p.choices, returnIDs: ids });
+    const next: CastChoices = { ...p.choices, returnIDs: ids };
+    if (p.countFromX) next.xValue = ids.length;
+    afterSacrificeCost(p.card, next);
   }
 
   // #3868: "tap an untapped Vampire you control" as a spell's additional
@@ -1198,6 +1202,18 @@
     // offers exactly the permanents the clause demands, as the activated
     // return pick is: a modal with one possible answer is worse than none.
     const rt = castReturnCost(card, choices);
+    if (rt && choices.returnIDs === undefined && rt.countFromX) {
+      // #6122: "return X Swamps you control" — how many is the question,
+      // so it asks whenever there is anything to return; with nothing,
+      // X is 0.
+      if (rt.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, returnIDs: [], xValue: 0 });
+        return;
+      }
+      returnPromptOptionIDs = rt.options;
+      returnPrompt = { card, label: rt.label, count: 0, choices, countFromX: true };
+      return;
+    }
     if (rt && choices.returnIDs === undefined) {
       if (rt.options.length <= rt.count) {
         afterSacrificeCost(card, { ...choices, returnIDs: rt.options });
@@ -4867,6 +4883,8 @@
     label={returnPrompt?.label ?? "a permanent you control"}
     options={returnPromptOptions}
     count={returnPrompt?.count ?? 1}
+    min={returnPrompt?.countFromX ? 0 : undefined}
+    countIsX={returnPrompt?.countFromX === true}
     verb="Return"
     castName={returnPrompt?.card.name}
     onConfirm={confirmReturnPermanent}

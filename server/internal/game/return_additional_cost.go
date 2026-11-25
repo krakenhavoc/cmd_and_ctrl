@@ -69,13 +69,19 @@ func planReturnToHand(plan []costPayment) *ReturnToHandCost {
 // component (CR 118.3).
 //
 // Caller must hold g.mu.
-func (g *Game) validateCastReturnToHandLocked(playerID, castID uuid.UUID, plan []costPayment, ids, alsoSpent []uuid.UUID) error {
+//
+// #6122: for "return X <permanents>" (Infernal Harvest) the count is the
+// announced `x` (CR 107.3a): exactly X permanents, none at X = 0.
+func (g *Game) validateCastReturnToHandLocked(playerID, castID uuid.UUID, plan []costPayment, ids, alsoSpent []uuid.UUID, x int) error {
 	rc := planReturnToHand(plan)
 	if rc == nil {
 		if len(ids) > 0 {
 			return ErrInvalidParam
 		}
 		return nil
+	}
+	if rc.CountFromX && len(ids) != max(x, 0) {
+		return ErrInvalidParam
 	}
 	if sharesAnID(ids, alsoSpent) {
 		return ErrInvalidParam

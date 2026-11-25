@@ -240,6 +240,7 @@ func Register(spec Spec) {
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostReturnCount(spec.Name, ac)
 		CheckAltCostXBound(spec, ac)
+		checkAltCostExileX(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkAltCostRemoveCounters(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
@@ -1658,7 +1659,7 @@ func checkAltCostReturnCount(card string, ac game.AlternativeCost) {
 func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	where := fmt.Sprintf("alternative cost %q", ac.Key)
 	for _, s := range []*game.TargetSpec{ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
-		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX) {
+		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX) {
 			panic(fmt.Sprintf("effects.Register: %q %s bounds a component by X that does not read the bound — only a hand pitch (ExileFromHand) does", spec.Name, where))
 		}
 	}
@@ -1666,7 +1667,7 @@ func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	if s == nil {
 		return
 	}
-	if s.ManaValueAtMostX || s.PowerAtMostX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
+	if s.ManaValueAtMostX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
 		panic(fmt.Sprintf("effects.Register: %q %s bounds its pitch by a statistic other than \"mana value X\" — no printed pitch does", spec.Name, where))
 	}
 	if !s.ManaValueEqualsX {
@@ -2145,7 +2146,7 @@ func CheckFlatClauses(name string, spec *game.TargetSpec) {
 		// nothing without one.
 		c := spec.Clause(i)
 		stats := 0
-		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX} {
+		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX || c.PowerEqualsX, c.ToughnessAtMostX} {
 			if set {
 				stats++
 			}
@@ -2187,7 +2188,7 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 		// (Rampaging Yao Guai) counts none by X. A count of exactly X has no
 		// printed card.
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause counted exactly X — build it as Orcus, Prince of Undeath's (up to X) or leave the count open", name, i))
-	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
+	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.PowerEqualsX || c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
 	}
 }
@@ -2231,7 +2232,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	switch {
 	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
-	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
+	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.PowerEqualsX, c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))
 	case c.Min < 1:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice of \"up to\" targets — no printed card is", name, i))
@@ -2315,7 +2316,7 @@ func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
 func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable, countersAvailable bool) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.ToughnessAtMostX {
+		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.PowerEqualsX && !c.ToughnessAtMostX {
 			continue
 		}
 		if c.BoundByCountersRemoved {

@@ -1372,8 +1372,12 @@ type LegalTargetsView struct {
 	// says the X is not the one collected in the X prompt but the number
 	// of counters the activation's cost is removing (Simic Manipulator,
 	// Quillmane Baku). A card with no entry in its map meets no bound.
-	ManaValueEqualsX     bool           `json:"mana_value_equals_x,omitempty"`
-	PowerAtMostX         bool           `json:"power_at_most_x,omitempty"`
+	ManaValueEqualsX bool `json:"mana_value_equals_x,omitempty"`
+	PowerAtMostX     bool `json:"power_at_most_x,omitempty"`
+	// PowerEqualsX is "with power X" (#6122, Ent-Draught Basin), narrowed
+	// from Powers by an EXACT match, as ManaValueEqualsX is from
+	// ManaValues.
+	PowerEqualsX         bool           `json:"power_equals_x,omitempty"`
 	ToughnessAtMostX     bool           `json:"toughness_at_most_x,omitempty"`
 	XFromCountersRemoved bool           `json:"x_from_counters_removed,omitempty"`
 	Powers               map[string]int `json:"powers,omitempty"`
@@ -8894,6 +8898,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 	v.ManaValueAtMostX = spec.ManaValueAtMostX
 	v.ManaValueEqualsX = spec.ManaValueEqualsX && spec.ManaValueEqualsXPlus == 0
 	v.PowerAtMostX = spec.PowerAtMostX
+	v.PowerEqualsX = spec.PowerEqualsX
 	v.ToughnessAtMostX = spec.ToughnessAtMostX
 	v.XFromCountersRemoved = spec.BoundByCountersRemoved
 	vals := g.BoundValuesForEffect(spec, cards)
@@ -9181,6 +9186,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
 			opts.Cards = withoutID(opts.Cards, self)
 			opts.Players = nil
+			// #6122: "Exile X cards from your graveyard" (Summons of
+			// Saruman's flashback) — any number of the options, none
+			// included, and the number picked is the cast's x_value.
+			if ac.CardCountFromX() {
+				opts.CountFromX = true
+				opts.Min, opts.Max = 0, len(opts.Cards)
+			}
 			v.PayOptions = opts
 		} else if paySpec := ac.Sacrifice; paySpec != nil {
 			// #1727: the additional cost's sacrifice picker, verbatim —
@@ -15224,6 +15236,12 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 	}
 	ids := g.ReturnToHandOptionsForEffect(controller, sourceID, rc)
 	out := &LegalTargetsView{Min: rc.Count, Max: rc.Count}
+	// #6122: "return X <permanents>" (Infernal Harvest) — any number of
+	// the options, none included, and the number picked is the cast's
+	// x_value, as for "sacrifice X" (count_from_x).
+	if game.ReturnToHandCountFromX(rc) {
+		out = &LegalTargetsView{Min: 0, Max: len(ids), CountFromX: true}
+	}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
 		out.Cards = append(out.Cards, id.String())
 	}

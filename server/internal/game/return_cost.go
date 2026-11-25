@@ -81,12 +81,41 @@ type ReturnToHandCost struct {
 	// so the prompt reads like the card. "a Forest you control", not
 	// "choose 1".
 	Label string
+
+	// CountFromX is "return X <permanents> you control to their owner's
+	// hand" (#6122, Infernal Harvest's additional cost "return X Swamps
+	// you control to their owner's hand"). The count is the X the cast
+	// announces (CR 107.3a, 601.2b) and Count is 0. X = 0 returns nothing
+	// and is always payable; the largest X is the number of candidates
+	// (ReturnToHandXCeilingForEffect). A cast's mandatory additional cost
+	// only: effects.Register refuses it anywhere else, so the activation,
+	// combat and splice validators never meet it.
+	CountFromX bool `json:",omitempty"`
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
 // activation path can ask without a guard.
 func (c *ReturnToHandCost) Empty() bool {
-	return c == nil || c.Count < 1 || c.Filter == nil
+	return c == nil || c.Filter == nil || (c.Count < 1 && !c.CountFromX)
+}
+
+// ReturnToHandCountFromX reports the "return X …" form (#6122). Nil-safe.
+func ReturnToHandCountFromX(c *ReturnToHandCost) bool {
+	return c != nil && c.CountFromX && c.Filter != nil
+}
+
+// ReturnToHandXCeilingForEffect is the largest X a "return X <permanents>
+// you control" cost lets `playerID` announce for `castID`: the number of
+// permanents the clause accepts (CR 118.3). 0 for any other clause. The
+// view's picker and the bot enumerator read it, so neither offers an X the
+// validator refuses.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ReturnToHandXCeilingForEffect(playerID, castID uuid.UUID, rc *ReturnToHandCost) int {
+	if !ReturnToHandCountFromX(rc) {
+		return 0
+	}
+	return len(g.ReturnToHandOptionsForEffect(playerID, castID, rc))
 }
 
 // ReturnToHandOptionsForEffect is the set of permanents that could pay
@@ -134,7 +163,8 @@ func (g *Game) ReturnToHandOptionsForEffect(playerID, sourceID uuid.UUID, rc *Re
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) ReturnToHandPayable(playerID, sourceID uuid.UUID, rc *ReturnToHandCost) bool {
-	if rc.Empty() {
+	// #6122: "return X …" is paid at X = 0 by returning nothing.
+	if rc.Empty() || rc.CountFromX {
 		return true
 	}
 	return len(g.ReturnToHandOptionsForEffect(playerID, sourceID, rc)) >= rc.Count
@@ -173,7 +203,9 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 		}
 		return nil
 	}
-	if len(ids) != rc.Count {
+	// #6122: the X form's count is the cast's announced X, checked by
+	// validateCastReturnToHandLocked before this runs.
+	if !rc.CountFromX && len(ids) != rc.Count {
 		return ErrInvalidParam
 	}
 	seen := make(map[uuid.UUID]bool, len(ids))

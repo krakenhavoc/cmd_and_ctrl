@@ -43,7 +43,7 @@
   // "Exile": any number of graveyard cards, ready once their total mana
   // value reaches the N, with the running total shown.
   import type { AlternativeCostView, CardView } from "../../protocol";
-  import { altCostPayCount } from "../../targeting";
+  import { altCostPayCount, altCostPayCountIsX } from "../../targeting";
   import { canFillEachOf, fillsEachOf } from "../../sacrificeCost";
   import { exileCostManaValueTotal } from "../../exileCost";
   import { cancelAction, confirmAction } from "../../dock";
@@ -64,6 +64,9 @@
   const { card, offer, options, onConfirm, onCancel }: Props = $props();
 
   const need = $derived(altCostPayCount(offer ?? undefined));
+  // #6122: "Exile X cards from your graveyard" — any number, none
+  // included; the number picked is the spell's X.
+  const countIsX = $derived(altCostPayCountIsX(offer ?? undefined));
   const evidence = $derived(offer?.collect_evidence ?? 0);
   const verb = $derived(
     offer?.behold ? "Behold" : offer?.discards ? "Discard" : evidence > 0 ? "Exile" : "Pay",
@@ -82,9 +85,11 @@
       : 0,
   );
   const ready = $derived(
-    evidence > 0
-      ? chosen.length > 0 && evidenceTotal >= evidence
-      : chosen.length === need && fillsEachOf(chosen, eachOf),
+    countIsX
+      ? true
+      : evidence > 0
+        ? chosen.length > 0 && evidenceTotal >= evidence
+        : chosen.length === need && fillsEachOf(chosen, eachOf),
   );
 
   // Reset when a different cast opens the prompt.
@@ -101,7 +106,7 @@
   // second card replaces the first rather than erroring, which is
   // what every single-card cost did before S29.
   function toggle(instanceID: string): void {
-    if (evidence > 0) {
+    if (evidence > 0 || countIsX) {
       chosen = chosen.includes(instanceID)
         ? chosen.filter((id) => id !== instanceID)
         : [...chosen, instanceID];
@@ -139,7 +144,9 @@
       {#if offer.behold}
         Cards from your hand are revealed; nothing leaves its zone.
       {/if}
-      {#if evidence > 0}
+      {#if countIsX}
+        <span class="tally">X = {chosen.length}</span>
+      {:else if evidence > 0}
         <span class="tally">mana value {evidenceTotal} of {evidence}</span>
       {:else if need > 1}
         <span class="tally">{chosen.length} of {need}</span>
@@ -153,7 +160,7 @@
         One card for each part: {eachOf.map((g) => g.label).join(", ")}.
       </p>
     {/if}
-    {#if evidence > 0 ? optionsTotal < evidence : options.length < need || !canFillEachOf(eachOf)}
+    {#if countIsX ? false : evidence > 0 ? optionsTotal < evidence : options.length < need || !canFillEachOf(eachOf)}
       <p class="prompt-hint error">You have nothing that can pay this cost.</p>
     {:else}
       <ul class="prompt-options">

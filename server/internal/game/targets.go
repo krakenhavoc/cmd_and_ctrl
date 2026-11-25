@@ -1288,6 +1288,15 @@ type TargetSpec struct {
 	PowerAtMostX     bool
 	ToughnessAtMostX bool
 
+	// PowerEqualsX is "with power X" (#6122, Ent-Draught Basin's "{X},
+	// {T}: Put a +1/+1 counter on target creature with power X"): the
+	// power bound of PowerAtMostX with ManaValueEqualsX's exact
+	// comparison. X is announced before targets are chosen (CR 601.2b-c
+	// via CR 602.2b), and the power is read as CR 208.1 has it, at
+	// announce and again at the CR 608.2b re-check. Counts as the power
+	// statistic, so effects.Register refuses it beside another one.
+	PowerEqualsX bool `json:",omitempty"`
+
 	// BoundByCountersRemoved switches the bound's INPUT from the
 	// announced X to the number of counters the activation's cost
 	// removed (PaidCost.CountersRemoved): Simic Manipulator's "power
@@ -1487,6 +1496,13 @@ func (s *TargetSpec) WithManaValueEqualsXPlus(n int) *TargetSpec {
 // §9). Mutates and returns the receiver, as WithCount does.
 func (s *TargetSpec) WithPowerAtMostX() *TargetSpec {
 	s.PowerAtMostX = true
+	return s
+}
+
+// WithPowerEqualsX marks the clause "with power X" (#6122, Ent-Draught
+// Basin). Mutates and returns the receiver, as WithPowerAtMostX does.
+func (s *TargetSpec) WithPowerEqualsX() *TargetSpec {
+	s.PowerEqualsX = true
 	return s
 }
 

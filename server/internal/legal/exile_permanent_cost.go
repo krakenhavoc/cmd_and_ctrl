@@ -41,7 +41,9 @@ func (e *enumerator) exileCastPayment(castID uuid.UUID, mandatory *game.Addition
 // dropped — the unkicked set never names this clause.
 func (e *enumerator) returnCastPayment(castID uuid.UUID, mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (ids []uuid.UUID, ok bool) {
 	rc := returnCostOf(mandatory, optional, chosen)
-	if rc.Empty() {
+	// #6122: "return X …" names its permanents per announced X, in the
+	// emitter (returnPermanentsForX).
+	if rc.Empty() || game.ReturnToHandCountFromX(rc) {
 		return nil, true
 	}
 	sets := e.returnPayments(e.g.ReturnToHandOptionsForEffect(e.seat, castID, rc), rc, castID)
