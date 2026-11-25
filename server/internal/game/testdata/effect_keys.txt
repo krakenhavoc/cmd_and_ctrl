@@ -22,6 +22,7 @@ anyplayer any-player/breaking-point-sweep
 anyplayer any-player/browbeat-draw
 anyplayer any-player/carrion-rats-no-combat-damage
 anyplayer any-player/carrion-wurm-no-combat-damage
+anyplayer any-player/clackbridge-troll-tap
 anyplayer any-player/counter-this-spell
 anyplayer any-player/counter-this-spell-half-life
 anyplayer any-player/desecration-demon-tap
@@ -2925,6 +2926,7 @@ payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
+payunless pay-unless/sorcerers-broom-copy
 payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
@@ -3241,6 +3243,7 @@ run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
+run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
 run prompt-run/osseous-sticktwister-sacrificed
