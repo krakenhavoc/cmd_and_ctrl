@@ -3187,6 +3187,7 @@ run prompt-run/dromokas-command-sacrifice
 run prompt-run/druid-of-purification-destroy
 run prompt-run/duneblast-destroy-the-rest
 run prompt-run/dusk-mangler-discard-and-life
+run prompt-run/each-player-exiles-board-and-hand
 run prompt-run/eldrazi-monument-sacrificed
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
