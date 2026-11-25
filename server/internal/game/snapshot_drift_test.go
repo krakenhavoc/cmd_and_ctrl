@@ -643,6 +643,8 @@ var cardFields = plan(
 	// can re-derive.
 	"Notes", carried, "",
 	"Devoured", carried, "",
+	// #6251, CR 702.104b: whether the chosen opponent paid the tribute.
+	"TributePaid", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
 	"ModesChosen", carried, "",
@@ -838,6 +840,10 @@ var playerFields = plan(
 	// #4973: the extra turns this player has begun this game (H.M.S.
 	// Bounty). Carried: not derivable from the board.
 	"ExtraTurnsBegun", carried, "",
+	// #6164: each player's life as the turn began (Sengir, the Dark
+	// Baron). Carried: the life has moved since.
+	"LifeAsTurnBegan", carried, "",
+	"LifeAsTurnBeganSeq", carried, "",
 	// ADR 0108 §5: the upkeep counter Card.ControlledSinceUpkeep is
 	// compared against. Carried, for TurnsBegun's reason.
 	"UpkeepsBegun", carried, "",

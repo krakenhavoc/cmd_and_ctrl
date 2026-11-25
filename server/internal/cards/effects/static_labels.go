@@ -190,6 +190,11 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 			return "Can't attack unless you control " + articleFor(strings.ToLower(n)) + " " + n + "."
 		}
 		return "Can't attack unless you control a certain permanent."
+	case len(r.ControllerMustControlAnother) > 0:
+		if n := queriesNoun(r.ControllerMustControlAnother); n != "" {
+			return "Can't attack unless you control another " + n + "."
+		}
+		return "Can't attack unless you control another certain permanent."
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
 	case r.PlayerMustHaveActedLastTurn:

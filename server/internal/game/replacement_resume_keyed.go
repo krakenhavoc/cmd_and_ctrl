@@ -482,6 +482,8 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
+	"TributeOpponent":           repFieldCarried,
+	"EntersTributePaid":         repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
 	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
@@ -497,6 +499,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"auraHostFixed":             repFieldCarried,
 	"auraHostSettled":           repFieldCarried,
 	"auraHostCreaturesOnly":     repFieldCarried,
+	"auraHostYouControlOnly":    repFieldCarried,
 	"entersAsAura":              repFieldCarried,
 	"entersAs":                  repFieldCarried,
 	"exchangeTextWith":          repFieldCarried,
@@ -819,6 +822,8 @@ type replacementEventSnapshot struct {
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
+	TributeOpponent           *uuid.UUID          `json:"tributeOpponent,omitempty"`
+	EntersTributePaid         bool                `json:"entersTributePaid,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
 	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
@@ -833,6 +838,7 @@ type replacementEventSnapshot struct {
 	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
 	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
 	AuraHostCreaturesOnly     bool                `json:"auraHostCreaturesOnly,omitempty"`
+	AuraHostYouControlOnly    bool                `json:"auraHostYouControlOnly,omitempty"`
 	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
 	EntersAs                  *EntersAs           `json:"entersAs,omitempty"`
 	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
@@ -1299,6 +1305,8 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
+		TributeOpponent:           uuidPtrOrNil(ev.TributeOpponent),
+		EntersTributePaid:         ev.EntersTributePaid,
 		EntersWithHaste:           ev.EntersWithHaste,
 		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
@@ -1311,6 +1319,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		AuraHostFixed:             ev.auraHostFixed,
 		AuraHostSettled:           ev.auraHostSettled,
 		AuraHostCreaturesOnly:     ev.auraHostCreaturesOnly,
+		AuraHostYouControlOnly:    ev.auraHostYouControlOnly,
 		EntersAsAura:              ev.entersAsAura,
 		EntersAs:                  copyEntersAs(ev.entersAs),
 		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
@@ -1481,6 +1490,8 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
+		TributeOpponent:           uuidOrNil(s.TributeOpponent),
+		EntersTributePaid:         s.EntersTributePaid,
 		EntersWithHaste:           s.EntersWithHaste,
 		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,
@@ -1493,6 +1504,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		auraHostFixed:             s.AuraHostFixed,
 		auraHostSettled:           s.AuraHostSettled,
 		auraHostCreaturesOnly:     s.AuraHostCreaturesOnly,
+		auraHostYouControlOnly:    s.AuraHostYouControlOnly,
 		entersAsAura:              s.EntersAsAura,
 		entersAs:                  copyEntersAs(s.EntersAs),
 		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),

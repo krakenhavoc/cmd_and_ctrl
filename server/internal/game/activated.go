@@ -1710,6 +1710,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// #6148, CR 606.5: a loyalty cost modified by the board ("cost an
+	// additional [+1]", Carth the Lion) is one combined cost, and every
+	// check and payment below reads that one.
+	ab.Cost = g.LoyaltyAdjustedCostForEffect(playerID, ab.Cost)
 	// #4475, CR 118.9: the twin pays the alternative instead of the
 	// whole printed cost; everything else about the row is the row's.
 	if twin {
@@ -3167,8 +3171,8 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	var out []uuid.UUID
 	if cost.SacrificeSelf {
 		// #3275, CR 118.3: a source that can't be sacrificed can't pay
-		// "Sacrifice this".
-		if g.cantBeSacrificedLocked(sourceID) {
+		// "Sacrifice this", nor a nonland one under Yasharn (#6167).
+		if g.sacrificeCostBarredLocked(findBattlefieldCard(g, sourceID)) {
 			return nil, ErrCantBeSacrificed
 		}
 		out = append(out, sourceID)
@@ -3201,8 +3205,9 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		if c.Controller != playerID {
 			return nil, ErrCardCallerMismatch
 		}
-		// #3275, CR 118.3: nor what can't be sacrificed.
-		if g.permanentCantBeSacrificedLocked(c) {
+		// #3275, CR 118.3: nor what can't be sacrificed, nor a nonland
+		// permanent under Yasharn (#6167).
+		if g.sacrificeCostBarredLocked(c) {
 			return nil, ErrCantBeSacrificed
 		}
 		// specMatchLocked, not targetLegalLocked: sacrificing a

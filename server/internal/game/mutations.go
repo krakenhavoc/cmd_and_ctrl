@@ -2732,6 +2732,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
 				tally.InstantSorcery++
+				if src.Kind == ZoneGraveyard {
+					tally.InstantSorceryFromGraveyard++
+				}
 				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
 					tally.InstantSorceryMaxManaValue = mv
 				}
@@ -4257,6 +4260,14 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	cost, err := ParseCost(chosen.Paid)
 	if err != nil {
 		return ParsedCost{}, chosen, err
+	}
+	// #6202, CR 609.4b: North Star's "you may spend mana as though it
+	// were mana of any type to pay that spell's mana cost" widens the
+	// MANA COST alone, so it is applied here, before the commander tax
+	// and the additional costs below join it, and only to a cast paying
+	// that mana cost (no alternative cost, no permission's own price).
+	if alt == nil && chosen.Paid == chosen.Printed && g.manaCostAnyTypePromiseLocked(p.ID, card) {
+		cost = asAnyTypeCost(cost)
 	}
 	// #6151: a commander whose tax is paid in life adds no mana here
 	// (commanderTaxLocked); CastSpell charges the life.
@@ -6465,12 +6476,17 @@ func (g *Game) leaveGameLocked(p *Player, cause LossCause, source uuid.UUID) boo
 	// holds priority; the departed seat is no longer waited for.
 	g.restartPassSuccessionLocked()
 	g.cleanupStackForEliminatedLocked(p.ID)
+	// #6164: Amount is the player's life total as the turn began, which
+	// "that player's life total as the turn began" (Sengir, the Dark
+	// Baron) reads off the event its trigger captured.
+	asBegan, _ := g.LifeAsTurnBeganForEffect(p.ID)
 	g.EmitEvent(Event{
 		Kind:   EventPlayerEliminated,
 		Actor:  p.ID,
 		Source: source,
 		CardID: source,
 		Label:  string(cause),
+		Amount: asBegan,
 	})
 	// #769 / CR 800.4a: everything they own leaves the game, their
 	// control effects end, and anything still controlled by them is
@@ -8547,7 +8563,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err != nil {
 		return err
 	}
-	if !g.CanPayLifeLocked(p, ab.LifeCost) {
+	if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) {
 		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. CR 119.8: a player whose life total can't change
@@ -8701,7 +8717,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if serr != nil {
 			return serr
 		}
-		if manaLife > 0 && !g.CanPayLifeLocked(p, manaLife+ab.LifeCost) {
+		if manaLife > 0 && !g.CanPayLifeForManaAbilityLocked(p, manaLife+ab.LifeCost) {
 			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
 		}
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {

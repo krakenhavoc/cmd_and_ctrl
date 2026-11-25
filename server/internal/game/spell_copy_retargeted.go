@@ -36,8 +36,10 @@ func (g *Game) retargetedSpellCopyLocked(spellID, controller, from, to uuid.UUID
 	next := make([]TargetRef, len(item.Targets))
 	moved := false
 	for i, t := range item.Targets {
-		if t.Kind == TargetCard && t.ID == from {
-			t.ID = to
+		if (t.Kind == TargetCard || t.Kind == TargetPlayer) && t.ID == from {
+			// #6159, CR 707.10d: `to` may be a player where `from` is a
+			// permanent, or the other way round (Radiant Performer).
+			t.Kind, t.ID = g.retargetKindLocked(to), to
 			moved = true
 		}
 		next[i] = t
@@ -76,4 +78,13 @@ func (g *Game) SpellCouldTargetInsteadForEffect(spellID, controller, from, to uu
 // Caller must hold g.mu.
 func (g *Game) CopySpellRetargetedForEffect(spellID, controller, from, to uuid.UUID) bool {
 	return g.CopySpellRetargetedEachForEffect(spellID, controller, from, []uuid.UUID{to}) > 0
+}
+
+// retargetKindLocked is the kind of target ref that names `id`: a player
+// when it is a seat, a card otherwise. Caller must hold g.mu.
+func (g *Game) retargetKindLocked(id uuid.UUID) TargetRefKind {
+	if g.playerByIDLocked(id) != nil {
+		return TargetPlayer
+	}
+	return TargetCard
 }

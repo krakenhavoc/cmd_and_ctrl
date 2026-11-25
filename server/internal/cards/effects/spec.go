@@ -1179,6 +1179,12 @@ type Spec struct {
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
 
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148): N
+	// loyalty combined into the printed loyalty cost of every loyalty
+	// ability its controller activates (CR 606.5).
+	LoyaltyCostAdd int
+
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
 	// that many times" (Liesa, Shroud of Dusk, #6151): the commander tax
