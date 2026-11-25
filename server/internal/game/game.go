@@ -255,6 +255,12 @@ type Game struct {
 	// existed. Added in S13.
 	StartingSeat int
 
+	// TurnOrderReversed is true while the game's turn order runs
+	// counter-clockwise ("reverse the game's turn order", #6223). The
+	// zero value is the default order (CR 103.1). Read it through
+	// SeatInTurnOrderForEffect; see turn_direction.go.
+	TurnOrderReversed bool
+
 	// StackMeta is the per-stack-item metadata map (S13.1). Keyed by
 	// the item's ID — for spells this equals the underlying Card's
 	// InstanceID (the card itself lives in Game.Stack); for abilities
@@ -368,6 +374,14 @@ type Game struct {
 	// boundary with the rest. ADR 0145 amendment 2026-11-12;
 	// loyalty_limit.go.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool
+
+	// TapForeignLandsThisTurn is the set of PLAYERS who "may tap lands
+	// you don't control for mana" until end of turn (Piracy, #6204): the
+	// player may activate the {T} mana abilities of another player's
+	// lands, and that mana may be spent only to cast spells. Flushed at
+	// the turn boundary with the rest. ADR 0106 §1 amendment 2026-11-25;
+	// tap_foreign_lands.go.
+	TapForeignLandsThisTurn map[uuid.UUID]bool
 
 	// LoyaltyPermanentTwiceThisTurn is the set of PERMANENTS whose
 	// controller "may activate loyalty abilities of [it] twice this turn
@@ -1200,6 +1214,12 @@ type Game struct {
 	// carried forward: a table roll after an undo is a fresh roll, not
 	// a replay of one the table already watched. Persisted.
 	tableRollNext uint64
+
+	// simulating marks a throwaway copy that plays a spell's resolution
+	// out to read what it would do (land_destruction.go, #6225). It is
+	// never set on a live game, never cloned and never persisted; the
+	// copy reports no effect error to the server's log or metrics.
+	simulating bool
 	// tableRolls is the ring of the last tableRollRingMax EventTableRoll
 	// events, as last emitted (their current Seq). RestoreFrom does not
 	// restore it; it re-emits every one the restored log no longer

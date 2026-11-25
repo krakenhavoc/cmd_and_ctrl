@@ -343,6 +343,9 @@ type GameSnapshot struct {
 	Settings          TableSettings `json:"settings"`
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
+	// TurnOrderReversed is Game.TurnOrderReversed (#6223). omitempty:
+	// absent is the default order, so no schema bump.
+	TurnOrderReversed bool `json:"turnOrderReversed,omitempty"`
 
 	// Outcome is the result of an ended game (ADR 0057 Decision 5):
 	// nil while active and for a table ended by End(). omitempty, so
@@ -454,6 +457,11 @@ type GameSnapshot struct {
 	// 2026-11-12): the players whose planeswalkers may activate loyalty
 	// abilities twice this turn. Additive.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
+
+	// TapForeignLandsThisTurn is Game's (#6204, ADR 0106 §1 amendment
+	// 2026-11-25): the players who may tap lands they don't control for
+	// mana this turn. Additive.
+	TapForeignLandsThisTurn map[uuid.UUID]bool `json:"tapForeignLandsThisTurn,omitempty"`
 
 	// LoyaltyPermanentTwiceThisTurn is Game's (#5479): the permanents
 	// whose loyalty abilities may be activated twice this turn. Additive.
@@ -1111,7 +1119,10 @@ type cardSnapshot struct {
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
 	DurationCopyBase *PrintedValues `json:"durationCopyBase,omitempty"`
-	NeedsEffect      bool           `json:"needsEffect"`
+	// FullTextBase is Card.FullTextBase (#6233): the printed values
+	// under a full-text overlay. Additive; absent means none applies.
+	FullTextBase *PrintedValues `json:"fullTextBase,omitempty"`
+	NeedsEffect  bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
 	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
@@ -2090,6 +2101,11 @@ type delayedTriggerSnapshot struct {
 	// body, which that binary lacks, so it refuses the file
 	// (ErrUnknownEffectKey) rather than firing a copy of nothing.
 	CopiesSpell *EpicSpell `json:"copiesSpell,omitempty"`
+	// #6221, CR 603.4: "if that card is exiled" (delayed_recast.go).
+	// Additive: an older binary drops the key, but the record names the
+	// "meddling/delay" body, which that binary lacks, so it refuses the
+	// file rather than firing without the gate.
+	WhileExiled *ObjectRef `json:"whileExiled,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -2754,6 +2770,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		Settings:              g.Settings,
 		StartingSeat:          g.StartingSeat,
 		SplitSecondActive:     g.SplitSecondActive,
+		TurnOrderReversed:     g.TurnOrderReversed,
 		Outcome:               cloneGameOutcome(g.Outcome),
 		EventSeq:              g.eventSeq,
 		EventBatch:            g.eventBatch,
@@ -2835,6 +2852,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	s.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
@@ -3272,6 +3290,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,
@@ -3716,6 +3735,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.stamped(),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -4073,6 +4093,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.TurnOrderReversed = s.TurnOrderReversed
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.TurnChangePending = s.TurnChangePending
@@ -4230,6 +4251,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
+	g.TapForeignLandsThisTurn = copyBoolMap(s.TapForeignLandsThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
 	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
 	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)
@@ -4472,6 +4494,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ActiveFace:                 c.ActiveFace,
 		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
 		NeedsEffect:                c.NeedsEffect,
 		PrintsManaAbility:          c.PrintsManaAbility,
 		PrintsTapAbility:           c.PrintsTapAbility,
@@ -4907,6 +4930,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.value(),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

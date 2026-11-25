@@ -1113,10 +1113,14 @@ func (ctx ManaSpendContext) matchesManaValue(value string) bool {
 // Caller must hold g.mu (every call site is inside a mana-ability
 // activation, which does).
 func restrictionsFor(g *Game, ab *ManaAbilityShape, controller, source uuid.UUID) []string {
+	// #6204: mana from a land the activator doesn't control, under
+	// Piracy, may be spent only to cast spells. Every tag must hold
+	// (ManaSpendContext.allows), so the land's own restriction stays.
+	foreign := g.foreignLandRestrictionLocked(ab, controller, source)
 	if ab.RestrictionsFunc != nil {
-		return copyRestrictions(ab.RestrictionsFunc(g, controller, source))
+		return append(copyRestrictions(ab.RestrictionsFunc(g, controller, source)), foreign...)
 	}
-	return g.costTextLocked(source).manaTags(copyRestrictions(ab.Restrictions))
+	return append(g.costTextLocked(source).manaTags(copyRestrictions(ab.Restrictions)), foreign...)
 }
 
 // spendRidersFor is a mana ability's declared spend riders for one

@@ -107,6 +107,10 @@ func (g *Game) declareBlockersLocked(decls []BlockDeclaration) error {
 	if len(decls) == 0 {
 		return ErrEmptyBlockerSet
 	}
+	// #6200: Camouflage's piles decide the blocks this turn.
+	if on, _ := g.blocksByPilesLocked(); on {
+		return ErrBlocksDecidedByPiles
+	}
 	// Layers must be fresh so the pair check and HasKeyword read the
 	// current effective characteristics — flying granted by an anthem
 	// this turn, menace granted by an aura, a land Urborg made a
@@ -519,6 +523,11 @@ func (g *Game) BlockOptionsLocked(seat uuid.UUID, perAttackerCap int) []BlockOpt
 // away would put a combinatorial walk on that path.
 func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) []BlockOption {
 	if g.Battlefield == nil || seat == uuid.Nil {
+		return nil
+	}
+	// #6200: under Camouflage nobody declares; the verb refuses, so
+	// nothing is offered.
+	if on, _ := g.blocksByPilesLocked(); on {
 		return nil
 	}
 	// #1279: a defender whose declaration is complete is offered

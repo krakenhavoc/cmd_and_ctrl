@@ -286,6 +286,12 @@
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
   import { specialActionNeedsX, withX, type SpecialActionXRow } from "../../specialActionX";
+  import {
+    revealOptionCards,
+    specialActionNeedsReveal,
+    withReveal,
+    type SpecialActionRevealRow,
+  } from "../../specialActionReveal";
   import TapCostModal from "./TapCostModal.svelte";
   import DelveCostModal from "./DelveCostModal.svelte";
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
@@ -404,9 +410,36 @@
         xSpecialPrompt = { ...needsX, params, player };
         return;
       }
+      // #6249 (CR 702.37e): a morph cost of "reveal a <colour> card in
+      // your hand" names the card revealed. The only card is taken; two
+      // or more ask.
+      const needsReveal = specialActionNeedsReveal(view, params);
+      if (needsReveal) {
+        const opts = needsReveal.row.reveal_options ?? [];
+        if (opts.length === 1) {
+          sendAction(type, withReveal(params, opts[0]), player);
+          return;
+        }
+        revealSpecialPrompt = { ...needsReveal, params, player };
+        return;
+      }
     }
     sendAction(type, params, player);
   };
+
+  // #6249: the turn-face-up waiting on the card it reveals.
+  let revealSpecialPrompt = $state<
+    (SpecialActionRevealRow & { params: ActionPayload["params"]; player?: string }) | null
+  >(null);
+  const revealSpecialOptions = $derived(
+    revealSpecialPrompt ? revealOptionCards(view, viewerID, revealSpecialPrompt.row) : [],
+  );
+  function confirmSpecialReveal(ids: string[]): void {
+    const p = revealSpecialPrompt;
+    revealSpecialPrompt = null;
+    if (!p || disabled || ids.length !== 1) return;
+    sendAction("special_action", withReveal(p.params, ids[0]), p.player);
+  }
 
   // #5249: the special action waiting on its X, and what it will send.
   let xSpecialPrompt = $state<
@@ -5323,6 +5356,18 @@
     confirmVerb={L.xPickerTurnFaceUp}
     onConfirm={confirmSpecialX}
     onCancel={() => (xSpecialPrompt = null)}
+  />
+  <!-- #6249: and for a morph cost that is a reveal (CR 702.37e), the
+       one card picker the reveal costs use, asking for one card. -->
+  <DiscardCostModal
+    card={revealSpecialPrompt?.card ?? null}
+    options={revealSpecialOptions}
+    need={1}
+    label={revealSpecialPrompt?.row.label}
+    verb="Reveal"
+    note="morph cost · CR 702.37e"
+    onConfirm={confirmSpecialReveal}
+    onCancel={() => (revealSpecialPrompt = null)}
   />
   <!-- CR 107.4f (#916): how many Phyrexian symbols the CAST pays
        with 2 life each. Between the X picker and the convoke picker,

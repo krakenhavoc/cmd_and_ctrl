@@ -3120,6 +3120,10 @@ func dispatch(g *game.Game, a Action) error {
 			// cost (Aurelia's Vindicator's disguise {X}{3}{W}), chosen
 			// as the action is taken. Refused on any other cost.
 			XValue int `json:"x_value,omitempty"`
+			// #6249, CR 702.37e: the hand card a turn_face_up whose morph
+			// cost is "reveal a <colour> card in your hand" reveals.
+			// Required for that offer, refused on every other.
+			RevealID string `json:"reveal_id,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -3141,6 +3145,13 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("special_action sacrifice_id: %w", err)
 			}
 		}
+		var revealID uuid.UUID
+		if p.RevealID != "" {
+			revealID, err = uuid.Parse(p.RevealID)
+			if err != nil {
+				return fmt.Errorf("special_action reveal_id: %w", err)
+			}
+		}
 		route, routeOK := game.ParseTurnFaceUpRoute(p.Route)
 		if !routeOK {
 			return fmt.Errorf("special_action route: %q is not mana_cost, morph or disguise", p.Route)
@@ -3158,6 +3169,7 @@ func dispatch(g *game.Game, a Action) error {
 			XValue:  p.XValue,
 
 			SacrificeID: sacrificeID,
+			RevealID:    revealID,
 		})
 
 	case TypeSacrificePermanent:

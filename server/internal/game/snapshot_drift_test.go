@@ -129,6 +129,7 @@ var gameFields = plan(
 	"DayNight", carried, "",
 	"Settings", carried, "",
 	"StartingSeat", carried, "",
+	"TurnOrderReversed", carried, "",
 	"StackMeta", carried, "",
 	"PendingTriggers", carried, "",
 	"DelayedTriggers", carried, "",
@@ -151,6 +152,7 @@ var gameFields = plan(
 	"LoyaltyExtraActivationsThisTurn", carried, "",
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"LoyaltyTwiceThisTurn", carried, "",
+	"TapForeignLandsThisTurn", carried, "",
 	"LoyaltyPermanentTwiceThisTurn", carried, "",
 	"LoyaltyPermanentExtraThisTurn", carried, "",
 	"LoyaltyPermanentExtraUsedThisTurn", carried, "",
@@ -381,6 +383,7 @@ var gameFields = plan(
 	"resolving", carried, "GameSnapshot.Resolving",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"layerPassing", dropped, "not game state: a re-entrancy guard for one layer pass, defer-cleared, so it is false between actions (#4909)",
+	"simulating", dropped, "not game state: set only on the throwaway copy land_destruction.go resolves a spell on (#6225), never on a live game",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 	"phasingOut", dropped, "written and cleared inside one phaseOutLocked call (#6201); always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
@@ -594,6 +597,9 @@ var cardFields = plan(
 	// entry copy that a Cytoshape overwrote. Not derivable from the
 	// board once the copy has landed, so carried like PrintedSelf.
 	"DurationCopyBase", carried, "",
+	// #6233: the printed values under a full-text overlay (CR 612.6).
+	// Carried for DurationCopyBase's reason.
+	"FullTextBase", carried, "",
 	// #665 / CR 707.9a: the ability bundles a copy effect's "except"
 	// clause granted. Carried, and carriable at all, because it holds
 	// catalog KEYS rather than closures — the abilities themselves
@@ -1173,6 +1179,7 @@ var delayedTriggerFields = plan(
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 	"CopiesSpell", carried, "", // #6141, CR 702.50a: epic's spell record
+	"WhileExiled", carried, "", // #6221, CR 603.4: "if that card is exiled" (delayed_recast.go)
 )
 
 var pendingChoiceFields = plan(

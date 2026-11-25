@@ -63,7 +63,7 @@ func hiveMindCopies(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	for k := 1; k < n; k++ {
-		p := g.Seats[(start+k)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, k)]
 		if p == nil || p.Eliminated || p.ID == caster {
 			continue
 		}

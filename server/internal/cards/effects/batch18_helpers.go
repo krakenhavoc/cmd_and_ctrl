@@ -140,7 +140,7 @@ func B18EachPlayerDrawsAndLosesLife(g *game.Game, item *game.StackItem) error {
 	}
 	start := g.Turn.ActiveSeat
 	for i := 0; i < numSeats; i++ {
-		p := g.Seats[(start+i)%numSeats]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 		if p == nil || p.Eliminated {
 			continue
 		}
