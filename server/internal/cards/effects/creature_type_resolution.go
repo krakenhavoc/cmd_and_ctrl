@@ -104,7 +104,7 @@ func SeatsFromController(g *game.Game, first uuid.UUID) []uuid.UUID {
 	var seats []uuid.UUID
 	n := len(g.Seats)
 	for k := 0; k < n; k++ {
-		p := g.Seats[(start+k)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, k)]
 		if p == nil || p.Eliminated {
 			continue
 		}

@@ -6343,6 +6343,10 @@ export interface TurnView {
   // charges. Seat 0 is a real answer. Absent when the game is not in
   // play. It cannot see a replacement skip (Trouble in Pairs).
   next_seat?: number;
+  // #6223: true while the game's turn order runs the other way round the
+  // table (Aeon Engine). next_seat already follows it. Absent is the
+  // default order.
+  turn_order_reversed?: boolean;
   // #3826: what the viewer's own next pass hands over. "ends_turn": it is
   // the viewer's turn, they hold priority on an empty stack and no later
   // step of the turn grants priority. "your_turn_next": the same in

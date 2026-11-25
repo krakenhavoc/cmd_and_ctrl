@@ -113,7 +113,7 @@ func cmdr2S38SeatFrom(g *game.Game, from uuid.UUID, k int) uuid.UUID {
 			if k >= n {
 				return uuid.Nil
 			}
-			return g.Seats[(i+k)%n].ID
+			return g.Seats[g.SeatInTurnOrderForEffect(i, k)].ID
 		}
 	}
 	return uuid.Nil

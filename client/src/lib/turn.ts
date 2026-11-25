@@ -150,11 +150,17 @@ interface SeatLite {
 /**
  * The "Next:" line. A queued extra turn wins (it is taken before
  * rotation resumes). Otherwise the line appears only when next_seat
- * jumps over a seat that owes a skip: the plain case has no line, and a
+ * jumps over a seat that owes a skip, or while the turn order is
+ * reversed (#6223, Aeon Engine): the plain case has no line, and a
  * seat that merely left is not announced as a skip.
  */
 export function nextTurnLine(
-  turn: { active_seat: number; next_seat?: number; extra_turns?: number[] },
+  turn: {
+    active_seat: number;
+    next_seat?: number;
+    extra_turns?: number[];
+    turn_order_reversed?: boolean;
+  },
   seats: readonly SeatLite[],
 ): string | null {
   const nameOf = (i: number): string => seats.find((p) => p.seat === i)?.name ?? `seat ${i}`;
@@ -163,14 +169,18 @@ export function nextTurnLine(
   const next = turn.next_seat;
   const n = seats.length;
   if (next === undefined || n === 0) return null;
+  const reversed = turn.turn_order_reversed === true;
+  const dir = reversed ? n - 1 : 1;
   const skipped: string[] = [];
-  let i = (turn.active_seat + 1) % n;
-  for (let step = 0; step < n && i !== next; step++, i = (i + 1) % n) {
+  let i = (turn.active_seat + dir) % n;
+  for (let step = 0; step < n && i !== next; step++, i = (i + dir) % n) {
     const p = seats.find((s) => s.seat === i);
     if ((p?.turn_skips ?? 0) > 0) skipped.push(nameOf(i));
   }
-  if (skipped.length === 0) return null;
-  return `Next: ${nameOf(next)} (skips ${skipped.join(", ")})`;
+  const notes: string[] = reversed ? ["turn order reversed"] : [];
+  if (skipped.length > 0) notes.push(`skips ${skipped.join(", ")}`);
+  if (notes.length === 0) return null;
+  return `Next: ${nameOf(next)} (${notes.join("; ")})`;
 }
 
 /** The player panel's chip for a seat that will skip turns, or null. */
