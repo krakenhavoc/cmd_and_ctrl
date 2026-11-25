@@ -1495,6 +1495,7 @@ choose choose-cards/s82-old-b063-skull-raid-discarded
 choose choose-cards/s82-old-b103-settle-the-score
 choose choose-cards/s82-old-b103-silhana-wayfinder-place
 choose choose-cards/s82-old-b106-siege-striker-tap
+choose choose-cards/s82-old-b113-counter-on-a-creature
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2518,6 +2519,7 @@ option option-pick/s82-old-b046-ingenious-mastery-opponent
 option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-old-b064-alrund-card-type
+option option-pick/s82-old-b113-enters-with-counters
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
