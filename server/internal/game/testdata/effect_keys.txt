@@ -4680,6 +4680,8 @@ tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
+tail soulfire-eruption/dealt
+tail soulfire-eruption/exiled
 tail soundwave/copy-exiled
 tail spare-dagger/sacrificed
 tail spark-of-creativity/exiled
