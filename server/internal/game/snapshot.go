@@ -2093,6 +2093,11 @@ type delayedTriggerSnapshot struct {
 	// body, which that binary lacks, so it refuses the file
 	// (ErrUnknownEffectKey) rather than firing a copy of nothing.
 	CopiesSpell *EpicSpell `json:"copiesSpell,omitempty"`
+	// #6221, CR 603.4: "if that card is exiled" (delayed_recast.go).
+	// Additive: an older binary drops the key, but the record names the
+	// "meddling/delay" body, which that binary lacks, so it refuses the
+	// file rather than firing without the gate.
+	WhileExiled *ObjectRef `json:"whileExiled,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -3720,6 +3725,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.stamped(),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -4912,6 +4918,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
 		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.value(),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
