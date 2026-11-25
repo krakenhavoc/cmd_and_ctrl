@@ -347,10 +347,13 @@ func TestRegisterRejectsVariableSacrificeClauses(t *testing.T) {
 			s.Players = true
 			return s
 		}()), "admits players"},
+		// #6125: a mana ability announces X with its activation now
+		// (Springjack Pasture), so "Sacrifice X" is legal there — but a
+		// fixed output that never reads the X is still refused.
 		{"count from X on a mana ability", effects.Spec{OracleID: "sac-guard-mana-x", Name: "sac-guard-mana-x", ManaAbilities: []effects.ManaAbility{{
 			Cost:     effects.ManaAbilityCost{SacrificeOther: fromX("X creatures")},
 			Produced: "{C}",
-		}}}, "no X to announce"},
+		}}}, "nothing reads it"},
 		// ADR 0100 §3: a cast's mandatory slot prints "sacrifice X" and
 		// "any number", never "one or more" with a floor above zero.
 		{"one or more on a cast", effects.Spec{OracleID: "sac-guard-spell", Name: "sac-guard-spell", AdditionalCost: &game.AdditionalCost{
