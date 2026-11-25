@@ -111,6 +111,49 @@ type AbilityCost struct {
 	// effects.SacrificeN. Every one-permanent constructor stamps 1.
 	SacrificeOther *TargetSpec
 
+	// SacrificeAll is "Sacrifice ALL lands you control" as part of an
+	// activation cost (#6208) — Tomb of Urami's "{2}{B}{B}, {T},
+	// Sacrifice all lands you control: Create Urami, a legendary 5/5
+	// black Demon Spirit creature token with flying."
+	//
+	// AdditionalCost.SacrificeAll (#2097) one cost site over, and the
+	// same shape: the SacrificeOther clause says WHICH permanents, this
+	// flag says how many of them — all of them — and the clause carries
+	// the "any number" bounds (Min 0, Max 0, SacrificeAnyNumber), so a
+	// board with none is a legal payment of nothing (CR 118.3: there is
+	// nothing the cost needs that the activator lacks).
+	//
+	// The activator chooses none of them (CR 601.2b via CR 602.2b
+	// announces no choice here), so the set is fixed by the engine at
+	// announce, by the one walk the cast path uses
+	// (sacrificeAllPaymentLocked, sacrifice_all_cost.go): every matching
+	// permanent the activator controls on the battlefield right then. A
+	// phased-out permanent, which CR 702.26b treats as though it does
+	// not exist, is not among them; an indestructible one is (CR 701.21a:
+	// sacrificing is not destroying); one that can't be sacrificed is not
+	// (#3275). From there it is an ordinary payment, validated and paid
+	// as one simultaneous exit and recorded on PaidCost.Sacrificed and
+	// SacrificedObjects.
+	//
+	// `sacrifice_ids` may be empty (the engine fills it, which is how the
+	// client and the bot activate) or name exactly that set in any order;
+	// anything else is ErrSacrificeAllMismatch. The SOURCE is among them
+	// when the clause matches it — Tomb of Urami is itself a land — which
+	// needs no rule of its own: SacrificeOther has always admitted the
+	// source when its spec does (Carrion Feeder).
+	//
+	// The auto-tapper treats the set as SACRIFICE-NAMED rather than
+	// untouchable (ActivationAutoTapExclusions), as the cast path's set
+	// is: CR 601.2g activates mana abilities before CR 601.2h pays, so a
+	// land may tap for the {2}{B}{B} and then be sacrificed.
+	//
+	// effects.Register allows it only beside such a clause, and never
+	// beside SacrificeSelf, a printed count, a set rule or a difference
+	// rule, each of which is a different number from "all". A mana
+	// ability cannot carry it at all: ManaAbilityShape has no such flag,
+	// so the clause there stays the one-permanent pick it was.
+	SacrificeAll bool
+
 	// Mana is a printed cost string ("{1}{B}") paid from the pool
 	// under the same strict / permissive rules casting uses. Empty
 	// means no mana component.
@@ -1970,6 +2013,23 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return ErrSummoningSick
 		}
 	}
+	// #6208, CR 601.2b / 601.2h via CR 602.2b: "Sacrifice all lands you
+	// control" (Tomb of Urami) names no choice, so the set is fixed here
+	// — before the validator, the auto-tapper's exclusions, the CR 903.9
+	// walk and the payment read sacrifice_ids — by the one walk the cast
+	// path's #2097 cost uses.
+	if ab.Cost.SacrificeAll {
+		ids, err := g.sacrificeAllPaymentLocked(playerID, ab.Cost.SacrificeOther, params.SacrificeIDs)
+		if err != nil {
+			slog.Warn("activate_ability rejected: sacrifice_ids are not every permanent a sacrifice-all cost takes",
+				"card_name", source.Name,
+				"oracle_id", source.OracleID,
+				"sacrifices_received", len(params.SacrificeIDs),
+			)
+			return err
+		}
+		params.SacrificeIDs = ids
+	}
 	sacrifices, err := g.validateSacrificeCostLocked(playerID, cardID, ab.Cost, params.SacrificeIDs, params.XValue)
 	if err != nil {
 		return err
@@ -3010,12 +3070,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	//
 	// #5669: the untap form is paid at the same place for the same
 	// reason ("whenever a creature becomes untapped"), and records
-	// nothing: no permanent was tapped.
+	// nothing on TappedOthers: no permanent was tapped. #6208: WHICH
+	// permanents it untapped is on UntappedOthers, read before the
+	// untap, for an effect that reads the object its cost used
+	// (CR 400.7j).
 	if TapOthersUntaps(ab.Cost.TapOthers) {
 		paidFirst := uuid.Nil
 		if untapsSourceFirst {
 			paidFirst = cardID
 		}
+		item.Paid.UntappedOthers = g.untappedRefsLocked(params.TapIDs)
 		g.payUntapOthersCostLocked(params.TapIDs, paidFirst)
 	} else {
 		item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
