@@ -33,16 +33,6 @@ func init() {
 		Purpose:        game.Purpose{Answers: game.AnswerRemove}, // damages a creature
 		AdditionalCost: effects.ChooseOrRevealCost("creature", "Choose a creature you control or reveal a creature card from your hand"),
 		Targets:        effects.TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			target, ok := effects.B16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			n, ok := effects.B25ChosenPower(ctx)
-			if !ok {
-				return nil
-			}
-			return effects.DealDamage{Source: ctx.Source(), Target: target, Amount: n}.Apply(ctx)
-		},
+		OnResolve:      effects.S82OldB116DamageEqualToTheChosenPower,
 	})
 }
