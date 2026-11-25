@@ -142,6 +142,14 @@ type CastProvenance struct {
 	// change shape, only where they look.
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
 
+	// CastValues are the numbers the spell fixed AS IT WAS CAST (StackItem.
+	// CastValues, Spec.CastTimeValues, #3781), kept for a permanent whose own
+	// enters trigger reads one: "if you revealed a Dragon card or controlled a
+	// Dragon as you cast this spell" (Orator of Ojutai). Additive within a
+	// snapshot version: absent from a file written before it, which reads as
+	// no value.
+	CastValues map[string]int `json:"castValues,omitempty"`
+
 	// GrantedOptional is PaidCost.GrantedOptional carried across the
 	// entry (CR 400.7d, #5428), narrowed to the keys whose payoff is an
 	// ability of the permanent the spell becomes
@@ -292,7 +300,8 @@ func (p CastProvenance) Spent() ManaSpent {
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || p.CastOrdinal != 0 || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.PaperMana != 0 || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
-		p.Caster != uuid.Nil || p.CastThisTurn || len(p.Delved) > 0 || len(p.Convoked) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
+		p.Caster != uuid.Nil || p.CastThisTurn || len(p.Delved) > 0 || len(p.Convoked) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0 ||
+		len(p.CastValues) > 0
 }
 
 // CastByItsController reports whether the permanent `c` was cast by
@@ -335,6 +344,7 @@ func (p CastProvenance) Clone() CastProvenance {
 	if len(p.GrantedOptional) > 0 {
 		p.GrantedOptional = append([]string(nil), p.GrantedOptional...)
 	}
+	p.CastValues = copyStringIntMap(p.CastValues)
 	return p
 }
 
@@ -466,6 +476,9 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// ADR 0183 (CR 702.150a): the Phyrexian symbols paid with life,
 		// which compleated reads as the permanent enters.
 		PhyrexianLife: item.Paid.PhyrexianLife,
+		// The numbers fixed as it was cast, its own map for the reason
+		// OptionalCosts has its own array.
+		CastValues: copyStringIntMap(item.CastValues),
 	}
 	// ADR 0100 sub-PR 2 (CR 607.2q): the cards delve exiled, its own
 	// backing array for the reason OptionalCosts has one.
