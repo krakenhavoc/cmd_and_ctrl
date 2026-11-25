@@ -868,6 +868,15 @@ type CastPermission struct {
 	// snapshot version.
 	CostMoreMana string `json:"costMoreMana,omitempty"`
 
+	// CostMoreUnlessTargetsYourCreature is "If that spell doesn't target a
+	// creature you control, it costs {N} more to cast this way" (Mavinda,
+	// Students' Advocate, #6157): CostMore read with the announced targets
+	// (CR 601.2c before 601.2f), N added unless one of them is a creature
+	// the caster controls (TargetSurchargeFor). Zero is no surcharge, which
+	// is every permission written before it. Additive within a snapshot
+	// version.
+	CostMoreUnlessTargetsYourCreature int `json:"costMoreUnlessTargetsYourCreature,omitempty"`
+
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
 	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
@@ -3724,10 +3733,11 @@ func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind,
 		return 0
 	}
 	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
-	if grant == nil || grant.CostMore <= 0 {
+	if grant == nil {
 		return 0
 	}
-	return grant.CostMore
+	// #6157: and the surcharge that reads this announcement's targets.
+	return max(grant.CostMore, 0) + g.TargetSurchargeFor(grant, playerID, params.Targets)
 }
 
 // CreatureCountersLabel is the clause of a "removing N counters from among
