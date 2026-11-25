@@ -266,6 +266,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "EquipCostAlternatives", fallback: "Equip abilities may cost {0}", ownLabel: true},
 	{field: "CyclingCostAlternatives", fallback: "Cycling may cost {0}", ownLabel: true},
 	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
+	{field: "ImposedSacrifices", fallback: "Costs an additional sacrifice", ownLabel: true},
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},

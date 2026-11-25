@@ -8024,7 +8024,13 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		castID, _ := uuid.Parse(c.InstanceID)
 		stampEscalate(g, caster, castID, out.Modes, ms)
 	}
-	if ac := game.AdditionalCostFor(key); !ac.Empty() {
+	ac := game.AdditionalCostFor(key)
+	if haveLive {
+		// #6205: with every sacrifice the board imposes on this cast
+		// (Drought) folded in, so the picker asks for the Swamps.
+		ac, _ = g.ImposedSacrificeCastCostForEffect(caster, live, ac)
+	}
+	if !ac.Empty() {
 		castUUID, _ := uuid.Parse(c.InstanceID)
 		out.AdditionalCost = viewOfAdditionalCost(g, caster, castUUID, ac)
 		// ADR 0100 §2: an either/or cost ships each branch in the same
@@ -10796,9 +10802,12 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 		if i >= len(raw) {
 			continue
 		}
-		if raw[i].SacrificeOther != nil {
-			views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-			views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
+		// #6205: with every sacrifice the board imposes folded in (a
+		// copy: raw is the catalog's slice).
+		row, _ := g.ImposedSacrificeManaAbilityForEffect(controller, *card, raw[i])
+		if row.SacrificeOther != nil {
+			views[i].SacrificeLabel = row.SacrificeOther.Label
+			views[i].SacrificeOptions = sacrificeCostOptions(g, controller, row.SacrificeOther, card.InstanceID, row.SacrificeCost)
 		}
 		if tc := raw[i].TapOthers; !tc.Empty() {
 			views[i].TapOthersLabel = tc.Label
@@ -14466,6 +14475,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// #6148, CR 606.5: the loyalty cost the controller would pay,
 		// combined with every addition on the board (Carth the Lion).
 		a.Cost = g.LoyaltyAdjustedCostForEffect(c.Controller, a.Cost)
+		// #6205: and every sacrifice the board imposes on it (Drought,
+		// Brutal Suppression), folded as the activation folds it, so
+		// the picker asks for the Swamps too.
+		a.Cost, _ = g.ImposedSacrificeAbilityCostForEffect(caster, c, a.Cost)
 		i, wireIndex, wireRef := k, k, origins.Ref(k)
 		if k >= len(raw) {
 			tw := twins[k-len(raw)]
