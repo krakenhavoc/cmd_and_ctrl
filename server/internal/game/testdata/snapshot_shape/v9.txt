@@ -2607,6 +2607,7 @@ extraTurns[].effects[].mods[].match[].Supertypes	array
 extraTurns[].effects[].mods[].match[].Supertypes[]	string
 extraTurns[].effects[].mods[].match[].Types	array
 extraTurns[].effects[].mods[].match[].Types[]	string
+extraTurns[].effects[].mods[].match[].Untapped	bool
 extraTurns[].effects[].mods[].next	bool
 extraTurns[].effects[].mods[].noncombatOnly	bool
 extraTurns[].effects[].mods[].objects	array
@@ -3321,6 +3322,7 @@ followUpParks[].then.records[].mods[].match[].Supertypes	array
 followUpParks[].then.records[].mods[].match[].Supertypes[]	string
 followUpParks[].then.records[].mods[].match[].Types	array
 followUpParks[].then.records[].mods[].match[].Types[]	string
+followUpParks[].then.records[].mods[].match[].Untapped	bool
 followUpParks[].then.records[].mods[].next	bool
 followUpParks[].then.records[].mods[].noncombatOnly	bool
 followUpParks[].then.records[].mods[].objects	array
@@ -4066,6 +4068,7 @@ frozenEntries[].event.counterTail.then.records[].mods[].match[].Supertypes	array
 frozenEntries[].event.counterTail.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].match[].Types	array
 frozenEntries[].event.counterTail.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.counterTail.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.counterTail.then.records[].mods[].next	bool
 frozenEntries[].event.counterTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.counterTail.then.records[].mods[].objects	array
@@ -4788,6 +4791,7 @@ frozenEntries[].event.damageTail.each.each.records[].mods[].match[].Supertypes	a
 frozenEntries[].event.damageTail.each.each.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].match[].Types	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].match[].Types[]	string
+frozenEntries[].event.damageTail.each.each.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.damageTail.each.each.records[].mods[].next	bool
 frozenEntries[].event.damageTail.each.each.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.damageTail.each.each.records[].mods[].objects	array
@@ -5501,6 +5505,7 @@ frozenEntries[].event.damageTail.each.then.records[].mods[].match[].Supertypes	a
 frozenEntries[].event.damageTail.each.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].match[].Types	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.damageTail.each.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.damageTail.each.then.records[].mods[].next	bool
 frozenEntries[].event.damageTail.each.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.damageTail.each.then.records[].mods[].objects	array
@@ -6493,6 +6498,7 @@ frozenEntries[].event.damageTail.then.records[].mods[].match[].Supertypes	array
 frozenEntries[].event.damageTail.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].match[].Types	array
 frozenEntries[].event.damageTail.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.damageTail.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.damageTail.then.records[].mods[].next	bool
 frozenEntries[].event.damageTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.damageTail.then.records[].mods[].objects	array
@@ -7333,6 +7339,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].match[]
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].match[].Types	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].next	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].objects	array
@@ -8122,6 +8129,7 @@ frozenEntries[].event.entryTail.batch.then.records[].mods[].match[].Supertypes	a
 frozenEntries[].event.entryTail.batch.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].match[].Types	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.entryTail.batch.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.entryTail.batch.then.records[].mods[].next	bool
 frozenEntries[].event.entryTail.batch.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.batch.then.records[].mods[].objects	array
@@ -8835,6 +8843,7 @@ frozenEntries[].event.entryTail.keyed.records[].mods[].match[].Supertypes	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].match[].Types	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].match[].Types[]	string
+frozenEntries[].event.entryTail.keyed.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.entryTail.keyed.records[].mods[].next	bool
 frozenEntries[].event.entryTail.keyed.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.keyed.records[].mods[].objects	array
@@ -9584,6 +9593,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].match[].Su
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].match[].Types	array
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].match[].Types[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].next	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].objects	array
@@ -10319,6 +10329,7 @@ frozenEntries[].event.entryTail.tokens.then.records[].mods[].match[].Supertypes	
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].match[].Types	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].next	bool
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].objects	array
@@ -11500,6 +11511,7 @@ frozenEntries[].event.keywordActionTail.then.records[].mods[].match[].Supertypes
 frozenEntries[].event.keywordActionTail.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].match[].Types	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.keywordActionTail.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.keywordActionTail.then.records[].mods[].next	bool
 frozenEntries[].event.keywordActionTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.keywordActionTail.then.records[].mods[].objects	array
@@ -12239,6 +12251,7 @@ frozenEntries[].event.lifeTail.each.then.records[].mods[].match[].Supertypes	arr
 frozenEntries[].event.lifeTail.each.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].match[].Types	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.lifeTail.each.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.lifeTail.each.then.records[].mods[].next	bool
 frozenEntries[].event.lifeTail.each.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.lifeTail.each.then.records[].mods[].objects	array
@@ -12955,6 +12968,7 @@ frozenEntries[].event.lifeTail.then.records[].mods[].match[].Supertypes	array
 frozenEntries[].event.lifeTail.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].match[].Types	array
 frozenEntries[].event.lifeTail.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.lifeTail.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.lifeTail.then.records[].mods[].next	bool
 frozenEntries[].event.lifeTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.lifeTail.then.records[].mods[].objects	array
@@ -14563,6 +14577,7 @@ frozenEntries[].event.millTail.run.then.records[].mods[].match[].Supertypes	arra
 frozenEntries[].event.millTail.run.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].match[].Types	array
 frozenEntries[].event.millTail.run.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.millTail.run.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.millTail.run.then.records[].mods[].next	bool
 frozenEntries[].event.millTail.run.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.millTail.run.then.records[].mods[].objects	array
@@ -15274,6 +15289,7 @@ frozenEntries[].event.millTail.then.records[].mods[].match[].Supertypes	array
 frozenEntries[].event.millTail.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.millTail.then.records[].mods[].match[].Types	array
 frozenEntries[].event.millTail.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.millTail.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.millTail.then.records[].mods[].next	bool
 frozenEntries[].event.millTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.millTail.then.records[].mods[].objects	array
@@ -17140,6 +17156,7 @@ frozenEntries[].event.tokenTail.then.records[].mods[].match[].Supertypes	array
 frozenEntries[].event.tokenTail.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].match[].Types	array
 frozenEntries[].event.tokenTail.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.tokenTail.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.tokenTail.then.records[].mods[].next	bool
 frozenEntries[].event.tokenTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.tokenTail.then.records[].mods[].objects	array
@@ -19221,6 +19238,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Sup
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Types	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].next	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].objects	array
@@ -19970,6 +19988,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Types	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].next	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects	array
@@ -20681,6 +20700,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].match[].Supertyp
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].match[].Types	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].next	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].objects	array
@@ -21412,6 +21432,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].match[].Supert
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].match[].Types	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].next	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].objects	array
@@ -22212,6 +22233,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Super
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Types	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Types[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Untapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].next	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].objects	array
@@ -26655,6 +26677,7 @@ movesAwaitingTokens[].counterTail.then.records[].mods[].match[].Supertypes	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].counterTail.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].counterTail.then.records[].mods[].next	bool
 movesAwaitingTokens[].counterTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].counterTail.then.records[].mods[].objects	array
@@ -27377,6 +27400,7 @@ movesAwaitingTokens[].damageTail.each.each.records[].mods[].match[].Supertypes	a
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].match[].Types	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].next	bool
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].objects	array
@@ -28090,6 +28114,7 @@ movesAwaitingTokens[].damageTail.each.then.records[].mods[].match[].Supertypes	a
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].next	bool
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].objects	array
@@ -29082,6 +29107,7 @@ movesAwaitingTokens[].damageTail.then.records[].mods[].match[].Supertypes	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].damageTail.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].damageTail.then.records[].mods[].next	bool
 movesAwaitingTokens[].damageTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].damageTail.then.records[].mods[].objects	array
@@ -29922,6 +29948,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].match[]
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].next	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].objects	array
@@ -30711,6 +30738,7 @@ movesAwaitingTokens[].entryTail.batch.then.records[].mods[].match[].Supertypes	a
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].next	bool
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].objects	array
@@ -31424,6 +31452,7 @@ movesAwaitingTokens[].entryTail.keyed.records[].mods[].match[].Supertypes	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].match[].Types	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].next	bool
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].objects	array
@@ -32173,6 +32202,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].match[].Su
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].match[].Types	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].next	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].objects	array
@@ -32908,6 +32938,7 @@ movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].match[].Supertypes	
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].next	bool
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].objects	array
@@ -34089,6 +34120,7 @@ movesAwaitingTokens[].keywordActionTail.then.records[].mods[].match[].Supertypes
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].next	bool
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].objects	array
@@ -34828,6 +34860,7 @@ movesAwaitingTokens[].lifeTail.each.then.records[].mods[].match[].Supertypes	arr
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].next	bool
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].objects	array
@@ -35544,6 +35577,7 @@ movesAwaitingTokens[].lifeTail.then.records[].mods[].match[].Supertypes	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].lifeTail.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].lifeTail.then.records[].mods[].next	bool
 movesAwaitingTokens[].lifeTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].lifeTail.then.records[].mods[].objects	array
@@ -37152,6 +37186,7 @@ movesAwaitingTokens[].millTail.run.then.records[].mods[].match[].Supertypes	arra
 movesAwaitingTokens[].millTail.run.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].millTail.run.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].millTail.run.then.records[].mods[].next	bool
 movesAwaitingTokens[].millTail.run.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].millTail.run.then.records[].mods[].objects	array
@@ -37863,6 +37898,7 @@ movesAwaitingTokens[].millTail.then.records[].mods[].match[].Supertypes	array
 movesAwaitingTokens[].millTail.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].millTail.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].millTail.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].millTail.then.records[].mods[].next	bool
 movesAwaitingTokens[].millTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].millTail.then.records[].mods[].objects	array
@@ -39729,6 +39765,7 @@ movesAwaitingTokens[].tokenTail.then.records[].mods[].match[].Supertypes	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].tokenTail.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].tokenTail.then.records[].mods[].next	bool
 movesAwaitingTokens[].tokenTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].tokenTail.then.records[].mods[].objects	array
@@ -41810,6 +41847,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].match[].Sup
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].next	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].objects	array
@@ -42559,6 +42597,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].match
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].next	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].objects	array
@@ -43270,6 +43309,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].match[].Supertyp
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].next	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].objects	array
@@ -44001,6 +44041,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].match[].Supert
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].next	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].objects	array
@@ -44801,6 +44842,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].match[].Super
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].match[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].match[].Types	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].match[].Types[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].match[].Untapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].next	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].objects	array
@@ -48497,6 +48539,7 @@ pendingChoices[].attackSplit.tail.records[].mods[].match[].Supertypes	array
 pendingChoices[].attackSplit.tail.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].match[].Types	array
 pendingChoices[].attackSplit.tail.records[].mods[].match[].Types[]	string
+pendingChoices[].attackSplit.tail.records[].mods[].match[].Untapped	bool
 pendingChoices[].attackSplit.tail.records[].mods[].next	bool
 pendingChoices[].attackSplit.tail.records[].mods[].noncombatOnly	bool
 pendingChoices[].attackSplit.tail.records[].mods[].objects	array
@@ -50909,6 +50952,7 @@ pendingChoices[].diceRoll.then.records[].mods[].match[].Supertypes	array
 pendingChoices[].diceRoll.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].diceRoll.then.records[].mods[].match[].Types	array
 pendingChoices[].diceRoll.then.records[].mods[].match[].Types[]	string
+pendingChoices[].diceRoll.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].diceRoll.then.records[].mods[].next	bool
 pendingChoices[].diceRoll.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].diceRoll.then.records[].mods[].objects	array
@@ -52215,6 +52259,7 @@ pendingChoices[].divideShield.walk.each.records[].mods[].match[].Supertypes	arra
 pendingChoices[].divideShield.walk.each.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].match[].Types	array
 pendingChoices[].divideShield.walk.each.records[].mods[].match[].Types[]	string
+pendingChoices[].divideShield.walk.each.records[].mods[].match[].Untapped	bool
 pendingChoices[].divideShield.walk.each.records[].mods[].next	bool
 pendingChoices[].divideShield.walk.each.records[].mods[].noncombatOnly	bool
 pendingChoices[].divideShield.walk.each.records[].mods[].objects	array
@@ -52928,6 +52973,7 @@ pendingChoices[].divideShield.walk.then.records[].mods[].match[].Supertypes	arra
 pendingChoices[].divideShield.walk.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].match[].Types	array
 pendingChoices[].divideShield.walk.then.records[].mods[].match[].Types[]	string
+pendingChoices[].divideShield.walk.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].divideShield.walk.then.records[].mods[].next	bool
 pendingChoices[].divideShield.walk.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].divideShield.walk.then.records[].mods[].objects	array
@@ -53647,6 +53693,7 @@ pendingChoices[].libraryOrder.then.records[].mods[].match[].Supertypes	array
 pendingChoices[].libraryOrder.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].match[].Types	array
 pendingChoices[].libraryOrder.then.records[].mods[].match[].Types[]	string
+pendingChoices[].libraryOrder.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].libraryOrder.then.records[].mods[].next	bool
 pendingChoices[].libraryOrder.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].libraryOrder.then.records[].mods[].objects	array
@@ -54421,6 +54468,7 @@ pendingChoices[].nameThen.records[].mods[].match[].Supertypes	array
 pendingChoices[].nameThen.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].nameThen.records[].mods[].match[].Types	array
 pendingChoices[].nameThen.records[].mods[].match[].Types[]	string
+pendingChoices[].nameThen.records[].mods[].match[].Untapped	bool
 pendingChoices[].nameThen.records[].mods[].next	bool
 pendingChoices[].nameThen.records[].mods[].noncombatOnly	bool
 pendingChoices[].nameThen.records[].mods[].objects	array
@@ -55652,6 +55700,7 @@ pendingChoices[].pickTail.records[].mods[].match[].Supertypes	array
 pendingChoices[].pickTail.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].pickTail.records[].mods[].match[].Types	array
 pendingChoices[].pickTail.records[].mods[].match[].Types[]	string
+pendingChoices[].pickTail.records[].mods[].match[].Untapped	bool
 pendingChoices[].pickTail.records[].mods[].next	bool
 pendingChoices[].pickTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].pickTail.records[].mods[].objects	array
@@ -56411,6 +56460,7 @@ pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].match
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].objects	array
@@ -57133,6 +57183,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].m
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].objects	array
@@ -57846,6 +57897,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].m
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].objects	array
@@ -58838,6 +58890,7 @@ pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].match[
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].objects	array
@@ -59678,6 +59731,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.recor
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].objects	array
@@ -60467,6 +60521,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].m
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].objects	array
@@ -61180,6 +61235,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].match[
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].objects	array
@@ -61929,6 +61985,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].objects	array
@@ -62664,6 +62721,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].objects	array
@@ -63845,6 +63903,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[]
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].objects	array
@@ -64584,6 +64643,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].mat
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].objects	array
@@ -65300,6 +65360,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].match[].
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].objects	array
@@ -66908,6 +66969,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].matc
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].objects	array
@@ -67619,6 +67681,7 @@ pendingChoices[].replacementResume.event.millTail.then.records[].mods[].match[].
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].objects	array
@@ -69485,6 +69548,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].match[]
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].objects	array
@@ -71566,6 +71630,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].objects	array
@@ -72315,6 +72380,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.rec
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects	array
@@ -73026,6 +73092,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].objects	array
@@ -73757,6 +73824,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mo
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].objects	array
@@ -74557,6 +74625,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].m
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].match[].Untapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].next	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].objects	array
@@ -75745,6 +75814,7 @@ pendingChoices[].scryThen.records[].mods[].match[].Supertypes	array
 pendingChoices[].scryThen.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].scryThen.records[].mods[].match[].Types	array
 pendingChoices[].scryThen.records[].mods[].match[].Types[]	string
+pendingChoices[].scryThen.records[].mods[].match[].Untapped	bool
 pendingChoices[].scryThen.records[].mods[].next	bool
 pendingChoices[].scryThen.records[].mods[].noncombatOnly	bool
 pendingChoices[].scryThen.records[].mods[].objects	array
@@ -76507,6 +76577,7 @@ pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].match[].Supertypes	
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].match[].Supertypes[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].match[].Types	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].match[].Types[]	string
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].match[].Untapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].next	bool
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].objects	array
@@ -79302,6 +79373,7 @@ phaseEffects[].effect.mods[].match[].Supertypes	array
 phaseEffects[].effect.mods[].match[].Supertypes[]	string
 phaseEffects[].effect.mods[].match[].Types	array
 phaseEffects[].effect.mods[].match[].Types[]	string
+phaseEffects[].effect.mods[].match[].Untapped	bool
 phaseEffects[].effect.mods[].next	bool
 phaseEffects[].effect.mods[].noncombatOnly	bool
 phaseEffects[].effect.mods[].objects	array
@@ -82030,6 +82102,7 @@ scopedEffects[].mods[].match[].Supertypes	array
 scopedEffects[].mods[].match[].Supertypes[]	string
 scopedEffects[].mods[].match[].Types	array
 scopedEffects[].mods[].match[].Types[]	string
+scopedEffects[].mods[].match[].Untapped	bool
 scopedEffects[].mods[].next	bool
 scopedEffects[].mods[].noncombatOnly	bool
 scopedEffects[].mods[].objects	array
