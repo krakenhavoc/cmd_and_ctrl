@@ -30,20 +30,6 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying", "trample"},
 		SpecialActions:  []game.SpecialAction{effects.Plot("{2}{R}")},
-		Static: []game.StaticAbility{{
-			Label:             "Gets -1/-1 for each card in your hand.",
-			Layer:             game.Layer7PT,
-			SubLayer:          game.SubLayer7C_Modify,
-			DependsOnHandSize: true,
-			AppliesTo:         effects.SelfCreature,
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := 0
-				if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
-					n = p.Hand.Size()
-				}
-				c.Power -= n
-				c.Toughness -= n
-			},
-		}},
+		Static:          []game.StaticAbility{effects.SelfMinusOnePerCardInYourHand()},
 	})
 }

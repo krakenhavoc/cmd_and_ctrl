@@ -2144,6 +2144,7 @@ confirm confirm/s82-gap-b200-ripple-reveal
 confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/s82-old-b104-sweep-away
 confirm confirm/s82-old-b105-sanctum-of-calm-waters
+confirm confirm/s82-old-b246-remove-a-minus-one-counter
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
