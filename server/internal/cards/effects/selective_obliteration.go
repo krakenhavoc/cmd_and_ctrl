@@ -88,7 +88,7 @@ func ApnapPlayers(g *game.Game) []uuid.UUID {
 	n := len(g.Seats)
 	out := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
-		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, i)]
 		if p == nil || p.Eliminated {
 			continue
 		}

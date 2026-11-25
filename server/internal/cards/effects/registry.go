@@ -273,6 +273,14 @@ func Register(spec Spec) {
 					spec.Name, ac.Key, ac.FaceDown.FaceUpCost, err))
 			}
 		}
+		// #6249: a reveal morph cost names one colour, and is the
+		// whole cost: "Morph—Reveal a green card in your hand".
+		if r := ac.FaceDown.FaceUpReveal; r != "" {
+			if !strings.Contains("WUBRG", r) || len(r) != 1 || ac.FaceDown.FaceUpCost != "" {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with a face-up reveal %q: want one colour letter and no mana beside it",
+					spec.Name, ac.Key, r))
+			}
+		}
 		// A face-down cast has no targets, no modes and no
 		// additional costs, because the object it produces has no
 		// text (CR 708.2a) — CastSpell stamps the state before every

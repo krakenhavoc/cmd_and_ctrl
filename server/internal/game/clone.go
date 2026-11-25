@@ -52,6 +52,7 @@ func (g *Game) cloneLocked() *Game {
 		Settings:          g.Settings,
 		StartingSeat:      g.StartingSeat,
 		SplitSecondActive: g.SplitSecondActive,
+		TurnOrderReversed: g.TurnOrderReversed,
 		// ADR 0057: the result of an ended game (its own pointer, so an
 		// undo snapshot never shares it) and the deferred departure of
 		// an active player who lost mid-resolution.
@@ -729,6 +730,8 @@ func deepenCard(out *Card) {
 	// reason, and an undo that shared it would revert a Cytoshape to
 	// whatever the live game's baseline had become.
 	out.DurationCopyBase = copyPrintedValues(out.DurationCopyBase)
+	// #6233: the full-text baseline, for the same reason.
+	out.FullTextBase = copyPrintedValues(out.FullTextBase)
 	// #1270: the listed face-down body is a pointer too. Never
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.
@@ -1349,6 +1352,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// restore is a different path (restoreGame) and does restore them.
 	g.StartingSeat = src.StartingSeat
 	g.SplitSecondActive = src.SplitSecondActive
+	g.TurnOrderReversed = src.TurnOrderReversed
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.TurnChangePending = src.TurnChangePending

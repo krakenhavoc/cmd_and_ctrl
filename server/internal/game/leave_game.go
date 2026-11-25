@@ -159,7 +159,7 @@ func (g *Game) handOnPlanarControllerLocked(leaving uuid.UUID) {
 		return
 	}
 	for k := 1; k < n; k++ {
-		if p := g.Seats[(from+k)%n]; p != nil && !p.Eliminated {
+		if p := g.Seats[g.SeatInTurnOrderForEffect(from, k)]; p != nil && !p.Eliminated {
 			g.setPlanarControllerLocked(p.ID)
 			return
 		}
@@ -1082,7 +1082,7 @@ func (g *Game) choiceInheritorLocked(c *PendingChoice, controller uuid.UUID) uui
 	}
 	fallback := uuid.Nil
 	for offset := 1; offset <= n; offset++ {
-		p := g.Seats[(seat+offset)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(seat, offset)]
 		if p == nil || p.Eliminated || p.ID == c.Chooser {
 			continue
 		}

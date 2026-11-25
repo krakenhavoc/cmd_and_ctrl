@@ -317,6 +317,12 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 seam #6098.
 	"Emrakul, the World Anew": "its leaves-the-battlefield drawback sacrifices only its controller's own creatures: not a board wipe",
+
+	// S82 OLD batch 180 (#5521).
+	"Plague Wight": "-1/-1 until end of turn on the creatures blocking it, only when it becomes blocked: a combat trick, not a board wipe",
+
+	// S82 OLD batch 181 (#5521).
+	"Ethereal Absolution": "a standing -1/-1 on the opponents' creatures and an exile-from-graveyard ability: it wears small creatures down but destroys nothing itself",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

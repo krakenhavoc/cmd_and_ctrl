@@ -255,6 +255,12 @@ type Game struct {
 	// existed. Added in S13.
 	StartingSeat int
 
+	// TurnOrderReversed is true while the game's turn order runs
+	// counter-clockwise ("reverse the game's turn order", #6223). The
+	// zero value is the default order (CR 103.1). Read it through
+	// SeatInTurnOrderForEffect; see turn_direction.go.
+	TurnOrderReversed bool
+
 	// StackMeta is the per-stack-item metadata map (S13.1). Keyed by
 	// the item's ID — for spells this equals the underlying Card's
 	// InstanceID (the card itself lives in Game.Stack); for abilities
@@ -1200,6 +1206,12 @@ type Game struct {
 	// carried forward: a table roll after an undo is a fresh roll, not
 	// a replay of one the table already watched. Persisted.
 	tableRollNext uint64
+
+	// simulating marks a throwaway copy that plays a spell's resolution
+	// out to read what it would do (land_destruction.go, #6225). It is
+	// never set on a live game, never cloned and never persisted; the
+	// copy reports no effect error to the server's log or metrics.
+	simulating bool
 	// tableRolls is the ring of the last tableRollRingMax EventTableRoll
 	// events, as last emitted (their current Seq). RestoreFrom does not
 	// restore it; it re-emits every one the restored log no longer

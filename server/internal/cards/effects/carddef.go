@@ -282,6 +282,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,
 		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
 		ActivateAsThoughHasteOthers:         spec.ActivateAsThoughHasteOthers,
+		FullTextOfTopGraveyardCreature:      spec.FullTextOfTopGraveyardCreature,
 		ExtraVote:                           spec.ExtraVote,
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
 		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,

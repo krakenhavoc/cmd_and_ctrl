@@ -198,7 +198,7 @@ func (g *Game) initiativeLeftTheGameLocked() {
 		start = 0
 	}
 	for offset := 0; offset < len(g.Seats); offset++ {
-		if s := g.Seats[(start+offset)%len(g.Seats)]; s != nil && !s.Eliminated {
+		if s := g.Seats[g.SeatInTurnOrderForEffect(start, offset)]; s != nil && !s.Eliminated {
 			g.takeInitiativeLocked(s.ID, uuid.Nil)
 			return
 		}

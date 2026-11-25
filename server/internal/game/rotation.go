@@ -286,7 +286,7 @@ func (g *Game) chooseNextTurnExceptLocked(declined []uuid.UUID) (paused bool) {
 		// active seat, so this changes nothing there.
 		from.ActiveSeat = from.OrderSeat
 	}
-	next := from.advance(n, g.StartingSeat)
+	next := from.advance(n, g.StartingSeat, g.turnOrderStepLocked())
 	// ADR 0188 Decision 1: the walk passes a seat that has left, and a
 	// seat that owes a skip (CR 614.10), the same way. Every pass spends
 	// a charge or drops a departed seat, so the walk is finite; the
@@ -321,7 +321,7 @@ func (g *Game) chooseNextTurnExceptLocked(declined []uuid.UUID) (paused bool) {
 		skipped := next
 		skipped.Step = StepCleanup
 		prev, walked = skipped, true
-		next = skipped.advance(n, g.StartingSeat)
+		next = skipped.advance(n, g.StartingSeat, g.turnOrderStepLocked())
 	}
 	// #6226: "If you would begin your turn …, you may skip that turn
 	// instead" (Time Vault) asks before the turn begins. The cursor is

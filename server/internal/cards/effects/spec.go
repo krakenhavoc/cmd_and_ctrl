@@ -1450,6 +1450,14 @@ type Spec struct {
 	// Adept, #6094). The permanent's own abilities are not reached.
 	ActivateAsThoughHasteOthers bool
 
+	// FullTextOfTopGraveyardCreature declares the printed static "As long
+	// as the top card of your graveyard is a creature card, this creature
+	// has the full text of that card and has the text …" (CR 612.6,
+	// Volrath's Shapeshifter, #6233). Keep names the Grants entry holding
+	// the text it keeps. The engine materialises the other card's values
+	// on top of the copies on every layer recompute (game/full_text.go).
+	FullTextOfTopGraveyardCreature *game.FullTextStatic
+
 	// ExtraVote declares the printed static "While voting, you get an
 	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
 	// or "While voting, you may vote an additional time"
