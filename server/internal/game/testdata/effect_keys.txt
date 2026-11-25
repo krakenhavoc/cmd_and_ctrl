@@ -1573,6 +1573,7 @@ choose choose-cards/s82-old-b207-each-player-returns-lands
 choose choose-cards/s82-old-b209-aim-counters
 choose choose-cards/s82-old-b212-board-the-weatherlight-take
 choose choose-cards/s82-old-b212-urzas-tome-exile
+choose choose-cards/s82-old-b311-fertile-thicket
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
