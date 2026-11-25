@@ -15158,6 +15158,17 @@ if g.OpponentPermanentDealtExcessDamageThisTurn(you) { … }             // a re
 
 `CondOpponentPermanentDealtExcessDamage` declares `game.FootprintCondOpponentPermanentDealtExcessDamage`, since the tally only rises within a turn. "Whenever … is dealt excess noncombat damage", one event's amount inside a trigger, is still `excess_damage.go` (Magmatic Galleon, Fall of Cair Andros).
 
+### "The most common color among all permanents" (#6207)
+
+Counted by `game.MostCommonColorsForEffect` over the layered colours (CR 105.2): each permanent counts once per colour, colourless counts for nothing, ties are all returned, and with no coloured permanent no colour is common. A layer-7c static may read it, since layer 5 has settled for the pass. The shapes are in `cards/effects/most_common_color.go`:
+
+```go
+Static: []game.StaticAbility{SelfPumpWhileColorIsMostCommon("R", -2, -2)}, // Halam Djinn: "… as long as red is the most common color among all permanents or is tied for most common"
+Static: []game.StaticAbility{PumpEnchantedUnlessSharesAMostCommonColor(3, 3)}, // Heroic Defiance
+SharesAMostCommonColor(g, card)                      // Tsabo's Assassin, Barrin's Unmaking, checked as the ability or spell resolves
+ColorIsMostCommonUntiedAmongNontoken(g, player, col) // Call to Arms
+```
+
 ### "If you control no untapped lands" (#5794)
 
 The Prophecy condition is one fact about the battlefield, read through the layers: the player controls no permanent that is both a land and untapped. A land creature and an animated land are lands; a phased-out land is not on the battlefield (CR 702.26b); a player with no lands at all controls no untapped lands. The readers are in `cards/effects/no_untapped_lands.go`:
