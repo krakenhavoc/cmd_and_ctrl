@@ -769,6 +769,9 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// card whose death is being reported, so a wipe needs its own
 	// pass. No-op unless a simultaneous batch is open.
 	g.harvestSimultaneousExitLocked(&pass)
+	// #6201, CR 603.10b: a permanent's own "whenever this phases out",
+	// which the battlefield walk cannot find once it has phased out.
+	g.harvestPhasedOutSelfLocked(&pass)
 	// #663: event-conditioned delayed triggers — "when you next cast
 	// an instant or sorcery spell this turn, copy that spell" (CR
 	// 603.7b). Checked LAST, after every zone walk, so the delayed

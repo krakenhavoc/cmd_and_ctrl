@@ -394,6 +394,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3275: a rules gate read by every sacrifice route. Its cases
 		// are in cant_be_sacrificed_test.go.
 		ModCantBeSacrificed: true,
+		// #6201: a rules gate read by every phase-out. Its cases are in
+		// phasing_extras_test.go.
+		ModCantPhaseOut: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,

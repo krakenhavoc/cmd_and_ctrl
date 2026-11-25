@@ -1315,6 +1315,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6201: "can't phase out", read by phaseOutSetLocked
+	// (phasing_extras.go).
+	ModCantPhaseOut: {reader: readerRule},
 	// #5251: Lumbering Laundry's look at face-down creatures, read by
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
