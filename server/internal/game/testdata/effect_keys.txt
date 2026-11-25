@@ -3889,6 +3889,7 @@ tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
 tail destroy-then/smashing-success-treasure
+tail destroy/nissas-defeat-draw-for-a-nissa
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
