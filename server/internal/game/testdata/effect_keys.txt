@@ -1525,6 +1525,7 @@ choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/scavengers-talent-return
 choose choose-cards/scion-of-halaster-pick
+choose choose-cards/scroll-rack-exile
 choose choose-cards/search-for-blex-take
 choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
@@ -3229,6 +3230,7 @@ run prompt-run/momentum-breaker-discard
 run prompt-run/mukotai-soulripper-grow
 run prompt-run/multiple-choice-bounce
 run prompt-run/myrkuls-edict-done
+run prompt-run/nahiris-lithoforming-sacrifice
 run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
@@ -4595,6 +4597,8 @@ tail sauron-lord-of-the-rings/mill-then-return
 tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
+tail scroll-rack/put-back
+tail scroll-rack/take
 tail scuttlemutt/colors-chosen
 tail search-for-azcanta/after-surveil
 tail search-then/tend-the-sprigs
@@ -4980,6 +4984,7 @@ tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy
+tail then/nahiris-lithoforming-draw
 tail then/necromentia-named
 tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal

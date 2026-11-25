@@ -2293,6 +2293,13 @@ type ActivatedAbility struct {
 	// Register refuses it outside a bundle and beside the other named
 	// activators. See game.ActivatedAbilityShape.GrantorOnly.
 	GrantorOnly bool
+	// DefendingPlayerOnly is "Only the player this creature is attacking
+	// may activate this ability" (Capricopian, #6170): the only activator
+	// is the player the source is attacking right now. Register refuses it
+	// beside the other named activators, with the components and zones
+	// AnyPlayer refuses, and with a Purpose. See
+	// game.ActivatedAbilityShape.DefendingPlayerOnly.
+	DefendingPlayerOnly bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does
