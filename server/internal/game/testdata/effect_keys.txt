@@ -1556,6 +1556,7 @@ choose choose-cards/sparring-dummy-milled-land
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spear-of-leonidas-draw
 choose choose-cards/specter-of-mortality-exile
+choose choose-cards/specters-shriek-exile-from-hand
 choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
 choose choose-cards/spirit-of-resilience-copy
@@ -2970,6 +2971,7 @@ payunless satyr-nyx-smith/paid
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/check-for-traps-life-loss
 pick revealed-pick/cloak-and-dagger-entwined-return
+pick revealed-pick/covetous-urge-may-cast
 pick revealed-pick/cruelclaws-heist-may-cast
 pick revealed-pick/deep-cavern-bat-return
 pick revealed-pick/dreams-of-steel-and-oil-graveyard
@@ -2981,6 +2983,7 @@ pick revealed-pick/revealing-eye-draw
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/soul-search-spirit
+pick revealed-pick/specters-shriek-exile-from-hand
 pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 pick revealed-pick/traumatic-revelation-incubate
