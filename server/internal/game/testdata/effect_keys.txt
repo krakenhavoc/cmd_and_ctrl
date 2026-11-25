@@ -3316,6 +3316,7 @@ run prompt-run/indoctrination-attendant-return
 run prompt-run/infernal-offering-sacrificed
 run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
+run prompt-run/ironclad-revolutionary-sacrifice
 run prompt-run/kardurs-vicious-return-sacrifice
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
@@ -4684,6 +4685,7 @@ tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/insatiable-appetite-sacrifice
 tail sacrificed-one/prompt-run/invasion-of-new-capenna-sacrificed
+tail sacrificed-one/prompt-run/ironclad-revolutionary-sacrifice
 tail sacrificed-one/prompt-run/kardurs-vicious-return-sacrifice
 tail sacrificed-one/prompt-run/kethek-crucible-goliath-sacrifice
 tail sacrificed-one/prompt-run/kill-zone-acrobat-flying
