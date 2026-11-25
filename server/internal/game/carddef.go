@@ -643,6 +643,10 @@ type CardDef struct {
 	// MadnessLife is the "Pay N life" a madness cost adds to its mana
 	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
 	MadnessLife int
+	// CommanderTaxInLife is "Rather than pay {2} for each previous time
+	// you've cast this spell from the command zone this game, pay 2 life
+	// that many times" (#6151), read through CommanderTaxInLifeFor.
+	CommanderTaxInLife bool
 
 	// XCeiling is the spell's printed "X can't be greater than
 	// <count>" (#2581), read at announce through XCeilingFor; see
@@ -1449,6 +1453,10 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogCommanderTaxInLife = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.CommanderTaxInLife
 	}
 	CatalogMadnessLife = func(key string) int {
 		if d := catalogDef(key); d != nil {

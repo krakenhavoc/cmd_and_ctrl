@@ -718,4 +718,6 @@ var TokenTable = map[string]game.Card{
 	"8/8 blue Kraken with hexproof": {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 8, Toughness: 8, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
 	// Purphoros's Intervention: an X/1 whose printed token card is */1; 0/1 here, X set as it is created.
 	"0/1 red Elemental with trample and haste": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 0, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	// S82 OLD batch 136 (#5514): Alirios, Enraptured's Reflection.
+	"3/2 blue Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 3, Toughness: 2, Colors: []string{"U"}},
 }

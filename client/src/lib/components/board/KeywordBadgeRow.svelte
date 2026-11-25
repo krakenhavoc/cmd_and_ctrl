@@ -172,6 +172,10 @@
     // information (#2181). A designation, not a characteristic (#2145).
     if (p.kind === "mana_value_at_most") return `MV≤${p.value ?? ""}`;
     if (p.kind === "mana_value_at_least") return `MV≥${p.value ?? ""}`;
+    // #6149: an exact value (Rebbec grants one per value), and a counter
+    // kind ("permanents with corruption counters on them").
+    if (p.kind === "mana_value") return `MV=${p.value ?? ""}`;
+    if (p.kind === "permanents_with_counter") return (p.value ?? "ctr").slice(0, 3).toUpperCase();
     if (p.kind === "ring_bearer") return "RNG";
     // Four qualities that name a count or a class, not a word: the first
     // three letters of "creatures with two or more creature types" and

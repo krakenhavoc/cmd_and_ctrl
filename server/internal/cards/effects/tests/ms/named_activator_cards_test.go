@@ -113,6 +113,9 @@ func TestNamedActivatorRegistrationGuards(t *testing.T) {
 		"owner and opponents":  {Label: "x", Cost: effects.ManaCost("{1}"), OwnerOnly: true, OpponentsOnly: true},
 		"opponents with tap":   {Label: "x", Cost: effects.TapCost(), OpponentsOnly: true},
 		"opponents purpose":    {Label: "x", Cost: effects.ManaCost("{1}"), OpponentsOnly: true, Purpose: game.Purpose{Draws: 1}},
+		"defending and any":    {Label: "x", Cost: effects.ManaCost("{1}"), DefendingPlayerOnly: true, AnyPlayer: true},
+		"defending with tap":   {Label: "x", Cost: effects.TapCost(), DefendingPlayerOnly: true},
+		"defending purpose":    {Label: "x", Cost: effects.ManaCost("{1}"), DefendingPlayerOnly: true, Purpose: game.Purpose{Draws: 1}},
 	} {
 		func() {
 			defer func() {

@@ -498,6 +498,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"auraHostFixed":             repFieldCarried,
 	"auraHostSettled":           repFieldCarried,
 	"auraHostCreaturesOnly":     repFieldCarried,
+	"auraHostYouControlOnly":    repFieldCarried,
 	"entersAsAura":              repFieldCarried,
 	"entersAs":                  repFieldCarried,
 	"exchangeTextWith":          repFieldCarried,
@@ -835,6 +836,7 @@ type replacementEventSnapshot struct {
 	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
 	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
 	AuraHostCreaturesOnly     bool                `json:"auraHostCreaturesOnly,omitempty"`
+	AuraHostYouControlOnly    bool                `json:"auraHostYouControlOnly,omitempty"`
 	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
 	EntersAs                  *EntersAs           `json:"entersAs,omitempty"`
 	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
@@ -1314,6 +1316,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		AuraHostFixed:             ev.auraHostFixed,
 		AuraHostSettled:           ev.auraHostSettled,
 		AuraHostCreaturesOnly:     ev.auraHostCreaturesOnly,
+		AuraHostYouControlOnly:    ev.auraHostYouControlOnly,
 		EntersAsAura:              ev.entersAsAura,
 		EntersAs:                  copyEntersAs(ev.entersAs),
 		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
@@ -1497,6 +1500,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		auraHostFixed:             s.AuraHostFixed,
 		auraHostSettled:           s.AuraHostSettled,
 		auraHostCreaturesOnly:     s.AuraHostCreaturesOnly,
+		auraHostYouControlOnly:    s.AuraHostYouControlOnly,
 		entersAsAura:              s.EntersAsAura,
 		entersAs:                  copyEntersAs(s.EntersAs),
 		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),

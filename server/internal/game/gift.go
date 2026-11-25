@@ -122,11 +122,40 @@ func optionalCostsDeclareTargets(optional []AdditionalCost) bool {
 // rewrite; no printed card offers both a cleave-style rewrite and an
 // optional one, and the order is written down so it is a decision
 // rather than an accident.
+//
+// #6150: it is also where a clause counted by the kicks (CountFromKicks)
+// gets its count, because it is the one function all three moments, and
+// the move enumerator, already read with the announced optional costs.
 func TargetSpecUnderOptionalCosts(base *TargetSpec, optional []AdditionalCost, paid []int) *TargetSpec {
 	for _, i := range paid {
 		if i >= 0 && i < len(optional) && optional[i].Targets != nil {
 			return optional[i].Targets
 		}
 	}
-	return base
+	return bindCountFromKicks(base, optional, paid)
+}
+
+// bindCountFromKicks fixes a CountFromKicks clause's count for one
+// announcement (#6150, CR 601.2c, 702.33c-d): "choose any target, then
+// choose another target for each time this spell was kicked" (Comet
+// Storm) is exactly one target plus one for each kick. The kicks are
+// announced with the optional costs (CR 601.2b), before the targets, so
+// the count is known by the time a pick is judged. It returns a copy of
+// base with Min = Max = 1 + kicks and the flag cleared, so the ordinary
+// count check enforces it and the catalog's clause is never touched; a
+// base without the flag comes back as it is.
+func bindCountFromKicks(base *TargetSpec, optional []AdditionalCost, paid []int) *TargetSpec {
+	if base == nil || !base.CountFromKicks {
+		return base
+	}
+	kicks := 0
+	for _, i := range paid {
+		if i >= 0 && i < len(optional) && (optional[i].Key == KickerKey || optional[i].Key == MultikickerKey) {
+			kicks++
+		}
+	}
+	out := *base
+	out.Min, out.Max = 1+kicks, 1+kicks
+	out.CountFromKicks = false
+	return &out
 }
