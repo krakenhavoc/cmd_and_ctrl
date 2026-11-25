@@ -57,31 +57,7 @@ func init() {
 				SorcerySpeed: true,
 				Targets: effects.TargetCardInGraveyard("target instant or sorcery card from your graveyard",
 					effects.Or(effects.Instant(), effects.Sorcery()), effects.YouOwn()),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					id, ok := effects.B16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					z := g.FindCardZoneForEffect(id)
-					c, found := g.LookupCardForEffect(id)
-					if !found || z == nil || z.Kind != game.ZoneGraveyard || c.Owner != item.Controller {
-						return nil
-					}
-					g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-						Player:                  item.Controller,
-						Zone:                    game.ZoneGraveyard,
-						Duration:                g.UntilEndOfTurnDuration(),
-						AltCostKey:              game.AltCostKeyGrantedCost,
-						CastOnly:                true,
-						CastsLeft:               1,
-						ExileInsteadOfGraveyard: true,
-						Source:                  item.SourceCardID,
-						SourceName:              name,
-						Label:                   name + " — cast " + c.Name + " from your graveyard",
-					}, []game.Card{c})
-					return nil
-				},
+				Effect: effects.OldB322MayCastFromGraveyard(name),
 			},
 		},
 	})

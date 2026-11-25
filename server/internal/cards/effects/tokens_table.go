@@ -69,6 +69,8 @@ func TokenKeys() []string {
 }
 
 var TokenTable = map[string]game.Card{
+	// Magic Origins, Nissa, Sage Animist (S82 older sets, batch 322).
+	"4/4 green Legendary Elemental named Ashaya, the Awoken World": {Name: "Ashaya, the Awoken World", TypeLine: "Token Legendary Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	// Warhammer 40,000 Commander Tyranids (#5948, S82 GAP batch 192).
 	"1/1 green Tyranid":                                             {Name: "Tyranid", TypeLine: "Token Creature — Tyranid", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"5/5 green Tyranid":                                             {Name: "Tyranid", TypeLine: "Token Creature — Tyranid", Power: 5, Toughness: 5, Colors: []string{"G"}},
