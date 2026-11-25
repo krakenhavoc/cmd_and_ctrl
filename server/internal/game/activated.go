@@ -2363,6 +2363,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
 		return err
 	}
+	// #6236, CR 601.2c via CR 602.2b: the Flagbearer rule.
+	g.RecomputeLayersIfStaleLocked()
+	if err := g.checkFlagbearerTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
+		return err
+	}
 	// #1563, CR 601.2d via CR 602.2b: the division, with the targets.
 	dist, err := settleDistribution(oppTargets.check, params.Targets, params.Distribution, params.XValue)
 	if err != nil {
@@ -2521,6 +2526,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		riderCtx.ClassLevel = ab.ClassLevel
 		// #4834: "spend this mana only on costs that contain {X}".
 		riderCtx.CostHasX = ab.Cost.XSlots() > 0
+		// #6259: "…or pay a cost that contains {C}".
+		riderCtx.CostHasC = CostStringHasColorless(ab.Cost.Mana)
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.

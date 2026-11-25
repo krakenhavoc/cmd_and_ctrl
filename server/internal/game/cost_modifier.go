@@ -367,6 +367,26 @@ type CostQuery struct {
 	// the game the day this field appeared.
 	Ability *AbilityCostSubject
 
+	// PricingOptionalCost names the OPTIONAL ADDITIONAL COST this query
+	// prices ON ITS OWN rather than the announcement's whole total
+	// (#6206): "buyback" while the buyback component of a cast is being
+	// priced for Memory Crystal's "Buyback costs cost {2} less"
+	// (CR 702.27a, 118.8, 601.2f). Empty for every query that prices a
+	// whole cast, an activation or a special action, which is every
+	// query but the component pass's.
+	//
+	// It is the SELECTOR for CostModifier.PricesOptionalCost, exactly as
+	// Ability's and SpecialAction's nil-ness is for Activations and
+	// SpecialActions: pricesAnnouncement shows a component query only the
+	// modifiers aimed at that component, and the whole-cost pass only the
+	// modifiers aimed at no component. Without that partition a Sphere of
+	// Resistance would tax every buyback cost on the table and Memory
+	// Crystal would discount the spell itself.
+	//
+	// See component_cost_modifier.go, which is the only thing that sets
+	// it.
+	PricingOptionalCost string
+
 	// SpecialAction names the CR 116.2 special action being priced
 	// when this query is about a foretell, suspend or turn-face-up
 	// rather than a cast or an activation (#1319), and is nil for
@@ -598,6 +618,38 @@ type CostModifier struct {
 	// ability's mana component.
 	Activations bool
 
+	// PricesOptionalCost names the optional additional cost this
+	// modifier prices INSTEAD of the announcement's whole total (#6206):
+	// Memory Crystal's "Buyback costs cost {2} less" is BuybackKey. The
+	// empty string — every modifier written before this — prices the
+	// whole cost.
+	//
+	// A cost change aimed at PART of a cost (CR 118.7, 118.8d: an
+	// additional cost never changes the spell's mana cost, only what its
+	// controller has to pay) cannot be expressed by the whole-cost pass:
+	// a {2} reduction of the whole total would discount a buyback-free
+	// cast, and would spend itself on the spell's own generic mana
+	// before it ever reached the buyback cost. So the component is
+	// priced on its own, by its own CR 601.2f pass over the modifiers
+	// aimed at it, and what that pass leaves is what joins the total
+	// (component_cost_modifier.go). The generic floor is the same one:
+	// a {2} reduction of a buyback {1} leaves {0} and takes nothing off
+	// anything else.
+	//
+	// The same partition Activations and SpecialActions are, a third
+	// door over: the KEY, matched against CostQuery.PricingOptionalCost
+	// in pricesAnnouncement. A modifier prices one component or a whole
+	// announcement and never both, because every printed clause says
+	// which ("Buyback costs cost {2} less" and "spells cost {2} less"
+	// are different sentences). Only the board's modifiers reach a
+	// component: a self modifier (affinity, "this spell costs {1} less")
+	// is written against the spell's own cost, so the component pass
+	// never shows it one, and effects.Register refuses the field in the
+	// self slot rather than let it be dead text.
+	//
+	// Data, a string, so the ADR 0041 closure ratchet gains no route.
+	PricesOptionalCost string
+
 	// SpecialActions declares that this modifier prices a CR 116.2
 	// SPECIAL ACTION's cost — Ranar the Ever-Watchful's "The first
 	// card you foretell each turn costs {0} to foretell" (#1319) —
@@ -792,7 +844,16 @@ type boundCostModifier struct {
 // activation and a special action are three different announcements,
 // and a modifier prices exactly one of them — never the other two. See
 // CostModifier.Activations and CostModifier.SpecialActions.
+//
+// #6206 adds the PART of the announcement as a fourth partition: a
+// modifier aimed at one optional additional cost ("Buyback costs cost
+// {2} less") prices that component and never the whole total, and a
+// modifier aimed at no component never reaches one. The two are told
+// apart by the key alone, so neither can leak into the other's pass.
 func (m CostModifier) pricesAnnouncement(q CostQuery) bool {
+	if m.PricesOptionalCost != q.PricingOptionalCost {
+		return false
+	}
 	switch {
 	case q.Ability != nil:
 		return m.Activations
@@ -928,6 +989,19 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 		return out
 	}
 	if q.SpecialAction != nil {
+		return out
+	}
+	// #6206: a component query (PricingOptionalCost) prices ONE optional
+	// additional cost of the cast, so what reaches it is the board's
+	// component modifiers and nothing else. The two lists below are
+	// written against the SPELL's own cost — affinity and "this spell
+	// costs {1} less" in the self slot, "the next creature spell you cast
+	// this turn costs {1} less" on the caster — and CR 118.8d says an
+	// additional cost is not the spell's mana cost, so neither may come
+	// off a buyback cost. Neither carries a key, so this is a skip rather
+	// than a filter: nothing in either list can price a component, and
+	// effects.Register refuses the field in the self slot.
+	if q.PricingOptionalCost != "" {
 		return out
 	}
 	// #1852: "the next <kind> spell you cast this turn costs {N} less",

@@ -68,7 +68,7 @@ func TestAdditionalCostManaSumsTheBranchAndTheKicker(t *testing.T) {
 	base, _ := ParseCost("{R}")
 	branch := &eitherForTest().Either[1]
 	kicker := []AdditionalCost{{Optional: true, Key: KickerKey, ManaCost: "{2}{R}"}}
-	got, err := AdditionalCostMana(base, branch, kicker, []int{0})
+	got, err := AdditionalCostMana(base, branch, kicker, []int{0}, nil)
 	if err != nil {
 		t.Fatalf("AdditionalCostMana: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestAdditionalCostManaSumsTheBranchAndTheKicker(t *testing.T) {
 		t.Fatalf("total %s (%d), want mana value 9", got.String(), got.ManaValue())
 	}
 	// The discard branch adds nothing.
-	got, _ = AdditionalCostMana(base, &eitherForTest().Either[0], nil, nil)
+	got, _ = AdditionalCostMana(base, &eitherForTest().Either[0], nil, nil, nil)
 	if got.ManaValue() != 1 {
 		t.Fatalf("discard branch total %s, want {R}", got.String())
 	}

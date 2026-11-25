@@ -94,6 +94,8 @@ func blockRequirementLabel(kind game.BlockRequirementKind, filter string) string
 		return "Creatures it affects must be blocked if able."
 	case game.BlockRequirementExactlyOne:
 		return "Creatures it affects must be blocked by exactly one creature if able."
+	case game.BlockRequirementTwoOrMore:
+		return "Creatures it affects must be blocked by two or more creatures if able."
 	}
 	return ""
 }
@@ -141,6 +143,18 @@ func MustBeBlocked() game.StaticAbility {
 	s := BlockRequirementWhere(game.BlockRequirementMustBeBlocked, SelfOnly)
 	s.Label = "Must be blocked if able." // #2219: the tile's label
 	return s
+}
+
+// MustBeBlockedByTwoOrMore is "This creature must be blocked if able,
+// and this creature must be blocked by two or more creatures if able"
+// (Gorm the Great, #6243): the two requirements the sentence prints, as
+// two statics, because CR 509.1c counts them apart. With one creature
+// able to block, that creature must block it; with two or more, at
+// least two must.
+func MustBeBlockedByTwoOrMore() []game.StaticAbility {
+	two := BlockRequirementWhere(game.BlockRequirementTwoOrMore, SelfOnly)
+	two.Label = "Must be blocked by two or more creatures if able."
+	return []game.StaticAbility{MustBeBlocked(), two}
 }
 
 // BlockRequirementUntilEOT is a RESOLVING effect's block requirement on

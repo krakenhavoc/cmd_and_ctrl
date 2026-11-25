@@ -317,7 +317,7 @@ PRs 1, 2 and 4 are small and touch nothing in combat or priority, so they can go
 - Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm). Both shipped in the 2026-10-16 amendments below (#1864, #1865).
 - A ScopedEffect mod kind that grants "can't attack its owner" (Elrond), and "can't be sacrificed" (Alexios).
 - Savage Summoning's other two one-use promises ("can be cast as though it had flash" and "enters with an additional +1/+1 counter"). It waits on the `cant-be-countered-grant` row.
-- "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer.
+- "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer. Shipped in the 2026-11-25 amendment below (#6263).
 - Costs from a single graveyard (Night Soil, Jötun Grunt).
 
 ---
@@ -611,3 +611,11 @@ V.A.T.S. prints "Choose any number of target creatures with equal toughness". It
 Snapshot impact: none. The key is a new value of an existing enum, appended after `TargetShareOwner` and never renumbered.
 
 Cards: V.A.T.S. (Full).
+
+## Amendment 2026-11-25: can't be countered by spells of a colour (#6263)
+
+Autumn's Veil prints "Spells you control can't be countered by blue or black spells this turn". The turn grant (§4 decision 2) gains `CounterShieldGrant.ByColors`, the colours as a string ("UB"), so the grant stays comparable and its value copy is a deep copy. The gate reads the counterer from the resolving slot (`resolving_item.go`): the grant applies only when the item resolving is a spell that has one of those colours, read as the stack held it. A colourless or red spell and any ability (Mystic Snake's trigger is not a spell) still counter. With nothing resolving, the grant does not answer "can't be countered", so the stack chip never claims a blanket shield. The Veil's second clause, "creatures you control can't be the targets of blue or black spells this turn", is a ScopedEffect over `ScopeYourCreatures` with the new `ModCantBeTargetedBySpellsOfColors` mod (`cantBeTargetedBySpellsOfColors`, an on-disk identity). `canBeTargetedBy` reads it for spells only.
+
+Snapshot impact: additive under v9 (`seats[].statics[].cantBeCountered.byColors`; the mod kind is a new string value).
+
+Cards: Autumn's Veil is built by its OLD batch (b452).

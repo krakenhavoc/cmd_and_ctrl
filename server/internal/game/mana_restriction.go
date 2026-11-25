@@ -211,6 +211,17 @@ const (
 	// that does not say whether its cost has {X} refuses it — weaker
 	// than printed, never stronger.
 	ManaRestrictXCost = "cost:has-x"
+	// ManaRestrictColorlessCost permits the token only on a cost that
+	// contains {C} (#6259, CR 106.6): Cultivator Drone's "…or pay a cost
+	// that contains {C}". The whole cost, as ManaRestrictXCost reads it:
+	// a spell whose cost being paid prints {C}, or an activated ability
+	// whose mana does (ManaSpendContext.CostHasC). The mana may then pay
+	// any part of that cost, generic included. A payment that does not
+	// say whether its cost has {C} refuses it — weaker than printed,
+	// never stronger. Usually inside ManaRestrictAnyOf beside "cast a
+	// colorless spell" and "activate an ability of a colorless
+	// permanent".
+	ManaRestrictColorlessCost = "cost:has-c"
 	// ManaRestrictSpellXCost permits the token only on a SPELL that has
 	// {X} in its printed mana cost (CR 107.3, CR 106.6): Troyan, Gutsy
 	// Explorer's "spells with {X} in their mana costs". Unlike
@@ -547,6 +558,11 @@ type ManaSpendContext struct {
 	// every other payment.
 	CostHasX bool
 
+	// CostHasC is CostHasX for a {C} symbol (CostStringHasColorless):
+	// what ManaRestrictColorlessCost reads (#6259). Set at the same sites
+	// from the same cost. False for every other payment.
+	CostHasC bool
+
 	// ManaCostHasX is set when the spell being cast has {X} in its
 	// printed mana cost, whatever cost is being paid for it: what
 	// ManaRestrictSpellXCost reads (Troyan, Gutsy Explorer). Set by
@@ -707,6 +723,7 @@ func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 		}
 		// #4834: the cost paid is the alternative one.
 		ctx.CostHasX = strings.Contains(alt.ManaCost, "{X}")
+		ctx.CostHasC = CostStringHasColorless(alt.ManaCost)
 		// #5680: and it is this one.
 		ctx.AltCost = alt.Key
 	}
@@ -813,6 +830,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		NoMana:           CantSpendManaFor(c),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
+		CostHasC:         CostStringHasColorless(manaCostForValue(c)),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
 		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
@@ -909,6 +927,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate && ctx.ClassLevel
 	case ManaRestrictXCost:
 		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasX
+	case ManaRestrictColorlessCost:
+		return (ctx.Purpose == SpendPurposeCast || ctx.Purpose == SpendPurposeActivate) && ctx.CostHasC
 	case ManaRestrictYourCommander:
 		return ctx.Purpose == SpendPurposeCast && ctx.YourCommander
 	case ManaRestrictSpellXCost:
@@ -1211,4 +1231,12 @@ func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []s
 		CastFrom:         from,
 	}
 	return ctx.withManaValueOf(manaCost).WithX(x).allows(restrictions)
+}
+
+// CostStringHasColorless reports whether a printed cost string contains
+// a colourless mana symbol, {C} or a colourless hybrid ({C/W}), which
+// ManaRestrictColorlessCost asks of the cost being paid (#6259). A snow
+// {S} is not one (CR 107.4h).
+func CostStringHasColorless(cost string) bool {
+	return strings.Contains(cost, "{C}") || strings.Contains(cost, "{C/")
 }
