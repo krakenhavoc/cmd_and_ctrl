@@ -602,6 +602,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedS82OldB077RockToken,
 	// Relic Robber's Goblin Construct (Zendikar Rising, S82 OLD batch 097, #5508).
 	printedS82OldB097GoblinConstructToken,
+
+	// Mesmerizing Benthid's Illusion: freezes the creature it blocks (S82 OLD b181).
+	printedOldB181IllusionToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

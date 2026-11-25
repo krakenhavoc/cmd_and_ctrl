@@ -1227,6 +1227,14 @@ type Card struct {
 	// the Clone had copied.
 	DurationCopyBase *PrintedValues
 
+	// FullTextBase is the permanent's printed values UNDER a full-text
+	// overlay (CR 612.6, Volrath's Shapeshifter; #6233, full_text.go):
+	// its own values, or its copies'. nil while no full-text effect
+	// applies. Put back by the materialiser before every pass and by
+	// the CR 400.7 battlefield-leave path; carried by the snapshot and
+	// deep-copied by clone.go for DurationCopyBase's reason.
+	FullTextBase *PrintedValues
+
 	// FaceDownListed is the CR 708.2 body an effect LISTED for this
 	// face-down object — Cyber Conversion's "It's a 2/2 Cyberman
 	// artifact creature", Yedora's "It's a Forest land". nil is

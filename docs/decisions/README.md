@@ -232,6 +232,7 @@ have no file on any branch; numbers are never reused, so they stay empty.
 | 0225 | [Splitting the card catalog package: a core, card shards and test packages](0225-splitting-the-card-catalog-package.md) | Accepted |
 | 0226 | [Subgames (Shahrazad) and dexterity cards (Chaos Orb, Falling Star)](0226-subgames-and-dexterity-cards.md) | Proposed |
 | 0227 | [Conspiracies in the command zone, and hidden agenda](0227-conspiracies-in-the-command-zone-and-hidden-agenda.md) | Accepted |
+| 0228 | [What a spell would do, read by resolving it on a copy of the game](0228-what-a-spell-would-do-read-on-a-copy.md) | Accepted |
 
 ## Picking a number
 

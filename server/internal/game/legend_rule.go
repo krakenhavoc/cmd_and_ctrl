@@ -75,6 +75,18 @@ func (g *Game) legendRuleChoicesLocked() map[uuid.UUID][]uuid.UUID {
 	}
 	groups := map[key][]uuid.UUID{}
 	exempt := g.legendRuleExemptControllersLocked()
+	// #6257, CR 201.2a: a legendary permanent with all names of
+	// nonlegendary creature cards (Spy Kit) shares a name with every
+	// other such permanent its controller has, and with one whose own
+	// name is a nonlegendary creature card's. They are one group, under
+	// a key no card name can be.
+	const allNames = "\x00all nonlegendary creature names"
+	hasAll := map[uuid.UUID]bool{}
+	for _, c := range g.Battlefield.Cards {
+		if c.IsLegendary() && !exempt.coversPermanent(&c) && HasAllNonlegendaryCreatureNames(c) {
+			hasAll[c.Controller] = true
+		}
+	}
 	for _, c := range g.Battlefield.Cards {
 		if !c.IsLegendary() {
 			continue
@@ -91,6 +103,10 @@ func (g *Game) legendRuleChoicesLocked() map[uuid.UUID][]uuid.UUID {
 			// cannot violate a rule about names. Skipping is what
 			// keeps the demo seed from collapsing onto itself.
 			continue
+		}
+		if hasAll[c.Controller] && (HasAllNonlegendaryCreatureNames(c) ||
+			(NonlegendaryCreatureCardName != nil && NonlegendaryCreatureCardName(name))) {
+			name = allNames
 		}
 		k := key{controller: c.Controller, name: name}
 		groups[k] = append(groups[k], c.InstanceID)

@@ -1832,6 +1832,11 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.SacrificeOther != nil {
 		return false
 	}
+	// #6205: nor a row the board makes cost a sacrifice (Drought on a
+	// filter land): the permanents are the player's choice.
+	if folded, _ := g.ImposedSacrificeManaAbilityForEffect(asker, source, a); folded.SacrificeOther != nil {
+		return false
+	}
 	// ADR 0130 §4 (owner decision 3): an exert is a cost the PLAYER
 	// chooses, so the planner never pays one on its own — not as a last
 	// resort, not at all. Arena of Glory's "{R}, {T}, Exert this land"
