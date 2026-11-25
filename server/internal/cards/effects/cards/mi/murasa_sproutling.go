@@ -32,7 +32,7 @@ func init() {
 					"Murasa Sproutling — kicked: return target card with a kicker ability from your graveyard to your hand",
 					effects.S82Mom16ReturnTargetToHand),
 				effects.TargetCardInGraveyard("target card with a kicker ability from your graveyard", effects.YouOwn(),
-					func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return effects.S82OldB090CardHasKicker(c) })),
+					func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return effects.S82OldB089CardHasKicker(c) })),
 		},
 	})
 }

@@ -30,7 +30,7 @@ func init() {
 			effects.On(game.EventETB, effects.AllOf(effects.Self, effects.ThisKickedAtLeast(1)),
 				"Roost of Drakes — kicked: create a 2/2 blue Drake creature token with flying",
 				effects.Do(effects.CreateToken{Template: effects.TokenCard("2/2 blue Drake with flying"), N: 1})),
-			effects.On(game.EventCast, effects.S82OldB090YouCastAKickedSpell,
+			effects.On(game.EventCast, effects.S82OldB089YouCastAKickedSpell,
 				"Roost of Drakes — create a 2/2 blue Drake creature token with flying",
 				effects.Do(effects.CreateToken{Template: effects.TokenCard("2/2 blue Drake with flying"), N: 1})),
 		},

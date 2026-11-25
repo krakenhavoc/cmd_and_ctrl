@@ -10,28 +10,6 @@ import (
 
 // s82_old_b090_helpers.go — Zendikar Rising kicker cards, S82 OLD batch 90 (#5508).
 
-// S82OldB090YouCastAKickedSpell is "whenever you cast a kicked spell"
-// (CR 702.33a): the cast event is the source controller's and the spell
-// on the stack paid a kicker (multikicker too). The announcement's paid
-// optional costs ride the stack item (StackItemPaidForEffect), which is
-// still there as the trigger is checked (CR 601.2i).
-func S82OldB090YouCastAKickedSpell(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
-		return false
-	}
-	spell, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok {
-		return false
-	}
-	return game.KickedTimesPaid(spell, g.StackItemPaidForEffect(ev.CardID).OptionalCosts) > 0
-}
-
-// S82OldB090CardHasKicker is "a card with a kicker ability": its catalog
-// row declares a kicker cost (CR 702.33).
-func S82OldB090CardHasKicker(c game.Card) bool {
-	return len(game.KickerIndices(game.OptionalCostsFor(game.CatalogKey(c)))) > 0
-}
-
 // S82OldB090HighestLifeTotal is the highest life total among the players
 // still in the game (Scourge of the Skyclaves).
 func S82OldB090HighestLifeTotal(g *game.Game) int {
