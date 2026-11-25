@@ -4422,6 +4422,7 @@ tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail recipient/marauding-raptor-dinosaur-pump
 tail recipient/reckless-blaze-watch-death
+tail recipient/redcap-melee-sacrifice-a-land
 tail recipient/s82-one-b14-loses-indestructible
 tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
