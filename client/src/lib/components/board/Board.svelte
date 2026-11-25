@@ -667,11 +667,13 @@
     key: string | undefined,
     optional: number[],
     giftOpponent?: string,
-    altCostOpponent?: string,
     costBranch?: number,
     assistPlayer?: string,
     splices?: string[],
     spliceOpponents?: Record<string, string>,
+    // #6256: the opponent an "have an opponent gain N life" offer gives
+    // the life to, last so the arguments before it keep their places.
+    altCostOpponent?: string,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;

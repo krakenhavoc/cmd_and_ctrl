@@ -121,11 +121,15 @@
       key: string | undefined,
       optional: number[],
       giftOpponent?: string,
-      altCostOpponent?: string,
       costBranch?: number,
       assistPlayer?: string,
       splices?: string[],
       spliceOpponents?: Record<string, string>,
+      // #6256: the opponent an alternative cost's "have an opponent
+      // gain N life" gives the life to, present exactly when the
+      // claimed offer charges it. Last, so the arguments before it keep
+      // their places.
+      altCostOpponent?: string,
     ) => void;
     onCancel: () => void;
     // #1267: the table, so a gift's opponent picker can name players
@@ -362,11 +366,11 @@
       chosen,
       optionalCostSelection(paying),
       giftOpponent,
-      altCostOpponent,
       branches.length > 0 ? branch : undefined,
       assistPlayer,
       splicing.filter((id) => spliceOffers.some((o) => o.card_id === id)),
       spliceOpponents,
+      altCostOpponent,
     );
   }
 </script>
