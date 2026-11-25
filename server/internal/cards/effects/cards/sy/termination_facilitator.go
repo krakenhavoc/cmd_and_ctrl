@@ -51,13 +51,7 @@ func init() {
 				}
 				return c.IsCreature() || c.IsPlaneswalker()
 			}, "Termination Facilitator — destroy it",
-				func(g *game.Game, item *game.StackItem) error {
-					id := item.Trigger.Event.Target
-					if !effects.OnBattlefield(g, id) {
-						return nil
-					}
-					return effects.DestroyTarget{Target: id}.Apply(effects.NewContext(g, item))
-				}),
+				effects.S82OldB091DestroyTheDamagedPermanent),
 		},
 	})
 }
