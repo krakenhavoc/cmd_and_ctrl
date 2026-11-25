@@ -627,6 +627,14 @@ const (
 	// ability still targets, and nothing about the objects changes. The
 	// targeting choke point reads it (targeting_bar_table.go).
 	ModCantBeTargetedBySpellsOrActivated ModKind = "cantBeTargetedBySpellsOrActivated"
+	// ModCantBeTargetedBySpellsOfColors is "<affected> can't be the
+	// targets of <colour> spells [this turn]" (Autumn's Veil's "creatures
+	// you control can't be the targets of blue or black spells this
+	// turn", #6263). Mod.Colors names the colours (uppercase WUBRG). It
+	// refuses a SPELL that has one of them, whoever controls it, and no
+	// ability. Not hexproof and not protection. The targeting choke point
+	// reads it (targeting_bar_colors.go).
+	ModCantBeTargetedBySpellsOfColors ModKind = "cantBeTargetedBySpellsOfColors"
 )
 
 // ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
@@ -1263,6 +1271,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6260: Gather Specimens' "if a creature would enter the battlefield
+	// under an opponent's control this turn, it enters under your control
+	// instead" (scoped_enters_under_control.go).
+	ModCreaturesEnterUnderYourControl: {reader: readerReplacement},
 	// #6160: Mystic Reflection's "the next time one or more creatures or
 	// planeswalkers enter this turn, they enter as copies".
 	ModNextEntersAsCopies: {reader: readerReplacement},
@@ -1331,6 +1343,12 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6201: "can't phase out", read by phaseOutSetLocked
+	// (phasing_extras.go).
+	ModCantPhaseOut: {reader: readerRule},
+	// #6239: "adapts as though it had no +1/+1 counters", read by the
+	// adapt (adapt_ignores_counters.go).
+	ModAdaptIgnoresCounters: {reader: readerRule},
 	// #5251: Lumbering Laundry's look at face-down creatures, read by
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
@@ -1356,6 +1374,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5718: Peace Talks' table-wide bar on spells and activated
 	// abilities.
 	ModCantBeTargetedBySpellsOrActivated: {reader: readerTargeting},
+	// #6263: Autumn's Veil's bar on blue and black spells.
+	ModCantBeTargetedBySpellsOfColors: {reader: readerTargeting},
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
@@ -1381,6 +1401,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// Origin of Spider-Man's "becomes a legendary … in addition to its
 	// other types" (become_named.go).
 	ModAddSupertypes: {layer: Layer4Type},
+	// #6199: "is no longer snow".
+	ModRemoveSupertypes: {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #4072: "isn't a Human" (lose_subtypes.go).
@@ -1407,6 +1429,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipNextCombatPhase: {reader: readerRule},
 	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
 	ModSkipNextStep: {reader: readerRule},
+	// #6244: "the next time you would lose the game this turn, instead
+	// …" (Stunning Reversal).
+	ModNextLossInstead: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1833,6 +1858,12 @@ func (g *Game) registerScopedEffectLocked(sourceID uuid.UUID, affected []Affecte
 	if len(affected) == 0 || len(mods) == 0 {
 		return false
 	}
+	// #6203: "other players can't gain control of" (Guardian Beast). A
+	// control change the bar forbids does nothing, whichever card asked
+	// for it.
+	if g.controlChangeBarredLocked(affected, mods) {
+		return false
+	}
 	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil, mods, d, label, ts)
 }
 
@@ -1994,6 +2025,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := nextLossInsteadModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := attackPermanentModProblem(m); problem != "" {
@@ -2478,6 +2512,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		supertypes := m.Supertypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.addSupertypes(supertypes)
+		}
+	case ModRemoveSupertypes:
+		supertypes := m.Supertypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.RemoveSupertypes(supertypes)
 		}
 	case ModLoseSubtypes:
 		subtypes := m.Subtypes

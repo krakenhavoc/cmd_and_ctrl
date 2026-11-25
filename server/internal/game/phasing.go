@@ -167,6 +167,11 @@ func (g *Game) phaseOutSetLocked(ids []uuid.UUID) (order []uuid.UUID, indirect m
 		if id == uuid.Nil || seen[id] || findCardOnBattlefield(g, id) < 0 {
 			continue
 		}
+		// #6201: "can't phase out" — it stays, and so do its
+		// attachments, which would only have phased out with it.
+		if g.cantPhaseOutLocked(id) {
+			continue
+		}
 		seen[id] = true
 		order = append(order, id)
 		frontier = append(frontier, id)
@@ -181,7 +186,7 @@ func (g *Game) phaseOutSetLocked(ids []uuid.UUID) (order []uuid.UUID, indirect m
 				// Set BEFORE the seen check: CR 702.26h applies to a
 				// permanent that was named as well as attached.
 				indirect[att] = true
-				if seen[att] {
+				if seen[att] || g.cantPhaseOutLocked(att) {
 					continue
 				}
 				seen[att] = true
@@ -227,6 +232,12 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 			continue
 		}
 		c := g.Battlefield.Cards[idx]
+		// CR 603.10b: "whenever this phases out" looks back, so the
+		// harvest reads the permanent as it was on the battlefield.
+		if g.phasingOut == nil {
+			g.phasingOut = make(map[uuid.UUID]Characteristic, len(order))
+		}
+		g.phasingOut[id] = c.Effective()
 		// CR 702.26b's own last sentence: "A permanent that phases out
 		// is removed from combat. (See rule 506.4.)"
 		c.AttackingTarget = uuid.Nil
@@ -267,6 +278,7 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 	for _, id := range moved {
 		g.removeAttackedFromCombatLocked(id)
 	}
+	defer func() { g.phasingOut = nil }()
 	for _, id := range moved {
 		g.EmitEvent(Event{
 			Kind:   EventPhaseOut,

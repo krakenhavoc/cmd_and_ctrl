@@ -157,6 +157,7 @@ var gameFields = plan(
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973
+	"PilesOrGuessesThisTurn", carried, "", // #6175
 	"LandsPlayedThisTurn", carried, "",
 	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
@@ -381,6 +382,7 @@ var gameFields = plan(
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"layerPassing", dropped, "not game state: a re-entrancy guard for one layer pass, defer-cleared, so it is false between actions (#4909)",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
+	"phasingOut", dropped, "written and cleared inside one phaseOutLocked call (#6201); always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
 	// guard. Both are defer-cleared inside one mutation.
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
@@ -1070,6 +1072,7 @@ var stackItemFields = plan(
 	// #1574: "this ability can't be copied". Carried: a restore that
 	// lost it would let a copy effect copy Gogo's activation.
 	"Uncopyable", carried, "",
+	"Cycling", carried, "#6169: stamped at activation from ActivatedAbilityShape.Cycling; StackItem.Cycling",
 	// ADR 0106 §4 (#1806): "this spell can't be countered" marks.
 	// Carried: a restore that lost one would let a Counterspell through.
 	"CantBeCountered", carried, "",
@@ -1294,6 +1297,7 @@ var pendingChoiceFields = plan(
 	// Talara's Bane's toughness, read as the pick was raised: without
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
+	"PickSlots", carried, "",
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (Null Summoner): a restored pick that forgot it would exile the
 	// card unlinked, and no standing permission could ever name it.
