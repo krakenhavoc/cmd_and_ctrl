@@ -696,6 +696,7 @@ choose choose-cards/amys-home-exile
 choose choose-cards/animal-magnetism-take
 choose choose-cards/another-round-picked
 choose choose-cards/anzrags-rampage-creature
+choose choose-cards/aphemia-the-cacophony-exile
 choose choose-cards/arcane-artisan-exile
 choose choose-cards/arcane-endeavor-cast
 choose choose-cards/archon-of-cruelty-payout
@@ -3951,6 +3952,7 @@ tail exile-then-token-copy/lazotep-quarry
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
 tail exile-then/allure-of-the-unknown-rest
+tail exile-then/aphemia-the-cacophony-zombie
 tail exile-then/masked-vandal-target
 tail exile-then/mysterious-limousine-return-others
 tail exile-then/old-b071-tibalt-add-rrr
