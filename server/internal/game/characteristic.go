@@ -371,6 +371,12 @@ type Characteristic struct {
 	// proliferate choice asks cantHaveCountersLocked (cant_have_counters.go).
 	CantHaveCounters bool `json:",omitempty"`
 
+	// CantHavePlusOneCounters is "can't have +1/+1 counters put on it"
+	// (Blightbeetle's opposing creatures): CantHaveCounters narrowed to the
+	// +1/+1 kind. Written by an ordinary layer-6 static of the restricting
+	// permanent; the placement doors ask cantHaveCounterKindLocked.
+	CantHavePlusOneCounters bool `json:",omitempty"`
+
 	// CantBeBeamedUp is "can't be beamed up" (Marooned's enchanted
 	// permanent): it can't be returned to pay a beam me up cost. Written
 	// by an ordinary layer-6 static of the restricting permanent, so this

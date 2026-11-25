@@ -2121,6 +2121,17 @@ type AlternativeCostView struct {
 	// The server enforces the life total; this is for the label.
 	Life int `json:"life,omitempty"`
 
+	// OpponentGainsLife is the "have an opponent gain N life" half of
+	// the cost (#6256, Invigorate's 3), with OpponentOptions the
+	// opponents who could be given it — the ones who can gain life (CR
+	// 614.17b). Taking the offer means naming one of them, sent back on
+	// cast_spell as `alt_cost_opponent`. An empty list (which the wire
+	// omits) beside a non-zero amount means nobody can gain the life
+	// and the offer cannot be taken (CR 118.3). Public with the rest of
+	// the offer.
+	OpponentGainsLife int      `json:"opponent_gains_life,omitempty"`
+	OpponentOptions   []string `json:"opponent_options,omitempty"`
+
 	// Energy is the "pay N {E}" half of the cost (ADR 0129 §5): Nissa,
 	// Worldsoul Speaker's eight, Primal Prayers' one, Amped Raptor's
 	// "equal to its mana value". Absent for the costs that charge none.
@@ -9021,6 +9032,10 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
 			CastsFace: ac.CastsFace,
 			Life:      ac.Life, Energy: ac.Energy, PayLabel: ac.PayLabel,
+			// #6256: "have an opponent gain 3 life" — the amount and
+			// who could be given it, the list the announce validator
+			// judges the claim against.
+			OpponentGainsLife: ac.OpponentGainsLife,
 			// CR 107.3b (#831). An offer is a cost; the rule asks
 			// only whether the printed {X} survives into it, so the
 			// pair of strings IS the whole question here. A grant
@@ -9042,6 +9057,11 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			}
 		}
 		v.PhyrexianSymbols, v.PhyrexianGranted = lifePayableSymbolsIn(g, caster, ac.ManaCost)
+		// #6256: the opponents who could be given the life, the list the
+		// announce validator judges `alt_cost_opponent` against.
+		if ac.OpponentGainsLife > 0 {
+			v.OpponentOptions = cardIDStrings(g.SpliceOpponentsLocked(caster))
+		}
 		if spec := flashIf.TargetSpecUnder(game.TargetSpecUnderAlternativeCost(offerBase, &ac)); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)

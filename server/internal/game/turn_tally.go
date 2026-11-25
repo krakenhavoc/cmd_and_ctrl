@@ -739,6 +739,14 @@ type TurnTally struct {
 	// omitted when empty, flushed with the rest of the tally when the
 	// turn begins.
 	BecameTapped map[string]int `json:"becameTapped,omitempty"`
+	// Blocked counts, per OBJECT, how many attackers each creature was
+	// declared to block this turn (Gideon's Triumph's "a creature that
+	// attacked or blocked this turn"): one per EventBlock, keyed by
+	// ObjectTallyKey(id, epoch, "blocked"), so a creature that left and came
+	// back is a new object (CR 400.7). Read through BlockedThisTurn.
+	// Additive within the snapshot schema: omitted when empty, flushed with
+	// the rest of the tally when the turn begins.
+	Blocked map[string]int `json:"blocked,omitempty"`
 	// CountersPut counts, per OBJECT, how many times counters were put on
 	// each permanent this turn (Stalwart Successor's "if it's the first
 	// time counters have been put on that creature this turn"): one per
@@ -961,6 +969,34 @@ func (g *Game) noteBecameTappedLocked(cardID uuid.UUID) {
 	maps.Copy(next, g.TurnTally.BecameTapped)
 	next[key]++
 	g.TurnTally.BecameTapped = next
+}
+
+// noteBlockedLocked counts one block declared by the object `cardID` names.
+// A fresh map every time, as noteBecameTappedLocked does.
+//
+// Caller must hold g.mu.
+func (g *Game) noteBlockedLocked(cardID uuid.UUID) {
+	if cardID == uuid.Nil {
+		return
+	}
+	key := g.objectTallyKeyLocked(cardID, "blocked")
+	next := make(map[string]int, len(g.TurnTally.Blocked)+1)
+	maps.Copy(next, g.TurnTally.Blocked)
+	next[key]++
+	g.TurnTally.Blocked = next
+}
+
+// BlockedThisTurn reports whether the object `cardID` names was declared as
+// a blocker this turn: "creatures that blocked this turn". It reads the
+// object as it is now, so a creature that left and came back is a new
+// object that has blocked nothing (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) BlockedThisTurn(cardID uuid.UUID) bool {
+	if cardID == uuid.Nil || len(g.TurnTally.Blocked) == 0 {
+		return false
+	}
+	return g.TurnTally.Blocked[g.objectTallyKeyLocked(cardID, "blocked")] > 0
 }
 
 // noteCountersPutLocked counts one placement of counters on the object
@@ -2303,6 +2339,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
 	out.ReplacementsApplied = copyStringIntMap(t.ReplacementsApplied)
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
+	out.Blocked = copyStringIntMap(t.Blocked)
 	out.CountersPut = copyStringIntMap(t.CountersPut)
 	out.PlusOneCountersPut = copyStringIntMap(t.PlusOneCountersPut)
 	if len(t.Attacks) > 0 {
@@ -2553,6 +2590,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// The CardID guard is not defensive: EventBlock shares this
 		// arm, and a hand-written EventCast in a test may carry only
 		// an Actor.
+		if ev.Kind == EventBlock {
+			g.noteBlockedLocked(ev.CardID)
+		}
 		if ev.Kind == EventCast && ev.CardID != uuid.Nil {
 			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
 		}

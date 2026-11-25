@@ -1,8 +1,9 @@
 import { get } from "svelte/store";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { CardView, OptionalCostView } from "./protocol";
+import type { AlternativeCostView, CardView, OptionalCostView } from "./protocol";
 import {
+  altCostOpponentOptions,
   applyCastChoices,
   begin,
   cancel,
@@ -134,5 +135,30 @@ describe("gift — target clause override", () => {
     const t = get(targeting);
     expect([...(t?.legal?.cards ?? [])]).toEqual(["creature-spell", "sorcery-spell"]);
     expect(t?.choices?.giftOpponent).toBe("p1");
+  });
+});
+
+// #6256: an alternative cost whose price is "have an opponent gain N
+// life" (Invigorate) names the opponent the same way, on
+// `alt_cost_opponent`.
+describe("an alternative cost that gives an opponent life", () => {
+  const offer = {
+    key: "invigorate",
+    opponent_gains_life: 3,
+    opponent_options: ["p2", "p3"],
+  } as unknown as AlternativeCostView;
+  it("lists the opponents who could gain the life", () => {
+    expect(altCostOpponentOptions(offer)).toEqual(["p2", "p3"]);
+    expect(altCostOpponentOptions({ ...offer, opponent_options: undefined })).toEqual([]);
+    expect(altCostOpponentOptions({ key: "overload" } as AlternativeCostView)).toBeUndefined();
+    expect(altCostOpponentOptions(undefined)).toBeUndefined();
+  });
+  it("writes alt_cost_opponent only when one is named", () => {
+    const bare: Record<string, unknown> = {};
+    applyCastChoices(bare, { altCost: "invigorate" });
+    expect(bare).not.toHaveProperty("alt_cost_opponent");
+    const named: Record<string, unknown> = {};
+    applyCastChoices(named, { altCost: "invigorate", altCostOpponent: "p2" });
+    expect(named.alt_cost_opponent).toBe("p2");
   });
 });

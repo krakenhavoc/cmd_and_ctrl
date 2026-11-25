@@ -544,7 +544,7 @@ jobs:
   # says a token file (server/internal/cards/effects/**/token*.go), the
   # refresh script or this workflow changed, and the dump comes from the
   # same day-keyed actions/cache entry the nightly saves
-  # (scryfall-default-cards-<date>; a PR may read the base branch's
+  # (scryfall-default-cards-v2-<date>; a PR may read the base branch's
   # caches), so a download happens only on a cache miss. Same step shape
   # as e2e-nightly.yml.
   #
@@ -571,9 +571,16 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: data/scryfall
-          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          # #6350: the prefix is versioned so a broken archive can be
+          # retired without an Actions cache delete (which needs a token
+          # CI does not have). The 2026-11-25 entries under
+          # `scryfall-default-cards-` could not be unpacked onto a fresh
+          # checkout ("tar: data: Cannot mkdir: File exists") and failed
+          # every job that restored them; bump the version again if that
+          # ever repeats.
+          key: scryfall-default-cards-v2-${{ steps.scryfall-stamp.outputs.date }}
           restore-keys: |
-            scryfall-default-cards-
+            scryfall-default-cards-v2-
 
       # #5920: seconds when it works (0-7 s in every attempt on
       # 2026-11-18). The script fails a stalled download within about a
@@ -666,9 +673,16 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: data/scryfall
-          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          # #6350: the prefix is versioned so a broken archive can be
+          # retired without an Actions cache delete (which needs a token
+          # CI does not have). The 2026-11-25 entries under
+          # `scryfall-default-cards-` could not be unpacked onto a fresh
+          # checkout ("tar: data: Cannot mkdir: File exists") and failed
+          # every job that restored them; bump the version again if that
+          # ever repeats.
+          key: scryfall-default-cards-v2-${{ steps.scryfall-stamp.outputs.date }}
           restore-keys: |
-            scryfall-default-cards-
+            scryfall-default-cards-v2-
 
       - name: Refresh Scryfall bulk data
         run: scripts/scryfall-refresh.sh

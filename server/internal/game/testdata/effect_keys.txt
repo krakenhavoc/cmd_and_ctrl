@@ -239,6 +239,7 @@ body flicker/return-exiled-with-a-plus-one-counter
 body flicker/return-exiled-with-additional-counters
 body flicker/return-exiled-with-flying-counter
 body flicker/return-exiled-with-plus-one-counter
+body flicker/s82-old-b167-return-exiled-creature-with-counter
 body flip/the-source
 body foe-razer-regent/two-counters
 body foray-of-orcs/damage
@@ -1040,6 +1041,7 @@ choose choose-cards/jmp-inniaz-gale-force-control
 choose choose-cards/journey-to-the-lost-city-land
 choose choose-cards/jungle-basin-return-an-untapped-forest
 choose choose-cards/kaalia-of-the-vast-put
+choose choose-cards/kaalia-zenith-seeker-take
 choose choose-cards/kaito-dancing-shadow-return
 choose choose-cards/kamiz-obscura-oculus-discarded
 choose choose-cards/kamiz-obscura-oculus-double-strike
@@ -1379,6 +1381,7 @@ choose choose-cards/old-b071-kaya-emblem-cast
 choose choose-cards/old-b071-valki-exile
 choose choose-cards/old-b072-in-search-of-greatness-answer
 choose choose-cards/old-b072-reckless-crew-attach
+choose choose-cards/old-b178-scrabbling-claws-exile
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/one-last-job-host
@@ -1525,6 +1528,8 @@ choose choose-cards/s82-old-b114-counter-pick-last
 choose choose-cards/s82-old-b117-return-to-hand
 choose choose-cards/s82-old-b161-shuffle-graveyard-into-library
 choose choose-cards/s82-old-b166-rank-officer-zombie
+choose choose-cards/s82-old-b170-deliver-unto-evil-return
+choose choose-cards/s82-old-b172-viviens-grizzly-take
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1704,6 +1709,7 @@ choose choose-cards/verdant-mastery-mine
 choose choose-cards/verdant-mastery-opponents-land
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
+choose choose-cards/vivien-arkbow-ranger-creature
 choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vohar-vodalian-desecrator-discarded
 choose choose-cards/vow-to-erebor-attach
@@ -1773,6 +1779,7 @@ choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/ryan-sinclair-rest
 choose resolution-cast/s82-gap-b200-ripple-bottom
 choose resolution-cast/s82-mom-b21-rashmi-after
+choose resolution-cast/s82-old-b162-exiled-rest-to-bottom
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
@@ -2066,6 +2073,7 @@ confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
+confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -2343,6 +2351,7 @@ number number/render-inert-remove-counters
 number number/resourceful-defense-move-counters
 number number/s82-gap-b153-scrounging-bandar-move
 number number/s82-old-b061-blessing-of-frost-share
+number number/s82-old-b170-remove-counters
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
@@ -2574,6 +2583,7 @@ option option-pick/s82-old-b061-burning-rune-demon-opponent
 option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-old-b113-enters-with-counters
+option option-pick/s82-old-b170-deliver-unto-evil-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -2619,6 +2629,7 @@ option option-pick/the-unluckiest-planeswalker-attach
 option option-pick/thornplate-intimidator-punisher
 option option-pick/threats-undetected-opponent
 option option-pick/thrull-wizard-pay
+option option-pick/thunderkin-awakener-put-attacking
 option option-pick/time-travel
 option option-pick/tireless-provisioner-token
 option option-pick/toils-of-night-and-day-tap-or-untap
@@ -2724,6 +2735,7 @@ payunless pay-unless/carefree-swinemaster-boar
 payunless pay-unless/casal-lurkwood-pathfinder-transform
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
+payunless pay-unless/chandras-regulator-copy-ability
 payunless pay-unless/chant-3-damage-to-that-player
 payunless pay-unless/chaos-spewer-blight
 payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
@@ -3178,6 +3190,7 @@ run prompt-run/entrapment-maneuver-soldiers
 run prompt-run/entrust-the-spark-search
 run prompt-run/eumidian-wastewaker-sacrifice
 run prompt-run/euru-acorn-scrounger-acorns
+run prompt-run/excavating-anurid-sacrifice
 run prompt-run/exploit-colonel-autumn
 run prompt-run/exploit-diver-skaab
 run prompt-run/exploit-fell-stinger
@@ -3191,6 +3204,7 @@ run prompt-run/exploit-qarsi-sadist
 run prompt-run/exploit-repository-skaab
 run prompt-run/exploit-rot-tide-gargantua
 run prompt-run/exploit-silumgar-butcher
+run prompt-run/exploit-silumgar-scavenger
 run prompt-run/exploit-skull-skaab
 run prompt-run/exploit-stitched-assistant
 run prompt-run/exploit-vulturous-aven
@@ -3286,6 +3300,7 @@ run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
+run prompt-run/old-b178-consume-gain-power
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -3326,6 +3341,7 @@ run prompt-run/s82-old-b064-surtland-flinger-sacrifice
 run prompt-run/s82-old-b106-dire-fleet-warmonger-sacrifice
 run prompt-run/s82-old-b108-lilianas-scrounger-loyalty
 run prompt-run/s82-old-b166-cabal-therapist-sacrifice
+run prompt-run/s82-old-b167-the-elderspell-loyalty
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -4434,6 +4450,7 @@ tail pile/split-the-spoils-settled
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
 tail planar-genesis/after-land
+tail planebound-accomplice/entered
 tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
@@ -4536,6 +4553,9 @@ tail s82-old-b046/culmination-of-studies-exiled
 tail s82-old-b117/return-lesser-creature
 tail s82-old-b117/return-up-to-two-permanents
 tail s82-old-b161/shuffle-up-to-four-from-graveyard
+tail s82-old-b162/collected-conjuring-exiled
+tail s82-old-b162/force-of-rage-sacrifice-the-elementals
+tail s82-old-b170/bond-of-insight-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -4563,6 +4583,7 @@ tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/dreamshaper-shaman-sacrifice
 tail sacrificed-one/prompt-run/enigmatic-incarnation-sacrificed
 tail sacrificed-one/prompt-run/euru-acorn-scrounger-acorns
+tail sacrificed-one/prompt-run/excavating-anurid-sacrifice
 tail sacrificed-one/prompt-run/exploit-colonel-autumn
 tail sacrificed-one/prompt-run/exploit-diver-skaab
 tail sacrificed-one/prompt-run/exploit-fell-stinger
@@ -4576,6 +4597,7 @@ tail sacrificed-one/prompt-run/exploit-qarsi-sadist
 tail sacrificed-one/prompt-run/exploit-repository-skaab
 tail sacrificed-one/prompt-run/exploit-rot-tide-gargantua
 tail sacrificed-one/prompt-run/exploit-silumgar-butcher
+tail sacrificed-one/prompt-run/exploit-silumgar-scavenger
 tail sacrificed-one/prompt-run/exploit-skull-skaab
 tail sacrificed-one/prompt-run/exploit-stitched-assistant
 tail sacrificed-one/prompt-run/exploit-vulturous-aven
@@ -4792,6 +4814,7 @@ tail tail/necromentia-exiled
 tail tail/old-b051-will-elementals
 tail tail/old-b070-open-the-omenpaths-first-color
 tail tail/old-b070-open-the-omenpaths-second-color
+tail tail/old-b159-ask-shuffle
 tail tail/praetors-grasp-play-it
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
@@ -4862,6 +4885,7 @@ tail then/abdel-adrian-exiled-one
 tail then/academic-probation-named
 tail then/acolyte-hybrid-controller-draws
 tail then/addle-color-chosen
+tail then/ajani-inspiring-leader-controller-gains
 tail then/ajanis-last-stand-avatar
 tail then/ancient-vendetta-named
 tail then/and-they-shall-know-no-fear-type-chosen
@@ -4910,6 +4934,7 @@ tail then/chain-lightning-offer-red-payment
 tail then/chain-of-acid-offer-copy
 tail then/chain-of-vapor-offer-chain
 tail then/chain-sacrificed-offer-copy
+tail then/chandra-acolyte-of-flame-elementals
 tail then/change-creature-type-word-replace
 tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
@@ -4944,6 +4969,7 @@ tail then/dire-tactics-lose-life
 tail then/discard-at-random
 tail then/distant-melody-type-chosen
 tail then/disturbing-mirth-draw-two
+tail then/diviners-lockbox-named
 tail then/do-or-die-destroy-pile
 tail then/doomsday-excruciator-next-exile
 tail then/doomsday-lose-half-your-life
@@ -5133,6 +5159,7 @@ tail then/s82-old-b105-track-down-reveal
 tail then/s82-old-b107-chandra-heart-of-fire-cast
 tail then/s82-old-b107-liliana-waker-haste
 tail then/s82-old-b166-cabal-therapist-named
+tail then/s82-old-b167-the-elderspell-destroyed
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
@@ -5243,6 +5270,7 @@ tail tinybones-bauble-burglar/after-exile
 tail together/kardurs-vicious-return-boost
 tail together/revival-experiment-life
 tail together/s82-old-b054-chosen-returns
+tail together/s82-old-b170-bond-of-revival-haste
 tail token-and-attach-source/attach
 tail tokens-then/old-b072-reckless-crew-attach
 tail tomb-fortress/after-mill
