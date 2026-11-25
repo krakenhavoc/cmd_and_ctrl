@@ -165,6 +165,9 @@ var manaRowScopes = map[string]rowScope{
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
+	// #6208: the untap form of the same clause (Benthic Explorers) — the
+	// printed cost, and options read off the battlefield.
+	"TapOthersUntap": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
 	"ChargedManaCost": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,

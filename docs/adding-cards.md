@@ -6103,14 +6103,31 @@ turned over, `AbilityCost.TapOthers: UntapTapped(2, "two tapped creatures you co
 (#5669, `TapOthersCost.Untap`): only tapped permanents pay, the picks
 ride `tap_ids`, a fixed count on an activated ability only (`Register`
 refuses it anywhere else), and nothing is written to
-`PaidCost.TappedOthers`. The Martyr cycle's "Reveal X black cards from
+`PaidCost.TappedOthers`. Benthic Explorers' "{T}, Untap a tapped land an
+opponent controls: Add one mana of any type that land could produce" is
+that clause with the owner turned over,
+`UntapTappedAnOpponentControls(1, "a tapped land an opponent controls", Land())`
+(#6208, `TapOthersCost.OpponentControls`): the engine's own owner check
+decides it, so the filter need not carry "an opponent controls"; it is
+the one untap cost a MANA ability may print; and which permanent it
+untapped is on `PaidCost.UntappedOthers`, which `ProducedForPaid` reads
+through `ProducibleManaLocked` for "that land could produce" (CR 106.7).
+The Martyr cycle's "Reveal X black cards from
 your hand" is `RevealX("X black cards", "B")` (#2598, ADR 0020's
 2026-10-08 amendment): the same announced-X count, but the cards are
 only shown, never moved, so the picks ride `reveal_ids` and nothing is
 kept out of the auto-tapper. Pair it with `SacrificeThis()` and the mana
 as `Plus(ManaCost("{1}"), RevealX("X black cards", "B"), SacrificeThis())`,
 declare `XMatters: true`, and let a target count that follows the same X
-use `CountFromX` + `UpToX` on the clause (Martyr of Bones).
+use `CountFromX` + `UpToX` on the clause (Martyr of Bones). Illuminated
+Folio's "{1}, {T}, Reveal two cards from your hand that share a color" is
+the same component with a printed count and a rule over the SET,
+`RevealNSharingAColor(2, "two cards from your hand that share a color")`
+(#6208, `RevealCardsCost.SharesColor`): every card named must have a
+colour in common with every other one, a colourless card can never pay
+(CR 105.2c), the option walk already drops a card with no sharing
+partner, and the clause names no colour or type of its own (`Register`
+refuses one beside it).
 
 **X read off a card (#2190):** Kozilek, the Great Distortion's "Discard a
 card with mana value X: Counter target spell with mana value X" is
@@ -6659,6 +6676,22 @@ none is a legal payment. Read what it took with `ctx.Sacrificed()` and
 `ctx.SacrificedTotalPower()` as for any other sacrifice. Mandatory slot
 only: Register refuses it in an optional cost or an either/or branch.
 The heuristic bot declines these casts outright.
+
+An ACTIVATED ability's cost prints the same clause (#6208): Tomb of
+Urami's "{2}{B}{B}, {T}, Sacrifice all lands you control" is
+
+```go
+Cost: Plus(ManaCost("{2}{B}{B}"), TapCost(), SacrificeAllYouControl("lands you control", Land())),
+```
+
+the same walk and the same payment (`AbilityCost.SacrificeAll`), fixed
+by the engine before anything reads `sacrifice_ids`. The SOURCE goes with
+the rest when the clause matches it — Tomb of Urami is itself a land —
+and the auto-tapper may still tap a land for the {2}{B}{B} before it is
+sacrificed (CR 601.2g before CR 601.2h). Register refuses the flag with
+no sacrifice clause, on a clause with a count, a set rule or a
+difference rule, and beside `SacrificeThis()`; a mana ability has no
+such flag to carry.
 
 **The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
 payment record names each one (`PaidCost.SacrificedObjects`, written at

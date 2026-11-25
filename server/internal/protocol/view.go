@@ -5862,6 +5862,15 @@ type ManaAbilityView struct {
 	// Tap picker and sends the answer as activate_mana_ability.tap_ids.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// TapOthersUntap marks the clause as the UNTAP form, as it does on
+	// ActivatedAbilityView (#6208, game.TapOthersCost.Untap) — Benthic
+	// Explorers' "{T}, Untap a tapped land an opponent controls". The
+	// cards are then the TAPPED permanents that could be untapped to
+	// pay, which for the one printed mana ability are an OPPONENT's, and
+	// the picker's verb is "Untap". No TapOthersFreesSource twin: the
+	// activator never controls the permanent, so the source is never
+	// among the options.
+	TapOthersUntap bool `json:"tap_others_untap,omitempty"`
 	// ExilePermanentLabel / ExilePermanentOptions are the mana-ability
 	// half of #1600's exile-a-permanent component — Food Chain's "Exile
 	// a creature you control". Same wire names and option shape as
@@ -10562,6 +10571,9 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 		if tc := raw[i].TapOthers; !tc.Empty() {
 			views[i].TapOthersLabel = tc.Label
 			views[i].TapOthersOptions = tapOthersCostOptions(g, controller, card.InstanceID, tc, raw[i].TapCost)
+			// #6208: the untap form (Benthic Explorers), so the picker
+			// says "Untap" rather than "Tap".
+			views[i].TapOthersUntap = game.TapOthersUntaps(tc)
 		}
 		// #1600: the exile-a-permanent component (Food Chain), off the
 		// walk the engine validates against.
@@ -14318,6 +14330,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf || a.Cost.BottomSelf)
+			if a.Cost.SacrificeAll {
+				// #6208: "Sacrifice all lands you control" — the engine's
+				// own set, the one ActivateCatalogAbility will take, as a
+				// demand of exactly that many, exactly as the cast path's
+				// #2097 cost ships it. The client confirms instead of
+				// picking, and an empty set is still a payment.
+				all := g.SacrificeAllCandidatesForEffect(caster, a.Cost.SacrificeOther)
+				v.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+			}
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
