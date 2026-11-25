@@ -54,7 +54,7 @@ func kioraTapAndFreeze(g *game.Game, item *game.StackItem) error {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		return effects.TapAndFreeze{Targets: ids, Player: t.ID, Label: "Kiora Bests the Sea God — they don't untap during their controller's next untap step"}.Apply(ctx)
+		return effects.TapAndFreeze{Targets: ids, Player: t.ID, Label: "Kiora Bests the Sea God — they don't untap during their controller's next untap step"}.Apply(ctx.AsGroupMember())
 	}
 	return nil
 }

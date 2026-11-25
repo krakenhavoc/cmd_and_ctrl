@@ -75,7 +75,8 @@ var tymaretZombie = effects.CardTail("exile-then/tymaret-calls-the-dead-zombie",
 
 func tymaretCount(g *game.Game, item *game.StackItem) error {
 	ctx := effects.NewContext(g, item)
-	x := effects.CountControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtype("Zombie") })
+	zombie := ctx.TextSubtype("Zombie")
+	x := effects.CountControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtype(zombie) })
 	if x <= 0 {
 		return nil
 	}

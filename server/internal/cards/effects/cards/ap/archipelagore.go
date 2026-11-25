@@ -19,7 +19,7 @@ import (
 //
 // Mutate is the engine's (ADR 0223) and the "up to X" is Midnight Arsonist's:
 // built as the trigger goes on the stack (CR 601.2c), X being the merged
-// permanent's count of mutations then (S82OldB112TimesMutated). Every target
+// permanent's count of mutations then (S82OldB111TimesMutated). Every target
 // still legal as it resolves is tapped and held through its controller's next
 // untap step (Dragon Turtle's TapAndFreeze).
 //
@@ -38,7 +38,7 @@ func init() {
 			return effects.TapAndFreeze{Targets: ids, Label: "Archipelagore — it doesn't untap during its controller's next untap step"}.Apply(ctx)
 		})
 	mutates.TargetsFrom = func(_ game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
-		x := effects.S82OldB112TimesMutated(g, source.InstanceID)
+		x := effects.S82OldB111TimesMutated(g, source.InstanceID)
 		return effects.Harmful(effects.TargetCreature("up to X target creatures").WithCount(0, x))
 	}
 	effects.Register(effects.Spec{

@@ -16,7 +16,7 @@ import (
 //	 times this creature has mutated."
 //
 // Mutate is the engine's (ADR 0223). X is the merged permanent's count of
-// mutations (S82OldB112TimesMutated), read as the ability resolves, so a
+// mutations (S82OldB111TimesMutated), read as the ability resolves, so a
 // Porcuparrot that never mutated deals 0 damage (CR 120.8). Its abilities work
 // from under another creature, and the {T} is the merged permanent's own, so
 // summoning sickness is the permanent's (CR 302.6).
@@ -35,7 +35,7 @@ func init() {
 			Targets: effects.TargetAny(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := effects.NewContext(g, item)
-				x := effects.S82OldB112TimesMutated(g, item.SourceCardID)
+				x := effects.S82OldB111TimesMutated(g, item.SourceCardID)
 				legal := ctx.LegalTargets()
 				if len(legal) == 0 {
 					return nil

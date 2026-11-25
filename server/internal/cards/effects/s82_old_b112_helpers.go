@@ -1,41 +1,10 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // s82_old_b112_helpers.go — shapes Ikoria: Lair of Behemoths batch 112
-// (#5512) prints: "the number of times this creature has mutated" (as batch
-// 111 reads it, under this batch's own name) and a few of the mutate
-// triggers' bodies.
-
-// S82OldB112TimesMutated is "the number of times this creature has mutated"
-// (Archipelagore, Porcuparrot): each merge adds one component to the
-// permanent, so a permanent made of N cards has mutated N-1 times (CR
-// 702.140d, CR 730.2). A permanent that has left the battlefield is counted
-// from the turn's log of merges into it, since its last entry; the answer is
-// at least one, since the merge that triggered the ability counts.
-func S82OldB112TimesMutated(g *game.Game, id uuid.UUID) int {
-	if c, ok := g.LookupCardForEffect(id); ok && OnBattlefield(g, id) && c.IsMerged() {
-		return max(len(c.MergedFrom)-1, 1)
-	}
-	n := 0
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.CardID != id {
-			continue
-		}
-		if ev.Kind == game.EventMutate {
-			n++
-		}
-		if ev.Kind == game.EventZoneMove && ev.NewZone == game.ZoneBattlefield {
-			break
-		}
-	}
-	return max(n, 1)
-}
+// (#5512) prints: a few of the mutate triggers' bodies. "The number of times
+// this creature has mutated" is batch 111's S82OldB111TimesMutated.
 
 // S82OldB112LookAtTopLandToBattlefieldElseHand is Parcelbeast's ability: look
 // at the top card of your library; if it's a land card you may put it onto the

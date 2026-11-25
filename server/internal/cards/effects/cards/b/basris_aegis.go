@@ -35,7 +35,7 @@ func init() {
 				}
 				return nil
 			}),
-			effects.Instruction(effects.S82OldB108MayFetchNamed("Basri's Aegis", "Basri, Devoted Paladin")),
+			effects.Instruction(effects.S82OldB105MayFetchNamed("Basri's Aegis", "Basri, Devoted Paladin")),
 		),
 	})
 }
