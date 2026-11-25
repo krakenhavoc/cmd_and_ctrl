@@ -53,6 +53,24 @@ type AdditionalCost struct {
 	// mandatory cost or an either/or branch that discards.
 	DiscardLand bool
 
+	// DiscardX is "As an additional cost to cast this spell, discard X
+	// cards" (Channeled Force, Firestorm, #6145): the count is the X the
+	// caster announces on CastSpellParams.XValue (CR 107.3a, 601.2b), the
+	// spell's own X, and none of these cards prints {X} in its mana cost.
+	// The same slot "pay X life" (PayLifeX) and "exile X cards"
+	// (ExileCost.CountFromX) ride. DiscardCards is 0 beside it.
+	// DiscardLand or DiscardCreature narrows it ("discard X land cards",
+	// Scorched Earth; "discard X creature cards", Aether Tide). The
+	// discards are recorded on PaidCost.Discarded like any other cost
+	// discard, so "the discarded cards" reads them at resolution (CR
+	// 608.2h). Mandatory slot only; see discard_x_additional_cost.go.
+	DiscardX bool
+
+	// DiscardCreature narrows a discard to creature cards, DiscardLand's
+	// sibling: "discard X creature cards" (Aether Tide, #6145). Read
+	// through DiscardAccepts, as DiscardLand is.
+	DiscardCreature bool
+
 	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
 	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
 	// as a spec matched against the caster's permanents. The caster
@@ -542,7 +560,7 @@ func (c *AdditionalCost) MaxPayments() int {
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
+	return c == nil || (c.DiscardCards == 0 && !c.DiscardX && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
 		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty() &&
 		c.ReturnToHand.Empty())
@@ -556,7 +574,7 @@ func (c *AdditionalCost) Empty() bool {
 // a non-mana component all the same, so it is counted here and a
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
-	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
+	return c != nil && (c.DiscardCards > 0 || c.DiscardX || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
 		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil ||
 		!c.TapOthers.Empty() || !c.ReturnToHand.Empty())
 }
@@ -976,10 +994,11 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 	}
 	for _, pay := range plan {
 		cost := pay.cost
-		if di+cost.DiscardCards > len(discardIDs) {
+		nDiscard := cost.DiscardCount(xValue)
+		if di+nDiscard > len(discardIDs) {
 			return ErrInvalidParam
 		}
-		for _, id := range discardIDs[di : di+cost.DiscardCards] {
+		for _, id := range discardIDs[di : di+nDiscard] {
 			if id == castID || discarded[id] {
 				return ErrInvalidParam
 			}
@@ -987,7 +1006,7 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 			if !p.Hand.Contains(id) {
 				return ErrCardNotFound
 			}
-			if cost.DiscardLand {
+			if cost.DiscardFiltered() {
 				for _, hc := range p.Hand.Cards {
 					if hc.InstanceID == id && !cost.DiscardAccepts(hc) {
 						return ErrInvalidParam
@@ -995,7 +1014,7 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 				}
 			}
 		}
-		di += cost.DiscardCards
+		di += nDiscard
 		if cost.Sacrifice == nil {
 			continue
 		}
@@ -1181,9 +1200,22 @@ func (g *Game) AnyAdditionalCostBranchPayableLocked(playerID uuid.UUID, card Car
 
 // DiscardAccepts reports whether `c`, a card in the caster's hand, may
 // pay this cost's discard: any card, or a land card when the clause
-// says so (DiscardLand). The one reader of the clause's filter.
+// says so (DiscardLand), or a creature card (DiscardCreature, #6145).
+// The one reader of the clause's filter.
 func (c *AdditionalCost) DiscardAccepts(card Card) bool {
-	return c == nil || !c.DiscardLand || card.IsLand()
+	if c == nil {
+		return true
+	}
+	if c.DiscardLand && !card.IsLand() {
+		return false
+	}
+	return !c.DiscardCreature || card.IsCreature()
+}
+
+// DiscardFiltered reports whether the discard takes only some cards
+// (DiscardLand, DiscardCreature). Nil-safe.
+func (c *AdditionalCost) DiscardFiltered() bool {
+	return c != nil && (c.DiscardLand || c.DiscardCreature)
 }
 
 // AdditionalDiscardOptionsForEffect lists the cards in `playerID`'s hand

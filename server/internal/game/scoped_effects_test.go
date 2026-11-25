@@ -322,6 +322,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// pricer. Its cases are in scoped_cost_tax_test.go here and in
 		// cards/effects.
 		ModSpellsCostMoreForOpponents: true,
+		// #5514: noncreature-only twin; cases in scoped_cost_tax_test.go.
+		ModNoncreatureSpellsCostMoreForOpponents: true,
 		// #6093: the timed reduction, read by the cast pricer too. Its
 		// cases are in scoped_cost_reduction_test.go here and in
 		// cards/effects.

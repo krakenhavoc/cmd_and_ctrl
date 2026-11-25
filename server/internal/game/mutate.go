@@ -55,6 +55,14 @@ import (
 // AlternativeCost and StackItem.AltCost.
 const MutateKey = "mutate"
 
+// MutateGraveyardKey is the wire key of the mutate offer bound to the
+// graveyard: "You may cast this card from your graveyard using its mutate
+// ability" (Brokkos, Apex of Forever). The same price and the same target as
+// the mutate offer from the hand, a second offer so each is bound to its one
+// zone as blitz's graveyard offer is. A cast claiming either is a mutating
+// creature spell (CR 702.140a).
+const MutateGraveyardKey = "mutate-graveyard"
+
 // MergedPartPrefix marks a granted-ability part as "every ability of
 // the component whose catalog key follows" — a card or token under a
 // mutated permanent (CR 702.140e). It carries GrantKeyPrefix, so
@@ -185,7 +193,7 @@ func mergedPassengers(moved Card) []uuid.UUID {
 // spell: cast for its mutate cost and still targeting (CR 702.140a,
 // 702.140b).
 func mutatingSpell(item *StackItem) bool {
-	return item != nil && item.Kind == StackItemSpell && item.AltCost == MutateKey && len(item.Targets) > 0
+	return item != nil && item.Kind == StackItemSpell && (item.AltCost == MutateKey || item.AltCost == MutateGraveyardKey) && len(item.Targets) > 0
 }
 
 // mutateTargetIllegalLocked is CR 702.140b's question as the spell

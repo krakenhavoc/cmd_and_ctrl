@@ -488,6 +488,15 @@ type Characteristic struct {
 	// Card.assignsAsThoughUnblocked.
 	AssignsAsThoughUnblocked bool `json:",omitempty"`
 
+	// LethalByPower is "lethal damage dealt to <this creature> is determined
+	// by its power rather than its toughness" (Zilortha, Strength Incarnate,
+	// IKO): CR 120.6 and 704.5g compare the damage marked on it (and the
+	// damage assigned to it, CR 702.19b) with its power, not its toughness.
+	// A fact about how lethal damage is judged, not a number a layer
+	// computes, so it is only ever set by a layer 6 static that says so.
+	// Read through Card.LethalDamageThreshold. Additive within the schema.
+	LethalByPower bool `json:",omitempty"`
+
 	// CostPower is how much this creature counts for when it is tapped
 	// to pay a crew or saddle cost (ADR 0186 Decision 4, #2705): "this
 	// creature saddles Mounts and crews Vehicles as though its power

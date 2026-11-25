@@ -710,4 +710,12 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 110 (#5511): Experimental Overload's X/X blue and red Weird (printed */*; a 0/0
 	// placeholder, set to the instants and sorceries in your graveyard as it is created).
 	"0/0 blue and red Weird": {Name: "Weird", TypeLine: "Token Creature — Weird", Colors: []string{"U", "R"}, PrintedPTKnown: true},
+
+	// S82 OLD batch 124 (#5513): Wort, the Raidmother's Goblin Warrior and Gavi, Nest Warden's Dinosaur Cat.
+	"1/1 red and green Goblin Warrior": {Name: "Goblin Warrior", TypeLine: "Token Creature — Goblin Warrior", Power: 1, Toughness: 1, Colors: []string{"R", "G"}},
+	"2/2 red and white Dinosaur Cat":   {Name: "Dinosaur Cat", TypeLine: "Token Creature — Dinosaur Cat", Power: 2, Toughness: 2, Colors: []string{"R", "W"}},
+	// S82 OLD batch 134 (#5514): Kiora Bests the Sea God's Kraken.
+	"8/8 blue Kraken with hexproof": {Name: "Kraken", TypeLine: "Token Creature — Kraken", Power: 8, Toughness: 8, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
+	// Purphoros's Intervention: an X/1 whose printed token card is */1; 0/1 here, X set as it is created.
+	"0/1 red Elemental with trample and haste": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 0, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 }

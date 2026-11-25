@@ -2104,7 +2104,7 @@ func (e *enumerator) protectiveShieldDivision(p *game.DivideShieldPrompt) map[uu
 			continue
 		}
 		if c := findBattlefield(e.g, en.Target); c != nil && c.IsCreature() {
-			if need := en.Amount - (c.CurrentToughness() - c.DamageMarked) + 1; need > 0 {
+			if need := en.Amount - (c.LethalDamageThreshold() - c.DamageMarked) + 1; need > 0 {
 				creatures = append(creatures, dying{id: en.ID, need: need, cap: en.Amount})
 			}
 		}
@@ -2381,7 +2381,7 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 				// #3665, CR 702.19b: lethal counts the damage other
 				// creatures have been assigned to it in this step,
 				// which is held, not marked, until the step is dealt.
-				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked-g.HeldCombatDamageToForEffect(id), 1)
+				pl.cost[i] = max(b.LethalDamageThreshold()-b.DamageMarked-g.HeldCombatDamageToForEffect(id), 1)
 			}
 			pl.value[i] = killValue(b, attacker)
 		}
