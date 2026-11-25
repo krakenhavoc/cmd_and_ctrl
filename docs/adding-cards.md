@@ -5844,6 +5844,21 @@ upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
 library.
 
 
+### Who assigns combat damage, and to what (#6192, ADR 0224 amendment 2026-11-25)
+
+- "Rather than the attacking player, you assign the combat damage of each
+  creature attacking you. You can divide that creature's combat damage as
+  you choose among any of the creatures blocking it." (Defensive
+  Formation) is `Spec{YouAssignAttackersDamage: true}`: banding's
+  division (CR 702.22j), handed to this permanent's controller.
+- "If this creature is unblocked, you may have it assign its combat damage
+  to a creature defending player controls." (Cunning Giant) is
+  `Spec{UnblockedAssignsToACreature: true}`: its controller is asked in the
+  combat damage step for one such creature or the player.
+
+Both are read live through `CatalogAbilityKey`, so a permanent that has
+lost its abilities changes nothing.
+
 ### Adding a block-rule card (S37+, #750)
 
 "Can't be blocked except by Walls", "can't be blocked by creatures with
