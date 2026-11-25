@@ -34,6 +34,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
   - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
+  - [The turn's pile and guess tally (#6175, CR 700.3)](#the-turns-pile-and-guess-tally-6175-cr-7003)
   - ["Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)](#players-cant-pay-life-or-sacrifice-nonland-permanents-to-cast-spells-or-activate-abilities-6167)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
@@ -2429,6 +2430,40 @@ question, read off the payment the way "if mana from a Treasure was spent"
 is: `ManaSpent.CountFrom(game.ManaSourceSnow)`. No catalog card reads it
 yet. A card whose only snow text is an `{S}` in a cost needs no caveat.
 
+### The turn's pile and guess tally (#6175, CR 700.3)
+
+"Each spell or ability that caused one or more players to guess or to
+group cards or permanents into a pile this turn" (The Celestial Toymaker)
+is a turn tally on the game, `Game.PilesOrGuessesThisTurn`
+([pile_guess_tally.go](../server/internal/game/pile_guess_tally.go)): the
+stack items of the spells and abilities that did it, each listed once,
+cleared as a turn begins and carried in the snapshot additively. A card
+reads it with `g.PilesOrGuessesThisTurnForEffect()` at resolution.
+
+**A card that makes a pile or asks for a guess must note itself**, once,
+as it asks: `effects.NotePileOrGuess(ctx)`
+([pile_guess_tally.go](../server/internal/cards/effects/pile_guess_tally.go)).
+The shared helpers already do it, so a card built out of them needs
+nothing: `effects.PileSplit` (Fact or Fiction, Do or Die, Jace, Architect
+of Thought, Make an Example, Split the Spoils, Liliana of the Veil) and
+the face-down pile family on top of it (`OpponentSeparatesFaceDownPiles`,
+`YouSeparateFaceDownPiles`: Atris, Fortune's Favor, Sauron's Ransom,
+Riddles in the Dark, Curator of Destinies).
+
+A card that builds its piles or its guess by hand calls it itself, in the
+clause that forms the pile or asks the question, never earlier: a pile
+nobody ends up making (an empty pick, no opponent left to guess) is not
+counted. Abstract Performance, Become Anonymous, Expose the Culprit's
+pile mode, Hostile Negotiations, Triumph of Saint Katherine, Gollum,
+Scheming Guide, The Seventh Doctor and The Toymaker's Trap are the
+hand-rolled ones. One spell counts once however many piles it makes, so
+the note is keyed by the resolving stack item.
+
+`TestEveryPileOrGuessCardIsReviewed` (`internal/cards/effects/tests/p`)
+holds every catalog card whose printed text says "pile" or "guess" to one
+of those two: it fails on a new one until it either notes itself or is
+listed with the reason it does not.
+
 ### "Players can't pay life to cast spells or to activate abilities" (#5660)
 
 "Players can't pay life to cast spells or to activate abilities that
@@ -3223,6 +3258,21 @@ g.CantBeRegeneratedIfDealtDamageByForEffect(src, ref, true, label)
 g.ExileIfDealtDamageByWouldDieThisTurnForEffect(src, ref, uuid.Nil, false, label)
 ```
 
+**"Can't be destroyed by lethal damage unless lethal damage dealt by a
+single source is marked on it"** (Ogre Enforcer, #6209). CR 704.5g is a
+SUM, so this clause reads what the sum cannot say — who marked the
+damage. `Card.MarkedBySource` is the per-source split of
+`Card.DamageMarked`, kept wherever the mark is (it is damage MARKED, not
+the turn's damage DEALT, so the tally above is the wrong record for it),
+and the state-based action reads it for a creature with the static:
+
+```go
+Spec{SingleSourceLethalOnly: SingleSourceLethalOnly(text)} // Ogre Enforcer
+```
+
+It says nothing about the deathtouch state-based action (CR 704.5h) or
+about a "destroy" effect, neither of which is lethal damage.
+
 **"If it has dealt N or more damage to that player this turn"** (#5674).
 The turn also keeps how much each source object dealt to each player,
 combat and noncombat together (`TurnTally.DamagedPlayers`; the amount is
@@ -3974,6 +4024,13 @@ though they didn't have swampwalk" (Quagmire) is a block rule,
 Staff of the Ages' every-landwalk waiver is
 `effects.BlockableAsThoughNoLandwalkAtAll()` (#6195).
 
+"This creature can block Dragons as though it had reach" (Dragon
+Hunter, #6250) is a block rule on the creature itself,
+`effects.CanBlockAsThoughItHadReach(effects.QuerySubtype("Dragon"))`: it
+waives the CR 702.9b flying restriction for the attackers its queries
+name and nothing else — the creature does not gain reach, and another
+permanent's copy of the rule grants it nothing.
+
 The five evasion keywords in #825 use that same pair function. Read colors,
 types and power from effective characteristics; shadow restricts both
 directions, while horsemanship restricts only the attacker's blockers. The
@@ -4256,6 +4313,20 @@ teamwork cost and any other "tap an untapped creature you control" still
 take the creature. The wire token is `cant_crew`, on the same
 `restrictions` list as the first set's.
 
+**"Can't be enchanted"** (#6203, CR 303.4) is three more bits of the same
+set, each with a helper in `cards/effects/cant_be_enchanted.go`:
+`ThisCantBeEnchanted()` (`game.CantBeEnchanted`, Tetravite's "This token
+can't be enchanted"), `EnchantedCantBeEnchantedByOtherAuras()`
+(`game.EnchantedCantBeEnchantedByOthers`, which the Aura carries on itself:
+Consecrate Land, Anti-Magic Aura) and
+`CantBecomeEnchantedAndOthersCantGainControl(applies, label)` (Guardian
+Beast: `game.CantBecomeEnchanted`, new attachments only, so Auras already
+attached stay, plus `game.OthersCantGainControl`). They are read at the
+Aura spell's target, an Aura entering without one, an attach and the
+state-based check. The control bar is read where every scoped control
+change is registered, so a gain or an exchange to another player does
+nothing. None has a wire token yet.
+
 **The engine reads them; you do not.** Declarations go through
 `game.AttackerEligible` and `Game.CanBlockLocked` (the boolean form of
 `Game.BlockPairRefusalLocked`, which also says why), activations through
@@ -4369,6 +4440,25 @@ CR 508.1d search, the client and the bot all follow. Older cards that
 lift defender for every target (Stalked Researcher, Ghalta) write it as
 losing the keyword, which differs only to a card that counts creatures
 with defender; prefer the waiver for a new card.
+
+A mass restriction over a FILTERED set — Goblin Locksmith's "creatures
+with defender can't block this turn", Rumbling Ruin's "creatures your
+opponents control with power less than or equal to that number can't
+block this turn" (#6237) — is the two query-filtered live scopes
+(`game.ScopeCreaturesMatching`, `game.ScopeOpponentsCreaturesMatching`):
+
+```go
+effects.CantBlockThisTurnMatching(false, label,
+    game.PermanentQuery{Types: []string{"creature"}, Keyword: "defender"}) // Goblin Locksmith
+effects.CantBlockThisTurnMatching(true, label,
+    game.PermanentQuery{Types: []string{"creature"}}.WithPowerAtMost(n))   // Rumbling Ruin
+```
+
+The filter is DATA on the record's mods (`Mod.Match`), so a number in it
+is locked as the ability resolves while the SET stays live (CR 611.2c):
+a creature that arrives later in the turn and matches can't block
+either, and one pumped past the bound can. Reach for a filtered scope
+rather than a new constant whenever the clause carries a number.
 
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
@@ -4654,6 +4744,23 @@ other half), and neither does the permanent's controller. A shape the
 constructor doesn't name writes a `game.TargetTax{Label, Life,
 AppliesTo(game.TargetTaxQuery)}` literal; `Register` refuses one with no
 label, no life or no `AppliesTo`.
+
+**A spell that charges itself for each target** — "This spell costs 3
+life more to cast for each target" (Phyrexian Purge, #6206). The same
+cost one owner over, so it is a slot on the card being cast rather than
+a static of somebody's permanent:
+
+```go
+LifePerTarget: CostsLifePerTarget(3,
+    "This spell costs 3 life more to cast for each target."),
+```
+
+It joins the same sum the tax above does, so the CR 119.4 check (against
+every other life cost of the cast), the payment, the enumerator's
+per-target-set pricing and the picker's per-candidate note all come for
+free. It counts TARGETS (CR 601.2c), not targeted permanents, so a
+clause that names a player or a spell pays for those too. `Register`
+refuses a clause with no label or no life.
 
 **"Can't be the target of spells or abilities your opponents control this
 turn"** (Vines of Vastwood, [ADR 0038 amendment
@@ -5227,6 +5334,18 @@ damage, proliferate), by the counter door itself, by `canPlaceCounterLocked`
 zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
+
+**Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
+can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
+a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).
+Suncleanser's "That player can't get counters for as long as this creature
+remains on the battlefield" is
+`PlayerCantGetCountersWhileSourceRemains(ctx, player, label)`, a
+`ModPlayerCantGetCounters` record. Both are read at the one player counter
+door (`counterPlacementRefusedLocked`), for every kind: poison, energy,
+experience, rad and tickets. Proliferate offers no such player. Solemnity's
+second sentence is `CantHaveCounters` over artifacts, creatures,
+enchantments and lands, as above.
 
 ### Blight as an effect (#4683, CR 701.68)
 
@@ -6383,6 +6502,14 @@ spell whose mana cost (or the alternative cost it is cast for) has {X},
 or an activated ability with {X} in its mana, and the mana then pays the
 whole cost, not only X.
 
+"…or pay a cost that contains {C}" (Cultivator Drone, #6259) is
+`game.ManaRestrictColorlessCost`, matched on a cast or an activation whose
+cost being paid prints `{C}` (`ManaSpendContext.CostHasC`). The mana may pay
+any part of that cost. Cultivator Drone's whole clause is
+`ManaRestrictAnyOf([]string{ManaRestrictCast, ManaRestrictColorless},
+[]string{ManaRestrictActivate, ManaRestrictColorless},
+[]string{ManaRestrictColorlessCost})`.
+
 **Mana for spells with {X} in their mana costs (#4834):** "Spend this mana
 only to cast spells with {X} in their mana costs" is
 `game.ManaRestrictSpellXCost` (Troyan, Gutsy Explorer), usually inside a
@@ -6496,6 +6623,32 @@ battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
 Trinisphere floor, a reduction with a mana unit and an ability's own
 cost clause.
+
+**A reduction aimed at ONE component of a cost (#6206):** "Buyback costs
+cost {2} less" (Memory Crystal) is not a reduction of the spells it
+touches — it is a reduction of one optional additional cost of theirs,
+and it has to leave the rest of the total alone:
+
+```go
+CostModifiers: []game.CostModifier{
+    BuybackCostsLess(2, "Buyback costs cost {2} less."),
+},
+```
+
+The engine prices the named component on its own, by its own CR 601.2f
+pass, before its mana joins the total
+(`game/component_cost_modifier.go`), so three things hold without a line
+of yours: a cast that announced no buyback is not discounted at all (the
+component is not part of that cast, CR 601.2b); the reduction floors at
+the component's own generic mana, so {2} less off a buyback {1} leaves
+{0} and never reaches the spell's mana cost (CR 601.2f, 118.7a, 118.8d);
+and a buyback cost that is not mana ("Buyback—Sacrifice a land") is left
+as printed. The key is `CostModifier.PricesOptionalCost`, so the clause
+is shown only the component it names and the whole-cost modifiers are
+never shown one. It belongs in `Spec.CostModifiers` — Register refuses it
+in `SelfCostModifiers` (the component pass is the board's statics, and a
+spell's own clause is written against its own cost) and refuses a floor
+or a zero alternative on a component.
 
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
@@ -11695,6 +11848,14 @@ became "is a Werewolf", a `SetCreatureTypesMod` (#5949). The kind
 `loseSubtypes` is an on-disk identity. A changeling stays every
 creature type, since that is a flag and not a list.
 
+**"…is no longer snow"** is `game.RemoveSupertypesMod("Snow")` in the
+same kind of record (#6199, layer 4): Arcum's Weathervane's "Target snow
+land is no longer snow", with `game.AddSupertypesMod("Snow")` for its
+"becomes snow". The two apply in timestamp order (CR 613.7). As a printed
+static, Melting's "All lands are no longer snow" is
+`effects.AllLandsAreNoLongerSupertype("Snow")`. The kind
+`removeSupertypes` is an on-disk identity.
+
 **"…and loses all creature types"** is `game.LoseAllCreatureTypesMod()`
 (#4691, layer 4, CR 613.1d): every creature type goes and none comes,
 the every-creature-type fact included (a changeling's, or an earlier
@@ -11723,6 +11884,11 @@ creature" reads the creature's types before it goes, as one tail word
 puts the hit onto the battlefield, Heirloom Blade into the hand
 (`cmdr2B03RevealUntilSharingTypeToHand`). "Protection from mana value N or
 greater" is `game.ProtectionQualityManaValueAtLeast`, the mirror of "or less".
+"Protection from creatures your opponents control" is the token
+`game.ProtectionFromOpponentsCreatures` (Crypsis; "your" is the protected
+permanent's controller), and "protection from non-Human creatures" is
+`game.ProtectionFromNonSubtypeCreatures("Human")` (Spare from Evil; a
+changeling has every type, so it is not stopped) (#6253).
 A `OfThatPlayersChoice` clause on a damage trigger is asked of the player the
 damage was dealt to (`triggerChooserOf`): Bladegriff Prototype.
 
@@ -12569,7 +12735,15 @@ and then discard the change to `docs/engine-seams.md`.
   (Soulflayer, Ethereal Forager). A static that reads them sets
   `DependsOnExile`, or it goes stale when one leaves exile. "Spells you
   cast have delve" is `SpellsYouCastHaveDelve: true` (Teval, Arbiter of
-  Virtue).) (Ordinary activated abilities built from
+  Virtue).) (**"You can't spend mana to cast this spell"** has a shape
+  since #6227: `CantSpendMana: true` on the Spec, beside the card's
+  `TapCost` and / or `Delve`, and nothing else. The mana half of the
+  total cost is then payable only by the convoke taps and the delve
+  exiles the cast announces (CR 601.2h): no mana in the pool pays any of
+  it, the auto-tapper plans nothing, and a cast that leaves anything
+  owed is refused for insufficient mana. Declaring it on a card with
+  neither convoke nor delve panics at boot, since nothing could ever pay
+  for it. Hogaak, Arisen Necropolis is the one card that says it.) (Ordinary activated abilities built from
   those components are fine since S21: see `Spec.Activated`
   above.) Shipping a card with a cost the engine
   can't express simply omitted makes it **stronger than printed**, which
@@ -15257,6 +15431,17 @@ if g.OpponentPermanentDealtExcessDamageThisTurn(you) { … }             // a re
 ```
 
 `CondOpponentPermanentDealtExcessDamage` declares `game.FootprintCondOpponentPermanentDealtExcessDamage`, since the tally only rises within a turn. "Whenever … is dealt excess noncombat damage", one event's amount inside a trigger, is still `excess_damage.go` (Magmatic Galleon, Fall of Cair Andros).
+
+### "The most common color among all permanents" (#6207)
+
+Counted by `game.MostCommonColorsForEffect` over the layered colours (CR 105.2): each permanent counts once per colour, colourless counts for nothing, ties are all returned, and with no coloured permanent no colour is common. A layer-7c static may read it, since layer 5 has settled for the pass. The shapes are in `cards/effects/most_common_color.go`:
+
+```go
+Static: []game.StaticAbility{SelfPumpWhileColorIsMostCommon("R", -2, -2)}, // Halam Djinn: "… as long as red is the most common color among all permanents or is tied for most common"
+Static: []game.StaticAbility{PumpEnchantedUnlessSharesAMostCommonColor(3, 3)}, // Heroic Defiance
+SharesAMostCommonColor(g, card)                      // Tsabo's Assassin, Barrin's Unmaking, checked as the ability or spell resolves
+ColorIsMostCommonUntiedAmongNontoken(g, player, col) // Call to Arms
+```
 
 ### "If you control no untapped lands" (#5794)
 

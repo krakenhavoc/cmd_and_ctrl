@@ -112,6 +112,18 @@ type DiscardCost struct {
 	// effects.DiscardNDifferentNames.
 	DifferentNames bool
 
+	// SameName is the set rule of "Discard two nonland cards with the
+	// same name" (#6264; Sphinx of the Chimes): every discarded card
+	// shares a name with the others (CR 201.2a: "at least one name in
+	// common"; a card with no name has the same name as nothing). It is
+	// DifferentNames' mirror, DATA read by the engine at the same three
+	// places: the per-card candidates (a nameless card is never one), the
+	// set check in validateDiscardCostLocked (DiscardNamesShared), and the
+	// enumerator's one payment (DiscardSameNamePaymentForEffect). Register
+	// allows it only where DifferentNames is allowed, and never beside it.
+	// Build it with effects.DiscardNWithTheSameName.
+	SameName bool
+
 	// Random is "Discard N cards at random" (ADR 0109 §7, owner
 	// decision 3; CR 701.9b) — Pyromancy, Mage il-Vec, Meteor Storm's
 	// two. The activator chooses nothing: the engine draws the cards
@@ -257,7 +269,7 @@ func (g *Game) discardClauseAcceptsLocked(playerID uuid.UUID, d *DiscardCost, c 
 	}
 	// #4896: CR 201.2b — a card with no name can never be one of a set
 	// "with different names".
-	if d.DifferentNames && len(discardNameKeys(c)) == 0 {
+	if (d.DifferentNames || d.SameName) && len(discardNameKeys(c)) == 0 {
 		return false
 	}
 	if !d.SameNameAsLegendaryPermanent {
@@ -270,6 +282,68 @@ func (g *Game) discardClauseAcceptsLocked(playerID uuid.UUID, d *DiscardCost, c 
 // (#4896). Nil-safe.
 func DiscardCostDifferentNames(d *DiscardCost) bool {
 	return d != nil && d.DifferentNames
+}
+
+// DiscardCostSameName reports the "with the same name" set rule (#6264).
+// Nil-safe.
+func DiscardCostSameName(d *DiscardCost) bool {
+	return d != nil && d.SameName
+}
+
+// DiscardNamesShared is "with the same name" over a set of cards in a
+// hand (CR 201.2a): one name every card has, so a split card shares a
+// name with a card named like either half. False for a card with no name
+// and for an empty set.
+func DiscardNamesShared(cards []Card) bool {
+	if len(cards) == 0 {
+		return false
+	}
+	common := map[string]bool{}
+	for _, k := range discardNameKeys(cards[0]) {
+		common[k] = true
+	}
+	for _, c := range cards[1:] {
+		next := map[string]bool{}
+		for _, k := range discardNameKeys(c) {
+			if common[k] {
+				next[k] = true
+			}
+		}
+		common = next
+	}
+	return len(common) > 0
+}
+
+// DiscardSameNamePaymentForEffect is the one payment of a "Discard N
+// cards with the same name" clause (#6264): N of `ordered` (the
+// candidates, in the order the caller prefers to lose them) that share a
+// name, or nil when no name is held N times and the cost cannot be paid
+// (CR 118.3). Of the names held often enough, the one whose Nth card
+// comes earliest in `ordered` is paid with, its first N cards in order.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) DiscardSameNamePaymentForEffect(playerID uuid.UUID, cost *DiscardCost, ordered []uuid.UUID) []uuid.UUID {
+	if cost == nil || !cost.SameName || cost.N < 1 {
+		return nil
+	}
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	groups := map[string][]uuid.UUID{}
+	for _, id := range ordered {
+		c := g.findHandCardLocked(p, id)
+		if c == nil {
+			continue
+		}
+		for _, k := range discardNameKeys(*c) {
+			groups[k] = append(groups[k], id)
+			if len(groups[k]) == cost.N {
+				return append([]uuid.UUID(nil), groups[k]...)
+			}
+		}
+	}
+	return nil
 }
 
 // discardNameKeys is every name `c` has (NamesOf: both halves of a split
@@ -578,6 +652,10 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 	if cost.DiscardCards.DifferentNames && !DiscardNamesDiffer(named) {
 		return nil, errDiscardNamesRepeat
 	}
+	// #6264: "with the same name", the mirror rule (CR 201.2a).
+	if cost.DiscardCards.SameName && !DiscardNamesShared(named) {
+		return nil, errDiscardNamesDiffer
+	}
 	return append(out, chosen...), nil
 }
 
@@ -585,6 +663,10 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 // discard whose cards share a name (#4896). It wraps ErrInvalidParam, as
 // every other refusal of a discard pick does, and says the rule.
 var errDiscardNamesRepeat = fmt.Errorf("%w: the cards you discard must have different names", ErrInvalidParam)
+
+// errDiscardNamesDiffer is the refusal of a "with the same name" discard
+// whose cards don't share one (#6264).
+var errDiscardNamesDiffer = fmt.Errorf("%w: the cards you discard must have the same name", ErrInvalidParam)
 
 // findHandCardLocked returns the card with `id` in `p`'s hand, or nil.
 // Caller must hold g.mu.

@@ -434,6 +434,11 @@ type GameSnapshot struct {
 	// dilemmas faced this turn.
 	DilemmasFacedThisTurn map[uuid.UUID]int `json:"dilemmasFacedThisTurn,omitempty"`
 
+	// PilesOrGuessesThisTurn is Game.PilesOrGuessesThisTurn (#6175).
+	// Additive within the version: a file written before it restores
+	// with no pile or guess effect this turn.
+	PilesOrGuessesThisTurn []uuid.UUID `json:"pilesOrGuessesThisTurn,omitempty"`
+
 	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
@@ -1241,12 +1246,19 @@ type cardSnapshot struct {
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
-	SuspendGranted           bool      `json:"suspendGranted,omitempty"`
-	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
-	AttachedAt               int64     `json:"attachedAt,omitempty"`
+	SuspendGranted           bool `json:"suspendGranted,omitempty"`
+	MarkedLethalByDeathtouch bool `json:"markedLethalByDeathtouch"`
+	// MarkedBySource is Card.MarkedBySource (#6209): the per-source split
+	// of the marked damage, for "lethal damage dealt by a single source".
+	// Additive — a file written before it restores an empty split, which
+	// reads as "no single source has marked lethal damage", so a creature
+	// with the clause survives a check it might have been destroyed by.
+	// Weaker, never stronger.
+	MarkedBySource  []SourceMark `json:"markedBySource,omitempty"`
+	LostLastCounter bool         `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown  bool         `json:"printedPTKnown,omitempty"`
+	AttachedTo      TargetRef    `json:"attachedTo,omitempty"`
+	AttachedAt      int64        `json:"attachedAt,omitempty"`
 	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
 	// CR 400.7 epoch of the host at the attach. Additive within v8 and
 	// absent at zero. A file written before #3159 has it only for an
@@ -1902,6 +1914,7 @@ type stackItemSnapshot struct {
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
+	Cycling       bool         `json:"cycling,omitempty"`    // #6169
 	// ExileWithCounter (#3213) is Goliath Daydreamer's mark. Carried: a
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
@@ -2170,6 +2183,8 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	// #6271: each candidate's EachOf filters, as bits. Additive.
+	PickSlots []int `json:"pickSlots,omitempty"`
 	// #4256: the word a keyed outside-the-game collection pick's filter
 	// is handed (its key rides pickThen). Additive within the version.
 	PickMatchArg string `json:"pickMatchArg,omitempty"`
@@ -2820,6 +2835,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
+	s.PilesOrGuessesThisTurn = copyUUIDs(g.PilesOrGuessesThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -3304,6 +3320,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		HauntingEpoch:              c.HauntingEpoch,
 		ExileGrants:                exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch:   c.MarkedLethalByDeathtouch,
+		MarkedBySource:             append([]SourceMark(nil), c.MarkedBySource...),
 		LostLastCounter:            c.LostLastCounter,
 		PrintedPTKnown:             c.PrintedPTKnown,
 		AttachedTo:                 c.AttachedTo,
@@ -3542,6 +3559,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -3787,6 +3805,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
@@ -4210,6 +4229,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
+	g.PilesOrGuessesThisTurn = copyUUIDs(s.PilesOrGuessesThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
 		g.derivePrePlanOrdinalsLocked()
@@ -4498,6 +4518,7 @@ func restoreCard(c *cardSnapshot) Card {
 		HauntingEpoch:              c.HauntingEpoch,
 		ExileGrants:                exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch:   c.MarkedLethalByDeathtouch,
+		MarkedBySource:             append([]SourceMark(nil), c.MarkedBySource...),
 		LostLastCounter:            c.LostLastCounter,
 		PrintedPTKnown:             c.PrintedPTKnown,
 		AttachedTo:                 c.AttachedTo,
@@ -4783,6 +4804,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -4957,6 +4979,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,

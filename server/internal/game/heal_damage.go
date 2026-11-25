@@ -111,6 +111,8 @@ func (g *Game) HealOtherDamageForEffect(ev *ReplacementEvent) int {
 	n := c.healableDamage(ev.DamageInstance)
 	if n > 0 {
 		c.DamageMarked -= n
+		// #6209: the per-source split shrinks with the mark.
+		c.releaseMarkedDamage(n)
 	}
 	return n
 }

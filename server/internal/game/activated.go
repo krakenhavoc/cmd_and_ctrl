@@ -177,6 +177,32 @@ type AbilityCost struct {
 	// bundle itself.
 	ManaValueFromSource bool
 
+	// ManaFromExiledCard is "Exile a creature card from your graveyard and
+	// pay its mana cost" (#6270, Back from the Brink): the mana component
+	// is the mana cost of the one card the activator names to ExileCards
+	// (CR 602.2b through 601.2f: the card is chosen as the cost is
+	// announced, and the total cost is then that card's cost plus any
+	// printed Mana, priced through every activation cost modifier). A
+	// card with no mana cost has a cost of {0} to pay (CR 202.1b).
+	// ExileCards must be a one-card clause; effects.Register refuses
+	// anything else. The ability's own rows and the view price it before
+	// a card is chosen at its printed Mana; the activation and the
+	// legal-move enumerator price it with the card
+	// (AbilityWithExiledCardCostForEffect).
+	ManaFromExiledCard bool
+
+	// ManaValueOfExiledWith is "{X} … X is the mana value of the exiled
+	// card" (Soul Foundry, Prototype Portal, #6240): the mana component is
+	// generic mana equal to the mana value (CR 202.3) of the card exiled
+	// with the permanent that has the row (its imprint, CR 607.2a), the
+	// last one when there are several, and {0} when there is none. X is
+	// defined by the text, so the activator doesn't choose it (CR 107.3c):
+	// Mana stays empty on the declaration, nothing asks for an X, and the
+	// one pricer (AbilityManaCostAtXForEffect) writes "{N}" in, so the
+	// activation, the menu row, the enumerator and the auto-tap preview all
+	// charge it.
+	ManaValueOfExiledWith bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'
@@ -2232,6 +2258,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #6270: "and pay its mana cost" — the card just named to the exile
+	// component sets the mana half, so every reader of the price below
+	// (the gate, the pricer, the payment) sees the total cost (CR 601.2f).
+	ab = g.AbilityWithExiledCardCostForEffect(playerID, ab, exiles)
 	// ADR 0109 §7 (#1902): "Put a card from your hand on top of your
 	// library" (Penance, Leashling), named at announce beside the
 	// discard and exile picks and never one of them (CR 118.3).
@@ -2349,6 +2379,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// colourless Equipment's ability may still target a pro-red
 	// creature; a red permanent's ability may not (#662).
 	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
+		return err
+	}
+	// #6236, CR 601.2c via CR 602.2b: the Flagbearer rule.
+	g.RecomputeLayersIfStaleLocked()
+	if err := g.checkFlagbearerTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
 		return err
 	}
 	// #1563, CR 601.2d via CR 602.2b: the division, with the targets.
@@ -2509,6 +2544,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		riderCtx.ClassLevel = ab.ClassLevel
 		// #4834: "spend this mana only on costs that contain {X}".
 		riderCtx.CostHasX = ab.Cost.XSlots() > 0
+		// #6259: "…or pay a cost that contains {C}".
+		riderCtx.CostHasC = CostStringHasColorless(ab.Cost.Mana)
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
@@ -2915,6 +2952,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// board by then, so nothing downstream could recompute it.
 		Paid:       paid,
 		Uncopyable: ab.Uncopyable,
+		Cycling:    ab.Cycling,
 		Effect:     ab.Effect,
 		targetSpec: ab.Targets,
 		modeSpec:   ab.Modes,

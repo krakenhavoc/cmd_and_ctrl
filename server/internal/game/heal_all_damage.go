@@ -18,6 +18,8 @@ func (g *Game) HealAllDamageForEffect(cardID uuid.UUID) int {
 	}
 	n := c.DamageMarked
 	c.DamageMarked = 0
+	// #6209: nothing has marked damage on it any more.
+	clearMarkedDamageSources(c)
 	c.damageInstance, c.damageInstanceMarked = 0, 0
 	return n
 }

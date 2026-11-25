@@ -98,6 +98,8 @@ var toymakersTrapGuesser = effects.ChoosePlayerThen("option-pick/toymakers-trap-
 	}
 	var carry []uuid.UUID
 	if opp != uuid.Nil {
+		// #6175: an opponent guesses the number.
+		effects.NotePileOrGuess(ctx)
 		carry = []uuid.UUID{opp}
 	}
 	return effects.SecretChoices{

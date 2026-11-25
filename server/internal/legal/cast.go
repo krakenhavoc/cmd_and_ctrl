@@ -71,6 +71,9 @@ type castParams struct {
 	// BeholdType is the creature type a behold that prints none chooses
 	// (#5406) — CastSpellParams.BeholdType.
 	BeholdType string `json:"behold_type,omitempty"`
+	// ChosenCreatureType is the creature type a spell names as it is
+	// cast (#6245) — CastSpellParams.ChosenCreatureType.
+	ChosenCreatureType string `json:"chosen_creature_type,omitempty"`
 	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
 	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
@@ -441,6 +444,19 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 // prices with different consequences, exactly as a kicked and an
 // unkicked cast are (ADR 0073 §9).
 func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.ZoneKind, perm *game.CastPermission, offer *game.AlternativeCost) {
+	// #6245, CR 601.2c: a spell that names a creature type as it is cast
+	// is walked once per type a creature on the battlefield has, with the
+	// type stamped on the copy as CastSpell stamps it, so every target
+	// clause of the chosen type sees it. A type no creature has would only
+	// ever find no targets.
+	if game.ChoosesCreatureTypeAsCast(card) && card.NamedTribe == "" {
+		for _, t := range e.g.CastCreatureTypeCandidatesForEffect() {
+			typed := card
+			typed.NamedTribe = t
+			e.castMovesForCard(typed, from, kind, perm, offer)
+		}
+		return
+	}
 	// CR 708.4, ADR 0082 decision 2: a cast that claims a face-down
 	// offer announces a 2/2 CREATURE SPELL with no name and no text,
 	// and the engine stamps that onto its own copy of the card before
@@ -971,8 +987,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// reads targets.
 	// #6157: a permission whose surcharge reads the targets prices per set
 	// too (game.TargetSurchargeFor).
+	// #6206: and a spell that charges ITSELF life for each target
+	// (Phyrexian Purge) prices by the targets for the same reason.
 	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect() ||
-		(perm != nil && perm.CostMoreUnlessTargetsYourCreature > 0)
+		(perm != nil && perm.CostMoreUnlessTargetsYourCreature > 0) ||
+		e.g.CastLifePerTargetForEffect(card) > 0
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
 	// whole of its X, and the mana cost it prints has no {X} slot at
@@ -2100,37 +2119,38 @@ func (e *enumerator) castMoveEmitter(
 			IdleHint:   idle,
 			Value:      xv,
 			Params: mustJSON(castParams{
-				InstanceID:        card.InstanceID.String(),
-				FromZone:          from,
-				AlternativeCost:   offerKey(offer),
-				AltCostIDs:        idStrings(altPaid),
-				CounterSourceIDs:  counters.wireIDs(),
-				CounterCounts:     counters.wireCounts(),
-				CounterKind:       counters.wireKind(),
-				CounterKinds:      counters.wireKinds(),
-				PhyrexianLife:     phyLife,
-				Targets:           wireTargets(targets),
-				Modes:             modes,
-				XValue:            setX,
-				DiscardIDs:        idStrings(discards),
-				SacrificeIDs:      idStrings(sacs),
-				OptionalCosts:     chosen,
-				CostBranch:        branch,
-				TeamworkIDs:       idStrings(teamIDs),
-				ConspireIDs:       idStrings(conspireIDs),
-				BlightIDs:         idStrings(blightIDs),
-				RevealIDs:         idStrings(revealIDs),
-				BeholdType:        beholdType,
-				ExilePermanentIDs: idStrings(exileIDs),
-				ReturnIDs:         idStrings(returnIDs),
-				ExileFromHandIDs:  idStrings(handExile),
-				ExileIDs:          idStrings(exileCardIDs),
-				DelveIDs:          idStrings(delve),
-				Distribution:      distributionWire(dist),
-				GiftOpponent:      giftWire(giftTo),
-				AltCostOpponent:   giftWire(altOpponent),
-				Strict:            true,
-				AutoTap:           true,
+				InstanceID:         card.InstanceID.String(),
+				FromZone:           from,
+				AlternativeCost:    offerKey(offer),
+				AltCostIDs:         idStrings(altPaid),
+				CounterSourceIDs:   counters.wireIDs(),
+				CounterCounts:      counters.wireCounts(),
+				CounterKind:        counters.wireKind(),
+				CounterKinds:       counters.wireKinds(),
+				PhyrexianLife:      phyLife,
+				Targets:            wireTargets(targets),
+				Modes:              modes,
+				XValue:             setX,
+				DiscardIDs:         idStrings(discards),
+				SacrificeIDs:       idStrings(sacs),
+				OptionalCosts:      chosen,
+				CostBranch:         branch,
+				TeamworkIDs:        idStrings(teamIDs),
+				ConspireIDs:        idStrings(conspireIDs),
+				BlightIDs:          idStrings(blightIDs),
+				RevealIDs:          idStrings(revealIDs),
+				BeholdType:         beholdType,
+				ChosenCreatureType: castCreatureTypeWire(card),
+				ExilePermanentIDs:  idStrings(exileIDs),
+				ReturnIDs:          idStrings(returnIDs),
+				ExileFromHandIDs:   idStrings(handExile),
+				ExileIDs:           idStrings(exileCardIDs),
+				DelveIDs:           idStrings(delve),
+				Distribution:       distributionWire(dist),
+				GiftOpponent:       giftWire(giftTo),
+				AltCostOpponent:    giftWire(altOpponent),
+				Strict:             true,
+				AutoTap:            true,
 				// ADR 0034: `card` has already had SetFace applied by
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,
@@ -2746,7 +2766,15 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 		}
 		out = next
 	}
-	return out
+	// #6236, CR 601.2c: an announcement an opponent's Flagbearer rule
+	// refuses is no move (Coalition Flag, Standard Bearer).
+	kept := out[:0:0]
+	for _, ts := range out {
+		if e.g.FlagbearerTargetsAllowedForEffect(src, steps, ts) {
+			kept = append(kept, ts)
+		}
+	}
+	return kept
 }
 
 // stepsCountedByX lists the indexes of the announcement's steps whose

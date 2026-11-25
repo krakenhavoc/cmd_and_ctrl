@@ -269,6 +269,9 @@ var staticRowSlots = []staticRowSlot{
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},
+	// #6209: Ogre Enforcer's clause is a static of the creature itself,
+	// and its own wording rides the slot.
+	{field: "SingleSourceLethalOnly", fallback: "Can't be destroyed by lethal damage from two sources", ownLabel: true},
 	{field: "ExertOnAttack", fallback: "You may exert this creature as it attacks."},
 	{field: "HexproofBypasses", label: hexproofBypassRows},
 	{field: "WardSuppressions", fallback: "Stops ward from triggering"},
@@ -279,6 +282,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CounterRemovalLocks", fallback: "Counters can't be removed", ownLabel: true},
 	{field: "UntapCaps", fallback: "Limits untapping", ownLabel: true},
 	{field: "UntapOptOuts", fallback: "May choose not to untap", ownLabel: true},
+	{field: "UntapTypeChoices", fallback: "Untap only a chosen card type", ownLabel: true},
+	{field: "TurnSkipOffers", fallback: "May skip your turn", ownLabel: true},
 	{field: "DrawStep", fallback: "Extra draw", ownLabel: true},
 	{field: "CastRestrictions", fallback: "Casting restriction", ownLabel: true},
 	{field: "LandPlayRestrictions", fallback: "Land-play restriction", ownLabel: true},

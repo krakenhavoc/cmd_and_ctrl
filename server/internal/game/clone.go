@@ -159,6 +159,7 @@ func (g *Game) cloneLocked() *Game {
 			out.ForetoldThisTurn[k] = v
 		}
 	}
+	out.PilesOrGuessesThisTurn = copyUUIDs(g.PilesOrGuessesThisTurn)
 	if len(g.DilemmasFacedThisTurn) > 0 {
 		out.DilemmasFacedThisTurn = make(map[uuid.UUID]int, len(g.DilemmasFacedThisTurn))
 		for k, v := range g.DilemmasFacedThisTurn {
@@ -694,6 +695,10 @@ func deepenCard(out *Card) {
 		sheet := cloneStickerSheet(*out.StickerSheet)
 		out.StickerSheet = &sheet
 	}
+	// #6209: the per-source split of the marked damage.
+	if len(out.MarkedBySource) > 0 {
+		out.MarkedBySource = append([]SourceMark(nil), out.MarkedBySource...)
+	}
 	// #1706: a multi-blocker's further attackers.
 	if len(out.AlsoBlocking) > 0 {
 		out.AlsoBlocking = append([]uuid.UUID(nil), out.AlsoBlocking...)
@@ -990,6 +995,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		CastOrdinal:      s.CastOrdinal,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -1371,6 +1377,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.DilemmasFacedThisTurn = src.DilemmasFacedThisTurn
+	g.PilesOrGuessesThisTurn = src.PilesOrGuessesThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn

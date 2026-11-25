@@ -1044,6 +1044,8 @@ type enumerator struct {
 	// rowCostHasX is whether that row's cost contains {X}, for the
 	// spend context's ManaRestrictXCost (#4834).
 	rowCostHasX bool
+	// rowCostHasC is the same for a {C} symbol (#6259).
+	rowCostHasC bool
 	// window is the answer window the seat is in (answer_window.go,
 	// #4734), read on first use by answerWindow: the moves of one
 	// enumeration share it.
@@ -1058,6 +1060,7 @@ func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
 	spend.Equip = e.rowEquip
 	spend.ClassLevel = e.rowClassLevel
 	spend.CostHasX = e.rowCostHasX
+	spend.CostHasC = e.rowCostHasC
 	return spend
 }
 
