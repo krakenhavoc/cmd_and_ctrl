@@ -900,6 +900,7 @@ choose choose-cards/duelists-flame-exile
 choose choose-cards/duskmantle-seer-take
 choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
+choose choose-cards/ecological-appreciation-settle
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
 choose choose-cards/eivor-wolf-kissed-put
@@ -1689,6 +1690,8 @@ choose choose-cards/vault-13-dwellers-journey-return-two
 choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
+choose choose-cards/verdant-mastery-mine
+choose choose-cards/verdant-mastery-opponents-land
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
 choose choose-cards/vivien-champion-of-the-wilds-exile
@@ -2413,6 +2416,7 @@ option option-pick/done-for-the-day-reward
 option option-pick/doors-of-durin-attacks
 option option-pick/dramatists-puppet-put-or-remove
 option option-pick/dwarven-armorer-counter
+option option-pick/ecological-appreciation-opponent
 option option-pick/eladamri-korvecdal-source
 option option-pick/elemental-teachings-opponent
 option option-pick/elspeth-resplendent-keyword-counter
@@ -2617,6 +2621,7 @@ option option-pick/twins-of-discord-parity
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
 option option-pick/urborg-loses
+option option-pick/verdant-mastery-opponent
 option option-pick/vial-smasher-the-fierce-recipient
 option option-pick/villainous-damocles-base
 option option-pick/villainous-davros-dalek-creator
@@ -3412,6 +3417,7 @@ searchrule search/different-names
 searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
+searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
 steps steps/wylls-reversal-retarget-then-copy
 steps steps/zimones-hypothesis-rest
@@ -3868,6 +3874,9 @@ tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
 tail echoing-assault/sacrifice-at-next-end-step
+tail ecological-appreciation/choose
+tail ecological-appreciation/exile-self
+tail ecological-appreciation/tucked
 tail ecstatic-beauty/play-and-time-counters
 tail eerie-gravestone/after-mill
 tail eivor-wolf-kissed/after-mill
@@ -5241,6 +5250,9 @@ tail vanille-cheerful-lcie/after-mill
 tail vanish-into-memory/entered
 tail vault-101/entered
 tail vengeance-mission/loss
+tail verdant-mastery/after-opponent
+tail verdant-mastery/found
+tail verdant-mastery/to-hand
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step

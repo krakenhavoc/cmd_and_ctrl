@@ -4266,6 +4266,14 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
+	// #6202, CR 609.4b: North Star's "you may spend mana as though it
+	// were mana of any type to pay that spell's mana cost" widens the
+	// MANA COST alone, so it is applied here, before the commander tax
+	// and the additional costs below join it, and only to a cast paying
+	// that mana cost (no alternative cost, no permission's own price).
+	if alt == nil && chosen.Paid == chosen.Printed && g.manaCostAnyTypePromiseLocked(p.ID, card) {
+		cost = asAnyTypeCost(cost)
+	}
 	// #6151: a commander whose tax is paid in life adds no mana here
 	// (commanderTaxLocked); CastSpell charges the life.
 	taxMana, _ := commanderTaxLocked(p, card, params.FromZone)
@@ -8550,7 +8558,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err != nil {
 		return err
 	}
-	if !g.CanPayLifeLocked(p, ab.LifeCost) {
+	if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) {
 		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. CR 119.8: a player whose life total can't change
@@ -8704,7 +8712,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if serr != nil {
 			return serr
 		}
-		if manaLife > 0 && !g.CanPayLifeLocked(p, manaLife+ab.LifeCost) {
+		if manaLife > 0 && !g.CanPayLifeForManaAbilityLocked(p, manaLife+ab.LifeCost) {
 			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
 		}
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {

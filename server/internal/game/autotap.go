@@ -1087,7 +1087,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			}
 			// #3275: nor is one that can't be sacrificed, for an ability
 			// that sacrifices it (the executor's validator refuses it).
-			if picked.SacrificeCost && g.permanentCantBeSacrificedLocked(&c) {
+			if picked.SacrificeCost && g.sacrificeCostBarredLocked(&c) {
 				continue
 			}
 			// #540: CR 302.6. A mana creature that entered this turn
@@ -1863,7 +1863,7 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.Rider != nil && !a.riderDeclared() {
 		return false
 	}
-	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
+	if a.LifeCost > 0 && !g.CanPayLifeForManaAbilityLocked(g.playerByIDLocked(asker), a.LifeCost) {
 		return false
 	}
 	// ADR 0129 §5: an energy cost is plannable when the player has the
