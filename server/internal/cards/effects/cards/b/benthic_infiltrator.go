@@ -13,7 +13,7 @@ import (
 //	 player exiles the top card of their library.)
 //	 This creature can't be blocked."
 //
-// Ingest is OldB307Ingest; "can't be blocked" is Blighted Agent's restriction
+// Ingest is OldB305Ingest; "can't be blocked" is Blighted Agent's restriction
 // bit, read at the block declaration (CR 509.1b).
 //
 // No simplification.
@@ -24,7 +24,7 @@ func init() {
 		Name:            name,
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
-		Triggered:       []game.TriggeredAbility{effects.OldB307Ingest(name)},
+		Triggered:       []game.TriggeredAbility{effects.OldB305Ingest(name)},
 		Static:          []game.StaticAbility{effects.RestrictSelf(game.CantBeBlocked)},
 	})
 }

@@ -26,7 +26,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Static: []game.StaticAbility{
 			effects.KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && effects.OldB296ControlsAnotherColorlessCreature(g, source)
+				return target.InstanceID == source.InstanceID && effects.OldB295YouControlAnotherColorlessCreature(g, source)
 			}, "haste"),
 		},
 	})

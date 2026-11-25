@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,23 +21,5 @@ func S82OldB283MinusOneOnFirstTarget(name string) Effect {
 			return BoostUntilEOT{Target: t.ID, Power: -1, Toughness: -1, Label: name + " — -1/-1"}.Apply(ctx)
 		}
 		return nil
-	}
-}
-
-// S82OldB283CreatureOfUpkeepPlayer is the TargetsFrom clause "target
-// creature that player controls" on a trigger for an upkeep: the player is
-// the upkeep's player, read off the event's actor.
-func S82OldB283CreatureOfUpkeepPlayer(tc game.TriggerContext, _ *game.Card, g *game.Game) *game.TargetSpec {
-	player := tc.Event.Actor
-	if player == uuid.Nil || g.PlayerByIDForEffect(player) == nil {
-		return nil
-	}
-	return &game.TargetSpec{
-		Mode: "creature", Label: "target creature that player controls",
-		Zones: []game.ZoneKind{game.ZoneBattlefield},
-		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-			return c.IsCreature() && c.Controller == player
-		},
-		Min: 1, Max: 1,
 	}
 }

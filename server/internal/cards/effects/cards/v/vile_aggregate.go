@@ -27,7 +27,7 @@ func init() {
 		Name:            name,
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid, "trample"},
-		Triggered:       []game.TriggeredAbility{effects.OldB306Ingest(name)},
+		Triggered:       []game.TriggeredAbility{effects.OldB305Ingest(name)},
 		Static: []game.StaticAbility{{
 			Label:     "Vile Aggregate's power is equal to the number of colorless creatures you control.",
 			Layer:     game.Layer7PT,

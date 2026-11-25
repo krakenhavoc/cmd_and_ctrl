@@ -13,7 +13,7 @@ import (
 //	 player exiles the top card of their library.)
 //	 When this creature dies, you may draw a card. If you do, discard a card."
 //
-// Ingest is OldB307Ingest. The dies trigger is The Celestus's optional loot
+// Ingest is OldB305Ingest. The dies trigger is The Celestus's optional loot
 // (the keyed "draw, then discard" answer): drawing is the "may", and the
 // discard follows only if you chose to draw.
 //
@@ -26,7 +26,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Triggered: []game.TriggeredAbility{
-			effects.OldB307Ingest(name),
+			effects.OldB305Ingest(name),
 			effects.WhenThisDies(name+" — you may draw a card. If you do, discard a card",
 				func(g *game.Game, item *game.StackItem) error {
 					return effects.MayChoice{

@@ -33,7 +33,7 @@ func init() {
 				effects.InterveningIf(effects.B24CondDelirium{},
 					effects.On(game.EventBeginUpkeep, effects.AllOf(effects.ByAnOpponent, effects.YouHaveDeliriumWhen),
 						"Tooth Collector — delirium: target creature that player controls gets -1/-1 until end of turn", effects.S82OldB283MinusOneOnFirstTarget("Tooth Collector"))),
-				effects.S82OldB283CreatureOfUpkeepPlayer),
+				effects.S82OldB282CreatureOfUpkeepPlayer),
 		},
 	})
 }

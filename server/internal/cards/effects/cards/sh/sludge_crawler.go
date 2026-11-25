@@ -13,7 +13,7 @@ import (
 //	 player exiles the top card of their library.)
 //	 {2}: This creature gets +1/+1 until end of turn."
 //
-// Ingest is OldB308Ingest; the pump stacks with each activation.
+// Ingest is OldB305Ingest; the pump stacks with each activation.
 //
 // No simplification.
 func init() {
@@ -23,7 +23,7 @@ func init() {
 		Name:            name,
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
-		Triggered:       []game.TriggeredAbility{effects.OldB308Ingest(name)},
+		Triggered:       []game.TriggeredAbility{effects.OldB305Ingest(name)},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}: This creature gets +1/+1 until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1, Toughness: 1}},

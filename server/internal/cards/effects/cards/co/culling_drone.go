@@ -12,7 +12,7 @@ import (
 //	 Ingest (Whenever this creature deals combat damage to a player, that
 //	 player exiles the top card of their library.)"
 //
-// Ingest is OldB307Ingest.
+// Ingest is OldB305Ingest.
 //
 // No simplification.
 func init() {
@@ -22,6 +22,6 @@ func init() {
 		Name:            name,
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
-		Triggered:       []game.TriggeredAbility{effects.OldB307Ingest(name)},
+		Triggered:       []game.TriggeredAbility{effects.OldB305Ingest(name)},
 	})
 }
