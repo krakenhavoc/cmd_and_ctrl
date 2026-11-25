@@ -742,6 +742,7 @@ choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barals-expertise-cast
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/battlefield-improvisation-equipment
+choose choose-cards/beamsplitter-mage-copy
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
@@ -1002,6 +1003,7 @@ choose choose-cards/green-suns-twilight-picked
 choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
 choose choose-cards/grime-gorger-exile
+choose choose-cards/gruesome-menagerie
 choose choose-cards/guided-passage-picked
 choose choose-cards/guild-summit-tap-gates
 choose choose-cards/gurmag-nightwatch-rest
@@ -2986,6 +2988,7 @@ payunless pay-unless/serene-steward-counter
 payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shanna-draw
 payunless pay-unless/shriek-treblemaker-cant-block
+payunless pay-unless/skyline-scout-flying
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
