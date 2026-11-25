@@ -422,6 +422,7 @@ body old-b270/burn-away-exile-graveyard
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
+body otherworldly-outburst/horror
 body overcharged-amalgam/counter
 body overlook/brokers-hideout-fetch
 body overlook/cabaretti-courtyard-fetch
@@ -474,6 +475,7 @@ body primal-witchstalker/land
 body prishes-wanderings/counter
 body prized-amalgam/return
 body protean-hydra/two-counters
+body providence/first-upkeep-life
 body prowess/pump
 body pygmy-hippo/add-colorless
 body qarsi-sadist/drain
