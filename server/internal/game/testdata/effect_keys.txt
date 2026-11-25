@@ -349,6 +349,7 @@ body loamcrafter-faun/return-to-hand
 body loathsome-curator/destroy
 body lockjaw/unblockable
 body long-river-lurker/flicker-that-creature
+body loot/jace-cunning-castaway
 body ltb/sacrifice-the-source
 body lucius-the-eternal/return-from-exile
 body madness/graveyard-if-not-cast
@@ -1905,6 +1906,7 @@ condition damage/old-b071-the-listed-object-dealt
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
+condition damage/your-creatures-combat-damage-each-player
 condition dies/a-creature
 condition dies/a-creature-you-control
 condition dies/another-creature-than-the-source
@@ -5135,6 +5137,7 @@ tail then/high-society-hunter-counter
 tail then/highway-robbery-draw-two
 tail then/hold-for-ransom-draw
 tail then/horses-of-the-bruinen-scry
+tail then/huatli-warrior-poet-cant-block
 tail then/if-it-went-run-steps
 tail then/indomitable-creativity-shuffle
 tail then/industrial-advancement-sacrificed
