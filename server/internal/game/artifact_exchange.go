@@ -9,7 +9,7 @@ import "github.com/google/uuid"
 type settledExchangeEntry struct {
 	CardID, Actor, NewZoneOwner, Attacking, CopySource uuid.UUID
 	OldZone, NewZone                                   ZoneKind
-	Tapped, Prepared, Haste, HasteTillEOT              bool
+	Tapped, Prepared, Haste, HasteTillEOT, TributePaid bool
 	CopyUntilEndOfTurn                                 bool
 	Devoured                                           int
 	Counters                                           map[string]int
@@ -23,7 +23,7 @@ func settledExchangeEntryOf(ev *ReplacementEvent) *settledExchangeEntry {
 	return &settledExchangeEntry{CardID: ev.CardID, Actor: ev.Actor, NewZoneOwner: ev.NewZoneOwner,
 		OldZone: ev.OldZone, NewZone: ev.NewZone, Tapped: ev.EntersTapped,
 		Prepared: ev.EntersPrepared, Haste: ev.EntersWithHaste, HasteTillEOT: ev.EntersWithHasteTillEOT, Devoured: ev.EntersDevoured,
-		Counters: ev.EntersWithCounters, Copy: ev.EntersAsCopyOf, CopySource: ev.copySourceID,
+		TributePaid: ev.EntersTributePaid, Counters: ev.EntersWithCounters, Copy: ev.EntersAsCopyOf, CopySource: ev.copySourceID,
 		CopyUntilEndOfTurn: ev.copyUntilEndOfTurn, Unlocked: ev.EntersUnlocked,
 		Attacking: ev.EntersAttacking, FaceDown: ev.FaceDown, Listed: ev.FaceDownListed}
 }
@@ -32,7 +32,7 @@ func (s *settledExchangeEntry) event() *ReplacementEvent {
 	return &ReplacementEvent{Kind: RepEventMove, CardID: s.CardID, Actor: s.Actor,
 		NewZoneOwner: s.NewZoneOwner, OldZone: s.OldZone, NewZone: s.NewZone,
 		EntersTapped: s.Tapped, EntersPrepared: s.Prepared, EntersWithHaste: s.Haste, EntersWithHasteTillEOT: s.HasteTillEOT,
-		EntersDevoured: s.Devoured, EntersWithCounters: s.Counters,
+		EntersDevoured: s.Devoured, EntersTributePaid: s.TributePaid, EntersWithCounters: s.Counters,
 		EntersAsCopyOf: s.Copy, copySourceID: s.CopySource, copyUntilEndOfTurn: s.CopyUntilEndOfTurn,
 		EntersUnlocked: s.Unlocked, EntersAttacking: s.Attacking, FaceDown: s.FaceDown, FaceDownListed: s.Listed}
 }

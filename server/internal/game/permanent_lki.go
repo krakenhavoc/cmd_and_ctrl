@@ -259,6 +259,11 @@ type PermanentInfo struct {
 	// by then is read as it last existed (CR 608.2h).
 	Renowned bool `json:"renowned,omitempty"`
 
+	// TributePaid is Card.TributePaid as it last existed (CR 702.104b):
+	// "if tribute wasn't paid" read by a trigger whose creature has left.
+	// Additive; false when it carried none.
+	TributePaid bool `json:"tributePaid,omitempty"`
+
 	// Attacking is whether it was an attacking creature (CR 508.1k) as
 	// it last existed on the battlefield, and Enchanted whether an Aura
 	// was attached to it (#2026). A damage shield against "attacking
@@ -325,6 +330,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		RingBearer:      IsRingBearerOf(*c, c.Controller),
 		Suspected:       c.Suspected,
 		Renowned:        c.Renowned,
+		TributePaid:     c.TributePaid,
 		Attacking:       c.AttackingTarget != uuid.Nil,
 		Blocking:        c.BlockedAttackers(),
 		TextWords:       c.TextWords.entries(),

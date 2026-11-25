@@ -643,6 +643,8 @@ var cardFields = plan(
 	// can re-derive.
 	"Notes", carried, "",
 	"Devoured", carried, "",
+	// #6251, CR 702.104b: whether the chosen opponent paid the tribute.
+	"TributePaid", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
 	"ModesChosen", carried, "",

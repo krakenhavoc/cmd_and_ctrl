@@ -329,6 +329,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 	{field: "HandsRevealed", label: handsRevealedRows},
+	{field: "RevealsChosenPlayersDraws", label: revealsChosenPlayersDrawsRows},
 	{field: "AttackOnlyNearestOpponentInChosenDirection", label: boolRow("Each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent.")},
 	{field: "LooksAtFaceDownCreatures", label: boolRow("You may look at face-down creatures your opponents control any time.")},
 }
@@ -508,6 +509,14 @@ func handsRevealedRows(v reflect.Value) []string {
 		return []string{"Your opponents play with their hands revealed."}
 	case HandRevealEachPlayer:
 		return []string{"Players play with their hands revealed."}
+	}
+	return nil
+}
+
+// revealsChosenPlayersDrawsRows is Booby Trap's static (#6238).
+func revealsChosenPlayersDrawsRows(v reflect.Value) []string {
+	if on, _ := v.Interface().(bool); on {
+		return []string{"The chosen player reveals each card they draw."}
 	}
 	return nil
 }

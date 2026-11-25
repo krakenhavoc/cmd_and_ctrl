@@ -453,6 +453,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6160: Mystic Reflection's entry copy names its object.
+			if problem := nextEntersAsCopiesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// ADR 0108 §3: a multiplier's vocabulary (Sources,
 			// Recipients) is as much a key as its kind, and its fields
 			// on another kind are a newer binary's shape.

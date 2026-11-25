@@ -167,6 +167,20 @@ type NextSpellPromise struct {
 	// before the spend. Additive within the schema version.
 	Convoke bool `json:"convoke,omitempty"`
 
+	// ManaCostAnyType is "for one spell this turn, you may spend mana as
+	// though it were mana of any type to pay that spell's mana cost"
+	// (North Star, #6202; CR 609.4b). Read while the cast is priced
+	// (printedCostLocked): a cast paying the spell's MANA COST has its
+	// symbols widened to any mana before the additional costs join it,
+	// so a kicker or a commander tax is still paid normally ("Additional
+	// costs are still paid normally"). It is spent by the first matching
+	// spell it can matter to — one cast for its mana cost whose cost
+	// prints a coloured or {C} symbol (manaCostPromiseReaches) — so a
+	// generic-only spell or one cast for an alternative cost leaves it
+	// for the spell it was activated for. Additive within the schema
+	// version.
+	ManaCostAnyType bool `json:"manaCostAnyType,omitempty"`
+
 	// Text is the clause as printed, for the log and the panel. Not a
 	// rules input.
 	Text string `json:"text,omitempty"`
@@ -368,6 +382,35 @@ func (g *Game) undauntedCountLocked(player uuid.UUID) int {
 	return n
 }
 
+// manaCostAnyTypePromiseLocked reports whether `player` holds a live
+// ManaCostAnyType promise (North Star) about `card`.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) manaCostAnyTypePromiseLocked(player uuid.UUID, card Card) bool {
+	p := g.playerByIDLocked(player)
+	if p == nil {
+		return false
+	}
+	for _, s := range p.Statics {
+		if s.NextSpell.ManaCostAnyType && g.livePromise(s) && s.NextSpell.Matches(card) {
+			return true
+		}
+	}
+	return false
+}
+
+// manaCostPromiseReaches is whether a ManaCostAnyType promise can
+// matter to `spell`: it was cast for its mana cost (paysManaCost) and
+// that cost prints a symbol generic mana does not already pay (a
+// coloured or {C} symbol; CR 107.4). Only such a cast spends it.
+func manaCostPromiseReaches(spell Card, paysManaCost bool) bool {
+	if !paysManaCost {
+		return false
+	}
+	cost, err := ParseCost(spell.ManaCost)
+	return err == nil && cost.requiredCount() > 0
+}
+
 // spentPromiseFollowUp is one follow-up a spent promise owes: its key
 // and the source that made the promise, which the body is told as
 // CastFollowUp.Source ("it gains haste until end of turn" is an effect
@@ -402,7 +445,8 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []spentPr
 		followUps []spentPromiseFollowUp
 	)
 	for _, s := range p.Statics {
-		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Matches(*spell) {
+		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Matches(*spell) &&
+			(!s.NextSpell.ManaCostAnyType || manaCostPromiseReaches(*spell, item.AltCost == "")) {
 			spent = append(spent, s)
 			continue
 		}
