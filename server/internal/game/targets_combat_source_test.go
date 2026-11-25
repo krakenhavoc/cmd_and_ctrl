@@ -73,6 +73,21 @@ func TestCombatWithSourceReadsTheSourcesBlocks(t *testing.T) {
 	if got := legalIDs(g, sourceOf(g, opp, idle), combatSpec(CombatOfSource, CombatBlockedBy)); len(got) != 0 {
 		t.Errorf("a creature that blocks nothing offers %v", got)
 	}
+	// "creature blocking or blocked by this creature": either side of the
+	// pair, read off whichever one the source is.
+	either := combatSpec(CombatOfSource, CombatBlockingOrBlockedBy)
+	if got := legalIDs(g, sourceOf(g, opp, blocker), either); len(got) != 1 || !got[attacker] {
+		t.Errorf("blocking-or-blocked-by from the blocker = %v, want only %s", got, attacker)
+	}
+	if got := legalIDs(g, sourceOf(g, me, attacker), either); len(got) != 1 || !got[blocker] {
+		t.Errorf("blocking-or-blocked-by from the attacker = %v, want only %s", got, blocker)
+	}
+	if got := legalIDs(g, sourceOf(g, me, otherAttacker), either); len(got) != 0 {
+		t.Errorf("an unblocked attacker offers %v", got)
+	}
+	if got := legalIDs(g, sourceOf(g, opp, idle), either); len(got) != 0 {
+		t.Errorf("an idle creature offers %v", got)
+	}
 }
 
 func TestCombatWithSourceHostIsTheAttachedCreature(t *testing.T) {
