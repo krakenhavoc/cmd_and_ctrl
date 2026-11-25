@@ -208,6 +208,8 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 		OldZone: ZoneLibrary,
 		NewZone: ZoneHand,
 	})
+	// #6238: "the chosen player reveals each card they draw".
+	g.revealDrawnCardLocked(playerID, c.InstanceID)
 	return nil
 }
 
