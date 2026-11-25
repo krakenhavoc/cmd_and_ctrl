@@ -1520,6 +1520,7 @@ choose choose-cards/s82-old-b113-counter-on-a-creature
 choose choose-cards/s82-old-b114-counter-pick-chain
 choose choose-cards/s82-old-b114-counter-pick-last
 choose choose-cards/s82-old-b117-return-to-hand
+choose choose-cards/s82-old-b161-shuffle-graveyard-into-library
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2791,6 +2792,7 @@ payunless pay-unless/gap-b213-sivriss-return
 payunless pay-unless/gap-b53-conduit-goblin-pump-haste
 payunless pay-unless/gap-b54-volatile-stormdrake-sacrifice
 payunless pay-unless/gap-b55-voltstorm-angel
+payunless pay-unless/genesis-return-creature-card
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-dirigible-untap
@@ -4510,6 +4512,7 @@ tail s82-mom-b13/deeproot-wayfinder-after-surveil
 tail s82-old-b046/culmination-of-studies-exiled
 tail s82-old-b117/return-lesser-creature
 tail s82-old-b117/return-up-to-two-permanents
+tail s82-old-b161/shuffle-up-to-four-from-graveyard
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards

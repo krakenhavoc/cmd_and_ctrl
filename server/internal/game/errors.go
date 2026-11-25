@@ -323,6 +323,12 @@ var (
 	// client-facing message.
 	ErrUnparseableCost = errors.New("game: unparseable mana cost")
 
+	// ErrCantSpendMana is returned by CastSpell and the pricer for a spell
+	// that says "You can't spend mana to cast this spell" (Hogaak, Arisen
+	// Necropolis) when convoke, delve and the other non-mana payments leave
+	// any mana in its cost.
+	ErrCantSpendMana = errors.New("game: mana can't be spent to cast this spell")
+
 	// ErrCostModifier is returned by CastSpell when a cost modifier
 	// (CR 601.2f — "spells cost {1} more / {2} less to cast")
 	// produces an amount the engine won't price: a negative
