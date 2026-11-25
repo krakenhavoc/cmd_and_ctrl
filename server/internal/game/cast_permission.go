@@ -768,6 +768,14 @@ type CastPermission struct {
 	// exception it would be.
 	TopOfLibraryOnly bool `json:"topOfLibraryOnly,omitempty"`
 
+	// TopOfGraveyardOnly restricts a ZoneGraveyard permission to the card
+	// currently on top of its owner's graveyard (#6194, CR 404.2: the pile
+	// keeps its order): Bösium Strip's "you may cast instant and sorcery
+	// spells from the top of your graveyard". A card below the top, even
+	// one the filter accepts, is not opened. Graveyards are public, so
+	// there is no visibility half as there is for a library. Additive.
+	TopOfGraveyardOnly bool `json:"topOfGraveyardOnly,omitempty"`
+
 	// SeesLibraryTop is CR 401.5's other half, carried by the grant
 	// rather than by a permanent: "you may LOOK at the top card of
 	// their library any time" (Xanathar, Guild Kingpin), which is
@@ -1081,6 +1089,15 @@ type CastPermission struct {
 	// admits that mana (widenFromColors), and other mana pays as printed.
 	// Ignored when AnyColor or AnyType is set.
 	AnyColorFrom string `json:"anyColorFrom,omitempty"`
+
+	// AnyColorFromSnow narrows the clause by the mana's SOURCE: "you may
+	// spend mana from snow sources as though it were mana of any color to
+	// cast those spells" (Draugr Necromancer, #6161, CR 609.4b). Each
+	// coloured symbol then also takes any mana a snow source produced
+	// (ColorRequirement.SnowAny); other mana pays as printed, and a {C} or
+	// an {S} is left alone. Ignored when AnyColor or AnyType is set.
+	// Additive.
+	AnyColorFromSnow bool `json:"anyColorFromSnow,omitempty"`
 
 	// --- the window ------------------------------------------------
 
@@ -2886,6 +2903,14 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 //
 // Caller must hold g.mu.
 func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission, card Card) bool {
+	if perm.TopOfGraveyardOnly {
+		// #6194: the top of the graveyard the card is in (CR 404.2).
+		owner := g.playerByIDLocked(card.Owner)
+		if owner == nil || owner.Graveyard == nil || len(owner.Graveyard.Cards) == 0 ||
+			owner.Graveyard.Cards[len(owner.Graveyard.Cards)-1].InstanceID != card.InstanceID {
+			return false
+		}
+	}
 	if !perm.TopOfLibraryOnly {
 		return true
 	}
@@ -3678,6 +3703,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyColorCost(cost)
 	case grant.AnyColorFrom != "":
 		return widenFromColors(cost, []string{grant.AnyColorFrom})
+	case grant.AnyColorFromSnow:
+		return widenSnowAny(cost)
 	}
 	return cost
 }
@@ -3703,7 +3730,11 @@ func requiresColorless(req ColorRequirement) bool {
 // the price and the announce path ask it with, so all three judge the
 // cast under the same permission. Caller must hold g.mu.
 func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
-	if from == ZoneHand || from == ZoneCommand {
+	// #6231: a copy of a card in a hand exists only because an offer made
+	// it there (CR 707.12, CardCopyOffer.InHand), and is cast through that
+	// offer's permission, so its reduction is read; a real hand card's
+	// ordinary cast claims no permission.
+	if (from == ZoneHand && !card.CardCopy) || from == ZoneCommand {
 		return 0
 	}
 	// #4509: `card` is the face being cast; a permission that does not

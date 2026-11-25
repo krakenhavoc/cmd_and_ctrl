@@ -157,6 +157,7 @@ var gameFields = plan(
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973
+	"PilesOrGuessesThisTurn", carried, "", // #6175
 	"LandsPlayedThisTurn", carried, "",
 	"ExtraLandDropsThisTurn", carried, "",
 	// Per-turn draw log (Sylvan Library's "cards in your hand drawn
@@ -643,6 +644,8 @@ var cardFields = plan(
 	// can re-derive.
 	"Notes", carried, "",
 	"Devoured", carried, "",
+	// #6251, CR 702.104b: whether the chosen opponent paid the tribute.
+	"TributePaid", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
 	"ModesChosen", carried, "",
@@ -1068,6 +1071,7 @@ var stackItemFields = plan(
 	// #1574: "this ability can't be copied". Carried: a restore that
 	// lost it would let a copy effect copy Gogo's activation.
 	"Uncopyable", carried, "",
+	"Cycling", carried, "#6169: stamped at activation from ActivatedAbilityShape.Cycling; StackItem.Cycling",
 	// ADR 0106 §4 (#1806): "this spell can't be countered" marks.
 	// Carried: a restore that lost one would let a Counterspell through.
 	"CantBeCountered", carried, "",
@@ -1292,6 +1296,7 @@ var pendingChoiceFields = plan(
 	// Talara's Bane's toughness, read as the pick was raised: without
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
+	"PickSlots", carried, "",
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (Null Summoner): a restored pick that forgot it would exile the
 	// card unlinked, and no standing permission could ever name it.

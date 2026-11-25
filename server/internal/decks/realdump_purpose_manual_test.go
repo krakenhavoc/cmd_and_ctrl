@@ -308,6 +308,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 110 (#5511).
 	"Idol of Endurance": "exiles only the controller's own small creature cards from their graveyard, no permanents: not a board wipe",
+
+	// S82 seam #6098.
+	"Emrakul, the World Anew": "its leaves-the-battlefield drawback sacrifices only its controller's own creatures: not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

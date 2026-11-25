@@ -208,6 +208,8 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 		OldZone: ZoneLibrary,
 		NewZone: ZoneHand,
 	})
+	// #6238: "the chosen player reveals each card they draw".
+	g.revealDrawnCardLocked(playerID, c.InstanceID)
 	return nil
 }
 
@@ -1291,7 +1293,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// the validator, the auto-tapper's exclusions, the CR 903.9 walk and
 	// the payment all see the one set the engine fixed.
 	if addCost != nil && addCost.SacrificeAll {
-		ids, err := g.sacrificeAllPaymentLocked(playerID, addCost, params.SacrificeIDs)
+		ids, err := g.sacrificeAllPaymentLocked(playerID, addCost.Sacrifice, params.SacrificeIDs)
 		if err != nil {
 			slog.Warn("cast_spell rejected: sacrifice_ids are not every permanent a sacrifice-all cost takes",
 				"card_name", card.Name,
@@ -4261,6 +4263,14 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
+	// #6202, CR 609.4b: North Star's "you may spend mana as though it
+	// were mana of any type to pay that spell's mana cost" widens the
+	// MANA COST alone, so it is applied here, before the commander tax
+	// and the additional costs below join it, and only to a cast paying
+	// that mana cost (no alternative cost, no permission's own price).
+	if alt == nil && chosen.Paid == chosen.Printed && g.manaCostAnyTypePromiseLocked(p.ID, card) {
+		cost = asAnyTypeCost(cost)
+	}
 	// #6151: a commander whose tax is paid in life adds no mana here
 	// (commanderTaxLocked); CastSpell charges the life.
 	taxMana, _ := commanderTaxLocked(p, card, params.FromZone)
@@ -4285,7 +4295,17 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if berr != nil {
 		mandatory = nil
 	}
-	cost, err = AdditionalCostMana(cost, mandatory, g.OptionalCostsForCastLocked(p.ID, card), params.OptionalCosts)
+	optional := g.OptionalCostsForCastLocked(p.ID, card)
+	// #6206, CR 118.7 / 118.8d: a cost change aimed at ONE component of
+	// the cost — Memory Crystal's "Buyback costs cost {2} less" — prices
+	// that component on its own, because once the component's mana has
+	// joined the total below there is no telling it from the spell's own
+	// (see component_cost_modifier.go). Nil for nearly every cast.
+	priced, err := g.pricedComponentsLocked(p, card, params, mandatory, optional)
+	if err != nil {
+		return ParsedCost{}, chosen, err
+	}
+	cost, err = AdditionalCostMana(cost, mandatory, optional, params.OptionalCosts, priced)
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
@@ -8545,7 +8565,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err != nil {
 		return err
 	}
-	if !g.CanPayLifeLocked(p, ab.LifeCost) {
+	if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) {
 		// CR 119.4: you can't pay more life than you have. Paying
 		// down to exactly 0 is legal and the SBA loop ends the game
 		// after. CR 119.8: a player whose life total can't change
@@ -8622,7 +8642,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Sentinel) has already spent the source, so naming it here
 	// would pay one of the N with a permanent that is tapping
 	// anyway.
-	if ab.TapCost && !ab.TapOthers.Empty() {
+	//
+	// #6208: the untap form is the one exception, as it is on the CR 602
+	// path. On a mana ability the only legal untap clause is the one that
+	// names an OPPONENT's permanent (effects.Register), so the source can
+	// never be among the candidates and the validator above has already
+	// refused it by its controller; this guard would only ever refuse it
+	// with the wrong reason.
+	if ab.TapCost && !ab.TapOthers.Empty() && !TapOthersUntaps(ab.TapOthers) {
 		for _, id := range params.TapIDs {
 			if id == cardID {
 				return ErrInvalidParam
@@ -8699,7 +8726,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if serr != nil {
 			return serr
 		}
-		if manaLife > 0 && !g.CanPayLifeLocked(p, manaLife+ab.LifeCost) {
+		if manaLife > 0 && !g.CanPayLifeForManaAbilityLocked(p, manaLife+ab.LifeCost) {
 			return fmt.Errorf("%w: %s cannot pay the %d life for this mana ability's cost (CR 119.4)", ErrInvalidParam, p.Name, manaLife+ab.LifeCost)
 		}
 		if !p.ManaPool.CanPayFor(manaCost, 0, spendCtx) {
@@ -8884,7 +8911,20 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// #5447: what was tapped goes on the record, so an output that counts
 	// it ("Tap X untapped tokens you control: Add X mana", Hazel of the
 	// Rootbloom) reads the number the engine tapped.
-	paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	//
+	// #6208: and the UNTAP form (TapOthersCost.Untap) pays here too —
+	// Benthic Explorers' "Untap a tapped land an opponent controls" —
+	// through the same payer the CR 602 path uses, so a stun counter
+	// comes off instead and the cost is still paid (CR 122.1d,
+	// CR 118.11). What it untapped goes on UntappedOthers, read before
+	// the untap, because "one mana of any type THAT LAND could produce"
+	// is computed from the object a moment later (CR 400.7j).
+	if TapOthersUntaps(ab.TapOthers) {
+		paid.UntappedOthers = g.untappedRefsLocked(params.TapIDs)
+		g.payUntapOthersCostLocked(params.TapIDs, uuid.Nil)
+	} else {
+		paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	}
 	// Life after tap, before sacrifice — the same component order
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
@@ -9738,6 +9778,26 @@ func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilit
 		return PaidCost{}
 	}
 	paid := g.maxCounterPaymentLocked(playerID, sourceID, ab.RemoveCounters)
+	// #6208: the UNTAP form names the permanents whose own output the
+	// ability reads — Benthic Explorers' "one mana of any type THAT LAND
+	// could produce". Without them here, every reader that asks what the
+	// ability would add (the view's color_options, ManaAbilityAddsNoMana,
+	// CR 106.7's "could produce") would see an unpaid cost and answer "no
+	// mana", and the ability would never be offered. CR 106.7 says to
+	// ignore whether the cost could be paid, so the clause's first Count
+	// candidates stand in for the payment, exactly as the counter
+	// ceiling above stands in for a variable removal.
+	if TapOthersUntaps(ab.TapOthers) {
+		for _, id := range g.TapOthersOptionsForEffect(playerID, sourceID, ab.TapOthers) {
+			if len(paid.UntappedOthers) >= ab.TapOthers.Count {
+				break
+			}
+			if c := findBattlefieldCard(g, id); c != nil {
+				paid.UntappedOthers = append(paid.UntappedOthers, ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch})
+			}
+		}
+		return paid
+	}
 	if !TapOthersAnyNumber(ab.TapOthers) {
 		return paid
 	}
@@ -12070,8 +12130,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByAction)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil

@@ -524,7 +524,9 @@ type PendingChoiceView struct {
 	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
 	// what giving the entering permanent away does to the seat that
 	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
-	// Prosperity), game.ControlPurpose. Public for ColorPurpose's
+	// Prosperity), game.ControlPurpose — or "tribute" (CR 702.104a,
+	// #6251), where nobody is given it and the chosen opponent decides
+	// whether to pay its tribute. Public for ColorPurpose's
 	// reason: it is a reading of the card's own printed text. The
 	// seats themselves ride PickOptions, each with its Player set.
 	// Absent on every other kind.
@@ -825,6 +827,10 @@ type PendingChoiceView struct {
 	Devour     int `json:"devour,omitempty"`
 	DevourDraw int `json:"devour_draw,omitempty"`
 	DevourLife int `json:"devour_life,omitempty"`
+	// DevourX marks devour whose N is the number of creatures devoured
+	// (#6267, Thromok the Insatiable): k creatures buy k*k counters, so
+	// Devour is absent. Absent on every other prompt.
+	DevourX bool `json:"devour_x,omitempty"`
 
 	// LifeCost is mandatory life paid by "pay_unless", or a "confirm" ACCEPT branch
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -5407,6 +5413,10 @@ type ActivatedAbilityView struct {
 	// because they may not differ. The engine refuses a `discard_ids` set
 	// whose names repeat. Public: it is the printed rule.
 	DiscardCostDifferentNames bool `json:"discard_cost_different_names,omitempty"`
+	// DiscardCostSameName marks the "with the same name" set rule (#6264,
+	// Sphinx of the Chimes): the picked cards must share a name. The
+	// server refuses a set that doesn't.
+	DiscardCostSameName bool `json:"discard_cost_same_name,omitempty"`
 	// RevealCostN / Label / Options describe a "Reveal N <quality> cards
 	// from your hand" cost component (#2598, ADR 0020's 2026-10-08
 	// amendment) — Martyr of Bones' "Reveal X black cards". RevealCostN
@@ -5877,6 +5887,15 @@ type ManaAbilityView struct {
 	// Tap picker and sends the answer as activate_mana_ability.tap_ids.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// TapOthersUntap marks the clause as the UNTAP form, as it does on
+	// ActivatedAbilityView (#6208, game.TapOthersCost.Untap) — Benthic
+	// Explorers' "{T}, Untap a tapped land an opponent controls". The
+	// cards are then the TAPPED permanents that could be untapped to
+	// pay, which for the one printed mana ability are an OPPONENT's, and
+	// the picker's verb is "Untap". No TapOthersFreesSource twin: the
+	// activator never controls the permanent, so the source is never
+	// among the options.
+	TapOthersUntap bool `json:"tap_others_untap,omitempty"`
 	// ExilePermanentLabel / ExilePermanentOptions are the mana-ability
 	// half of #1600's exile-a-permanent component — Food Chain's "Exile
 	// a creature you control". Same wire names and option shape as
@@ -7812,7 +7831,11 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// board where something charges for it. Asked of the engine's own
 	// accessor and only when a tax exists at all, so no board without
 	// one pays for the walk.
-	if g.TargetTaxesExistForEffect() {
+	// #6206: or because the SPELL charges itself for each target
+	// (Phyrexian Purge's "costs 3 life more to cast for each target").
+	// Asked by the face's catalog key, so the cheap check still comes
+	// before the live-card lookup.
+	if g.TargetTaxesExistForEffect() || !game.LifePerTargetForKey(f.key).Empty() {
 		if live, ok := liveCardForView(g, c); ok {
 			live.SetFace(f.index)
 			stampCastTargetTaxes(g, caster, live, &out)
@@ -10665,6 +10688,9 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 		if tc := raw[i].TapOthers; !tc.Empty() {
 			views[i].TapOthersLabel = tc.Label
 			views[i].TapOthersOptions = tapOthersCostOptions(g, controller, card.InstanceID, tc, raw[i].TapCost)
+			// #6208: the untap form (Benthic Explorers), so the picker
+			// says "Untap" rather than "Tap".
+			views[i].TapOthersUntap = game.TapOthersUntaps(tc)
 		}
 		// #1600: the exile-a-permanent component (Food Chain), off the
 		// walk the engine validates against.
@@ -11066,6 +11092,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntrySacrifice {
 			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()
+			v.DevourX = c.DevourIsX()
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel
@@ -14296,6 +14323,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	}
 	var out []ActivatedAbilityView
 	for k, a := range rows {
+		// #6148, CR 606.5: the loyalty cost the controller would pay,
+		// combined with every addition on the board (Carth the Lion).
+		a.Cost = g.LoyaltyAdjustedCostForEffect(c.Controller, a.Cost)
 		i, wireIndex, wireRef := k, k, origins.Ref(k)
 		if k >= len(raw) {
 			tw := twins[k-len(raw)]
@@ -14427,6 +14457,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf || a.Cost.BottomSelf)
+			if a.Cost.SacrificeAll {
+				// #6208: "Sacrifice all lands you control" — the engine's
+				// own set, the one ActivateCatalogAbility will take, as a
+				// demand of exactly that many, exactly as the cast path's
+				// #2097 cost ships it. The client confirms instead of
+				// picking, and an empty set is still a payment.
+				all := g.SacrificeAllCandidatesForEffect(caster, a.Cost.SacrificeOther)
+				v.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+			}
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
@@ -14467,6 +14506,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.DiscardCostCountFromX = dc.CountFromX
 			v.DiscardCostManaValueX = dc.ManaValueX
 			v.DiscardCostDifferentNames = dc.DifferentNames
+			v.DiscardCostSameName = dc.SameName
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.

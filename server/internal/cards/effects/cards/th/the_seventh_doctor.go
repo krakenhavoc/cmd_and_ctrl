@@ -52,6 +52,9 @@ func seventhDoctorAttack(g *game.Game, item *game.StackItem) error {
 	if len(hand) == 0 || defender == uuid.Nil {
 		return seventhDoctorInvestigate(g, item.Controller, item.SourceCardID)
 	}
+	// #6175: the defending player guesses. Noted here, where the resolving
+	// item is still in hand, and only when a guess will actually be asked.
+	effects.NotePileOrGuess(effects.NewContext(g, item))
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    item.Controller,
 		FromPlayer: item.Controller,

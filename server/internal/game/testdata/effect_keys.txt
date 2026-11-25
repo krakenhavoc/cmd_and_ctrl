@@ -788,6 +788,7 @@ choose choose-cards/cataclysmic-gearhulk-keep-planeswalker
 choose choose-cards/cauldrons-gift-return
 choose choose-cards/cecily-haunted-mage-cast
 choose choose-cards/celestial-judgment-pick
+choose choose-cards/celestial-toymaker-split
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-desecrator-exile
 choose choose-cards/cemetery-gatekeeper-exile
@@ -900,6 +901,7 @@ choose choose-cards/duelists-flame-exile
 choose choose-cards/duskmantle-seer-take
 choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
+choose choose-cards/ecological-appreciation-settle
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
 choose choose-cards/eivor-wolf-kissed-put
@@ -1689,6 +1691,8 @@ choose choose-cards/vault-13-dwellers-journey-return-two
 choose choose-cards/vault-21-house-gambit-reveal
 choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
+choose choose-cards/verdant-mastery-mine
+choose choose-cards/verdant-mastery-opponents-land
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
 choose choose-cards/vivien-champion-of-the-wilds-exile
@@ -2219,6 +2223,7 @@ drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
 drawinstead scion-of-halaster
 drawinstead underrealm-lich
+drawinstead unpredictable-cyclone
 drawthen aetherflux-conduit-after-draw
 drawthen alpharael-discard-two-unless-artifact
 drawthen aminatou-the-fateshifter-put-back
@@ -2375,6 +2380,7 @@ option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bribe-taker-counter
 option option-pick/bucolic-ranch-top-card
 option option-pick/cabaretti-ascendancy-top-card
+option option-pick/celestial-toymaker-pile
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
 option option-pick/choose-a-door
@@ -2413,6 +2419,7 @@ option option-pick/done-for-the-day-reward
 option option-pick/doors-of-durin-attacks
 option option-pick/dramatists-puppet-put-or-remove
 option option-pick/dwarven-armorer-counter
+option option-pick/ecological-appreciation-opponent
 option option-pick/eladamri-korvecdal-source
 option option-pick/elemental-teachings-opponent
 option option-pick/elspeth-resplendent-keyword-counter
@@ -2442,6 +2449,7 @@ option option-pick/flicker-return-under-an-opponent
 option option-pick/gap-b82-indoraptor-answer
 option option-pick/gap-b82-owen-grady-counter
 option option-pick/gap-caves-of-androzani-counter
+option option-pick/garth-one-eye-name
 option option-pick/ghostly-dancers-return-or-unlock
 option option-pick/gideon-blackblade-keyword
 option option-pick/gluntch-the-bestower-first
@@ -2616,6 +2624,7 @@ option option-pick/twins-of-discord-parity
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
 option option-pick/urborg-loses
+option option-pick/verdant-mastery-opponent
 option option-pick/vial-smasher-the-fierce-recipient
 option option-pick/villainous-damocles-base
 option option-pick/villainous-davros-dalek-creator
@@ -3411,6 +3420,7 @@ searchrule search/different-names
 searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
+searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
 steps steps/wylls-reversal-retarget-then-copy
 steps steps/zimones-hypothesis-rest
@@ -3867,6 +3877,9 @@ tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
 tail echoing-assault/sacrifice-at-next-end-step
+tail ecological-appreciation/choose
+tail ecological-appreciation/exile-self
+tail ecological-appreciation/tucked
 tail ecstatic-beauty/play-and-time-counters
 tail eerie-gravestone/after-mill
 tail eivor-wolf-kissed/after-mill
@@ -4214,6 +4227,7 @@ tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
 tail lucius-the-eternal/exiled
+tail lucy-maclean/draw-if-an-opponent-created
 tail lukka-coppercoat-outcast/reveal-greater-creature
 tail lulu-loyal-hollyphant/untap
 tail make-your-own-luck/plot-then-rest
@@ -4668,6 +4682,8 @@ tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
 tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
+tail soulfire-eruption/dealt
+tail soulfire-eruption/exiled
 tail soundwave/copy-exiled
 tail spare-dagger/sacrificed
 tail spark-of-creativity/exiled
@@ -4855,6 +4871,8 @@ tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
+tail then/celestial-toymaker-face-down-exiled
+tail then/celestial-toymaker-piles-exiled
 tail then/cerebral-download-draw
 tail then/chain-assassination-draw
 tail then/chain-lightning-offer-red-payment
@@ -5239,6 +5257,9 @@ tail vanille-cheerful-lcie/after-mill
 tail vanish-into-memory/entered
 tail vault-101/entered
 tail vengeance-mission/loss
+tail verdant-mastery/after-opponent
+tail verdant-mastery/found
+tail verdant-mastery/to-hand
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step
@@ -5292,6 +5313,7 @@ vote secret/call-to-the-void
 vote secret/gollum-scheming-guide
 vote secret/itazura-lingering-wick
 vote secret/toymakers-trap
+vote secret/wheel-of-misfortune
 vote vote/bite-of-the-black-rose
 vote vote/capital-punishment
 vote vote/cirdan-the-shipwright
