@@ -3858,10 +3858,13 @@ export interface PayAmountView {
   max: number;
   goal?: number;
   // ADR 0150 §4: "assist" is {1} of another player's spell.
-  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other" | "assist";
+  // #6212: "bid" is one more life bid in a life auction.
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other" | "assist" | "bid";
   // ADR 0150 §4: "mana" is generic mana an assist helper pays from their
-  // pool and then their untapped sources.
-  resource?: "energy" | "life" | "none" | "mana";
+  // pool and then their untapped sources. #6212: "bid" tops the high bid
+  // of a life auction (Illicit Auction): 0 passes, min and up is a bid,
+  // and nothing is paid until the bidding ends.
+  resource?: "energy" | "life" | "none" | "mana" | "bid";
   no_max?: boolean;
   marks?: number[];
   self_damage?: boolean;

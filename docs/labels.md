@@ -139,6 +139,8 @@ registered, or when this file is stale.
 | `payNothing` | `Pay nothing` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more |
 | `lifeToPay` | `life to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper when it asks for life (#1941): how much life to pay, from nothing to the seat's life total |
 | `payLife` | `Pay <N> life` (ends with ` life`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for life (#1941): pays the stepper's amount |
+| `bidLife` | `Bid <N> life` (starts with `Bid `) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary in a life auction (#6212, Illicit Auction): tops the high bid with the field's number |
+| `passBid` | `Let the bid stand` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline in a life auction (#6212): lets the high bid stand for this player |
 | `sacrifice` | `Sacrifice` | button | text | `lib/components/board/ChoicePromptModal.svelte` | a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice, an edict's choose_cards): enabled once the permanents are picked, in the sheet or on the board (#2880) |
 | `numberToChoose` | `number to choose` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's field when it asks for a number that is not paid (#1941): Volcano Hellion's amount of damage |
 | `chooseNumber` | `Choose <N>` (starts with `Choose `) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number |

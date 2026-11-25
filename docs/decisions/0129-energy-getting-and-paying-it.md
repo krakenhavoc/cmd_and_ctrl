@@ -418,3 +418,33 @@ The amendment of 2026-10-24 left two things on a closure: the myriad split of a 
 Tests (`internal/cards/effects/keyed_split_restore_test.go`, `internal/game/settled_split_test.go`, each a strict restore with the question open): a myriad attack with two opponents who each have a planeswalker, restored at the first question and again at the second with the first opponent's copy placed, then the exile at end of combat and its label; a doubled myriad split; a settled creation of three groups in the game package, restored at each question, with a closure tail refused; Calamity restored at the first pick, at the first split and at the second round's pick, then both copies sacrificed at the end step; the restored pick still refusing a saddler that left; the second round still offering Calamity's defender first (`TestCalamitySecondRoundReadsTheAskingItemFromTheTail`); an unknown number key, tail and pick key refused.
 
 Back-outs (each run, watched to fail, and restored): not restoring `attackSplit.settled` fails `TestSettledCreationSplitSurvivesARestoreAtEachQuestion`, `TestMyriadSplitIsARestorePointAtEachQuestion` and `TestMyriadDoubledSplitIsARestorePoint`; asking a settled split under `token/attack-split` fails the last two and `TestMyriadSplitWithAnUnknownKeyIsRefused`; dropping `Asked` or `CarryNums` from the keyed branch of `QueueChooseCardsForEffect` fails `TestCalamityMakesTwoTappedAttackingCopiesSacrificedAtTheEndStep`, `TestCalamityCopiesCanAttackDifferentPlayers`, `TestCalamityMayChooseTheSameCreatureTwice`, `TestCalamityPickAndSplitAreRestorePoints`, `TestCalamitySecondRoundReadsTheAskingItemFromTheTail` and `TestCalamityWithAnUnknownKeyIsRefused`; dropping `LiveZone` fails `TestCalamityRestoredPickRechecksTheBattlefield`; not handing the split to a branch run without a prompt fails `TestSplitOfAChooserWhoLeftAsksNothingAndKeepsItsState`.
+
+## Amendment (2026-11-25, [#6212](https://github.com/krakenhavoc/cmd_and_ctrl/issues/6212)): life bidding in turn order
+
+Owner decision on #6212: Pain's Reward, Mages' Contest and Illicit Auction ship Full. "Each player may bid life. You start
+the bidding with a bid of …. In turn order, each player may top the high bid. The bidding ends if the high bid stands."
+The CR has no bidding rule (CR 101.4 gives the turn order), so the card's text is the procedure.
+
+- **The prompt.** Each round is a `pay_amount` with a fourth resource, `bid` (`PayResourceBid`): 0 passes, and `min`
+  (one more than the high bid) and up bids. Nothing is paid when bidding. A bid has no ceiling (`no_max`). A `"none"` number
+  has no 0 decline, so a pass needs a resource of its own, and the loss of life at the end is the card's, not a cost. Pain's
+  Reward's opening "bid of any number" is an ordinary `"none"` number from 0. Mages' Contest's 1 and Illicit Auction's 0 are
+  fixed openings, so nobody is asked.
+- **The loop.** `game.StartLifeAuctionForEffect` (`life_auction.go`). The bidders are listed in turn order from the opener
+  (every player still in the game, or the opener and one rival for Mages' Contest). Each other bidder in turn, skipping the
+  high bidder, is asked until every other bidder still in the game has passed in a row since the high bid. Each round is a
+  registered number branch that carries the bidders and the state (`Carry`, `Nums`), and the card's tail rides the prompt
+  as its `pickTail` (`NumberBranch.Tail`, new and additive). A table waiting on a bid is a restore point. A bidder who leaves
+  passes (CR 800.4a). The tail is told the high bidder (`IDs[0]`) and the high bid (`Amount`).
+- **The bot.** The heuristic passes every round, and the opener's own opening bid is its floor. Topping a bid it can't
+  value only trades life, and passing is what ends the auction.
+- **The client.** The stepper's primary reads "Bid N life" (`L.bidLife`) and its decline reads "Let the bid stand"
+  (`L.passBid`).
+
+Back-out: count the high bidder among the passes and `TestIllicitAuctionBidsInTurnOrderUntilTheHighBidStands` ends a
+round early; drop the bid resource's 0 and a pass can't be answered.
+
+Tests: `game/life_auction_test.go`, `client/src/lib/choiceDock.test.ts` ("a life auction's bid").
+
+Cards: Pain's Reward (b585), Mages' Contest (b659) and Illicit Auction (b809) are built by their OLD batches on
+`effects.BidLife`.

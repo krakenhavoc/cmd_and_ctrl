@@ -40,6 +40,15 @@ func (st *state) payAmountValue(ch *protocol.PendingChoiceView, amount *int) (fl
 		}
 		return -1, "pay amount: helping another player cast a spell"
 	}
+	// #6212: a bid in a life auction. The heuristic passes: topping a
+	// bid it can't value only trades life for a race it can't price, and
+	// passing is what lets the bidding end.
+	if pa.Resource == "bid" {
+		if n == 0 {
+			return 1, "bid: pass"
+		}
+		return -1, "bid: don't top the high bid"
+	}
 	floor := 0
 	if pa.Resource == "none" {
 		floor = pa.Min

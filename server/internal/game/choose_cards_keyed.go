@@ -188,7 +188,10 @@ func isKeyedChooseCards(c *PendingChoice) bool {
 func carriesPickTail(k PendingChoiceKind) bool {
 	switch k {
 	case PendingChoiceChooseCards, PendingChoiceRevealPick, PendingChoiceProliferate,
-		PendingChoiceRingBearer, PendingChoiceOptionPick:
+		PendingChoiceRingBearer, PendingChoiceOptionPick,
+		// #6212: a keyed number prompt's tail (NumberBranch.Tail): the
+		// rest of a life auction's card.
+		PendingChoicePayAmount:
 		return true
 	}
 	return false

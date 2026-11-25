@@ -526,6 +526,19 @@ function answersFor(
           secondary: [{ id: "none", label: "Don't help", onPress: () => onAmount(0) }],
         };
       }
+      if (resource === "bid") {
+        // #6212: a life auction's round. Bid sends the field's number;
+        // Pass sends 0.
+        return {
+          primary: {
+            id: "bid",
+            label: L.bidLife(n),
+            disabled: n <= 0 || ctx.payAmountAnswerable === false,
+            onPress: () => onAmount(n),
+          },
+          secondary: [{ id: "pass", label: L.passBid, onPress: () => onAmount(0) }],
+        };
+      }
       if (resource === "none") {
         return {
           primary: {

@@ -33,6 +33,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
+  - [Life bidding in turn order (ADR 0129 amendment 2026-11-25, #6212)](#life-bidding-in-turn-order-adr-0129-amendment-2026-11-25-6212)
   - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
   - [The turn's pile and guess tally (#6175, CR 700.3)](#the-turns-pile-and-guess-tally-6175-cr-7003)
   - ["Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)](#players-cant-pay-life-or-sacrifice-nonland-permanents-to-cast-spells-or-activate-abilities-6167)
@@ -2346,6 +2347,22 @@ SelfCostModifiers: []game.CostModifier{CostsLessForEachEnergyPaidOrLost(1, "…"
 A replacement on getting energy is a `RepEventCounter` with
 `CounterPlayer` set and `CounterName == game.CounterEnergy` (Aether
 Refinery, Izzet Generatorium).
+
+### Life bidding in turn order (ADR 0129 amendment 2026-11-25, #6212)
+
+"Each player may bid life. You start the bidding with a bid of …. In turn
+order, each player may top the high bid. The bidding ends if the high bid
+stands. The high bidder loses life equal to the high bid and …" is
+`effects.BidLife{…}.Apply(ctx)`
+([cards/effects/life_auction.go](../server/internal/cards/effects/life_auction.go)):
+
+- `OpenerChooses: true` for "a bid of any number" (Pain's Reward), else
+  `OpeningBid` (Mages' Contest's 1, Illicit Auction's 0);
+- `Rival` for "You and target spell's controller bid life" (Mages'
+  Contest); zero for "each player";
+- `Then`, a `CardTail` run against the resolving item, is told the high
+  bidder as `o.IDs[0]` (uuid.Nil if they have left) and the high bid as
+  `o.Amount`. The card loses the life and does the rest there.
 
 ### Paying life for coloured mana (ADR 0131, #2531, CR 107.4f)
 

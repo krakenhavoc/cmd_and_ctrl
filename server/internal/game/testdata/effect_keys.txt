@@ -2342,6 +2342,8 @@ number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
+number number/life-auction-bid
+number number/life-auction-open
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share

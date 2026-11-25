@@ -38,7 +38,7 @@ export function energyShortReason(have: number, need: number): string {
 // when the server sends none (every prompt from before #1941), life, or
 // none for a number that is chosen and not paid, or (ADR 0150 §4) mana
 // an assist helper pays toward another player's spell.
-export function payAmountResource(pa: PayAmountView): "energy" | "life" | "none" | "mana" {
+export function payAmountResource(pa: PayAmountView): "energy" | "life" | "none" | "mana" | "bid" {
   return pa.resource ?? "energy";
 }
 
@@ -92,6 +92,7 @@ const UNIT_WORDS: Record<PayAmountView["unit"], string> = {
   tax: "{1} more to pay",
   other: "1 more",
   assist: "{1} of the spell's cost",
+  bid: "1 more life bid",
 };
 
 // payAmountHint is the prompt's hint: the bounds, what is paid, the
@@ -102,6 +103,13 @@ export function payAmountHint(pa: PayAmountView, sourceName: string): string {
   const each = UNIT_WORDS[pa.unit] ?? "1 more";
   let parts: string[];
   switch (payAmountResource(pa)) {
+    case "bid":
+      // #6212: a life auction. Nothing is paid until the bidding ends.
+      parts = [
+        `Top the high bid with ${pa.min} life or more, or pass.`,
+        `When the bidding ends, the high bidder loses that much life for ${sourceName}.`,
+      ];
+      break;
     case "mana":
       // ADR 0150 §4: an assist helper. Paid from the pool first, then
       // untapped sources tap automatically (owner decision 6).

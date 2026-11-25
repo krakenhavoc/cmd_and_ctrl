@@ -64,6 +64,9 @@ type NumberAnswer struct {
 	// it reads the asking trigger's event, the targets and the X as a
 	// closure over the item used to.
 	Item *StackItem
+	// Tail is the registered tail the queuing code put on the prompt
+	// (NumberBranch.Tail, #6212); the zero tail when none.
+	Tail KeyedTail
 
 	// assist and split are the engine's own branches' data (assist.go,
 	// attack_split.go).
@@ -135,6 +138,9 @@ type NumberBranch struct {
 	Words []string
 	Nums  []int
 	Asked *AskedItem
+	// Tail is a registered tail the branch hands on (#6212: the rest of
+	// a life auction's card), written with the prompt as its pickTail.
+	Tail KeyedTail
 }
 
 // IsZero reports whether no branch is named.
@@ -146,6 +152,7 @@ func (b NumberBranch) answer(chooser, source uuid.UUID, n int) NumberAnswer {
 		Chooser: chooser, Source: source, Number: n,
 		Carry: copyUUIDs(b.Carry), Words: copyStrings(b.Words), Nums: copyInts(b.Nums),
 		Item: b.Asked.StackItem(),
+		Tail: copyKeyedTail(b.Tail),
 	}
 }
 
@@ -189,6 +196,7 @@ func (b NumberBranch) apply(c *PendingChoice, cause MoveCause) {
 	c.PickWords = copyStrings(b.Words)
 	c.PickNums = copyInts(b.Nums)
 	c.Asked = copyAskedItem(b.Asked)
+	c.pickTail = copyKeyedTail(b.Tail)
 	// #4279: the cause is taken while the asking resolution is open. The
 	// answer may come after a restore, when nothing is resolving.
 	c.PayCauseController, c.PayCauseItem = cause.Controller, cause.Item
@@ -211,6 +219,7 @@ func numberFrameOf(c *PendingChoice) *chooseValueFrame {
 	base := NumberBranch{
 		Carry: copyUUIDs(c.OptionCarry), Words: copyStrings(c.PickWords), Nums: copyInts(c.PickNums),
 		Asked: copyAskedItem(c.Asked),
+		Tail:  copyKeyedTail(c.pickTail),
 	}
 	chooser, source := c.Chooser, c.Source
 	assist, split := cloneAssistPrompt(c.Assist), cloneAttackSplit(c.AttackSplit)

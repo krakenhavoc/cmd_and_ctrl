@@ -956,3 +956,34 @@ describe("#6189 a payment that names nothing and is not mana", () => {
     );
   });
 });
+
+describe("a life auction's bid (#6212)", () => {
+  // Illicit Auction: the high bid is 3, so a bid is 4 or more, or a pass.
+  const bidChoice = () =>
+    choice({
+      kind: "pay_amount",
+      reason: "Illicit Auction: the high bid is 3 life (Bob). Top it, or pass.",
+      pay_amount: { min: 4, max: 1000000, unit: "bid", resource: "bid", no_max: true },
+    });
+
+  it("bids the field's number, or lets the high bid stand with 0", () => {
+    const h = { ...handlers(), onAmount: vi.fn() };
+    const r = choiceRequest(bidChoice(), { sourceName: "Illicit Auction", payAmount: 5 }, h);
+    expect(r.hint).toContain("Top the high bid with 4 life or more, or pass.");
+    expect(r.primary?.label).toBe(L.bidLife(5));
+    expect(r.secondary?.map((a) => a.label)).toEqual([L.passBid]);
+    r.primary?.onPress();
+    r.secondary?.[0].onPress();
+    expect(h.onAmount.mock.calls).toEqual([[5], [0]]);
+  });
+
+  it("refuses a number that doesn't top the high bid", () => {
+    const h = { ...handlers(), onAmount: vi.fn() };
+    const r = choiceRequest(
+      bidChoice(),
+      { sourceName: "Illicit Auction", payAmount: 3, payAmountAnswerable: false },
+      h,
+    );
+    expect(r.primary?.disabled).toBe(true);
+  });
+});
