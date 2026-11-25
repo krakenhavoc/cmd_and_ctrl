@@ -963,6 +963,10 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	CheckSacrificeAllCost(spec)
+	// #6208: the three activation-cost variants — a shared-colour reveal,
+	// an ability's sacrifice-all clause, and the untap form turned over to
+	// an opponent's board.
+	CheckActivationCostVariants(spec)
 	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one

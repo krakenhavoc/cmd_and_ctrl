@@ -2405,6 +2405,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -6022,6 +6025,13 @@ export interface ManaAbilityView {
   // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #6208: `tap_others_untap` turns the clause over here too, "Untap a
+  // tapped land an opponent controls" (Benthic Explorers): the options
+  // are the TAPPED permanents that could be untapped to pay — an
+  // OPPONENT's, for the one printed mana ability — and the picker's verb
+  // is "Untap". There is no `tap_others_frees_source` twin, because the
+  // activator never controls the permanent.
+  tap_others_untap?: boolean;
   // #1600: "Exile a creature you control" on a mana ability (Food
   // Chain). Same fields as ActivatedAbilityView's; the answer rides
   // activate_mana_ability as `exile_permanent_ids`.

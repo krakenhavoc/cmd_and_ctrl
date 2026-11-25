@@ -55,23 +55,26 @@ func (g *Game) SacrificeAllCandidatesForEffect(playerID uuid.UUID, spec *TargetS
 	return g.sacrificeAllCandidatesLocked(playerID, spec)
 }
 
-// sacrificeAllPaymentLocked settles the sacrifice_ids of a cast whose
-// mandatory additional cost sacrifices all (CR 601.2b, 601.2h). The set
-// is read once, here, before anything is paid, and from then on it is
-// the payment: what the validator checks, what the auto-tapper leaves
-// alone, what is sacrificed as one exit and what PaidCost records.
+// sacrificeAllPaymentLocked settles the sacrifice_ids of an
+// announcement whose cost sacrifices all (CR 601.2b, 601.2h): a cast's
+// mandatory additional cost (#2097) and, one cost site over, an
+// activated ability's (#6208, AbilityCost.SacrificeAll). `spec` is the
+// clause that says which permanents. The set is read once, here, before
+// anything is paid, and from then on it is the payment: what the
+// validator checks, what the auto-tapper plans around, what is
+// sacrificed as one exit and what PaidCost records.
 //
 // `named` is what the announcement sent. Empty is "the engine fills it",
-// which is how the client and the MCP seat cast. A non-empty list must
-// be exactly the set, in any order — the legal enumerator names it so a
-// policy can price what the cast gives up, and a parked cast resumed
-// from a CR 903.9 answer arrives with the list it was filled with. The
-// result is always in the engine's own order, so two announcements of
-// the same cast pay identically.
+// which is how the client and the MCP seat cast or activate. A non-empty
+// list must be exactly the set, in any order — the legal enumerator
+// names it so a policy can price what the announcement gives up, and a
+// parked cast resumed from a CR 903.9 answer arrives with the list it
+// was filled with. The result is always in the engine's own order, so
+// two announcements of the same cast pay identically.
 //
 // Caller must hold g.mu.
-func (g *Game) sacrificeAllPaymentLocked(playerID uuid.UUID, cost *AdditionalCost, named []uuid.UUID) ([]uuid.UUID, error) {
-	all := g.sacrificeAllCandidatesLocked(playerID, cost.Sacrifice)
+func (g *Game) sacrificeAllPaymentLocked(playerID uuid.UUID, spec *TargetSpec, named []uuid.UUID) ([]uuid.UUID, error) {
+	all := g.sacrificeAllCandidatesLocked(playerID, spec)
 	if len(named) == 0 {
 		return all, nil
 	}

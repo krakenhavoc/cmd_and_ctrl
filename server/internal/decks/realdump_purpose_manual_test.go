@@ -314,6 +314,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 157 (#5518).
 	"Thought Distortion": "exiles noncreature, nonland cards from one opponent's hand and graveyard, no permanents: not a board wipe",
+
+	// S82 seam #6098.
+	"Emrakul, the World Anew": "its leaves-the-battlefield drawback sacrifices only its controller's own creatures: not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -546,7 +546,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// #1213: a VARIABLE count is an announcement, so the
 			// enumerator offers a bounded ladder of counts rather
 			// than one payment — see variableSacrificePayments.
-			if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
+			if ab.Cost.SacrificeAll {
+				// #6208: "Sacrifice all lands you control" has ONE payment,
+				// the engine's own set (empty included), named on the move so
+				// a policy prices what the activation gives up.
+				sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, ab.Cost.SacrificeOther)}
+			} else if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
 				sacrificeSets = e.variableSacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
 			} else {
 				sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
@@ -708,8 +713,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				for _, s := range revealSets {
 					revealMaxX = max(revealMaxX, len(s))
 				}
-			} else if len(pool) >= rc.N {
-				revealSets = [][]uuid.UUID{pool[:rc.N:rc.N]}
+			} else if pay := g.RevealCardsPaymentForEffect(e.seat, source.InstanceID, rc); len(pay) == rc.N {
+				// #6208: the engine's own one payment, not the first N of
+				// the walk — a "that share a color" clause's first two
+				// candidates need not share one with each other.
+				revealSets = [][]uuid.UUID{pay}
 			} else {
 				revealSets = nil
 			}

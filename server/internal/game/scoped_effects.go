@@ -1321,6 +1321,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6239: "adapts as though it had no +1/+1 counters", read by the
+	// adapt (adapt_ignores_counters.go).
+	ModAdaptIgnoresCounters: {reader: readerRule},
 	// #5251: Lumbering Laundry's look at face-down creatures, read by
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
