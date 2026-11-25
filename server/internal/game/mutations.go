@@ -2598,7 +2598,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if ec := planExileCards(costPlan); ec != nil && ec.LinkToSource {
 			link = g.permanentSpellCostLinkLocked(cardID)
 		}
-		if err := g.payExileCardsCostToLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers, link); err != nil {
+		var err error
+		if ec := planExileCards(costPlan); ec.Processes() {
+			// #5457: "put a card an opponent owns from exile into that
+			// player's graveyard" as an additional cost (Processor Assault):
+			// the picks leave exile for their owners' graveyards.
+			err = g.payProcessCostLocked(playerID, cardID, params.ExileIDs)
+		} else {
+			err = g.payExileCardsCostToLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers, link)
+		}
+		if err != nil {
 			slog.Error("cast_spell: exile-cards cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,

@@ -830,11 +830,11 @@ func (g *Game) payGraveyardToBottomCostLocked(playerID, sourceID uuid.UUID, ids 
 // processed this way lands in the graveyard and is offered the command
 // zone by the CR 903.9a state-based action, like one sacrificed to a cost.
 //
-// It returns the cards really moved, which differ from `ids` only for a
-// face-down pick (processedCardLocked).
+// A face-down pick moves a card other than the one named
+// (processedCardLocked).
 //
 // Caller must hold g.mu for writing and have validated the list.
-func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
+func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
 	moved := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		id = g.processedCardLocked(playerID, sourceID, id, ids, moved)
@@ -846,11 +846,11 @@ func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUI
 			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
 		}); err != nil {
-			return moved, err
+			return err
 		}
 		moved = append(moved, id)
 	}
-	return moved, nil
+	return nil
 }
 
 // processedCardLocked is the card a processing cost really moves for the
