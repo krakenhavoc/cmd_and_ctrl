@@ -1362,6 +1362,11 @@ type cardSnapshot struct {
 	// nothing can re-derive them. Old snapshots have no key and read
 	// "nothing noted".
 	Notes []string `json:"notes,omitempty"`
+	// PlayerNotes are the words this permanent's abilities recorded for
+	// players (#6097): Archangel of Strife's war or peace, Diseased
+	// Vermin's damaged players. Carried for Notes' reason. Old snapshots
+	// have no key and read "nothing recorded".
+	PlayerNotes []PlayerNote `json:"playerNotes,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -3374,6 +3379,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		LinkedPermanent:            objectRefPtr(c.LinkedPermanent),
 		ChosenCard:                 objectRefPtr(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
+		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
 		Devoured:                   c.Devoured,
 		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
@@ -4578,6 +4584,7 @@ func restoreCard(c *cardSnapshot) Card {
 		LinkedPermanent:            objectRefValue(c.LinkedPermanent),
 		ChosenCard:                 objectRefValue(c.ChosenCard),
 		Notes:                      append([]string(nil), c.Notes...),
+		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
 		Devoured:                   c.Devoured,
 		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),

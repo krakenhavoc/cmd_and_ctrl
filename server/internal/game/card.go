@@ -1081,6 +1081,19 @@ type Card struct {
 	// read with Game.NotesForEffect (notes.go).
 	Notes []string
 
+	// PlayerNotes are words this object's abilities have recorded for a
+	// PLAYER (#6097): Archangel of Strife's "each player chooses war or
+	// peace" (a choice per player, read by its statics), Diseased Vermin's
+	// "target opponent previously dealt damage by it" (a mark per damaged
+	// player). Notes' lifecycle: per INSTANCE, carried by the snapshot and
+	// by clone, cleared when this permanent leaves the battlefield
+	// (CR 400.7), NOT a copiable value (CR 707.2), always replaced and never
+	// changed in place (clone shares the backing array). Written by
+	// Game.AddPlayerNoteForEffect / SetPlayerNoteForEffect and read with
+	// Card.PlayerNoted, Card.PlayersNoted or Game.PlayerNotesForEffect
+	// (player_notes.go).
+	PlayerNotes []PlayerNote
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.

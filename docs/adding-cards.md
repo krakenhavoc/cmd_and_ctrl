@@ -5453,6 +5453,28 @@ Triggered: []game.TriggeredAbility{
 - `Register` refuses `OnlyOnce` on a row with no `Key` or on a state trigger.
   "Triggers only once each turn" is still `TriggersOnlyOnceEachTurn(t)`.
 
+### A word recorded per player: "each player chooses war or peace", "previously dealt damage by it" (#6097)
+
+`Card.Notes` (`game/notes.go`) is a list of words for one object. A word that
+belongs to one object AND one player is a player note, `Card.PlayerNotes`
+(`game/player_notes.go`), with the same lifecycle: per instance, cleared when
+the permanent leaves the battlefield (CR 400.7), not copiable (CR 707.2),
+carried by the snapshot and the last-known record (CR 608.2h).
+
+- **Write:** `g.SetPlayerNoteForEffect(id, player, word)` for a choice (one
+  answer per player, a new one replaces the old), `g.AddPlayerNoteForEffect(id,
+  player, word)` for a mark that accumulates (Diseased Vermin's "a player it
+  dealt damage to": call it from its combat damage trigger).
+- **Read:** `source.PlayerNoted(player, word)` in a static's `AppliesTo`
+  (Archangel of Strife: `c.IsCreature() && source.PlayerNoted(c.Controller,
+  "war")`), `source.PlayersNoted(word)` for the list (a target predicate:
+  "target opponent previously dealt damage by it"), and
+  `g.PlayerNotesForEffect(id)` from a resolving effect.
+- **"As this enters, each player chooses A or B"** is
+  `AsEnters: effects.EachPlayerChoosesAsEnters(name, "war", "peace")`: every
+  player is asked in APNAP order (CR 101.4), one keyed option pick after
+  another, and each answer is recorded as that player's note.
+
 ### Conjure, perpetual changes and boons (ADR 0099 amendment 2026-11-24, #5948)
 
 - **Conjure.** "Conjure a card named X into your hand / into your library / onto

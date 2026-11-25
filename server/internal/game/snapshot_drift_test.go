@@ -655,6 +655,9 @@ var cardFields = plan(
 	// creature types, Day of the Moon's names). Player choices nothing
 	// can re-derive.
 	"Notes", carried, "",
+	// #6097: the words recorded for a player by this permanent (Archangel
+	// of Strife's war or peace). Player choices nothing can re-derive.
+	"PlayerNotes", carried, "",
 	"Devoured", carried, "",
 	// #6251, CR 702.104b: whether the chosen opponent paid the tribute.
 	"TributePaid", carried, "",
