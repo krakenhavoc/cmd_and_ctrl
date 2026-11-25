@@ -83324,6 +83324,8 @@ seats[].library.cards[].warpText	number:uint8
 seats[].library.kind	string
 seats[].library.owner	custom(uuid.UUID)
 seats[].life	number:int
+seats[].lifeAsTurnBegan	number:int
+seats[].lifeAsTurnBeganSeq	number:int
 seats[].lifeHistory	array
 seats[].lifeHistory[]	object
 seats[].lifeHistory[].At	custom(time.Time)
