@@ -34,17 +34,7 @@ func init() {
 		Targets: effects.PerOpponentClauses(game.MaxPlayers-1, "permanent with an even mana value",
 			func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.ManaValue()%2 == 0 }),
 		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetCard {
-						continue
-					}
-					if err := (effects.ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			effects.Instruction(effects.ExileEachLegalCardTarget),
 			effects.EldB1IfAdamantSpent("C", effects.Instruction(desecrateRealityReturn)),
 		),
 	})
