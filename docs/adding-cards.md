@@ -4690,6 +4690,23 @@ constructor doesn't name writes a `game.TargetTax{Label, Life,
 AppliesTo(game.TargetTaxQuery)}` literal; `Register` refuses one with no
 label, no life or no `AppliesTo`.
 
+**A spell that charges itself for each target** — "This spell costs 3
+life more to cast for each target" (Phyrexian Purge, #6206). The same
+cost one owner over, so it is a slot on the card being cast rather than
+a static of somebody's permanent:
+
+```go
+LifePerTarget: CostsLifePerTarget(3,
+    "This spell costs 3 life more to cast for each target."),
+```
+
+It joins the same sum the tax above does, so the CR 119.4 check (against
+every other life cost of the cast), the payment, the enumerator's
+per-target-set pricing and the picker's per-candidate note all come for
+free. It counts TARGETS (CR 601.2c), not targeted permanents, so a
+clause that names a player or a spell pays for those too. `Register`
+refuses a clause with no label or no life.
+
 **"Can't be the target of spells or abilities your opponents control this
 turn"** (Vines of Vastwood, [ADR 0038 amendment
 2026-10-15](decisions/0038-protection-style-keywords.md)) is
@@ -6531,6 +6548,32 @@ battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
 Trinisphere floor, a reduction with a mana unit and an ability's own
 cost clause.
+
+**A reduction aimed at ONE component of a cost (#6206):** "Buyback costs
+cost {2} less" (Memory Crystal) is not a reduction of the spells it
+touches — it is a reduction of one optional additional cost of theirs,
+and it has to leave the rest of the total alone:
+
+```go
+CostModifiers: []game.CostModifier{
+    BuybackCostsLess(2, "Buyback costs cost {2} less."),
+},
+```
+
+The engine prices the named component on its own, by its own CR 601.2f
+pass, before its mana joins the total
+(`game/component_cost_modifier.go`), so three things hold without a line
+of yours: a cast that announced no buyback is not discounted at all (the
+component is not part of that cast, CR 601.2b); the reduction floors at
+the component's own generic mana, so {2} less off a buyback {1} leaves
+{0} and never reaches the spell's mana cost (CR 601.2f, 118.7a, 118.8d);
+and a buyback cost that is not mana ("Buyback—Sacrifice a land") is left
+as printed. The key is `CostModifier.PricesOptionalCost`, so the clause
+is shown only the component it names and the whole-cost modifiers are
+never shown one. It belongs in `Spec.CostModifiers` — Register refuses it
+in `SelfCostModifiers` (the component pass is the board's statics, and a
+spell's own clause is written against its own cost) and refuses a floor
+or a zero alternative on a component.
 
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
