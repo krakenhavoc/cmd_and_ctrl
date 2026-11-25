@@ -1424,6 +1424,7 @@ choose choose-cards/old-b178-scrabbling-claws-exile
 choose choose-cards/old-b193-borderland-explorer-search
 choose choose-cards/old-b193-dream-cache-put-back
 choose choose-cards/old-b193-prototype-portal-imprint
+choose choose-cards/old-b271-covenant-of-minds-all-to-hand
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -2144,6 +2145,7 @@ confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/old-b159-shuffle-then-draw
+confirm confirm/old-b271-covenant-of-minds
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw

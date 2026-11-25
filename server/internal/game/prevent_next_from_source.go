@@ -244,6 +244,8 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 			Keyword:    q.Keyword,
 			Enchanted:  q.Enchanted,
 
+			WithoutKeyword: q.WithoutKeyword,
+
 			HasPowerAtMost:  q.HasPowerAtMost,
 			PowerAtMost:     q.PowerAtMost,
 			HasPowerAtLeast: q.HasPowerAtLeast,
@@ -564,6 +566,9 @@ func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
 		return false
 	}
 	if q.Keyword != "" && !slices.Contains(ch.Abilities, q.Keyword) {
+		return false
+	}
+	if q.WithoutKeyword != "" && slices.Contains(ch.Abilities, q.WithoutKeyword) {
 		return false
 	}
 	if len(q.Names) > 0 && !fold(q.Names)(ch.Name) {
