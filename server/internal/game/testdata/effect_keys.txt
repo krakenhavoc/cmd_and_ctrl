@@ -4595,6 +4595,7 @@ tail sinister-concierge/exiled
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
+tail skullknocker-ogre/draw-if-discarded
 tail skyclave-invader/land-declined-into-hand
 tail skyserpent-seeker/rest-on-bottom-then-counter
 tail slip-on-the-ring/after-exile
