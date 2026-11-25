@@ -369,6 +369,14 @@ type Game struct {
 	// loyalty_limit.go.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool
 
+	// TapForeignLandsThisTurn is the set of PLAYERS who "may tap lands
+	// you don't control for mana" until end of turn (Piracy, #6204): the
+	// player may activate the {T} mana abilities of another player's
+	// lands, and that mana may be spent only to cast spells. Flushed at
+	// the turn boundary with the rest. ADR 0106 §1 amendment 2026-11-25;
+	// tap_foreign_lands.go.
+	TapForeignLandsThisTurn map[uuid.UUID]bool
+
 	// LoyaltyPermanentTwiceThisTurn is the set of PERMANENTS whose
 	// controller "may activate loyalty abilities of [it] twice this turn
 	// rather than only once" (Kaito, Dancing Shadow, #5479): the same

@@ -2494,7 +2494,8 @@ func (e *enumerator) manaMoves() {
 		// this ability" mana rows (Mana Cache), and manaMovesForSource
 		// holds each row to game.MayActivateMana, the predicate
 		// ActivateManaAbility refuses with.
-		if source.Controller != e.seat && !game.HasAnyPlayerManaAbility(*source) {
+		// #6204: and a land under the seat's Piracy permission.
+		if source.Controller != e.seat && !g.MayReachManaAcrossLocked(e.seat, *source) {
 			continue
 		}
 		// CR 602.5, the mana half: Arrest stops these too, Faith's
@@ -2579,7 +2580,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// CR 602.2 (#1864): who may activate this row — the one
 		// predicate ActivateManaAbility asks.
-		if !game.MayActivateMana(e.seat, *source, zone, ab) {
+		if !g.MayActivateManaLocked(e.seat, *source, zone, ab) {
 			continue
 		}
 		// #1183: "Activate each exhaust ability only once", and

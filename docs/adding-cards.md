@@ -831,6 +831,16 @@ see them:
   permanent that was not cast rolls nothing (CR 107.3m). One such clause
   per card.
 
+**"You may tap lands you don't control for mana" (ADR 0106 §1 amendment 2026-11-25, #6204).**
+Piracy's "Until end of turn, you may tap lands you don't control for
+mana. Spend this mana only to cast spells." is a player's permission,
+not a row: the effect calls
+`ctx.Game.AllowTapForeignLandsThisTurnForEffect(item.Controller)`. The
+engine does the rest: the player may activate the `{T}` mana rows of
+any land another player controls until the turn ends, the mana goes to
+their pool tagged `purpose:cast`, the auto-tapper plans those lands for
+their casts, and the client shows the rows on their copy of the land.
+
 ### Adding a mana ability (S15+)
 
 Mana abilities live on the same `Spec{}` struct via the optional

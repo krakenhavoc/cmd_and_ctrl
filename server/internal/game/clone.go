@@ -144,6 +144,7 @@ func (g *Game) cloneLocked() *Game {
 	out.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	out.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	out.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	out.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	out.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	out.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
@@ -1371,6 +1372,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LoyaltyExtraActivationsThisTurn = src.LoyaltyExtraActivationsThisTurn
 	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.LoyaltyTwiceThisTurn = src.LoyaltyTwiceThisTurn
+	g.TapForeignLandsThisTurn = src.TapForeignLandsThisTurn
 	g.LoyaltyPermanentTwiceThisTurn = src.LoyaltyPermanentTwiceThisTurn
 	g.LoyaltyPermanentExtraThisTurn = src.LoyaltyPermanentExtraThisTurn
 	g.LoyaltyPermanentExtraUsedThisTurn = src.LoyaltyPermanentExtraUsedThisTurn
