@@ -341,6 +341,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 281 (#5542).
 	"Sengir Autocrat": "exiles only Serf tokens when it leaves the battlefield, the three it made and any others: a token cleanup of its own side effect, not a board wipe",
+
+	// S82 OLD batch 296 (#5545).
+	"Inverter of Truth": "exiles the cards of its controller's own library, face down, and shuffles their graveyard in: it touches no permanent, so there is no board to wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
