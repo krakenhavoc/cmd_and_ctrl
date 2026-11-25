@@ -91,6 +91,7 @@
     firstPayableBranch,
     optionalCostLifeShort,
     optionalCostMaxTimes,
+    altCostOpponentOptions,
     optionalCostOpponentOptions,
     optionalCostPayOptions,
     optionalCostSelection,
@@ -120,6 +121,7 @@
       key: string | undefined,
       optional: number[],
       giftOpponent?: string,
+      altCostOpponent?: string,
       costBranch?: number,
       assistPlayer?: string,
       splices?: string[],
@@ -235,6 +237,17 @@
   // gift offer is being paid.
   let giftTo = $state<string | undefined>(undefined);
 
+  // #6256: the opponent the chosen alternative cost gives its life to
+  // ("have an opponent gain 3 life"), and the pick, dropped when the
+  // offer changes or the opponent is no longer offered.
+  let altCostTo = $state<string | undefined>(undefined);
+  const altCostGainers = $derived(altCostOpponentOptions(offers.find((o) => o.key === chosen)));
+  const altCostOpponent = $derived(
+    altCostGainers !== undefined && altCostTo !== undefined && altCostGainers.includes(altCostTo)
+      ? altCostTo
+      : undefined,
+  );
+
   // The gift offer being paid, if any. At most one per card.
   const giftOffer = $derived(
     addOns.find((o) => o.chooses_opponent === true && timesPaid(o.index) > 0),
@@ -266,7 +279,8 @@
     return `You can cast this now only by also paying ${which}. Without it, wait until you could cast a sorcery.`;
   });
   const canConfirm = $derived(
-    (giftOffer === undefined || giftOpponent !== undefined) &&
+    (altCostGainers === undefined || altCostOpponent !== undefined) &&
+      (giftOffer === undefined || giftOpponent !== undefined) &&
       branchOK &&
       !spliceOpponentsMissing &&
       !flashMissing,
@@ -348,6 +362,7 @@
       chosen,
       optionalCostSelection(paying),
       giftOpponent,
+      altCostOpponent,
       branches.length > 0 ? branch : undefined,
       assistPlayer,
       splicing.filter((id) => spliceOffers.some((o) => o.card_id === id)),
@@ -432,6 +447,38 @@
                 >
               {/if}
             </button>
+            {#if chosen === offer.key && altCostGainers !== undefined}
+              <!-- #6256, CR 118.9: "have an opponent gain N life" — which
+                   opponent is part of paying the cost. -->
+              <div class="gift-picker" role="radiogroup" aria-label="Which opponent gains the life">
+                <p class="prompt-hint gift-hint">
+                  Which opponent gains the life: <span class="prompt-src" aria-hidden="true"
+                    >CR 118.9</span
+                  >
+                </p>
+                {#if altCostGainers.length === 0}
+                  <p class="prompt-hint">No opponent can gain life, so this cost can't be paid.</p>
+                {:else}
+                  <ul class="prompt-options">
+                    {#each altCostGainers as pid (pid)}
+                      <li>
+                        <button
+                          type="button"
+                          class="prompt-opt"
+                          role="radio"
+                          class:on={altCostOpponent === pid}
+                          aria-checked={altCostOpponent === pid}
+                          onclick={() => (altCostTo = pid)}
+                        >
+                          <span class="prompt-radio" aria-hidden="true"></span>
+                          <span class="name">{playerName(pid)}</span>
+                        </button>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </div>
+            {/if}
           </li>
         {/each}
       </ul>

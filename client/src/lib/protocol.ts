@@ -3664,6 +3664,14 @@ export interface AlternativeCostView {
   // the server will accept. Exactly N still appears; paying down to
   // zero is legal.
   life?: number;
+  // #6256: the "have an opponent gain N life" half of the cost
+  // (Invigorate's 3), with `opponent_options` the opponents who could
+  // be given it. Taking the offer means naming one of them, sent back
+  // on cast_spell as `alt_cost_opponent`. An absent list beside a
+  // non-zero amount means nobody can gain the life (CR 614.17b) and
+  // the offer cannot be taken.
+  opponent_gains_life?: number;
+  opponent_options?: string[];
   // ADR 0129 §5: the "pay N {E}" half of the cost (Nissa, Worldsoul
   // Speaker's eight, Primal Prayers' one, Amped Raptor's "equal to its
   // mana value"). Absent for the costs that charge none. Like `life`, for

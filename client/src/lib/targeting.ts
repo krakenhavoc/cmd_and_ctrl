@@ -127,6 +127,12 @@ export interface CastChoices {
   // when `optionalCosts` claims the gift offer; the server rejects it
   // on a cast that does not.
   giftOpponent?: string;
+  // #6256 (CR 118.9): the opponent an alternative cost's "have an
+  // opponent gain N life" gives the life to — a player ID from the
+  // claimed offer's `opponent_options`. Set exactly when `altCost`
+  // claims such an offer; the server rejects it on a cast that does
+  // not.
+  altCostOpponent?: string;
   // ADR 0150 §5 (CR 702.132a): the player asked to help pay the generic
   // mana of a spell with assist — a player ID from the card's
   // `assist.players`. Undefined casts it alone.
@@ -308,6 +314,10 @@ export function applyCastChoices(
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
+  // #6256: omitted unless the claimed offer gives an opponent life — a
+  // stray one is an error server-side, as a stray gift recipient is.
+  if (choices.altCostOpponent !== undefined && choices.altCostOpponent !== "")
+    params.alt_cost_opponent = choices.altCostOpponent;
   // ADR 0150 §5: omitted unless somebody was asked — the server refuses
   // it on a spell without assist.
   if (choices.assistPlayer !== undefined && choices.assistPlayer !== "")
@@ -1455,6 +1465,18 @@ export function kicksOf(card: CardView, selection: number[]): number {
 // to promise it to.
 export function optionalCostOpponentOptions(offer: OptionalCostView): string[] | undefined {
   if (!offer.chooses_opponent) return undefined;
+  return offer.opponent_options ?? [];
+}
+
+// altCostOpponentOptions returns the opponents an alternative cost's
+// "have an opponent gain N life" may give the life to, or undefined when
+// the offer charges no such thing (#6256). An empty array means the
+// offer cannot be taken right now: nobody left who can gain the life
+// (CR 614.17b).
+export function altCostOpponentOptions(
+  offer: AlternativeCostView | undefined,
+): string[] | undefined {
+  if (!offer || (offer.opponent_gains_life ?? 0) <= 0) return undefined;
   return offer.opponent_options ?? [];
 }
 

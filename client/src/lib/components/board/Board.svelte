@@ -667,6 +667,7 @@
     key: string | undefined,
     optional: number[],
     giftOpponent?: string,
+    altCostOpponent?: string,
     costBranch?: number,
     assistPlayer?: string,
     splices?: string[],
@@ -688,6 +689,9 @@
     // #1267: the gift's opponent is part of the same announcement; the
     // modal only hands one back when the gift toggle is on.
     if (giftOpponent !== undefined) next = { ...next, giftOpponent };
+    // #6256: the opponent an "have an opponent gain N life" offer gives
+    // the life to, part of the same announcement (CR 601.2b).
+    if (altCostOpponent !== undefined) next = { ...next, altCostOpponent };
     // ADR 0100: the either/or branch is announced in the same step
     // (CR 601.2b); the branch's own picker opens next in the chain.
     if (costBranch !== undefined) next = { ...next, costBranch };
