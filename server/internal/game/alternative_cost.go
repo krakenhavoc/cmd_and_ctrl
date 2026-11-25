@@ -119,6 +119,26 @@ type AlternativeCost struct {
 	// #693 renumbering tail.)
 	Life int
 
+	// RevealHand is "you may reveal your hand rather than pay this
+	// spell's mana cost" (Land Grant, #6214): the whole payment is
+	// showing the hand to every player, which costs nothing material and
+	// is therefore always payable. The card's own gate ("if you have no
+	// land cards in hand") is a Condition, not part of this.
+	//
+	// Paid in payAlternativeCostLocked, with the spell already on the
+	// stack, so the hand every seat sees is the one that paid: the
+	// Land Grant itself has left it (CR 601.2a).
+	RevealHand bool
+
+	// EachOtherPlayerGainsLife is "rather than pay this spell's mana
+	// cost, you may have each other player gain N life" (Reverent
+	// Silence's 6, Skyshroud Cutter's 5, #6214). A cost like Life, but
+	// paid by the other players gaining rather than by the caster losing
+	// — so nothing withholds the offer: a player who cannot gain life
+	// simply gains none, and the cost is still paid (CR 118.9 lists no
+	// payability test for it beyond the gain being possible).
+	EachOtherPlayerGainsLife int
+
 	// Energy is a "pay N {E}" component of the alternative cost (CR
 	// 107.14, CR 118.9): Nissa, Worldsoul Speaker's eight, Primal
 	// Prayers' one, and Amped Raptor's "an amount of {E} equal to its
@@ -297,6 +317,14 @@ type AlternativeCost struct {
 	// is two cards under a set rule (TargetSpec.EachOf), which the
 	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
+
+	// DiscardSharesColorWithSpell narrows a DiscardFromHand component to
+	// a card that shares a colour with the SPELL being cast (#6214,
+	// Dream Halls' granted "discard a card that shares a color with that
+	// spell"). The colours are the spell's as it is cast, read off the
+	// stack object, so an effect that changed them counts. Unused by
+	// every other offer.
+	DiscardSharesColorWithSpell bool
 
 	// Forage marks the non-mana payment of this cost as a forage (CR
 	// 701.61a): exile three cards from your graveyard, or sacrifice a Food
@@ -1163,7 +1191,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 		if c.InstanceID == castID {
 			continue
 		}
-		if g.altCostCardOKLocked(p, alt, spec, zone, c) {
+		if g.altCostCardOKForSpellLocked(p, castID, alt, spec, zone, c) {
 			if setRule {
 				pool = append(pool, c.InstanceID)
 				continue
@@ -1180,7 +1208,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	return setRule && g.CostSetPaymentForEffect(spec, zone, pool) != nil
 }
 
-// altCostCardOKLocked is the per-card half of an alternative cost's
+// altCostCardOKForSpellLocked is the per-card half of an alternative cost's
 // card component: may THIS card pay it?
 //
 // The one predicate, shared by the payability check above and by
@@ -1199,7 +1227,22 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 // the sacrifice component it makes the offer the view stamps and the
 // candidates the enumerator pays from the same rule the announce
 // validator then judges the named permanents by.
-func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *TargetSpec, zone ZoneKind, c Card) bool {
+// `castID` is the spell being cast, read by an offer whose predicate
+// compares a payment with it (#6214: Dream Halls' "discard a card that
+// shares a color with that spell"); uuid.Nil where the caller has none.
+func (g *Game) altCostCardOKForSpellLocked(p *Player, castID uuid.UUID, alt *AlternativeCost, spec *TargetSpec, zone ZoneKind, c Card) bool {
+	if alt != nil && alt.DiscardSharesColorWithSpell {
+		// CR 118.9's granted cost reads the spell's colours wherever it
+		// is as the cost is offered or paid — its hand as the view
+		// asks, the stack once CR 601.2a has moved it — which is how
+		// conspire's shares-a-colour clause reads its source
+		// (tapOthersColorOKLocked). A spell the engine cannot find
+		// shares nothing, so the walk never admits more than printed.
+		spell := g.findCardByIDLocked(castID)
+		if spell == nil || !sharesColor(spell, &c) {
+			return false
+		}
+	}
 	if zone == ZoneBattlefield {
 		// CR 701.21a for the sacrifice, "an Island YOU CONTROL" for the
 		// bounce: a cost is paid with your own permanents.
@@ -1328,7 +1371,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// The same per-card predicate AlternativeCostPayableLocked
 		// counts candidates with, so "the client was offered this"
 		// and "the engine accepts this" are one rule (#695).
-		if !g.altCostCardOKLocked(p, alt, spec, zone, c) {
+		if !g.altCostCardOKForSpellLocked(p, castID, alt, spec, zone, c) {
 			return ErrInvalidParam
 		}
 		// #3175, CR 107.3a / 601.2b: "a white card with mana value X" —
@@ -1433,7 +1476,7 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 		if c.InstanceID == castID {
 			continue
 		}
-		if !g.altCostCardOKLocked(p, alt, spec, kind, c) {
+		if !g.altCostCardOKForSpellLocked(p, castID, alt, spec, kind, c) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -1474,6 +1517,24 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 	// energy payment.
 	if err := g.payEnergyLocked(playerID, alt.Energy, castID); err != nil {
 		return err
+	}
+	// #6214: Land Grant's whole payment — the hand, shown to every
+	// seat, with the spell already on the stack.
+	if alt.RevealHand {
+		g.RevealHandForEffect(playerID)
+	}
+	// #6214, CR 118.9: Reverent Silence's "have each other player gain
+	// 6 life", paid as a cost (gainLifeAsCostLocked, as a splice cost's
+	// gain is), in seat order from the caster.
+	if alt.EachOtherPlayerGainsLife > 0 {
+		for _, other := range g.Seats {
+			if other == nil || other.ID == playerID || other.Eliminated {
+				continue
+			}
+			if err := g.gainLifeAsCostLocked(castID, other.ID, alt.EachOtherPlayerGainsLife); err != nil {
+				return err
+			}
+		}
 	}
 	// #793: the cost path. Snuff Out's "pay 4 life" is a cost, so it
 	// runs the CR 614 window (CR 119.4 — paying life is losing life)
