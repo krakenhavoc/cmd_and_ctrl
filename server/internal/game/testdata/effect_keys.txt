@@ -1188,6 +1188,7 @@ choose choose-cards/mairsil-cage
 choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
+choose choose-cards/manifold-insights-pick
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masked-vandal-exile
