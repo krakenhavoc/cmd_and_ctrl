@@ -5403,6 +5403,13 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
+cast your commander from the command zone without paying its mana cost" is
+`OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a
+`resolution_cast` prompt over the caster's own commanders in the command
+zone (`game.FreeCastFromCommandPermission`). The commander tax is still
+paid, and the cast counts toward it.
+
 **Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
 can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
 a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).
