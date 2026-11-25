@@ -38,6 +38,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
   - [Epic (#6141, CR 702.50)](#epic-6141-cr-70250)
+  - [Tribute (#6251, CR 702.104)](#tribute-6251-cr-702104)
   - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](#players-cant-play-lands-adr-0109-4-1895)
@@ -3711,6 +3712,28 @@ OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
 
 Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
 Ideal's.
+
+### Tribute (#6251, CR 702.104)
+
+`effects.Tribute(name, n)` is the whole keyword, two entry replacements
+on the creature itself: the controller's "choose an opponent" (the
+`entry_controller` seat prompt with `ControlForTribute`, so nobody is
+given the creature) and then that opponent's "may" (an
+`optional_replacement` whose chooser is the recorded
+`ReplacementEvent.TributeOpponent`), which adds the N +1/+1 counters to
+the entry and sets `Card.TributePaid`. "When this creature enters, if
+tribute wasn't paid, …" is `effects.WhenEntersIfTributeWasntPaid(label,
+effect)`, an intervening "if" read off the creature as it triggers and
+off its last-known information as it resolves (CR 603.4, 608.2h).
+
+```go
+Replacements: effects.Tribute("Ornitharch", 2),
+Triggered: []game.TriggeredAbility{
+    effects.WhenEntersIfTributeWasntPaid("Ornitharch — create two 1/1 white Bird tokens with flying", ...),
+},
+```
+
+Tests: [tribute_test.go](../server/internal/cards/effects/tests/to/tribute_test.go).
 
 ### Exchanging text boxes (ADR 0160)
 

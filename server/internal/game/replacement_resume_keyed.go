@@ -482,6 +482,8 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
+	"TributeOpponent":           repFieldCarried,
+	"EntersTributePaid":         repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
 	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
@@ -819,6 +821,8 @@ type replacementEventSnapshot struct {
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
+	TributeOpponent           *uuid.UUID          `json:"tributeOpponent,omitempty"`
+	EntersTributePaid         bool                `json:"entersTributePaid,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
 	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
@@ -1299,6 +1303,8 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
+		TributeOpponent:           uuidPtrOrNil(ev.TributeOpponent),
+		EntersTributePaid:         ev.EntersTributePaid,
 		EntersWithHaste:           ev.EntersWithHaste,
 		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
@@ -1481,6 +1487,8 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
+		TributeOpponent:           uuidOrNil(s.TributeOpponent),
+		EntersTributePaid:         s.EntersTributePaid,
 		EntersWithHaste:           s.EntersWithHaste,
 		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,

@@ -109,4 +109,12 @@ describe("ChoicePromptModal — entry_controller (CR 614.12a)", () => {
       "get what it does",
     );
   });
+
+  it("words tribute's opponent as the one who decides, not the new controller (#6251)", () => {
+    const { container } = mount("tribute");
+
+    const hint = dialogOf(container).querySelector(".dock-hint")?.textContent ?? "";
+    expect(hint).toContain("decides whether to pay its tribute");
+    expect(hint).not.toContain("control");
+  });
 });

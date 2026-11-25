@@ -1060,6 +1060,10 @@ asked as the permanent would enter.
 - **`control_purpose`** is `"harm"` (the permanent hurts whoever
   controls it) or `"benefit"` (it helps them). It is a reading of the
   card's own text, and the client uses it only for wording.
+- **`"tribute"`** (CR 702.104a, #6251) is the same prompt for tribute's
+  "choose an opponent": the permanent enters under its controller as
+  usual, and the chosen opponent is then asked, as an
+  `optional_replacement`, whether to put the N +1/+1 counters on it.
 
 The permanent has not entered while the prompt is open: the CR 614
 pipeline is suspended on the answer, nothing is on the battlefield and

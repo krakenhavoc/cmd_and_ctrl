@@ -65,6 +65,7 @@ func keyedFrameSample() *ReplacementEvent {
 		ShuffleDestinationLibrary: true, PutOnLibraryBottom: true, ExiledWith: PermissionCardRef{ID: id("ew"), Epoch: 2},
 		ExileCounter: "egg", Destruction: true, CantBeRegenerated: true, StateBasedDestruction: true, LeaveCause: LeaveCauseSacrifice,
 		EntersTapped: true, EntersPrepared: true, EntersDevoured: 2, EntersWithHaste: true, EntersWithHasteTillEOT: true,
+		TributeOpponent: id("tribute"), EntersTributePaid: true,
 		entryRefused: true, EntersUnlocked: DoorMask(3), EntersAttacking: id("defender"),
 		FaceDown: FaceDownKind("morph"), FaceDownListed: &FaceDownListing{Types: []string{"Creature"}, Subtypes: []string{"Elf"}, Power: 2, Toughness: 3},
 		EntersAsCopyOf: &PrintedValues{Name: "Copied"}, copySourceID: id("copy"), copyUntilEndOfTurn: true,
