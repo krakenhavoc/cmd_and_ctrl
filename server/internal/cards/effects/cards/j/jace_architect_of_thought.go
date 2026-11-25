@@ -201,7 +201,7 @@ func jaceArchitectPlayersFrom(g *game.Game, first uuid.UUID) []uuid.UUID {
 	}
 	var out []uuid.UUID
 	for k := 0; k < len(g.Seats); k++ {
-		p := g.Seats[(start+k)%len(g.Seats)]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, k)]
 		if p != nil && !p.Eliminated {
 			out = append(out, p.ID)
 		}

@@ -7505,7 +7505,8 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
 	}
-	// APNAP: active player first, then clockwise. Seq increases in
+	// APNAP: active player first, then in turn order (#6223: clockwise
+	// unless the turn order has been reversed). Seq increases in
 	// drain order, so the active player's triggers (placed first)
 	// resolve last — CR 603.3b stacking order. One scan mints the
 	// starting Seq; incrementing locally keeps the drain O(triggers)
@@ -7513,7 +7514,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	seq := g.nextStackSeqLocked()
 	var announce []*StackItem
 	for offset := 0; offset < numSeats; offset++ {
-		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		seat := g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, offset)
 		for _, t := range bySeat[seat] {
 			t.Seq = seq
 			seq++
@@ -7549,7 +7550,7 @@ func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeat
 		return
 	}
 	for offset := 0; offset < numSeats; offset++ {
-		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		seat := g.SeatInTurnOrderForEffect(g.Turn.ActiveSeat, offset)
 		for _, t := range bySeat[seat] {
 			if g.StackMeta[t.ID] != t {
 				// Gone already: an earlier placement's event set off
@@ -10441,7 +10442,7 @@ func (g *Game) passPriorityLocked() error {
 	if !g.allPassedInSuccessionLocked() {
 		next := g.Turn.PriorityHolder
 		for i := 0; i < numSeats; i++ {
-			next = (next + 1) % numSeats
+			next = g.SeatInTurnOrderForEffect(next, 1)
 			if s := g.Seats[next]; s != nil && !s.Eliminated {
 				g.Turn.PriorityHolder = next
 				return nil

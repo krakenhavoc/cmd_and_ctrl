@@ -35,7 +35,7 @@ func BellowingMaulerPlayers(ctx *Context) []uuid.UUID {
 	}
 	var out []uuid.UUID
 	for i := 0; i < n; i++ {
-		p := ctx.Game.Seats[(start+i)%n]
+		p := ctx.Game.Seats[ctx.Game.SeatInTurnOrderForEffect(start, i)]
 		if p == nil || p.Eliminated {
 			continue
 		}

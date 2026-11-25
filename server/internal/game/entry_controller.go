@@ -146,16 +146,18 @@ func entryControlTier(applicable []activeReplacement) []activeReplacement {
 //
 // Caller must hold g.mu.
 func (g *Game) entryControllerCandidatesLocked(chooser uuid.UUID) []uuid.UUID {
-	start := 0
+	// from is the seat whose next one in turn order starts the walk:
+	// the chooser's, or the seat before 0 when the chooser is not seated.
+	from, first := 0, 0
 	for i, p := range g.Seats {
 		if p != nil && p.ID == chooser {
-			start = i + 1
+			from, first = i, 1
 			break
 		}
 	}
 	var out []uuid.UUID
-	for k := 0; k < len(g.Seats); k++ {
-		p := g.Seats[(start+k)%len(g.Seats)]
+	for k := first; k < first+len(g.Seats); k++ {
+		p := g.Seats[g.SeatInTurnOrderForEffect(from, k)]
 		if p == nil || p.ID == chooser || p.Eliminated {
 			continue
 		}

@@ -6211,6 +6211,10 @@ type TurnView struct {
 	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
 	// which is decided as the turn would begin. Public.
 	NextSeat *int `json:"next_seat,omitempty"`
+	// TurnOrderReversed is true while the game's turn order runs the
+	// other way round the table ("reverse the game's turn order", Aeon
+	// Engine, #6223). Absent is the default order. Public.
+	TurnOrderReversed bool `json:"turn_order_reversed,omitempty"`
 	// PassHint is what the viewer's own next pass hands over (#3826):
 	// "ends_turn" when it is the viewer's turn and no later step of it
 	// grants priority, "your_turn_next" when it is another player's turn,
@@ -6511,19 +6515,20 @@ func ViewOfGame(g *game.Game) GameView {
 			Exile:       viewOfZone(g.Exile, ids),
 			PhasedOut:   viewOfZone(g.PhasedOut, ids),
 			Turn: TurnView{
-				Seq:            g.Turn.Seq,
-				Number:         g.Turn.Round,
-				ActiveSeat:     g.Turn.ActiveSeat,
-				PriorityHolder: g.Turn.PriorityHolder,
-				Phase:          string(g.Turn.Phase),
-				Step:           string(g.Turn.Step),
-				Extra:          g.Turn.Extra,
-				ExtraTurns:     viewOfExtraTurns(g),
-				NextSeat:       viewOfNextSeat(g),
-				BetweenTurns:   g.TurnChangePending,
-				PhaseID:        g.Turn.PhaseID,
-				PhaseOrdinal:   g.Turn.PhaseOrdinal,
-				Upcoming:       viewOfUpcoming(g),
+				Seq:               g.Turn.Seq,
+				Number:            g.Turn.Round,
+				ActiveSeat:        g.Turn.ActiveSeat,
+				PriorityHolder:    g.Turn.PriorityHolder,
+				Phase:             string(g.Turn.Phase),
+				Step:              string(g.Turn.Step),
+				Extra:             g.Turn.Extra,
+				ExtraTurns:        viewOfExtraTurns(g),
+				NextSeat:          viewOfNextSeat(g),
+				TurnOrderReversed: g.TurnOrderReversedForEffect(),
+				BetweenTurns:      g.TurnChangePending,
+				PhaseID:           g.Turn.PhaseID,
+				PhaseOrdinal:      g.Turn.PhaseOrdinal,
+				Upcoming:          viewOfUpcoming(g),
 				// #328: who still owes a block declaration. Read
 				// surface takes the lock we already hold and the
 				// layers ReadSnapshot just refreshed.

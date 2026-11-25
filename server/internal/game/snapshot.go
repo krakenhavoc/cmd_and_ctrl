@@ -343,6 +343,9 @@ type GameSnapshot struct {
 	Settings          TableSettings `json:"settings"`
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
+	// TurnOrderReversed is Game.TurnOrderReversed (#6223). omitempty:
+	// absent is the default order, so no schema bump.
+	TurnOrderReversed bool `json:"turnOrderReversed,omitempty"`
 
 	// Outcome is the result of an ended game (ADR 0057 Decision 5):
 	// nil while active and for a table ended by End(). omitempty, so
@@ -2759,6 +2762,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		Settings:              g.Settings,
 		StartingSeat:          g.StartingSeat,
 		SplitSecondActive:     g.SplitSecondActive,
+		TurnOrderReversed:     g.TurnOrderReversed,
 		Outcome:               cloneGameOutcome(g.Outcome),
 		EventSeq:              g.eventSeq,
 		EventBatch:            g.eventBatch,
@@ -4079,6 +4083,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.TurnOrderReversed = s.TurnOrderReversed
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.TurnChangePending = s.TurnChangePending
