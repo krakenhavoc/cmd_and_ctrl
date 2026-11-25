@@ -36,17 +36,7 @@ func init() {
 				item.Params.Object = effects.DamagedCreatureRef(g, ev.Target)
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ref := item.Params.Object
-				c, ok := g.LookupCardForEffect(ref.ID)
-				if !ok || c.ObjectEpoch != ref.Epoch {
-					return nil
-				}
-				if z := g.FindCardZoneForEffect(ref.ID); z == nil || z.Kind != game.ZoneBattlefield {
-					return nil
-				}
-				return effects.TapAndFreeze{Targets: []uuid.UUID{ref.ID}, Label: label}.Apply(effects.NewContext(g, item))
-			},
+			Effect: effects.OldB166TapAndFreezeDamagedCreature(label),
 		}},
 	})
 	effects.Register(effects.Spec{

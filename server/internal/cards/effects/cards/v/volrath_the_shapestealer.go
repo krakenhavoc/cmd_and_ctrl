@@ -52,14 +52,7 @@ var volrathCopyAbility = effects.ActivatedAbility{
 
 func init() {
 	counter := effects.AtBeginningOfYourCombat("Volrath, the Shapestealer — put a -1/-1 counter on up to one target creature",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := effects.NewContext(g, item)
-			id, ok := effects.B16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return effects.AddCounter{Target: id, Kind: game.CounterMinusOne, N: 1}.Apply(ctx)
-		})
+		effects.R35NightmareSowerCounter)
 	counter.Targets = effects.TargetCreature("up to one target creature").WithCount(0, 1)
 	effects.Register(effects.Spec{
 		OracleID:     "a70d8e3d-a62d-4c4c-890b-e502e48c4475",

@@ -26,15 +26,6 @@ func init() {
 		Targets:          effects.TargetAny(),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{effects.Flashback("{X}{R}{R}{R}")},
-		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
-			x := ctx.X()
-			if x <= 0 {
-				return nil
-			}
-			for _, t := range ctx.LegalTargets() {
-				return effects.DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: x}.Apply(ctx)
-			}
-			return nil
-		},
+		OnResolve:        effects.DealXToTarget,
 	})
 }
