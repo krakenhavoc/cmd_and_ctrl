@@ -3914,6 +3914,20 @@ copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
 Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
 fails anything else.
 
+### "You may discard this card any time you could cast an instant" (#6224, CR 116.2e)
+
+Circling Vultures' clause is a special action, declared like foretell:
+
+```go
+SpecialActions: []game.SpecialAction{DiscardAnyTimeYouCouldCastAnInstant()},
+```
+
+The player discards the card from their hand with priority, on any turn,
+outside split second; nothing goes on the stack and they keep priority.
+The discard's cause is `game.DiscardCauseSpecialAction`, so discard
+triggers and madness see it and "if an effect causes you to discard" does
+not. The bot never takes it on its own.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,
