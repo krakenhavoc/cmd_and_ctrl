@@ -1009,6 +1009,7 @@ delayedTriggers[].copiesSpell.item.castValues	map:string
 delayedTriggers[].copiesSpell.item.castValues{}	number:int
 delayedTriggers[].copiesSpell.item.commutes	bool
 delayedTriggers[].copiesSpell.item.controller	custom(uuid.UUID)
+delayedTriggers[].copiesSpell.item.cycling	bool
 delayedTriggers[].copiesSpell.item.distribution	map:array
 delayedTriggers[].copiesSpell.item.distribution{}	number:int
 delayedTriggers[].copiesSpell.item.doubledBy	custom(uuid.UUID)
