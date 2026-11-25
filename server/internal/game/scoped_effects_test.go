@@ -448,6 +448,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModLoseSubtypes: true,
 		// #4691: case above and in lose_all_creature_types_test.go.
 		ModLoseAllCreatureTypes: true,
+		// "assign combat damage as though it weren't blocked" for a
+		// duration: assigns_as_unblocked_mod_test.go.
+		ModAssignsAsThoughUnblocked: true,
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,

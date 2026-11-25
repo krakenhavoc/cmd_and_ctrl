@@ -455,6 +455,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.PhaseInLockedBy = uuid.Nil
 		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 		c.PhaseInBarredWhileTapped = false
+		c.PhaseInBarredThroughPlayer, c.PhaseInBarredThroughTurn = uuid.Nil, 0
 		c.PhasedOutIndirect = false
 		c.TapOnPhaseIn = false
 	}

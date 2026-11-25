@@ -1489,7 +1489,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
 	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBlockSubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
-	ModCantBeBlockedByMoreThan: true,
+	ModCantBeBlockedByMoreThan: true, ModAssignsAsThoughUnblocked: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects

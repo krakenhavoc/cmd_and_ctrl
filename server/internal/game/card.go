@@ -440,6 +440,15 @@ type Card struct {
 	PhaseInBarredBy    uuid.UUID
 	PhaseInBarredEpoch int
 	PhaseInBarredFor   uuid.UUID
+	// PhaseInBarredThroughPlayer and PhaseInBarredThroughTurn are "Until the
+	// end of your next turn, they can't phase in" (Teferi, Timeless Voyager's
+	// -8): the player whose turn ends the bar and that player's TurnsBegun
+	// count for the turn it ends with. The permanent stays out while the
+	// player has begun fewer turns than that, and through that turn itself;
+	// once it is over the bar is gone and the permanent is back on the
+	// ordinary clock (CR 502.1). uuid.Nil is "no such effect". Additive.
+	PhaseInBarredThroughPlayer uuid.UUID
+	PhaseInBarredThroughTurn   int
 	// PhaseInBarredWhileTapped lives in the bool block at the end of
 	// Card, for alignment.
 
