@@ -1168,6 +1168,7 @@ func (g *Game) markAttackDeclarationJudgedLocked() {
 	if g.Turn.Step == StepDeclareAttackers {
 		if !g.attacksDeclared {
 			g.recordHadToAttackLocked()
+			g.recordCouldAttackLocked()
 		}
 		g.attacksDeclared = true
 	}

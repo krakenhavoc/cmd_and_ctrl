@@ -327,6 +327,8 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// also drops any added phase the old turn never reached.
 	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
+	// #6164: every player's life total as this turn began.
+	g.stampLifeAsTurnBeganLocked()
 	// S79 (#5075): "skips all combat phases of their next turn" arms as
 	// that player's turn really begins (skip_combat_phases.go).
 	g.armCombatSkipsLocked()
@@ -403,6 +405,8 @@ func (g *Game) onTurnBeganLocked() {
 	// active player's alone — Banon reads a card an opponent's effect
 	// put into YOUR graveyard just as well.
 	g.clearGraveyardArrivalsLocked()
+	// #6098: and so does "cast this turn".
+	g.clearCastThisTurnLocked()
 	// S38 (ADR 0063 Decision 2): "until your next turn" ends as that
 	// player's turn BEGINS. This hook runs from beginNextTurnLocked
 	// after the cursor is stamped on the new seat's untap step and

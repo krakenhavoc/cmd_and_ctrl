@@ -56,6 +56,23 @@ func DevourOver(name string, n int, plural string, matches func(game.Card) bool)
 	return r
 }
 
+// DevourX is "Devour X, where X is the number of creatures devoured
+// this way" (Thromok the Insatiable, #6267): k creatures sacrificed buy
+// k*k +1/+1 counters (CR 702.82a with N = k).
+func DevourX(name string) game.ReplacementEffect {
+	r := entersOnlyIf(name,
+		name+" — devour X: you may sacrifice any number of creatures as it enters. It enters with X +1/+1 counters for each, where X is the number sacrificed.",
+		&game.EntryCardChoice{
+			Action:    game.EntryCardSacrifice,
+			Matches:   func(c game.Card) bool { return c.IsCreature() },
+			AnyNumber: true,
+			DevourX:   true,
+		})
+	r.Replace = nil
+	r.RowLabel = "Devour X, where X is the number of creatures devoured this way."
+	return r
+}
+
 // DevourPaying is Devour with the creature's own "for each creature it
 // devoured" ability declared as data: cards drawn and life gained per
 // creature. The trigger still reads Card.Devoured; this is only what

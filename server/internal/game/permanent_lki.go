@@ -244,6 +244,18 @@ type PermanentInfo struct {
 	// only this record remembers it.
 	RingBearer bool `json:"ringBearer,omitempty"`
 
+	// CastThisTurn is whether it was a permanent whose spell was cast this
+	// turn as it last existed (CastProvenance.CastThisTurn): "protection
+	// from permanents that were cast this turn" reads it when the source
+	// has since left (#6098). Cleared with the live flag as the next turn
+	// begins. Additive.
+	CastThisTurn bool `json:"castThisTurn,omitempty"`
+
+	// Goaded is whether it was goaded (CR 701.15), by the marker or by a
+	// continuous effect, as it last existed: Baeloth Barrityl's "whenever
+	// a goaded attacking or blocking creature dies" (#6098). Additive.
+	Goaded bool `json:"goaded,omitempty"`
+
 	// Suspected is whether it was suspected (CR 701.60) as it last
 	// existed on the battlefield. Agency Coroner's "if the sacrificed
 	// creature was suspected" reads it after the cost has moved the
@@ -258,6 +270,11 @@ type PermanentInfo struct {
 	// condition as they resolve (CR 603.4), and a source that has left
 	// by then is read as it last existed (CR 608.2h).
 	Renowned bool `json:"renowned,omitempty"`
+
+	// TributePaid is Card.TributePaid as it last existed (CR 702.104b):
+	// "if tribute wasn't paid" read by a trigger whose creature has left.
+	// Additive; false when it carried none.
+	TributePaid bool `json:"tributePaid,omitempty"`
 
 	// Attacking is whether it was an attacking creature (CR 508.1k) as
 	// it last existed on the battlefield, and Enchanted whether an Aura
@@ -323,8 +340,11 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		LinkedPermanent: objectRefPtr(c.LinkedPermanent),
 		ManaValue:       c.ManaValue(),
 		RingBearer:      IsRingBearerOf(*c, c.Controller),
+		CastThisTurn:    c.Provenance.CastThisTurn,
+		Goaded:          c.Goaded(),
 		Suspected:       c.Suspected,
 		Renowned:        c.Renowned,
+		TributePaid:     c.TributePaid,
 		Attacking:       c.AttackingTarget != uuid.Nil,
 		Blocking:        c.BlockedAttackers(),
 		TextWords:       c.TextWords.entries(),

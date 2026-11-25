@@ -133,6 +133,23 @@ type CardCopyOffer struct {
 	// or all in the graveyard); a set split across both would get a count
 	// for each.
 	MaxCasts int
+
+	// CostLess is "that copy costs {N} less to cast" (God-Eternal
+	// Kefnet, #6231): generic mana taken off the price of each copy cast
+	// through the offer, a CR 601.2f reduction applied after any increase
+	// and never below {0} (CastPermission.CostLess, the one pricer). It
+	// composes with Cost: a copy cast for its printed cost pays that cost
+	// less N. Zero is no reduction.
+	CostLess int
+
+	// InHand copies a card in offer.Player's HAND in their hand (CR
+	// 707.12: "the copy is created in the same zone the object is in"):
+	// Kefnet's "Whenever you reveal an instant or sorcery card this way,
+	// copy that card and you may cast the copy" over a card just drawn.
+	// The copy is cast from the hand through the offer's own permission,
+	// and ceases to exist once nothing offers it (CR 704.5e). False skips a
+	// card in a hand, as before.
+	InHand bool
 }
 
 // CopyCardsAndOfferCastsForEffect makes a copy of each named card
@@ -160,7 +177,10 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 		if src == nil {
 			continue
 		}
-		inPlace := src.Kind == ZoneExile || src.Kind == ZoneGraveyard
+		// #6231: a card in the caster's own hand is copied in that hand
+		// when the offer says so (CR 707.12).
+		inHand := offer.InHand && src.Kind == ZoneHand && src == p.Hand
+		inPlace := src.Kind == ZoneExile || src.Kind == ZoneGraveyard || inHand
 		if !inPlace && (!offer.LastKnown || src.Kind == ZoneBattlefield || src.Kind == ZoneStack) {
 			// A permanent or a spell has characteristics the graveyard
 			// card did not (layers, a chosen face), so LastKnown reads
@@ -173,7 +193,9 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 			continue
 		}
 		dst := g.Exile
-		if src.Kind != ZoneExile || offer.LastKnown {
+		if inHand {
+			dst = p.Hand
+		} else if src.Kind != ZoneExile || offer.LastKnown {
 			// A graveyard card, or (LastKnown) one the effect saw in a
 			// graveyard wherever it has gone since: the copy exists in
 			// the graveyard.
@@ -196,6 +218,7 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 			Zone:        zone,
 			Duration:    g.UntilEndOfTurnDuration(),
 			Cost:        offer.Cost,
+			CostLess:    offer.CostLess,
 			Timing:      offer.Timing,
 			CastOnly:    true,
 			LapseOnPass: offer.Lapse,
@@ -322,6 +345,9 @@ func (g *Game) cardCopySweepSBALocked() bool {
 		scan(p.Hand)
 		scan(p.Graveyard)
 		scan(p.Command)
+		// #6155: a copy created outside the game (CR 707.13) that
+		// nobody cast.
+		scan(p.Sideboard)
 	}
 	for _, d := range out {
 		g.prepareCopyCeasesLocked(d.z, d.id)

@@ -414,7 +414,8 @@ const (
 	// Label is the game.LossCause ("life", "empty_draw", "poison",
 	// "commander_damage", "effect", "concede"); Source and CardID name
 	// the object whose effect made them lose, for an "effect" loss
-	// (ADR 0057 Decisions 1 and 7).
+	// (ADR 0057 Decisions 1 and 7). Amount is their life total as the
+	// turn began (#6164, LifeAsTurnBeganForEffect).
 	EventPlayerEliminated EventKind = "player_eliminated"
 
 	// EventGameOver — the game ended with a result (ADR 0057
@@ -2030,6 +2031,14 @@ type Event struct {
 	// read off a nonland permanent, but nothing prints a nonland
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
+
+	// LandOrdinal is, on a Played entry, how many lands its player has
+	// played this turn counting this one (#6213): 1 for the turn's first
+	// land play, 2 for the second. Fastbond's "if it wasn't the first
+	// land you played this turn" reads it, so the answer is the play's
+	// own and not the tally as some later reader finds it. Zero on every
+	// entry that is not a land play.
+	LandOrdinal int `json:"land_ordinal,omitempty"`
 
 	// BecameToken marks the EventZoneMove from no zone onto the
 	// battlefield that announces the token a copy of a permanent spell

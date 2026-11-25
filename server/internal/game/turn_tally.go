@@ -715,6 +715,13 @@ type TurnTally struct {
 	// blocker has left combat, which the live blocking fields cannot say.
 	// Additive: an older snapshot reads none.
 	CombatBlocks []CombatBlockRecord `json:"combatBlocks,omitempty"`
+	// CouldAttack is every creature OBJECT that could have been declared
+	// as an attacker in a declare attackers step this turn (#6211, CR
+	// 508.1a, 508.1c): Season of the Witch's "except for creatures that
+	// couldn't attack". Written as each attack declaration passes its
+	// checkpoint (recordCouldAttackLocked); one entry per object, in
+	// order. Additive: an older snapshot reads none.
+	CouldAttack []ObjectRef `json:"couldAttack,omitempty"`
 	// BecameTapped counts, per OBJECT, how many times each permanent
 	// became tapped this turn (#4576, CR 701.26a): Captain America,
 	// Living Legend's "if it's the first time that creature has become
@@ -2215,6 +2222,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
 	if len(t.CombatBlocks) > 0 {
 		out.CombatBlocks = append([]CombatBlockRecord(nil), t.CombatBlocks...)
+	}
+	if len(t.CouldAttack) > 0 {
+		out.CouldAttack = append([]ObjectRef(nil), t.CouldAttack...)
 	}
 	if len(t.LoreCounterPut) > 0 {
 		out.LoreCounterPut = append([]PermissionCardRef(nil), t.LoreCounterPut...)
