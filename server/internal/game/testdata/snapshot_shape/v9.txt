@@ -87657,6 +87657,10 @@ seats[].departedPermanents[].source.phaseInBarredWhileTapped	bool
 seats[].departedPermanents[].source.phaseInLockedBy	custom(uuid.UUID)
 seats[].departedPermanents[].source.phasedOutBy	custom(uuid.UUID)
 seats[].departedPermanents[].source.phasedOutIndirect	bool
+seats[].departedPermanents[].source.playerNotes	array
+seats[].departedPermanents[].source.playerNotes[]	object
+seats[].departedPermanents[].source.playerNotes[].note	string
+seats[].departedPermanents[].source.playerNotes[].player	custom(uuid.UUID)
 seats[].departedPermanents[].source.power	number:int
 seats[].departedPermanents[].source.prepareCopy	bool
 seats[].departedPermanents[].source.prepared	bool
