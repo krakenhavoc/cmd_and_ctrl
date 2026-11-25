@@ -237,6 +237,12 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// ImposedSacrifices are the "<spells / activated abilities> cost an
+	// additional "Sacrifice a <kind>"" statics this permanent contributes
+	// (CR 601.2f, 602.2b, #6205) — Drought, Brutal Suppression. Read
+	// from the battlefield and folded into each cost's sacrifice clause
+	// (imposed_sacrifice.go).
+	ImposedSacrifices []ImposedSacrifice
 	// LifePerTarget is this card's OWN "This spell costs N life more to
 	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
 	// for the spell being cast, through LifePerTargetFor under
@@ -1130,6 +1136,12 @@ func init() {
 	CatalogTargetTaxes = func(key string) []TargetTax {
 		if d := catalogDef(key); d != nil {
 			return d.TargetTaxes
+		}
+		return nil
+	}
+	CatalogImposedSacrifices = func(key string) []ImposedSacrifice {
+		if d := catalogDef(key); d != nil {
+			return d.ImposedSacrifices
 		}
 		return nil
 	}

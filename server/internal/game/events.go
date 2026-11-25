@@ -956,6 +956,22 @@ const (
 	// "When this creature's echo cost is paid" sees it.
 	EventEchoPaid EventKind = "echo_paid"
 
+	// EventCumulativeUpkeepPaid — a permanent's cumulative upkeep was
+	// paid (CR 702.24a, #6188). CardID and Source are the permanent,
+	// Actor the player who paid, Amount the age counters it was paid
+	// for, and SpentSymbols the mana spent on it, one entry per mana.
+	// Emitted once the payment has been made, so Balduvian Fallen's
+	// "Whenever this creature's cumulative upkeep is paid" and
+	// Hibernation's End's "Whenever you pay" see it.
+	EventCumulativeUpkeepPaid EventKind = "cumulative_upkeep_paid"
+	// EventCumulativeUpkeepNotPaid — a player declined (or could not
+	// make) a permanent's cumulative upkeep payment (CR 702.24a,
+	// #6188). CardID and Source are the permanent, Actor the player,
+	// Amount its age counters. Emitted before the permanent is
+	// sacrificed, so Heart of Bogardan's "When a player doesn't pay"
+	// triggers while it is still on the battlefield.
+	EventCumulativeUpkeepNotPaid EventKind = "cumulative_upkeep_not_paid"
+
 	// EventBeginEndStep — the active player's end step began. Actor
 	// is the active player (whose end step it is). "At the beginning
 	// of your end step" (Thassa, Y'shtola Rhul) gates AppliesTo on
@@ -1942,6 +1958,12 @@ type Event struct {
 	// carried, "C" included — one event per token, so there is never
 	// more than one. Empty on every other event kind.
 	Colors []string `json:"colors,omitempty"`
+
+	// SpentSymbols are the mana spent on an EventCumulativeUpkeepPaid
+	// payment, one colour symbol per mana ("B", "R", "C"), in the order
+	// it was spent (#6188): Balduvian Fallen counts its {B} and {R}.
+	// Empty for a payment that is not mana and on every other event.
+	SpentSymbols []string `json:"spent_symbols,omitempty"`
 
 	// Sides is the die size for EventRollDie. Call and Won describe an
 	// EventFlipCoin; Won is false for a face-only flip. On an

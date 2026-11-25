@@ -4850,6 +4850,33 @@ free. It counts TARGETS (CR 601.2c), not targeted permanents, so a
 clause that names a player or a spell pays for those too. `Register`
 refuses a clause with no label or no life.
 
+**A sacrifice added to other objects' costs** — "Activated abilities of
+nontoken Rebels cost an additional "Sacrifice a land" to activate" (Brutal
+Suppression), "Spells cost an additional "Sacrifice a Swamp" to cast for
+each black mana symbol in their mana costs" (Drought; #6205, CR 601.2f,
+602.2b). A static of the permanent, `CardDef.ImposedSacrifices`:
+
+```go
+ImposedSacrifices: []game.ImposedSacrifice{{
+    Label:  "Spells cost an additional \"Sacrifice a Swamp\" to cast for each black mana symbol in their mana costs.",
+    Kind:   game.SacrificeKind{Label: "a Swamp", Subtypes: []string{"Swamp"}},
+    Spells: true, PerBlackSymbol: true,
+}},
+```
+
+`Spells` and `Activations` say which costs it reaches (an activation
+includes a mana ability's), `PerBlackSymbol` counts the black symbols
+(hybrid and Phyrexian included) of the spell's mana cost or the ability's
+mana cost, and `AppliesTo` narrows the objects ("nontoken Rebels"; nil is
+all). The engine folds the sacrifices into the object's own sacrifice
+clause as one-to-one entries of a set rule (`TargetSpec.EachOf`, with
+`SacrificeKind.Head` for the object's own picks), so `CastSpell`,
+`ActivateCatalogAbility`, `ActivateManaAbility`, the enumerator, the view's
+`sacrifice_options` and the client picker read one ordinary clause and need
+nothing from the card file. A cost whose own sacrifice is variable ("any
+number", "X", "all", "half") can't be joined and is refused while the
+static applies.
+
 **"Can't be the target of spells or abilities your opponents control this
 turn"** (Vines of Vastwood, [ADR 0038 amendment
 2026-10-15](decisions/0038-protection-style-keywords.md)) is
