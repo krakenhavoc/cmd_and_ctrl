@@ -1254,6 +1254,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6260: Gather Specimens' "if a creature would enter the battlefield
+	// under an opponent's control this turn, it enters under your control
+	// instead" (scoped_enters_under_control.go).
+	ModCreaturesEnterUnderYourControl: {reader: readerReplacement},
 	// #6160: Mystic Reflection's "the next time one or more creatures or
 	// planeswalkers enter this turn, they enter as copies".
 	ModNextEntersAsCopies: {reader: readerReplacement},
