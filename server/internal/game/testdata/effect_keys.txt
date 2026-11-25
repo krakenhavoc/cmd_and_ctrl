@@ -3724,6 +3724,7 @@ tail dain-ironfoot/axe-created
 tail dalek-intensive-care/create-dalek
 tail dalek-intensive-care/haste
 tail damage-steps/next
+tail dance-of-many/link-token
 tail daredevil-man-without-fear/hero-boost
 tail dark-impostor/after-exile
 tail dark-tutor/after-hand
