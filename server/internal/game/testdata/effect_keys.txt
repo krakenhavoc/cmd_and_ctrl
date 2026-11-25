@@ -519,6 +519,7 @@ body s82-old-b087/hans-eriksson-fight
 body s82-old-b088/plague-reaver-return
 body s82-old-b107/basri-devoted-paladin-attacker-counter
 body s82-old-b166/cabal-therapist-name
+body s82-old-b214/destroy-attached-equipment
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
