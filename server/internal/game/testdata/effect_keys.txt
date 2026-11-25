@@ -1614,6 +1614,7 @@ choose choose-cards/selective-adaptation-battlefield
 choose choose-cards/selective-adaptation-keyword
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/separate-into-piles
+choose choose-cards/sequestered-stash
 choose choose-cards/serum-core-chimera-discarded
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
 choose choose-cards/shadow-kin-exile
@@ -4475,6 +4476,7 @@ tail mill-then-take/vivien-on-the-hunt
 tail mill-then-take/wasteful-harvest
 tail mill-then/lluwen-imperfect-naturalist
 tail mill-then/renegade-reaper-angel
+tail mill-then/sequestered-stash
 tail mill-then/sludge-titan
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
