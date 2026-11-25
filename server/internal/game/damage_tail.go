@@ -622,6 +622,11 @@ func (g *Game) prepareDamageEventLocked(ev *ReplacementEvent) {
 	if ev.SourceLKI == nil && ev.damageTail != nil {
 		ev.SourceLKI = ev.damageTail.sourceLKI
 	}
+	// #6230: a black or red permanent or spell under Ghostly Flame is a
+	// colourless source of damage. Idempotent: the rewrite has no colour.
+	if ev.SourceLKI != nil {
+		ev.SourceLKI = g.asDamageSourceLocked(ev.SourceLKI, g.damageSourceIsPermanentOrSpellLocked(ev.DamageSource, ev.SourceLKI))
+	}
 	// ADR 0107 §5: the source's own "can't be prevented" static is
 	// last-known information too, read as the event is opened.
 	if t := ev.damageTail; t != nil && !t.sourceChecked {

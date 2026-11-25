@@ -5473,6 +5473,15 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Colourless sources of damage (#6230, CR 105.2c, CR 120.2).** Ghostly
+Flame's "Black and/or red permanents and spells are colorless sources of
+damage" is `Static: []game.StaticAbility{ColorlessDamageSources("BR", label)}`,
+a world rule the permanent carries on itself
+(`Characteristic.ColorlessDamageSourceColors`). The damage event's source
+is read with no colour, so protection from black or red, prevention that
+names a colour and "a red source of your choice" all see a colourless
+source; the permanents and spells keep their colours otherwise.
+
 **Players can't get counters (#6241, CR 122.1).** Solemnity's "Players
 can't get counters" is `Static: []game.StaticAbility{PlayersCantGetCounters()}`,
 a world rule the permanent carries on itself (`game.PlayersCantGetCounters`).

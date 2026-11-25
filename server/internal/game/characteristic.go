@@ -382,6 +382,17 @@ type Characteristic struct {
 	// proliferate choice asks cantHaveCountersLocked (cant_have_counters.go).
 	CantHaveCounters bool `json:",omitempty"`
 
+	// ColorlessDamageSourceColors is a world rule the permanent carries
+	// on itself (#6230): "Black and/or red permanents and spells are
+	// colorless sources of damage" (Ghostly Flame) is "BR". A permanent
+	// or spell with any of these colours is a colourless source of
+	// damage while any permanent on the battlefield has it
+	// (damage_source_colorless.go): protection from a colour and every
+	// prevention or source filter that reads a damage source's colour see
+	// no colour (CR 105.2c). The object's own colours do not change.
+	// Colour letters, WUBRG; empty is no rule.
+	ColorlessDamageSourceColors string `json:",omitempty"`
+
 	// CantHavePlusOneCounters is "can't have +1/+1 counters put on it"
 	// (Blightbeetle's opposing creatures): CantHaveCounters narrowed to the
 	// +1/+1 kind. Written by an ordinary layer-6 static of the restricting
