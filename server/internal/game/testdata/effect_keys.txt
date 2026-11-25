@@ -1491,6 +1491,8 @@ choose choose-cards/s82-old-b061-blessing-of-frost-creatures
 choose choose-cards/s82-old-b061-burning-rune-demon-picked
 choose choose-cards/s82-old-b062-egon-exile-two
 choose choose-cards/s82-old-b063-skull-raid-discarded
+choose choose-cards/s82-old-b103-settle-the-score
+choose choose-cards/s82-old-b103-silhana-wayfinder-place
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
