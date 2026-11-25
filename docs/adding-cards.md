@@ -5520,6 +5520,12 @@ zero, so a "move a counter" onto it removes nothing (CR 122.5). Removing
 counters is unaffected. A +N loyalty cost can't be paid either. The view
 ships `cant_have_counters` and the card shows a NO COUNTERS chip.
 
+**Cast your commander for free (#6242, CR 903.8).** Geode Golem's "you may
+cast your commander from the command zone without paying its mana cost" is
+`OfferFreeCommanderCast(ctx, name)` in the trigger's effect: a
+`resolution_cast` prompt over the caster's own commanders in the command
+zone (`game.FreeCastFromCommandPermission`). The commander tax is still
+paid, and the cast counts toward it.
 **Colourless sources of damage (#6230, CR 105.2c, CR 120.2).** Ghostly
 Flame's "Black and/or red permanents and spells are colorless sources of
 damage" is `Static: []game.StaticAbility{ColorlessDamageSources("BR", label)}`,
