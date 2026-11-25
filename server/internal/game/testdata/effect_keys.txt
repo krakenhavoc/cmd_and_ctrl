@@ -3237,6 +3237,7 @@ run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
 run prompt-run/covetous-elegy-keep
+run prompt-run/creeping-dread-compare
 run prompt-run/cruel-grimnarch-gain
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
@@ -4354,6 +4355,7 @@ tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
 tail liliana-heretical-healer/zombie
 tail liliana-untouched-by-death/after-mill
+tail lilianas-indignation/loss
 tail living-death/return-exiled
 tail living-death/sacrifice-creatures
 tail livio-oathsworn-sentinel/aegis-counter
