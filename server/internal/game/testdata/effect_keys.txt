@@ -113,6 +113,7 @@ body commander/return-listed-to-command-zone
 body conduit-of-emrakul/add-colorless
 body conduit-of-storms/add-red
 body conjure/sigardian-evangel-discard
+body conquerors-galleon/exile-and-return-transformed
 body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/sea-gate-stormcaller-the-spell-just-cast
@@ -1010,6 +1011,7 @@ choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/green-suns-twilight-picked
 choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
+choose choose-cards/grim-captains-call-type
 choose choose-cards/grime-gorger-exile
 choose choose-cards/gruesome-menagerie
 choose choose-cards/guided-passage-picked
