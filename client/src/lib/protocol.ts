@@ -4028,6 +4028,12 @@ export interface SpecialActionView {
   // auto-tap together. Absent beside demands_x when not even X = 0 is
   // payable.
   x_max?: number;
+  // #6249 (CR 702.37e): a "turn_face_up" row whose morph cost is
+  // "reveal a <colour> card in your hand" (Temur Charger). The viewer's
+  // hand cards that may be revealed to pay it; the client asks which one
+  // and the payload carries it as `reveal_id`. The row is offered only
+  // while this is non-empty. Absent on every other row.
+  reveal_options?: string[];
 }
 
 // RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):

@@ -800,6 +800,26 @@ const (
 	// event log it had before the kind existed.
 	EventTriggerPlaced EventKind = "trigger_placed"
 
+	// EventTargetsChosen — a player chose one or more targets for a
+	// spell or ability (#6228, Psychic Battle's "whenever a player
+	// chooses one or more targets"). Once per choosing, not per target:
+	// emitted beside the EventBecomesTarget fan-out when a cast, an
+	// activation or a triggered ability's placement announces targets
+	// (CR 601.2c, CR 602.2b, CR 603.3d), and when an effect changes the
+	// targets of a spell or ability (CR 115.7), each slot changed being
+	// one choosing. Actor is the player who chose (the item's controller
+	// for an announcement, the retargeting effect's chooser for a
+	// change), Source the item's source object, StackItemID the item.
+	// On a change, SourceName is the name of the object whose effect
+	// changed the targets, as it was then ("Changing targets this way
+	// doesn't trigger abilities of permanents named Psychic Battle");
+	// empty on an announcement and on a change no named object made.
+	//
+	// Emitted only while a permanent on the battlefield watches it
+	// (battlefieldWatchesLocked), like EventTriggerPlaced, so a table
+	// without one keeps the event log it had before the kind existed.
+	EventTargetsChosen EventKind = "targets_chosen"
+
 	// EventAbilityCopied — a copy of an activated or triggered ability
 	// was put onto the stack (CR 707.10, createAbilityCopyLocked). Actor
 	// is the copy's controller, Source the object the ability came from
@@ -955,6 +975,22 @@ const (
 	// and before anything else the answer does, so Shah of Naar Isle's
 	// "When this creature's echo cost is paid" sees it.
 	EventEchoPaid EventKind = "echo_paid"
+
+	// EventCumulativeUpkeepPaid — a permanent's cumulative upkeep was
+	// paid (CR 702.24a, #6188). CardID and Source are the permanent,
+	// Actor the player who paid, Amount the age counters it was paid
+	// for, and SpentSymbols the mana spent on it, one entry per mana.
+	// Emitted once the payment has been made, so Balduvian Fallen's
+	// "Whenever this creature's cumulative upkeep is paid" and
+	// Hibernation's End's "Whenever you pay" see it.
+	EventCumulativeUpkeepPaid EventKind = "cumulative_upkeep_paid"
+	// EventCumulativeUpkeepNotPaid — a player declined (or could not
+	// make) a permanent's cumulative upkeep payment (CR 702.24a,
+	// #6188). CardID and Source are the permanent, Actor the player,
+	// Amount its age counters. Emitted before the permanent is
+	// sacrificed, so Heart of Bogardan's "When a player doesn't pay"
+	// triggers while it is still on the battlefield.
+	EventCumulativeUpkeepNotPaid EventKind = "cumulative_upkeep_not_paid"
 
 	// EventBeginEndStep — the active player's end step began. Actor
 	// is the active player (whose end step it is). "At the beginning
@@ -1943,6 +1979,12 @@ type Event struct {
 	// more than one. Empty on every other event kind.
 	Colors []string `json:"colors,omitempty"`
 
+	// SpentSymbols are the mana spent on an EventCumulativeUpkeepPaid
+	// payment, one colour symbol per mana ("B", "R", "C"), in the order
+	// it was spent (#6188): Balduvian Fallen counts its {B} and {R}.
+	// Empty for a payment that is not mana and on every other event.
+	SpentSymbols []string `json:"spent_symbols,omitempty"`
+
 	// Sides is the die size for EventRollDie. Call and Won describe an
 	// EventFlipCoin; Won is false for a face-only flip. On an
 	// EventFizzle, Call FizzleCallCondition says the item was an
@@ -2252,7 +2294,9 @@ type Event struct {
 	// has the copied name, CR 707.2), captured at emit time because the
 	// source may since have left the game or been changed. "Each opponent
 	// dealt combat damage this game by a creature named Gollum, Obsessed
-	// Stalker" reads it off the append-only log. Empty on every other event.
+	// Stalker" reads it off the append-only log. On an EventTargetsChosen
+	// that a change of targets emitted, it is the name of the object whose
+	// effect changed them (#6228). Empty on every other event.
 	// Additive within schema v9.
 	SourceName string `json:"source_name,omitempty"`
 
@@ -2668,7 +2712,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// silent (no client toast yet). Surfacing them in the server log
 	// so manual-test regressions have a visible breadcrumb. Keep
 	// until the client learns to render effect_error as a toast.
-	if ev.Kind == EventEffectError {
+	if ev.Kind == EventEffectError && !g.simulating {
 		// ADR 0123 §3: every effect error the engine survives reaches
 		// this one line, so this is where cmdctrl_effect_errors_total
 		// counts them, after the clean-stop filter above.

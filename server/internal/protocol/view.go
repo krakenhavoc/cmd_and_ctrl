@@ -5043,6 +5043,12 @@ type SpecialActionView struct {
 	// offers the same X. A pointer, because 0 is a real ceiling ("only
 	// X = 0 is payable"); nil beside DemandsX means not even X = 0 is.
 	XMax *int `json:"x_max,omitempty"`
+	// RevealOptions marks a turn_face_up row whose morph cost is
+	// "reveal a <colour> card in your hand" (#6249, CR 702.37e): the
+	// instance IDs of the viewer's hand cards that may be revealed to pay
+	// it. The client asks which one and sends it as `reveal_id`. The row
+	// is offered only while this is non-empty; absent on every other row.
+	RevealOptions []string `json:"reveal_options,omitempty"`
 }
 
 // RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
@@ -8028,7 +8034,13 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		castID, _ := uuid.Parse(c.InstanceID)
 		stampEscalate(g, caster, castID, out.Modes, ms)
 	}
-	if ac := game.AdditionalCostFor(key); !ac.Empty() {
+	ac := game.AdditionalCostFor(key)
+	if haveLive {
+		// #6205: with every sacrifice the board imposes on this cast
+		// (Drought) folded in, so the picker asks for the Swamps.
+		ac, _ = g.ImposedSacrificeCastCostForEffect(caster, live, ac)
+	}
+	if !ac.Empty() {
 		castUUID, _ := uuid.Parse(c.InstanceID)
 		out.AdditionalCost = viewOfAdditionalCost(g, caster, castUUID, ac)
 		// ADR 0100 §2: an either/or cost ships each branch in the same
@@ -10186,6 +10198,10 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 				view.XMax = &x
 			}
 		}
+		// #6249: a reveal morph cost lists the hand cards that pay it.
+		for _, id := range g.FaceUpRevealOptionsForEffect(owner, sa) {
+			view.RevealOptions = append(view.RevealOptions, id.String())
+		}
 		out = append(out, view)
 	}
 	return out
@@ -10796,9 +10812,12 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 		if i >= len(raw) {
 			continue
 		}
-		if raw[i].SacrificeOther != nil {
-			views[i].SacrificeLabel = raw[i].SacrificeOther.Label
-			views[i].SacrificeOptions = sacrificeCostOptions(g, controller, raw[i].SacrificeOther, card.InstanceID, raw[i].SacrificeCost)
+		// #6205: with every sacrifice the board imposes folded in (a
+		// copy: raw is the catalog's slice).
+		row, _ := g.ImposedSacrificeManaAbilityForEffect(controller, *card, raw[i])
+		if row.SacrificeOther != nil {
+			views[i].SacrificeLabel = row.SacrificeOther.Label
+			views[i].SacrificeOptions = sacrificeCostOptions(g, controller, row.SacrificeOther, card.InstanceID, row.SacrificeCost)
 		}
 		if tc := raw[i].TapOthers; !tc.Empty() {
 			views[i].TapOthersLabel = tc.Label
@@ -14468,6 +14487,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// #6148, CR 606.5: the loyalty cost the controller would pay,
 		// combined with every addition on the board (Carth the Lion).
 		a.Cost = g.LoyaltyAdjustedCostForEffect(c.Controller, a.Cost)
+		// #6205: and every sacrifice the board imposes on it (Drought,
+		// Brutal Suppression), folded as the activation folds it, so
+		// the picker asks for the Swamps too.
+		a.Cost, _ = g.ImposedSacrificeAbilityCostForEffect(caster, c, a.Cost)
 		i, wireIndex, wireRef := k, k, origins.Ref(k)
 		if k >= len(raw) {
 			tw := twins[k-len(raw)]
