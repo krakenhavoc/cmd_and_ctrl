@@ -149,6 +149,7 @@ var pgReviewed = map[string]string{
 	"48ad5bd6-9568-4813-be29-99aef8b9327a": "Split the Spoils — PileSplit",
 	"0ba134d8-ee7d-48ec-8dc6-57942b8e9261": "Liliana of the Veil — PileSplit",
 	"4b4f268d-34ae-416d-a412-66f4fe37659c": "Sphinx of Uthuun — PileSplit",
+	"7492ea06-24d5-4a1f-a6ac-c33743e91aa7": "Unesh, Criosphinx Sovereign — PileSplit",
 	"a3d048c8-e8df-4b50-a422-fc94a69f44bb": "Boneyard Parley — PileSplit",
 	// The face-down pile family, which is PileSplit underneath.
 	"8b2b00ab-f1c5-4057-9957-d7daac95a847": "Atris, Oracle of Half-Truths — face-down piles",
