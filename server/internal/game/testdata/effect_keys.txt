@@ -4185,6 +4185,7 @@ tail loafing-giant/after-mill
 tail london-mulligan/cards-down
 tail lrell-fierce-visionary/sacrifice-at-end
 tail lucius-the-eternal/exiled
+tail lucy-maclean/draw-if-an-opponent-created
 tail lulu-loyal-hollyphant/untap
 tail make-your-own-luck/plot-then-rest
 tail makeshift-mannequin/grant-while-counter
