@@ -2690,7 +2690,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// silent (no client toast yet). Surfacing them in the server log
 	// so manual-test regressions have a visible breadcrumb. Keep
 	// until the client learns to render effect_error as a toast.
-	if ev.Kind == EventEffectError {
+	if ev.Kind == EventEffectError && !g.simulating {
 		// ADR 0123 §3: every effect error the engine survives reaches
 		// this one line, so this is where cmdctrl_effect_errors_total
 		// counts them, after the clean-stop filter above.

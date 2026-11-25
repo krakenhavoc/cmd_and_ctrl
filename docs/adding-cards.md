@@ -49,6 +49,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
+  - ["Counter target spell if it would destroy a land you control" (ADR 0228, #6225)](#counter-target-spell-if-it-would-destroy-a-land-you-control-adr-0228-6225)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
   - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
@@ -5020,6 +5021,28 @@ right, and the replacement knows who is countering. Declare
 - **It can pause.** Two replacements that disagree are ordered by the
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
+
+### "Counter target spell if it would destroy a land you control" (ADR 0228, #6225)
+
+Equinox. The ability's target clause is any spell
+(`effects.TargetSpell("target spell")`) and its body is
+`effects.CounterTargetSpellIfItWouldDestroyALandYouControl`: the
+condition is read as the ability resolves, by
+`Game.SpellWouldDestroyALandOfForEffect`, which plays the spell's
+resolution out on a clone of the game and reads which permanents the
+clone logged as destroyed (`LeaveCause` "destroy").
+
+- **Nothing is declared on the spell.** Every catalog spell answers
+  truthfully as it is written: Stone Rain at your land, Armageddon,
+  Murder at your land creature. A sacrifice, an exile and a state-based
+  death after the spell are not destructions by it.
+- **"Would" is "if it resolved now".** An indestructible land, a
+  regenerated one and a target that is no longer legal are not
+  destroyed on the clone either. What the spell destroys after a
+  player's choice in its resolution is not played out.
+- **Another "if it would <verb>" condition** reads the same clone
+  (`spellWouldDestroyLocked` in `game/land_destruction.go`); add the
+  question beside it rather than a second simulation.
 
 ### "Play with their hands revealed" (ADR 0199, #3953)
 
