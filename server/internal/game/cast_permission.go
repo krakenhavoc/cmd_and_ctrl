@@ -1082,6 +1082,15 @@ type CastPermission struct {
 	// Ignored when AnyColor or AnyType is set.
 	AnyColorFrom string `json:"anyColorFrom,omitempty"`
 
+	// AnyColorFromSnow narrows the clause by the mana's SOURCE: "you may
+	// spend mana from snow sources as though it were mana of any color to
+	// cast those spells" (Draugr Necromancer, #6161, CR 609.4b). Each
+	// coloured symbol then also takes any mana a snow source produced
+	// (ColorRequirement.SnowAny); other mana pays as printed, and a {C} or
+	// an {S} is left alone. Ignored when AnyColor or AnyType is set.
+	// Additive.
+	AnyColorFromSnow bool `json:"anyColorFromSnow,omitempty"`
+
 	// --- the window ------------------------------------------------
 
 	// Duration is when the permission ENDS (CR 611.2), in the one
@@ -3678,6 +3687,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyColorCost(cost)
 	case grant.AnyColorFrom != "":
 		return widenFromColors(cost, []string{grant.AnyColorFrom})
+	case grant.AnyColorFromSnow:
+		return widenSnowAny(cost)
 	}
 	return cost
 }

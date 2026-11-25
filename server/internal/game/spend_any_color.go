@@ -394,6 +394,50 @@ func widenFromColors(cost ParsedCost, from []string) ParsedCost {
 	return widened
 }
 
+// widenSnowAny is widenFromColors for a grant narrowed by the mana's
+// source rather than its colour (CastPermission.AnyColorFromSnow, #6161):
+// each coloured symbol also takes any mana a snow source produced
+// (ColorRequirement.SnowAny). A {C} is left alone (colourless is not a
+// colour, CR 106.1b), and so is an {S} (snow is neither a colour nor a
+// type, CR 107.4h) and a symbol already widened to any mana. Returns
+// `cost` itself when nothing changes.
+func widenSnowAny(cost ParsedCost) ParsedCost {
+	widen := func(r ColorRequirement) (ColorRequirement, bool) {
+		if r.AnyMana || r.Snow || r.SnowAny || len(r.Options) == 0 || requiresColorless(r) || unpayableByAnyMana(r) {
+			return r, false
+		}
+		r.SnowAny = true
+		return r, true
+	}
+	var out []ColorRequirement
+	for i, r := range cost.Required {
+		r, changed := widen(r)
+		if !changed {
+			continue
+		}
+		if out == nil {
+			out = append([]ColorRequirement(nil), cost.Required...)
+		}
+		out[i] = r
+	}
+	var tail ColorRequirement
+	tailChanged := false
+	if cost.folded.n > 0 {
+		tail, tailChanged = widen(cost.folded.req)
+	}
+	if out == nil && !tailChanged {
+		return cost
+	}
+	widened := cost
+	if out != nil {
+		widened.Required = out
+	}
+	if tailChanged {
+		widened.folded.req = tail
+	}
+	return widened
+}
+
 // CostAsPaidByForEffect is costAsPaidByLocked for a caller that already
 // holds g.mu — internal/legal's affordability probe, which runs inside
 // ReadSnapshot and must solve the cost the payment will solve.
