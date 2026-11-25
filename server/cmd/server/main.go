@@ -609,6 +609,9 @@ func main() {
 		col := deck.NewCollection(cardIdx)
 		game.OutsideCollection = col
 		game.PlanarCards = col
+		// #6257: Spy Kit's "all names of nonlegendary creature cards"
+		// asks the same database which names those are.
+		game.NonlegendaryCreatureCardName = col.IsNonlegendaryCreatureCardName
 	}
 	// Timed and logged unconditionally (#524): the strong hypothesis
 	// on #515 is that startup — not this restore pass — dominates the

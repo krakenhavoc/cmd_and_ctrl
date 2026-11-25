@@ -129,3 +129,46 @@ func TestAStaticTaxWithManaAndLifeIsAllOrNothing(t *testing.T) {
 		t.Errorf("after paying: pool %d, life %d, want 0 and 0", n, g.Seats[0].Life)
 	}
 }
+
+// S82 OLD batch 181: Forbidding Spirit's "you or planeswalkers you control".
+
+func TestATimedAttackTaxCanDefendPlaneswalkersToo(t *testing.T) {
+	g, bear := taxedTable(t, nil)
+	defender := g.Seats[1].ID
+	var ok bool
+	g.WithWriteLock(func() {
+		ok = g.AttackTaxPlaneswalkersForEffect(uuid.Nil, defender, "{2}", g.UntilYourNextTurnDuration(defender), "Test — walker tax")
+	})
+	if !ok {
+		t.Fatal("AttackTaxPlaneswalkersForEffect registered nothing")
+	}
+	var onPlayer, onWalker []AttackTaxLine
+	g.WithWriteLock(func() {
+		onPlayer = g.durationAttackTaxLines(defender, AttackTargetPlayer, bear)
+		onWalker = g.durationAttackTaxLines(defender, AttackTargetPlaneswalker, bear)
+	})
+	if len(onPlayer) != 1 || len(onWalker) != 1 {
+		t.Errorf("lines on the player %d and on a planeswalker %d, want 1 and 1", len(onPlayer), len(onWalker))
+	}
+
+	// The plain mana tax still leaves planeswalkers alone.
+	g2, bear2 := taxedTable(t, nil)
+	registerTimedTax(t, g2, g2.Seats[1].ID, "{2}")
+	g2.WithWriteLock(func() {
+		onWalker = g2.durationAttackTaxLines(g2.Seats[1].ID, AttackTargetPlaneswalker, bear2)
+	})
+	if len(onWalker) != 0 {
+		t.Errorf("the plain tax charged an attack on a planeswalker: %d lines", len(onWalker))
+	}
+}
+
+func TestAnAttackTaxModNamesOnlyPlaneswalkerTypes(t *testing.T) {
+	if p := attackTaxModProblem(AttackTaxPlaneswalkersMod(uuid.New(), "{2}")); p != "" {
+		t.Errorf("a sound mod refused: %s", p)
+	}
+	bad := AttackTaxMod(uuid.New(), "{2}")
+	bad.Types = []string{"battle"}
+	if attackTaxModProblem(bad) == "" {
+		t.Error("a mod naming battle was accepted")
+	}
+}

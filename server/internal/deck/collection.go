@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -212,4 +213,36 @@ func planarKindOf(c cards.Card) game.PlanarKinds {
 		return game.PlanarPhenomena
 	}
 	return 0
+}
+
+// IsNonlegendaryCreatureCardName reports whether name is the name of a
+// nonlegendary creature card, or of a face of one judged by that face's
+// own type line (CR 201.4b-d): game.NonlegendaryCreatureCardName, which
+// Spy Kit's "all names of nonlegendary creature cards" reads (#6257). An
+// alternate (flavor) title is not a card name, nor is a split card's
+// combined name; a token or a card nobody can own is not a card here.
+func (col *Collection) IsNonlegendaryCreatureCardName(name string) bool {
+	if col == nil || col.idx == nil {
+		return false
+	}
+	want := strings.TrimSpace(name)
+	if want == "" || strings.Contains(want, "//") {
+		return false
+	}
+	c, ok := col.idx.FindByName(want)
+	if !ok || !collectible(c) {
+		return false
+	}
+	typeLine := ""
+	if strings.EqualFold(strings.TrimSpace(c.Name), want) {
+		typeLine = c.TypeLine
+	}
+	for _, f := range c.CardFaces {
+		if strings.EqualFold(strings.TrimSpace(f.Name), want) {
+			typeLine = f.TypeLine
+		}
+	}
+	types, _, _ := strings.Cut(typeLine, "—")
+	fields := strings.Fields(types)
+	return slices.Contains(fields, "Creature") && !slices.Contains(fields, "Legendary")
 }

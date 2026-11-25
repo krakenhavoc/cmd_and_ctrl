@@ -284,36 +284,48 @@ func (g *Game) materialiseDurationCopiesLocked() {
 	}
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if len(records) == 0 && c.DurationCopyBase == nil {
-			continue
-		}
-		want, ok := durationCopyFor(c, g, records)
-		if !ok {
-			if c.DurationCopyBase != nil {
-				c.revertDurationCopy()
-				g.layerVersion.Add(1)
-			}
-			continue
-		}
-		if c.DurationCopyBase == nil {
-			base := printedValuesOf(*c)
-			c.DurationCopyBase = &base
-			if c.PrintedSelf == nil {
-				own := base.Clone()
-				c.PrintedSelf = &own
-			}
-		}
-		// #4296: the copier's own token status, not the copied object's.
-		want = want.withTokenStatus(IsTokenPtr(c))
-		// ADR 0151: a flipped copier shows a copied flip card's
-		// flipped half, so compare against what the write would leave.
-		if reflect.DeepEqual(printedValuesOf(*c), want.withFlipStatus(c.Flipped)) {
-			continue
-		}
-		c.setPrintedValues(want)
-		c.clearCarriedAbilitySlices()
-		g.layerVersion.Add(1)
+		// #6233: a full-text overlay (full_text.go) sits ON TOP of the
+		// copies, so it comes off first and goes back on last.
+		prev := c.liftFullTextLocked()
+		g.materialiseDurationCopyOnLocked(c, records)
+		g.materialiseFullTextLocked(c, prev)
 	}
+}
+
+// materialiseDurationCopyOnLocked is materialiseDurationCopiesLocked
+// for one permanent, with no full-text overlay on it.
+//
+// Caller must hold g.mu (write).
+func (g *Game) materialiseDurationCopyOnLocked(c *Card, records []*ScopedEffect) {
+	if len(records) == 0 && c.DurationCopyBase == nil {
+		return
+	}
+	want, ok := durationCopyFor(c, g, records)
+	if !ok {
+		if c.DurationCopyBase != nil {
+			c.revertDurationCopy()
+			g.layerVersion.Add(1)
+		}
+		return
+	}
+	if c.DurationCopyBase == nil {
+		base := printedValuesOf(*c)
+		c.DurationCopyBase = &base
+		if c.PrintedSelf == nil {
+			own := base.Clone()
+			c.PrintedSelf = &own
+		}
+	}
+	// #4296: the copier's own token status, not the copied object's.
+	want = want.withTokenStatus(IsTokenPtr(c))
+	// ADR 0151: a flipped copier shows a copied flip card's
+	// flipped half, so compare against what the write would leave.
+	if reflect.DeepEqual(printedValuesOf(*c), want.withFlipStatus(c.Flipped)) {
+		return
+	}
+	c.setPrintedValues(want)
+	c.clearCarriedAbilitySlices()
+	g.layerVersion.Add(1)
 }
 
 // revertDurationCopy ends every duration copy on the permanent: the
@@ -353,6 +365,9 @@ func (c *Card) clearCarriedAbilitySlices() {
 func OwnPrintedValues(c Card) PrintedValues {
 	if c.PrintedSelf != nil {
 		return c.PrintedSelf.Clone()
+	}
+	if c.FullTextBase != nil {
+		return c.FullTextBase.Clone()
 	}
 	return printedValuesOf(c)
 }

@@ -1003,6 +1003,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if err != nil {
 		return
 	}
+	// #6205: with every sacrifice the board imposes (Drought) folded
+	// in, as CastSpell folds it; a cost the fold can't join is no cast.
+	addCost, foldOK := g.ImposedSacrificeCastCostForEffect(e.seat, card, addCost)
+	if !foldOK {
+		return
+	}
 	// #810: the one X rule. A spell whose whole effect is X (Fireball,
 	// Stroke of Genius) is not offered at X=0, where it would resolve
 	// for nothing; a spell with a fixed rider still is. #957 is the

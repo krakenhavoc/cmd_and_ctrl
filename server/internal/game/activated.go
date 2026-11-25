@@ -1803,6 +1803,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost, err = ChosenAbilityCost(ab.Cost, params.CostBranch); err != nil {
 		return err
 	}
+	// #6205, CR 602.2b / 601.2f: a sacrifice another permanent adds to
+	// this cost (Drought, Brutal Suppression) is folded into the row's
+	// own sacrifice clause once, so every validator and payer below
+	// reads one ordinary cost — the enumerator and the view fold it the
+	// same way.
+	var foldOK bool
+	if ab.Cost, foldOK = g.ImposedSacrificeAbilityCostForEffect(playerID, *source, ab.Cost); !foldOK {
+		return ErrImposedSacrificeUnfoldable
+	}
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
 	// Before anything is validated or paid, so a refusal costs nothing.
