@@ -169,6 +169,7 @@ body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
+body draw/two-cards-s82-old-b134
 body draw/viviens-stampede
 body dream-eater/bounce
 body eagles-are-coming/birds
@@ -1657,6 +1658,7 @@ choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-diviner-copy
 choose choose-cards/twilight-prophet-take
+choose choose-cards/tymaret-calls-the-dead-exile
 choose choose-cards/ulamogs-nullifier-picked
 choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
@@ -1796,6 +1798,7 @@ condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
+condition cast/the-named-spell-first-time-this-turn
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
 condition cast/you-next-cast-a-noncreature-spell
@@ -3841,6 +3844,7 @@ tail eivor-wolf-kissed/after-mill
 tail elemental-mastery/exile-the-elementals
 tail elemental-teachings/choose
 tail elkin-lair/may-play-exiled
+tail elspeth-conquers-death/counter-on-it
 tail elven-passage/behold-an-elf
 tail emergent-ultimatum/choose
 tail emergent-ultimatum/tucked
@@ -3943,6 +3947,7 @@ tail exile-then/old-b071-tibalt-add-rrr
 tail exile-then/old-b071-tibalt-grant
 tail exile-then/skywarp-skaab-draw
 tail exile-then/trystan-penitent-culler
+tail exile-then/tymaret-calls-the-dead-zombie
 tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast
 tail exile-until/record-event-return

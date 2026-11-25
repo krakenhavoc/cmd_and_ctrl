@@ -1342,6 +1342,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
+	// #5514: Elspeth Conquers Death's chapter II, the same increase for
+	// noncreature spells only (scoped_cost_tax.go).
+	ModNoncreatureSpellsCostMoreForOpponents: {reader: readerRule},
 	// #6093: Commander Liara Portyr's and Will Kenrith's timed reduction
 	// (scoped_cost_reduction.go).
 	ModSpellsCostLessForPlayer:       {reader: readerRule},
