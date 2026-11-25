@@ -136,6 +136,11 @@ type AnyPlayerPaysKeyed struct {
 	AcceptLabel, DeclineLabel, Question string
 	// Opponents narrows the offer to the controller's opponents.
 	Opponents bool
+	// Only narrows the offer to this one player: "target opponent may have
+	// <this> deal 4 damage to them" (Risk Factor, S82 older sets). Zero
+	// offers every player. It lives in the offer's order, so a restored
+	// table asks the same single player.
+	Only uuid.UUID
 	// HelpsController marks an offer whose payment is what the controller
 	// wants: Icy Prison's "sacrifice this unless any player pays {3}",
 	// where paying keeps their permanent. False is the rest of the family,
@@ -205,6 +210,15 @@ func (g *Game) QueueAnyPlayerPaysKeyedForEffect(p AnyPlayerPaysKeyed) error {
 		kept := order[:0]
 		for _, id := range order {
 			if id != p.Controller {
+				kept = append(kept, id)
+			}
+		}
+		order = kept
+	}
+	if p.Only != uuid.Nil {
+		kept := order[:0]
+		for _, id := range order {
+			if id == p.Only {
 				kept = append(kept, id)
 			}
 		}
