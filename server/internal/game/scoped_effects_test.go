@@ -421,6 +421,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6147: its "this turn" sibling over any permanents. Its cases
 		// are in scoped_permanents_enter_tapped_test.go.
 		ModPermanentsEnterTapped: true,
+		// #5521: Combine Guildmage's replacement. Its cases are in
+		// scoped_creatures_enter_with_counter_test.go.
+		ModCreaturesEnterWithPlusOneCounter: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
