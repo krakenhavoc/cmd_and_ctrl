@@ -34,10 +34,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
   - [Paying {S}: snow mana (#5986, CR 107.4h)](#paying-s-snow-mana-5986-cr-1074h)
+  - ["Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)](#players-cant-pay-life-or-sacrifice-nonland-permanents-to-cast-spells-or-activate-abilities-6167)
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
   - [Epic (#6141, CR 702.50)](#epic-6141-cr-70250)
+  - [Tribute (#6251, CR 702.104)](#tribute-6251-cr-702104)
   - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](#players-cant-play-lands-adr-0109-4-1895)
@@ -362,7 +364,10 @@ rewrite any old name it brought.
    anything is paid; legality is still judged for the controller, and the
    chosen opponent rides the item for the resolution re-check and a
    retarget. Read the pick at resolution with `ctx.ClauseTarget(slot)` like
-   any other clause. Not on a mode, and never divided or "up to"
+   any other clause. "… an opponent controls, and that opponent chooses
+   target …" (Mogg Assassin, #6171) is `OfTheFirstTargetsController(spec)`
+   on the later clause: the chooser is the controller of the first
+   clause's pick, named by the engine, never asked of the controller. Not on a mode, and never divided or "up to"
    (`effects.Register` refuses them). #2055, ADR 0019 amendment 2026-10-16.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
@@ -1154,10 +1159,22 @@ shows stays printed, a `{C}` still needs colourless mana (CR 106.1b),
 and a restricted mana still pays only what its restriction allows. A
 card that grants it for ONE spell ("you may spend mana as though it
 were mana of any color to cast that spell") is a cast permission's
-`AnyColor` instead. "Spend WHITE mana as though it were mana of any
-color" (Celestial Dawn) and a grant over one permanent's own abilities
-(Manascape Refractor) have no shape yet. See ADR 0066's 2026-10-02
+`AnyColor` instead. A grant over one permanent's own abilities
+(Manascape Refractor) has no shape yet. See ADR 0066's 2026-10-02
 amendment.
+
+Three narrower shapes (#6202), all read at the same payments:
+
+```go
+AnyColorSpend: YouMaySpendColorAsColor("W", "R"),                // Sunglasses of Urza: white pays {R}, never {U}
+AnyColorSpend: YouMaySpendColorAsAnyOthersOnlyColorless("W"),    // Celestial Dawn: other mana pays only generic and {C}
+GrantNextSpellPromise{From: "North Star", Promise: game.NextSpellPromise{
+    ManaCostAnyType: true, Text: "For one spell this turn, …"}}  // North Star
+```
+
+North Star's promise widens the spell's MANA COST only (additional
+costs are paid normally) and is spent by the first spell cast for its
+mana cost whose cost prints a coloured or `{C}` symbol.
 
 **Mana only some spells may use, and costs only some mana may pay
 (#1600).** Mana restricted to spells of exactly one colour, or of two or
@@ -1809,7 +1826,13 @@ owner may activate this ability" (Personal Incarnation) is
 `OwnerOnly: true`. Same predicate (`game.MayActivate`), same "you is the
 activator" reading, same registration limits as `AnyPlayer`; set at most
 one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
-activator is the granting spell's controller (Martyrdom) has no shape yet.
+activator is the granting spell's controller (Martyrdom) is `GrantorOnly`.
+"Only the player this creature is attacking may activate this ability"
+(Capricopian, #6170) is `DefendingPlayerOnly: true`: the activator is the
+seat in the source's `AttackingTarget`, so the row has none while the
+creature is not attacking a player. Pair it with a `Condition` for any
+step restriction (`effects.DuringStep(game.StepDeclareAttackers)`), and
+reselect a player with `game.ReselectAttackPrompt{PlayersOnly: true}`.
 
 **An any-player MANA ability (ADR 0106 §1 amendment 2026-10-16, #1864).**
 The same bit on a `ManaAbility` row, Mana Cache's:
@@ -2432,6 +2455,30 @@ A mana ability's cost (CR 605.1a), a ward cost, a pay-unless, a land's
 printed text names casts and non-mana activations only. A new life
 component of a cast or of a non-mana activation asks
 `CanPayLifeToCastOrActivateLocked`, never `CanPayLifeLocked`.
+
+### "Players can't pay life or sacrifice nonland permanents to cast spells or activate abilities" (#6167)
+
+Yasharn, Implacable Earth's static is the second-set world-rule bit
+`game.PlayersCantPayLifeOrSacrificeNonlandToCastOrActivate`, carried on
+the source itself (a layer-6 static that ORs it into
+`ExtraRestrictions`, `AppliesTo: SelfOnly`). It is wider than Karn's
+Sylex's bit in two ways, and the engine reads both:
+
+- the life half names every activated ability, mana abilities included:
+  `cantPayLifeToCastOrActivateLocked` reads it for casts and non-mana
+  activations, and `CanPayLifeForManaAbilityLocked` for a mana ability's
+  life (Mana Confluence, a Phyrexian symbol in a filter's cost). A new
+  life component of a mana ability's cost asks that predicate;
+- no nonland permanent can pay a sacrifice COST
+  (`game/sacrifice_cost_bar.go`). `sacrificeCostBarredLocked` is the
+  #3275 "can't be sacrificed" question widened by the rule, asked at the
+  cost sites only: `validateSacrificeCostLocked` (activations, mana
+  abilities and additional costs), `SacrificeCostCandidatesForEffect`,
+  the alternative-cost walk, the sacrifice-the-grantor and sacrifice-all
+  costs, the auto-tapper and the enumerator (`SacrificeCostBarredForEffect`).
+  A new sacrifice cost asks it, never `permanentCantBeSacrificedLocked`.
+  An effect's "sacrifice a creature" is no cost and is untouched, and a
+  land still pays (a fetch land works).
 
 ### Adding a replacement effect (S17+)
 
@@ -3712,6 +3759,28 @@ OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
 Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
 Ideal's.
 
+### Tribute (#6251, CR 702.104)
+
+`effects.Tribute(name, n)` is the whole keyword, two entry replacements
+on the creature itself: the controller's "choose an opponent" (the
+`entry_controller` seat prompt with `ControlForTribute`, so nobody is
+given the creature) and then that opponent's "may" (an
+`optional_replacement` whose chooser is the recorded
+`ReplacementEvent.TributeOpponent`), which adds the N +1/+1 counters to
+the entry and sets `Card.TributePaid`. "When this creature enters, if
+tribute wasn't paid, …" is `effects.WhenEntersIfTributeWasntPaid(label,
+effect)`, an intervening "if" read off the creature as it triggers and
+off its last-known information as it resolves (CR 603.4, 608.2h).
+
+```go
+Replacements: effects.Tribute("Ornitharch", 2),
+Triggered: []game.TriggeredAbility{
+    effects.WhenEntersIfTributeWasntPaid("Ornitharch — create two 1/1 white Bird tokens with flying", ...),
+},
+```
+
+Tests: [tribute_test.go](../server/internal/cards/effects/tests/to/tribute_test.go).
+
 ### Exchanging text boxes (ADR 0160)
 
 A text box here is the catalog KEY plus the importer's keywords, so
@@ -3899,7 +3968,11 @@ below) and the printed-colour rule `printedColorsOf` (devoid — see
 (`game/block_legality.go`, `game/landwalk.go`) against the defending
 player's lands, by effective characteristics on both sides; the rarer
 variants (snow swampwalk, legendary landwalk, desertwalk) join the
-table with their first card.
+table with their first card. "Creatures with swampwalk can be blocked as
+though they didn't have swampwalk" (Quagmire) is a block rule,
+`effects.BlockableAsThoughNoLandwalk("swampwalk")` in `Spec.BlockRules`;
+Staff of the Ages' every-landwalk waiver is
+`effects.BlockableAsThoughNoLandwalkAtAll()` (#6195).
 
 The five evasion keywords in #825 use that same pair function. Read colors,
 types and power from effective characteristics; shadow restricts both
@@ -6097,14 +6170,31 @@ turned over, `AbilityCost.TapOthers: UntapTapped(2, "two tapped creatures you co
 (#5669, `TapOthersCost.Untap`): only tapped permanents pay, the picks
 ride `tap_ids`, a fixed count on an activated ability only (`Register`
 refuses it anywhere else), and nothing is written to
-`PaidCost.TappedOthers`. The Martyr cycle's "Reveal X black cards from
+`PaidCost.TappedOthers`. Benthic Explorers' "{T}, Untap a tapped land an
+opponent controls: Add one mana of any type that land could produce" is
+that clause with the owner turned over,
+`UntapTappedAnOpponentControls(1, "a tapped land an opponent controls", Land())`
+(#6208, `TapOthersCost.OpponentControls`): the engine's own owner check
+decides it, so the filter need not carry "an opponent controls"; it is
+the one untap cost a MANA ability may print; and which permanent it
+untapped is on `PaidCost.UntappedOthers`, which `ProducedForPaid` reads
+through `ProducibleManaLocked` for "that land could produce" (CR 106.7).
+The Martyr cycle's "Reveal X black cards from
 your hand" is `RevealX("X black cards", "B")` (#2598, ADR 0020's
 2026-10-08 amendment): the same announced-X count, but the cards are
 only shown, never moved, so the picks ride `reveal_ids` and nothing is
 kept out of the auto-tapper. Pair it with `SacrificeThis()` and the mana
 as `Plus(ManaCost("{1}"), RevealX("X black cards", "B"), SacrificeThis())`,
 declare `XMatters: true`, and let a target count that follows the same X
-use `CountFromX` + `UpToX` on the clause (Martyr of Bones).
+use `CountFromX` + `UpToX` on the clause (Martyr of Bones). Illuminated
+Folio's "{1}, {T}, Reveal two cards from your hand that share a color" is
+the same component with a printed count and a rule over the SET,
+`RevealNSharingAColor(2, "two cards from your hand that share a color")`
+(#6208, `RevealCardsCost.SharesColor`): every card named must have a
+colour in common with every other one, a colourless card can never pay
+(CR 105.2c), the option walk already drops a card with no sharing
+partner, and the clause names no colour or type of its own (`Register`
+refuses one beside it).
 
 **X read off a card (#2190):** Kozilek, the Great Distortion's "Discard a
 card with mana value X: Counter target spell with mana value X" is
@@ -6653,6 +6743,22 @@ none is a legal payment. Read what it took with `ctx.Sacrificed()` and
 `ctx.SacrificedTotalPower()` as for any other sacrifice. Mandatory slot
 only: Register refuses it in an optional cost or an either/or branch.
 The heuristic bot declines these casts outright.
+
+An ACTIVATED ability's cost prints the same clause (#6208): Tomb of
+Urami's "{2}{B}{B}, {T}, Sacrifice all lands you control" is
+
+```go
+Cost: Plus(ManaCost("{2}{B}{B}"), TapCost(), SacrificeAllYouControl("lands you control", Land())),
+```
+
+the same walk and the same payment (`AbilityCost.SacrificeAll`), fixed
+by the engine before anything reads `sacrifice_ids`. The SOURCE goes with
+the rest when the clause matches it — Tomb of Urami is itself a land —
+and the auto-tapper may still tap a land for the {2}{B}{B} before it is
+sacrificed (CR 601.2g before CR 601.2h). Register refuses the flag with
+no sacrifice clause, on a clause with a count, a set rule or a
+difference rule, and beside `SacrificeThis()`; a mana ability has no
+such flag to carry.
 
 **The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
 payment record names each one (`PaidCost.SacrificedObjects`, written at

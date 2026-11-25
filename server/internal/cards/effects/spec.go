@@ -1161,6 +1161,12 @@ type Spec struct {
 	// it for its madness cost. Zero for every other madness card.
 	MadnessLife int
 
+	// LoyaltyCostAdd is "Planeswalkers' loyalty abilities you activate
+	// cost an additional [+N] to activate" (Carth the Lion, #6148): N
+	// loyalty combined into the printed loyalty cost of every loyalty
+	// ability its controller activates (CR 606.5).
+	LoyaltyCostAdd int
+
 	// CommanderTaxInLife is "Rather than pay {2} for each previous time
 	// you've cast this spell from the command zone this game, pay 2 life
 	// that many times" (Liesa, Shroud of Dusk, #6151): the commander tax
@@ -1911,6 +1917,13 @@ type Spec struct {
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
 
+	// RevealsChosenPlayersDraws declares "The chosen player reveals each
+	// card they draw" (Booby Trap, #6238): every card the permanent's
+	// chosen player draws is revealed to the table as it is drawn
+	// (game.CardDef.RevealsChosenPlayersDraws). The player is the one
+	// its "as this enters, choose an opponent" stored.
+	RevealsChosenPlayersDraws bool
+
 	// AttackOnlyNearestOpponentInChosenDirection declares "each player
 	// may attack only the nearest opponent in the chosen direction and
 	// planeswalkers controlled by that opponent" (Pramikon, Sky
@@ -2293,6 +2306,13 @@ type ActivatedAbility struct {
 	// Register refuses it outside a bundle and beside the other named
 	// activators. See game.ActivatedAbilityShape.GrantorOnly.
 	GrantorOnly bool
+	// DefendingPlayerOnly is "Only the player this creature is attacking
+	// may activate this ability" (Capricopian, #6170): the only activator
+	// is the player the source is attacking right now. Register refuses it
+	// beside the other named activators, with the components and zones
+	// AnyPlayer refuses, and with a Purpose. See
+	// game.ActivatedAbilityShape.DefendingPlayerOnly.
+	DefendingPlayerOnly bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does
