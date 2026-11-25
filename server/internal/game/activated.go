@@ -1710,6 +1710,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return ErrInvalidParam
 	}
 	ab := abilities[index]
+	// #6148, CR 606.5: a loyalty cost modified by the board ("cost an
+	// additional [+1]", Carth the Lion) is one combined cost, and every
+	// check and payment below reads that one.
+	ab.Cost = g.LoyaltyAdjustedCostForEffect(playerID, ab.Cost)
 	// #4475, CR 118.9: the twin pays the alternative instead of the
 	// whole printed cost; everything else about the row is the row's.
 	if twin {
