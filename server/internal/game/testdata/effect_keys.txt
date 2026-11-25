@@ -4915,6 +4915,7 @@ tail stitcher-geralf/exiled
 tail stockpiling-celebrant/scry
 tail stonehewer-giant/attach-found-equipment
 tail storm-herald/entered
+tail stormchaser-chimera/reveal-then-pump
 tail strago-and-relm/after-mill
 tail strefan-maurer-progenitor/indestructible
 tail study-the-classics/double

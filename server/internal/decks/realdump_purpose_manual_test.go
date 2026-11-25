@@ -335,6 +335,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 240 (#5534).
 	"Crook of Condemnation": "its second ability exiles the cards in every graveyard: it touches no permanent",
+
+	// S82 OLD batch 273 (#5540).
+	"Public Execution": "destroys one target creature; the -2/-0 on the player's other creatures is a combat trick that destroys nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
