@@ -813,6 +813,7 @@ choose choose-cards/change-of-plans-phase-out
 choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
 choose choose-cards/charnel-serenade-return
+choose choose-cards/charnel-troll-exile
 choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/chrome-courier-take
@@ -3708,6 +3709,7 @@ tail chaotic-transformation/exiled
 tail chaotic-transformation/put-then-shuffle
 tail charming-prince/after-exile
 tail charnel-serenade/then
+tail charnel-troll/after-exile
 tail chiss-goria-forge-tyrant/grant-cast
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
@@ -4009,6 +4011,7 @@ tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
 tail etali-primal-conqueror/after-mill
+tail etrata-the-silencer/after-exile
 tail evelyn-the-covetous/collect
 tail evelyn-the-covetous/exile-step
 tail ever-after/black-zombies-then-library
