@@ -640,6 +640,7 @@ body winter-tormented-loner/edict
 body wishing-well/free-cast
 body wolf-in-blank-clothing/shrink
 body xira-the-golden-sting/draw-and-insect
+body yannik-scavenging-sentinel/distribute
 body yathan-roadwatcher/return
 body yes-man/draw-two-and-quest-counter
 body yotia-declares-war/damage
@@ -3359,6 +3360,7 @@ run prompt-run/winnowing-sacrifice-unshared
 run prompt-run/winter-tormented-loner-sacrifice
 run prompt-run/witch-king-of-angmar-ring
 run prompt-run/witherbloom-charm-sacrifice-draw
+run prompt-run/yannik-scavenging-sentinel-chosen
 run prompt-run/yuma-proud-protector-sacrifice
 run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
@@ -4333,6 +4335,8 @@ tail oversimplify/counters-put
 tail oversimplify/fractal-made
 tail ovika-enigma-goliath/goblins-haste
 tail oviya-automech-artisan/two-counters-on-an-artifact
+tail pako-arcane-retriever/collect
+tail pako-arcane-retriever/exile-step
 tail paladin-elizabeth-taggerdy/entered
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
@@ -5222,6 +5226,7 @@ tail wishclaw-talisman/hand-it-over
 tail wondrous-crucible/copy-and-cast
 tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
+tail yannik-scavenging-sentinel/exiled
 tail yavimaya-bloomsage/prepare
 tail yawgmoths-vile-offering/destroy-then-exile-this
 tail yenna-redtooth-regent/after-copy
