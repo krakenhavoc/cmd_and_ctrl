@@ -1,8 +1,6 @@
 package cardsb
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -21,15 +19,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetPermanent("target nonland permanent", effects.Nonland()),
 		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetCard || !effects.OnBattlefield(ctx.Game, t.ID) {
-						continue
-					}
-					return effects.BounceToHand{Target: t.ID}.Apply(ctx)
-				}
-				return nil
-			}),
+			effects.Instruction(effects.OldB145BounceTheTargetPermanent),
 			effects.Instruction(func(ctx *effects.Context) error {
 				return effects.Surveil{Player: ctx.Controller(), N: 1}.Apply(ctx)
 			}),
