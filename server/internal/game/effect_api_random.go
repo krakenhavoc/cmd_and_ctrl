@@ -157,6 +157,17 @@ func (g *Game) ChooseAtRandomForEffect(d RandomDraw, ids []uuid.UUID, k int) []u
 	return g.pickAtRandomLocked(rngStream{kind: rngStreamPick, player: d.Player, source: d.Source}, unique, k)
 }
 
+// ChooseIndexAtRandomForEffect is "chooses one of their piles at random"
+// (Whims of the Fates, #6248): an index in [0, n), drawn from the same
+// keyed, persisted pick stream ChooseAtRandomForEffect uses, so an undo
+// rewinds it. -1 when n <= 0. Caller must hold g.mu.
+func (g *Game) ChooseIndexAtRandomForEffect(d RandomDraw, n int) int {
+	if n <= 0 {
+		return -1
+	}
+	return g.randForLocked(rngStream{kind: rngStreamPick, player: d.Player, source: d.Source}).IntN(n)
+}
+
 // CoinFlipSpec describes a call-and-win/loss flip. Wins is carried through a
 // chain for the client and bot stop hint; ThenKey may queue the next link.
 type CoinFlipSpec struct {

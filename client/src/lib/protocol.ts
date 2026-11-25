@@ -2301,6 +2301,12 @@ export interface PendingChoiceView {
   // answers are {apply: true} (begin the search, then the Agent's controller
   // picks) and {apply: false} (don't search).
   search_undecided?: boolean;
+  // #6216: the cards in the searcher's library they may cast right now
+  // because they are searching it ("While you're searching your library,
+  // you may cast this card from your library", Panglacial Wurm). Each is
+  // cast with a cast_spell naming this prompt as `search_cast`; the search
+  // then goes on. Chooser-only.
+  search_castable?: CardView[];
   // #3217: on a "search your library and/or graveyard" prompt, the
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
@@ -2644,6 +2650,14 @@ export interface DamageAssignmentView {
   // player a blocker's among their attackers. No trample, and
   // covers_lethal is never set, so the split is never sent unasked.
   banding?: boolean;
+  // #6192: the permanent whose static, rather than banding, hands this
+  // division to the defending player (Defensive Formation). Display only.
+  defender_assigns_by?: string;
+  // #6192: an unblocked attacker that may assign its combat damage to a
+  // creature the defending player controls (Cunning Giant):
+  // blocker_card_ids are those creatures, and the answer is all of
+  // attacker_power on exactly one of them, or all of it to the player.
+  one_creature?: boolean;
   // #2956 (ADR 0147): the server's canonical split
   // (legal.CanonicalDamageSplit), the one the bots answer with. The
   // prompt pre-fills it, and with "Auto-assign combat damage" on the
@@ -2891,6 +2905,19 @@ export interface IgnorableEffectView {
   source_name: string;
   label: string;
   sacrifice_ids: string[];
+}
+
+// PayToCancelView is a "… unless they pay {N} before that step" payment
+// waiting on the seat (#6220; Nafs Asp, Sabertooth Cobra): a button on the
+// seat's own panel that sends `special_action { kind: "pay_to_cancel",
+// card_id: id, strict: true, auto_tap: true }` while the seat has priority.
+// `label` is what happens if it isn't paid, `at` the step it happens at.
+export interface PayToCancelView {
+  id: string;
+  cost: string;
+  label: string;
+  source_name?: string;
+  at: string;
 }
 
 // PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
@@ -3209,6 +3236,11 @@ export interface PlayerView {
   // which permanent to give up, then sends `special_action
   // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
   ignorable_effects?: IgnorableEffectView[];
+  // #6220: the "… unless they pay {N} before that step" payments waiting on
+  // this seat. Its own frame only. Each row is a button that sends
+  // `special_action { kind: "pay_to_cancel", card_id: id, strict: true,
+  // auto_tap: true }`; live while the seat's legal_moves carry that move.
+  pay_to_cancel?: PayToCancelView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.
@@ -5468,7 +5500,8 @@ export interface CardView extends CastSurfaceView {
   // (#1573 — the holder of the cast permission over it may look:
   // Gonti, Night Minister; Outrageous Robbery), or one of the
   // CR 708.2 permanent states
-  // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
+  // "manifested" / "morphed" / "disguised" / "cloaked" / "turned" /
+  // "masked" (#6219, Illusionary Mask). PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
   // non-knower redaction and labels the card back.
   face_down_kind?: string;

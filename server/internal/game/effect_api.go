@@ -2903,7 +2903,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		spec.Limit = len(matches)
 	}
 	if !spec.asksZones() && spec.floorZones(libMatches, len(gyMatches)+len(handMatches)) == len(matches) &&
-		len(matches) <= spec.Limit && spec.setAllows(matched) {
+		len(matches) <= spec.Limit && spec.setAllows(matched) &&
+		// #6216: a library holding a card its owner may cast while
+		// searching it is always asked, so the search is open for the
+		// cast (search_cast.go).
+		!(spec.libraryOwnerID() == spec.Player && g.libraryHoldsSearchCastLocked(spec.Player, p)) {
 		// No decision to make — the rules force the searcher to take
 		// every match (CR 701.23d: an unconditional "a card" against a
 		// library of exactly that many). A search for a stated quality
@@ -3034,6 +3038,15 @@ func (g *Game) markSearchCandidatesKnownLocked(searcher uuid.UUID, p *Player, ma
 	known := make(map[uuid.UUID]bool, len(matches))
 	for _, id := range matches {
 		known[id] = true
+	}
+	// #6216: and the cards of their own library they may cast while
+	// searching it (Panglacial Wurm), which the prompt offers too.
+	if p.ID == searcher {
+		for _, c := range g.searchableLibraryCards(searcher, p.Library.Cards) {
+			if castsWhileSearchingLibrary(c) {
+				known[c.InstanceID] = true
+			}
+		}
 	}
 	for i := range p.Library.Cards {
 		if known[p.Library.Cards[i].InstanceID] {

@@ -2698,6 +2698,13 @@ func (g *Game) EmitEvent(ev Event) {
 	if ev.Kind == EventTokenCreated {
 		g.noteCreatedSourceLocked(ev.CardID)
 	}
+	// #6219: Illusionary Mask's "would become tapped — instead it's
+	// turned face up and becomes tapped" (illusionary_mask.go). Every
+	// tap but an attack's emits this event, so it is the one place to
+	// turn a masked permanent up before anything sees it tapped.
+	if ev.Kind == EventTapCard && unmaskOnTap != nil {
+		unmaskOnTap(g, ev.CardID)
+	}
 	g.eventSeq++
 	ev.Seq = g.eventSeq
 	// #829: every event carries the batch that was open when it was
