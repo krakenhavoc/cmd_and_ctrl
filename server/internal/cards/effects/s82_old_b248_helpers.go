@@ -10,16 +10,6 @@ import (
 
 // s82_old_b248_helpers.go — shared pieces of Amonkhet batch 248 (#5535).
 
-// OldB248YouHaveAtMostCardsInHand is "you have N or fewer cards in hand" for
-// `you`, read live from the hand's size (Neheb, the Worthy; Hazoret the
-// Fervent).
-func OldB248YouHaveAtMostCardsInHand(n int) func(g *game.Game, you uuid.UUID) bool {
-	return func(g *game.Game, you uuid.UUID) bool {
-		p := g.PlayerByIDForEffect(you)
-		return p != nil && p.Hand != nil && p.Hand.Size() <= n
-	}
-}
-
 // CantAttackUnlessYouHaveAtMostCardsInHand is "This creature can't attack
 // unless you have N or fewer cards in hand" (Hazoret the Fervent): the attack
 // half of the sentence, a fact about the attacking creature's controller read

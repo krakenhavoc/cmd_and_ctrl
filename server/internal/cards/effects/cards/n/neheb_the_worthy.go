@@ -42,7 +42,7 @@ func init() {
 				Layer:             game.Layer7PT,
 				SubLayer:          game.SubLayer7C_Modify,
 				DependsOnHandSize: true,
-				AppliesTo:         effects.WhileYouHave(effects.OldB248YouHaveAtMostCardsInHand(1), minotaur),
+				AppliesTo:         effects.WhileYouHave(effects.YouHaveAtMostCardsInHand(1), minotaur),
 				Apply:             effects.PumpBy(2, 0),
 			},
 		},

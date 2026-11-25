@@ -31,7 +31,7 @@ func init() {
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,
 			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
-				return effects.OldB248YouHaveAtMostCardsInHand(1)(g, controller)
+				return effects.YouHaveAtMostCardsInHand(1)(g, controller)
 			},
 			Effect: effects.ReturnThisFromGraveyardToBattlefield,
 		}},

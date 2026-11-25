@@ -46,8 +46,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{1}{B}, {T}: Attacking creatures get -1/-1 until end of turn.",
-				Cost:  effects.Plus(effects.ManaCost("{1}{B}"), effects.TapCost()),
+				Label:   "{1}{B}, {T}: Attacking creatures get -1/-1 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerRemove},
+				Cost:    effects.Plus(effects.ManaCost("{1}{B}"), effects.TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return effects.BoostUntilEOT{Match: effects.AttackingCreature(), Power: -1, Toughness: -1,
 						Label: "Shipwreck Singer — attacking creatures get -1/-1"}.Apply(effects.NewContext(g, item))

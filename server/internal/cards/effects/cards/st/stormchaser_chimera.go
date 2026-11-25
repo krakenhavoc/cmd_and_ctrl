@@ -30,7 +30,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{U}{R}: Scry 1, then reveal the top card of your library. This creature gets +X/+0 until end of turn, where X is that card's mana value.",
-			Purpose: game.Purpose{Scry: 1},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Scry: 1},
 			Cost:    effects.ManaCost("{2}{U}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := effects.NewContext(g, item)

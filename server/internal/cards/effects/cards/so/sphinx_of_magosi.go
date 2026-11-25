@@ -24,7 +24,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{U}: Draw a card, then put a +1/+1 counter on this creature.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Draws: 1},
 			Cost:    effects.ManaCost("{2}{U}"),
 			Effect:  effects.Do(effects.DrawCards{N: 1}, effects.CounterOnThis{Kind: game.CounterPlusOne, N: 1}),
 		}},

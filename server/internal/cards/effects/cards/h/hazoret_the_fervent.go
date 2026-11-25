@@ -26,7 +26,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"indestructible", "haste"},
 		Static:          []game.StaticAbility{effects.CantAttackUnlessYouHaveAtMostCardsInHand(1)},
-		BlockRules: []game.BlockRule{effects.CantBlockUnless(effects.OldB248YouHaveAtMostCardsInHand(1),
+		BlockRules: []game.BlockRule{effects.CantBlockUnless(effects.YouHaveAtMostCardsInHand(1),
 			"it can't block unless its controller has one or fewer cards in hand")},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{R}, Discard a card: Hazoret deals 2 damage to each opponent.",
