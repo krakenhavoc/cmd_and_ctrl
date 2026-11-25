@@ -49,6 +49,16 @@ func AttackTaxMod(defender uuid.UUID, mana string) Mod {
 	return Mod{Kind: ModAttackTax, Player: defender, Text: mana}
 }
 
+// AttackTaxPlaneswalkersMod is AttackTaxMod widened to "you or planeswalkers
+// you control" (Forbidding Spirit, S82 OLD batch 181): the same ModAttackTax
+// record with Types ["planeswalker"], read as attackTaxLifeScope reads it. No
+// new field, so no snapshot key.
+func AttackTaxPlaneswalkersMod(defender uuid.UUID, mana string) Mod {
+	m := AttackTaxMod(defender, mana)
+	m.Types = []string{"planeswalker"}
+	return m
+}
+
 // ModAttackTaxLife is "creatures can't attack <Player> unless their
 // controller pays <Amount> life for each of those creatures", for the
 // record's duration (#5869, Sivitri, Dragon Master). Reads Player (the
@@ -97,6 +107,9 @@ func attackTaxModProblem(m Mod) string {
 	if m.Kind != ModAttackTax {
 		return ""
 	}
+	if len(m.Types) > 1 || (len(m.Types) == 1 && m.Types[0] != "planeswalker") {
+		return fmt.Sprintf("an attackTax mod's types %q name something other than planeswalker", m.Types)
+	}
 	if m.Text == "" {
 		return "an attackTax mod names no mana cost"
 	}
@@ -121,6 +134,23 @@ func (g *Game) AttackTaxForEffect(sourceID, defender uuid.UUID, mana string, d D
 	}
 	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
 		[]Mod{AttackTaxMod(defender, mana)}, d, label)
+}
+
+// AttackTaxPlaneswalkersForEffect registers "creatures can't attack `defender`
+// or planeswalkers they control unless their controller pays `mana` for each of
+// those creatures" until `d` runs out (default: end of turn). Reports whether a
+// record was written.
+//
+// Caller must hold g.mu (write).
+func (g *Game) AttackTaxPlaneswalkersForEffect(sourceID, defender uuid.UUID, mana string, d Duration, label string) bool {
+	if g.playerByIDLocked(defender) == nil {
+		return false
+	}
+	if d.IsZero() {
+		d = g.UntilEndOfTurnDuration()
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{AttackTaxPlaneswalkersMod(defender, mana)}, d, label)
 }
 
 // AnyAttackTaxForEffect registers "creatures can't attack unless their
@@ -191,9 +221,10 @@ func (g *Game) durationAttackTaxLines(defender uuid.UUID, kind AttackTargetKind,
 			if m.Kind != ModAttackTax || m.Text == "" {
 				continue
 			}
-			// A named player is defended as a player only; the zero
-			// Player taxes every attack.
-			if m.Player != uuid.Nil && (m.Player != defender || !AttackTaxOnPlayer.covers(kind)) {
+			// A named player is defended as a player only, or as a player
+			// and their planeswalkers when the mod says so; the zero Player
+			// taxes every attack.
+			if m.Player != uuid.Nil && (m.Player != defender || !attackTaxLifeScope(m).covers(kind)) {
 				continue
 			}
 			if g.durationExpiredLocked(e.Duration, false) {
