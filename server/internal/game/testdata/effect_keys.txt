@@ -2719,6 +2719,7 @@ option option-pick/stadium-vendors-player
 option option-pick/stardew-valley-player
 option option-pick/starseer-mentor-punisher
 option option-pick/std-b26-reluctant-role-model-counter
+option option-pick/steam-augury-chooser
 option option-pick/steel-seraph-keyword
 option option-pick/step-between-worlds-shuffle
 option option-pick/strefan-maurer-progenitor-attacks
@@ -5023,6 +5024,7 @@ tail tail/s82-old-b110-idol-of-endurance-hold
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
+tail tail/steam-augury-rest
 tail tail/tayam-after-mill
 tail tail/the-moment-then-sacrifice
 tail tail/time-reaper-gain-life
@@ -5415,6 +5417,7 @@ tail then/starseer-mentor-punisher-sacrificed
 tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
+tail then/steam-augury-take
 tail then/string-of-disappearances-offer-payment
 tail then/stronghold-arena-lose-life
 tail then/sungold-sentinel-color-chosen

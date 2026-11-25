@@ -144,6 +144,7 @@ var pgReviewed = map[string]string{
 	"f25af42d-f1bf-4bd3-aded-ecadafdbf6e6": "Do or Die — PileSplit",
 	"2274c7ae-5a40-4fd4-a4ac-6f56b23034e4": "Jace, Architect of Thought — PileSplit",
 	"eedb1527-548a-435a-a3e1-8ad7d9d6d8a9": "Intrude on the Mind — PileSplit",
+	"0aa556a6-66aa-42f1-ba41-0001e10c20a4": "Steam Augury — PileSplit",
 	"591edddc-3736-44cf-9719-117c24ff3980": "Make an Example — PileSplit",
 	"7ee394a2-84de-42e8-834e-6c1030be0aef": "Sphinx of Clear Skies — PileSplit",
 	"48ad5bd6-9568-4813-be29-99aef8b9327a": "Split the Spoils — PileSplit",
