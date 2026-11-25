@@ -295,7 +295,7 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 // The empty zone is a kind the engine does not carry out.
 func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
-	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot:
+	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot, SpecialActionDiscard:
 		return ZoneHand
 	case SpecialActionTurnFaceUp, SpecialActionUnlock:
 		return ZoneBattlefield
@@ -496,6 +496,13 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// game" is not a window: the card has left Player.Companion,
 		// so there is nothing left to offer (companion.go).
 		return g.SorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionDiscard:
+		// CR 116.2e: "any time you could cast an instant" (Circling
+		// Vultures) — with priority, on any turn, with anything on the
+		// stack, but not under split second, where no instant can be
+		// cast (CR 702.61a). See discard_special_action.go.
+		return !g.SplitSecondActive && g.holdsPriorityLocked(playerID)
 	}
 	return false
 }
@@ -703,6 +710,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).companionLocked
 	case SpecialActionRevealAgenda:
 		return (*Game).revealAgendaLocked
+	case SpecialActionDiscard:
+		return (*Game).discardSpecialActionLocked
 	}
 	return nil
 }

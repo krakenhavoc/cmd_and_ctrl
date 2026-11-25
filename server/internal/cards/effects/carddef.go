@@ -343,6 +343,10 @@ func BuildDef(spec Spec) *game.CardDef {
 		// Oath of Teferi (#4184), set apart so the block above keeps its
 		// alignment.
 		YourPlaneswalkersLoyaltyTwiceEachTurn: spec.YourPlaneswalkersLoyaltyTwiceEachTurn,
+
+		// #6192: who assigns combat damage, and where.
+		YouAssignAttackersDamage:    spec.YouAssignAttackersDamage,
+		UnblockedAssignsToACreature: spec.UnblockedAssignsToACreature,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense

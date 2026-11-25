@@ -1652,6 +1652,18 @@ type DamageAssignmentFrame struct {
 	// false. Zero in every other prompt, and in a frame restored from
 	// before the field, which is what those were.
 	Banding bool `json:",omitempty"`
+	// DefenderAssignsBy names the permanent whose static hands this
+	// attacker's division to the defending player (Defensive Formation,
+	// #6192): set beside Banding, which the rules of the division follow
+	// (CR 702.22j's wording, printed on the card). Display only.
+	DefenderAssignsBy string `json:",omitempty"`
+	// OneCreature marks an UNBLOCKED attacker that "may assign its combat
+	// damage to a creature defending player controls" (Cunning Giant,
+	// #6192): BlockerIDs are those creatures, AsThoughUnblocked is set,
+	// and the answer is all of AttackerPower to exactly one of them, or
+	// all of it to what the attacker attacks (trample_to_player). Zero in
+	// every other prompt, and in a frame restored from before the field.
+	OneCreature bool `json:",omitempty"`
 	// HasDeathtouch is true when the attacker has deathtouch (CR
 	// 702.2c — 1 damage is lethal). The server uses this to relax
 	// trample's lethal-to-every-blocker rule (CR 702.19b): 1 damage
@@ -3751,6 +3763,19 @@ func (g *Game) ResolveDamageAssignment(
 	declined := frame.AsThoughUnblocked && len(frame.BlockerIDs) == 0 && total == 0
 	if total != frame.AttackerPower && !declined {
 		return ErrInvalidParam
+	}
+	// #6192 (Cunning Giant): all of it to ONE of the creatures, or all of
+	// it to what it attacks; never divided.
+	if frame.OneCreature && !asUnblocked {
+		hit := 0
+		for _, e := range ordered {
+			if e.Amount > 0 {
+				hit++
+			}
+		}
+		if hit != 1 || trampleToPlayer != 0 {
+			return ErrInvalidParam
+		}
 	}
 	// CR 510.1c: a blocked creature's damage is "divided as its
 	// controller chooses among" its blockers. There is no damage

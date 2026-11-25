@@ -679,6 +679,16 @@ type CostModifier struct {
 	// than setting it by hand.
 	Eminence bool
 
+	// OnStack declares that this modifier functions while its card is a
+	// spell on the stack, and only then (CR 113.6b, #6222): Kaervek's
+	// Torch's "As long as Kaervek's Torch is on the stack, spells that
+	// target it cost {2} more to cast." It is gathered from every spell
+	// on the stack except the one being priced, bound to that spell with
+	// its controller as "you" (CR 108.4), and never from the battlefield,
+	// a command zone, an emblem or a plane. Use the effects.WhileOnTheStack
+	// constructor rather than setting it by hand.
+	OnStack bool
+
 	// KeepsOneMana is a per-reduction floor (S79, #302): "This effect
 	// can't reduce the mana in that cost to less than one mana"
 	// (Training Grounds, Power Artifact). A CostReduction of generic
@@ -887,7 +897,7 @@ func (g *Game) appendEminenceCostModifiersLocked(out []boundCostModifier, q Cost
 			src := p.Command.Cards[i]
 			src.Controller = p.ID
 			for _, m := range mods {
-				if !m.Eminence || !m.pricesAnnouncement(q) {
+				if !m.Eminence || m.OnStack || !m.pricesAnnouncement(q) {
 					continue
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
@@ -938,13 +948,16 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 			}
 			src := g.Battlefield.Cards[i]
 			for _, m := range mods {
-				if !m.pricesAnnouncement(q) {
+				if m.OnStack || !m.pricesAnnouncement(q) {
 					continue
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}
 		}
 	}
+	// #6222, CR 113.6b: a spell's "as long as this is on the stack"
+	// modifier, from every other spell on the stack.
+	out = g.appendStackCostModifiersLocked(out, q)
 	// ADR 0140: eminence. A cost modifier that declares Eminence also
 	// works while its card is in its owner's command zone (The Ur-Sphinx:
 	// "As long as this is in the command zone or on the battlefield,

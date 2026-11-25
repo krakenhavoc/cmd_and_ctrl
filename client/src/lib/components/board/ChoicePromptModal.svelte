@@ -65,6 +65,7 @@
     toAnswer,
     trampleShort,
     unblockedMixed,
+    oneCreatureSplit,
     assignAllToPlayer,
     type DamageShares,
   } from "../../damageAssignment";
@@ -3039,7 +3040,17 @@
         {/if}
       {/if}
     {:else if isDamageAssignment && damageFrame}
-      {#if damageFrame.banding}
+      {#if damageFrame.banding && damageFrame.defender_assigns_by}
+        <!-- #6192: Defensive Formation hands the division of a creature
+               attacking you to you, as banding would. -->
+        <p class="prompt-hint">
+          <span class="band-tag">{damageFrame.defender_assigns_by}</span>
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is blocked by {damageFrame.blocker_card_ids.length} of your creatures, and you assign its damage:
+          divide its {damageFrame.attacker_power} damage among them however you like. None of it tramples
+          over.
+        </p>
+      {:else if damageFrame.banding}
         <!-- ADR 0224, CR 702.22j-k: banding hands the division to the
                other side, so the creatures taking the damage are yours. -->
         <p class="prompt-hint">
@@ -3062,6 +3073,14 @@
           <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
           is blocking {damageFrame.blocker_card_ids.length} creatures. Divide its
           {damageFrame.attacker_power} damage among them however you like.
+        </p>
+      {:else if damageFrame.one_creature}
+        <!-- #6192, Cunning Giant: unblocked, it may assign all of its
+               damage to one creature the defending player controls. -->
+        <p class="prompt-hint">
+          <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
+          is unblocked. Assign all of its {damageFrame.attacker_power} damage to one creature the defending
+          player controls, or all of it to the defending player as usual.
         </p>
       {:else if damageFrame.as_though_unblocked}
         <!-- CR 510.1c, Wolverine, Claws Out: divide the damage among the
@@ -3136,7 +3155,9 @@
             <span class="assign-name"
               >Defending player ({damageFrame.allow_trample
                 ? "trample"
-                : "as though unblocked"})</span
+                : damageFrame.one_creature
+                  ? "as usual"
+                  : "as though unblocked"})</span
             >
             <span class="assign-step">
               <button
@@ -3167,7 +3188,11 @@
           </li>
         {/if}
       </ul>
-      {#if unblockedMixed(damageFrame, damageShares)}
+      {#if oneCreatureSplit(damageFrame, damageShares)}
+        <p class="prompt-hint sub warn">
+          All of the damage goes to one creature, or all of it to the defending player.
+        </p>
+      {:else if unblockedMixed(damageFrame, damageShares)}
         <p class="prompt-hint sub warn">
           Either divide the damage among the blockers or assign all of it to the defending player,
           not both.
