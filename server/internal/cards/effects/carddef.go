@@ -257,6 +257,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		CounterRemovalLocks:                 spec.CounterRemovalLocks,
 		UntapCaps:                           spec.UntapCaps,
 		UntapOptOuts:                        spec.UntapOptOuts,
+		TurnSkipOffers:                      spec.TurnSkipOffers,
 		DrawStep:                            spec.DrawStep,
 		CantBeCountered:                     spec.CantBeCountered,
 		CantBeCopied:                        spec.CantBeCopied,

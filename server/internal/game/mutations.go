@@ -2945,6 +2945,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if src.Kind == ZoneExile {
 		g.endCardCastDurationsLocked(card)
 	}
+	// #6229: "until a player casts a creature spell" ends with any
+	// creature spell's cast (Soul Sculptor).
+	if spell, ok := g.stackCardLocked(cardID); ok && spell.IsCreature() {
+		g.endCreatureSpellCastDurationsLocked()
+	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 	}

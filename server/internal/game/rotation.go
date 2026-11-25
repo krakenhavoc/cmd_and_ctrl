@@ -1,6 +1,10 @@
 package game
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"github.com/google/uuid"
+)
 
 // rotation.go is the single turn-rotation seam (ADR 0059 Decision 6,
 // #766). Every way a turn can end goes through it:
@@ -233,12 +237,30 @@ func (g *Game) closeTurnLocked() {
 //
 // Caller must hold g.mu.
 func (g *Game) chooseNextTurnLocked() (paused bool) {
+	return g.chooseNextTurnExceptLocked(nil)
+}
+
+// chooseNextTurnExceptLocked is chooseNextTurnLocked with the Time Vault
+// offers already declined for the candidate turn (#6226,
+// turn_skip_offer.go): those sources are not asked again.
+//
+// Caller must hold g.mu.
+func (g *Game) chooseNextTurnExceptLocked(declined []uuid.UUID) (paused bool) {
 	n := len(g.Seats)
 	if n == 0 {
 		return false
 	}
 	et, ok, paused := g.popExtraTurnLocked()
 	if paused {
+		return true
+	}
+	if ok && g.offerTurnSkipLocked(et.Seat, declined) {
+		// #6226: the extra turn waits on the offer, back on top of the
+		// queue for the resume to pop again (pauseForTurnSkipOrderLocked's
+		// fresh-slice rule).
+		queue := make([]ExtraTurn, len(g.ExtraTurns), len(g.ExtraTurns)+1)
+		copy(queue, g.ExtraTurns)
+		g.ExtraTurns = append(queue, et)
 		return true
 	}
 	if ok {
@@ -270,6 +292,7 @@ func (g *Game) chooseNextTurnLocked() (paused bool) {
 	// a charge or drops a departed seat, so the walk is finite; the
 	// guard turns a bug into a logged fault instead of a hang.
 	guard := n + g.totalTurnSkipsLocked() + len(g.ExtraTurns) + 1
+	prev, walked := from, false
 	for i := 0; next.ActiveSeat >= 0 && next.ActiveSeat < n; i++ {
 		seat := next.ActiveSeat
 		if g.Seats[seat].Eliminated {
@@ -297,7 +320,20 @@ func (g *Game) chooseNextTurnLocked() (paused bool) {
 		// Wrap again from this seat's (never-taken) cleanup.
 		skipped := next
 		skipped.Step = StepCleanup
+		prev, walked = skipped, true
 		next = skipped.advance(n, g.StartingSeat)
+	}
+	// #6226: "If you would begin your turn …, you may skip that turn
+	// instead" (Time Vault) asks before the turn begins. The cursor is
+	// left on the walk's last passed seat, so the resume lands on this
+	// same candidate without passing (and counting) those seats twice.
+	if next.ActiveSeat >= 0 && next.ActiveSeat < n && g.offerTurnSkipLocked(next.ActiveSeat, declined) {
+		if walked {
+			prev.Seq = g.Turn.Seq
+			prev.PriorityHolder = NoPriority
+			g.Turn = prev
+		}
+		return true
 	}
 	// Seats skipped under CR 800.4k never take a turn. advance is also
 	// the fixed-sequence cursor helper, so it tentatively increments Seq
@@ -338,6 +374,9 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// #6144: the same for "skip your next untap/draw step"
 	// (skip_next_step.go).
 	g.sweepLeftPlayersNextStepSkipsLocked()
+	// #6226: "skips each <step or phase> this turn" ends with its turn
+	// (skip_this_turn.go).
+	g.sweepSkipThisTurnLocked()
 	// #4973: an extra turn that really begins (CR 500.7) — the one
 	// count "haven't begun an extra turn this game" reads.
 	if s := g.Turn.ActiveSeat; g.Turn.Extra && s >= 0 && s < len(g.Seats) && g.Seats[s] != nil {

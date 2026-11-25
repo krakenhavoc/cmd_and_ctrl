@@ -2044,6 +2044,10 @@ type Spec struct {
 	// Such a permanent joins the same prompt the caps raise, exempt
 	// from the rule that untapping is otherwise mandatory.
 	UntapOptOuts []game.UntapOptOut
+	// TurnSkipOffers declares "If you would begin your turn while this
+	// artifact is tapped, you may skip that turn instead. If you do,
+	// untap this artifact" (Time Vault, #6226; game.TurnSkipOffer).
+	TurnSkipOffers []game.TurnSkipOffer
 
 	// DrawStep declares the printed clause "you draw a card during
 	// each opponent's draw step" — Teferi, Who Slows the Sunset's

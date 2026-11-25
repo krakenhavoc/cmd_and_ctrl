@@ -2073,7 +2073,10 @@ func (g *Game) advanceCursorLocked() {
 	// the cursor has moved; any step of a combat phase can be the last
 	// one this call leaves (a phase an effect ended walks through here
 	// step by step), so every move out of one sweeps.
-	if PhaseOf(g.Turn.Step) == PhaseCombat {
+	//
+	// #6229: and "until the end of your next upkeep" (Halfdane) as the
+	// cursor leaves an upkeep step, for the same reason.
+	if PhaseOf(g.Turn.Step) == PhaseCombat || g.Turn.Step == StepUpkeep {
 		defer g.ClearExpiredScopedStaticsLocked()
 	}
 	// CR 511.3: "as soon as the end of combat step ends, all
@@ -2676,6 +2679,14 @@ func (g *Game) runStepEntryHooksLocked() {
 	// phases are skipped never begins, an added one included, so the
 	// cursor walks past each of its steps (skip_combat_phases.go).
 	if PhaseOf(g.Turn.Step) == PhaseCombat && g.combatPhasesSkippedThisTurnLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
+	// #6226 (CR 500.11): "skips each instance of the chosen step or
+	// phase this turn" (Fatespinner): a draw step, main phase or combat
+	// phase of that turn never begins (skip_this_turn.go).
+	if g.stepSkippedThisTurnLocked() {
 		g.advanceCursorLocked()
 		g.runStepEntryHooksLocked()
 		return
