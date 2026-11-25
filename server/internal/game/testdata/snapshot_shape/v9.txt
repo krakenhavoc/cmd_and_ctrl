@@ -88876,6 +88876,7 @@ turn.Step	string
 turn.StepOrdinal	number:int
 turnChangePending	bool
 turnEndPending	bool
+turnOrderReversed	bool
 turnPlan	array
 turnPlan[]	object
 turnPlan[].phaseId	number:int

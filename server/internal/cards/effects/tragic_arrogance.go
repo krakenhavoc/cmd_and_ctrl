@@ -90,7 +90,7 @@ func SeatsFromActive(g *game.Game) []uuid.UUID {
 	}
 	start := g.Turn.ActiveSeat
 	for i := 0; i < n; i++ {
-		p := g.Seats[(start+i)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 		if p == nil || p.Eliminated {
 			continue
 		}

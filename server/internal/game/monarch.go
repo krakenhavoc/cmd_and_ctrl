@@ -219,7 +219,7 @@ func (g *Game) monarchLeftTheGameLocked() {
 	}
 	for offset := 0; offset < len(g.Seats); offset++ {
 		// #2039: "the next player ... who can become the monarch".
-		if s := g.Seats[(start+offset)%len(g.Seats)]; s != nil && !s.Eliminated && !g.playerCantBecomeMonarchLocked(s.ID) {
+		if s := g.Seats[g.SeatInTurnOrderForEffect(start, offset)]; s != nil && !s.Eliminated && !g.playerCantBecomeMonarchLocked(s.ID) {
 			g.becomeMonarchLocked(s.ID)
 			return
 		}
