@@ -256,6 +256,7 @@ body gastal-blockbuster/destroy
 body gaze-of-pain/damage-equal-to-its-power
 body general-traag-heart-of-stone/strike
 body generous-plunderer/gift
+body ghireds-belligerence/populate
 body giant-caterpillar/butterfly
 body gift-of-immortality/return-aura
 body gilgamesh/attach-equipment
@@ -634,6 +635,7 @@ body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
 body villainous-syndication/return
 body vivien-monsters-advocate/search-lesser-creature
+body vraska-the-unseen/destroy-the-damaging-creature
 body vronos/phase-out-the-objects
 body vulturous-aven/draw-and-lose
 body wall-of-stolen-identity/tap-and-hold
@@ -1834,6 +1836,7 @@ condition combat/your-creature-hit-a-player
 condition combat/your-creature-hit-a-player-or-planeswalker
 condition combat/your-creature-hit-the-player
 condition damage/a-creature-combat-to-you
+condition damage/a-creature-deals-combat-damage-to-this-planeswalker
 condition damage/each-creature-dealt-damage
 condition damage/each-opponent-creature-dealt-damage
 condition damage/either-of-those-creatures-deals-combat-damage
@@ -2768,6 +2771,7 @@ payunless pay-unless/extort-drain
 payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezio-auditore-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
+payunless pay-unless/faith-of-the-devoted-drain
 payunless pay-unless/filigree-racer-jump-start
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -4946,6 +4950,7 @@ tail then/get-energy
 tail then/ghastly-conscription-exiled
 tail then/ghastly-death-tyrant-lose-life
 tail then/ghired-populated
+tail then/ghireds-belligerence-dealt-damage
 tail then/giver-of-runes-protection
 tail then/glen-elendras-answer-counter-next
 tail then/goblin-recruiter-order
