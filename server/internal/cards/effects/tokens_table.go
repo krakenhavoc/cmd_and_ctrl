@@ -188,6 +188,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 red Elemental with haste":                                  {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}}, // Tempt with Vengeance
 
 	"1/1 red Hamster":                                                  {Name: "Hamster", TypeLine: "Token Creature — Hamster", Power: 1, Toughness: 1, Colors: []string{"R"}},
+	"1/2 white Soldier with defender":                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/1 red Goblin":                                                   {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Phyrexian Goblin":                                         {Name: "Phyrexian Goblin", TypeLine: "Token Creature — Phyrexian Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Human":                                                    {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"R"}},
