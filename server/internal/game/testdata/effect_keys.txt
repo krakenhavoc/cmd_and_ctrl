@@ -43,6 +43,7 @@ anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/vexing-devil-sacrifice
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
+anyplayer sword-point-diplomacy/card
 body aang-at-the-crossroads/transform
 body ace-fearless-rebel/counter-and-fight
 body activation-count/sacrifice-this-creature
