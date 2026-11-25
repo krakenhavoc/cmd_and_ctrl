@@ -329,6 +329,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 214 (#5530).
 	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
+
+	// S82 OLD batch 231 (#5532).
+	"Sentinel Totem": "exiles every graveyard, which holds cards and no permanents: a graveyard hate effect, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

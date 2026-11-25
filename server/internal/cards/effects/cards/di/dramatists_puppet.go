@@ -1,10 +1,6 @@
 package cardsdi
 
 import (
-	"sort"
-
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -25,84 +21,14 @@ import (
 //
 // No simplification.
 func init() {
-	dramatistsPuppetNext = dramatistsPuppetAsk
 	effects.Register(effects.Spec{
 		OracleID:     "e3473ed5-f2b2-4a41-aed9-ee37caa9d7be",
 		Name:         "Dramatist's Puppet",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(effects.WhenThisEnters("Dramatist's Puppet — for each kind of counter on target permanent, put another counter of that kind on it or remove one from it",
-				dramatistsPuppetEnters),
+				effects.OldB242ForEachKindPutOrRemove()),
 				effects.TargetPermanent("target permanent")),
 		},
 	})
 }
-
-func dramatistsPuppetEnters(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	id, ok := effects.B16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	c, ok := g.LookupCardForEffect(id)
-	if !ok {
-		return nil
-	}
-	var kinds []string
-	for kind, n := range c.Counters {
-		if n > 0 {
-			kinds = append(kinds, kind)
-		}
-	}
-	sort.Strings(kinds)
-	return dramatistsPuppetAsk(ctx, id, kinds)
-}
-
-// dramatistsPuppetAsk asks about the first of kinds, if any remain and the
-// target is still on the battlefield.
-func dramatistsPuppetAsk(ctx *effects.Context, target uuid.UUID, kinds []string) error {
-	if len(kinds) == 0 || !effects.OnBattlefield(ctx.Game, target) {
-		return nil
-	}
-	kind := kinds[0]
-	return effects.PickOption{
-		Question: "Dramatist's Puppet — " + kind + " counters: put another one on it or remove one?",
-		Options: []game.ChoiceOption{
-			{Label: "Put another " + kind + " counter on it"},
-			{Label: "Remove a " + kind + " counter from it"},
-		},
-		ThenKey: dramatistsPuppetAnswer,
-		Carry:   []uuid.UUID{target},
-		Words:   kinds,
-	}.Apply(ctx)
-}
-
-var dramatistsPuppetAnswer = effects.OptionPickThen("option-pick/dramatists-puppet-put-or-remove", func(ctx *effects.Context, r game.OptionPicked) error {
-	if len(r.Carry) == 0 || len(r.Words) == 0 {
-		return nil
-	}
-	target, kind := r.Carry[0], r.Words[0]
-	if r.Index == game.NoChoiceIndex {
-		return nil
-	}
-	if c, ok := ctx.Game.LookupCardForEffect(target); ok && effects.OnBattlefield(ctx.Game, target) {
-		switch r.Index {
-		case 0:
-			if err := (effects.AddCounter{Target: target, Kind: kind, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-		case 1:
-			if c.Counters[kind] > 0 {
-				if err := (effects.AddCounter{Target: target, Kind: kind, N: -1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return dramatistsPuppetNext(ctx, target, r.Words[1:])
-})
-
-// dramatistsPuppetNext is dramatistsPuppetAsk, reached through a variable so
-// the answer's body does not close an initialisation cycle with the prompt
-// it answers.
-var dramatistsPuppetNext func(ctx *effects.Context, target uuid.UUID, kinds []string) error

@@ -95,6 +95,7 @@ var TokenTable = map[string]game.Card{
 	"0/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"0/1 green Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 0, Toughness: 1, Colors: []string{"G"}},
+	"3/3 green Hippo":                                               {Name: "Hippo", TypeLine: "Token Creature — Hippo", Power: 3, Toughness: 3, Colors: []string{"G"}},                                                    // Mouth // Feed
 	"1/1 green Hippo":                                               {Name: "Hippo", TypeLine: "Token Creature — Hippo", Power: 1, Toughness: 1, Colors: []string{"G"}},                                                    // Questing Phelddagrif
 	"1/1 black and green Snake enchantment with deathtouch":         {Name: "Snake", TypeLine: "Token Enchantment Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"B", "G"}, Keywords: []string{"deathtouch"}}, // Pharika, God of Affliction
 	"2/2 black Zombie Walker":                                       {Name: "Walker", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},                                                  // Hansk, Slayer Zealot
@@ -359,6 +360,7 @@ var TokenTable = map[string]game.Card{
 	"4/4 colorless Construct artifact":                                 {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 4, Toughness: 4},
 	"4/4 colorless Construct artifact with flying and haste":           {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 4, Toughness: 4, Keywords: []string{"flying", "haste"}},
 	"3/3 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 3, Toughness: 3},
+	"4/4 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4},
 	"9/9 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 9, Toughness: 9},
 	"1/1 black Insect with flying":                                     {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"4/4 white and blue Golem artifact":                                {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4, Colors: []string{"W", "U"}},
