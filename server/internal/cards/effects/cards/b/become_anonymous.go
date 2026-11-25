@@ -30,6 +30,8 @@ func init() {
 			if !ok {
 				return nil
 			}
+			// #6175: the three cards are exiled in a face-down pile.
+			effects.NotePileOrGuess(ctx)
 			return ctx.Game.ExileCardKeyedForEffect(id, ctx.Tail(becomeAnonymousTargetExiled))
 		},
 	})

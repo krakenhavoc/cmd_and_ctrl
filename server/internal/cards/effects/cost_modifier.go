@@ -99,6 +99,27 @@ func CostsLessEach(amount func(q game.CostQuery) int, label string, when ...Cost
 	}
 }
 
+// BuybackCostsLess is "Buyback costs cost {n} less" (Memory Crystal,
+// #6206): a reduction of the BUYBACK component of everybody's spells
+// (CR 702.27a, 118.8) and of nothing else.
+//
+// It leaves the spell's own cost exactly as printed (CR 118.8d: an
+// additional cost is not the mana cost), so a spell cast without paying
+// buyback is not discounted at all, and the reduction floors at the
+// buyback cost's own generic mana — {2} less off a buyback {1} leaves
+// {0} and takes nothing off the spell (CR 601.2f, 118.7a). A buyback
+// cost that is not mana ("Buyback—Sacrifice a land", Constant Mists;
+// "Buyback—Pay 4 life", Slaughter) has nothing for it to take.
+//
+// No predicates: every printed clause of this family names the keyword
+// and nothing else, and which component it names is the key's job rather
+// than a card file's.
+func BuybackCostsLess(n int, label string) game.CostModifier {
+	m := CostsLess(n, label)
+	m.PricesOptionalCost = game.BuybackKey
+	return m
+}
+
 // Eminence marks a cost modifier as working from the command zone as
 // well as the battlefield — "Eminence — As long as <this> is in the
 // command zone or on the battlefield, other Sphinx spells you cast cost

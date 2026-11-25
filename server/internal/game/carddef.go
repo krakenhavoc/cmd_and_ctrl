@@ -231,6 +231,12 @@ type CardDef struct {
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
 	// TargetTaxesForCard.
 	TargetTaxes []TargetTax
+	// LifePerTarget is this card's OWN "This spell costs N life more to
+	// cast for each target" (CR 601.2f, #6206) — Phyrexian Purge. Read
+	// for the spell being cast, through LifePerTargetFor under
+	// CatalogKey, and never from the battlefield: it is the spell's own
+	// cost, as SelfCostModifiers are. The zero value is every other card.
+	LifePerTarget LifePerTargetCost
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
@@ -396,6 +402,11 @@ type CardDef struct {
 	// (#3781): "where X is the greatest power among creatures you
 	// controlled as you cast this spell". See cast_time_values.go.
 	CastTimeValues []CastTimeValue
+	// ChoosesCreatureTypeAsCast is "<target creatures> of the creature
+	// type of your choice" (Selective Snare, #6245): a creature type the
+	// caster names as they cast the spell (CR 601.2c, with the targets)
+	// on CastSpellParams.ChosenCreatureType. See cast_creature_type.go.
+	ChoosesCreatureTypeAsCast bool
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.
@@ -1242,6 +1253,10 @@ func init() {
 			return d.CantBeCounteredIf
 		}
 		return nil
+	}
+	CatalogChoosesCreatureTypeAsCast = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ChoosesCreatureTypeAsCast
 	}
 	CatalogCastTimeValues = func(key string) []CastTimeValue {
 		if d := catalogDef(key); d != nil {

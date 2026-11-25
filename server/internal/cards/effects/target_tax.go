@@ -41,6 +41,35 @@ func OpponentsSpellsTargetingThisCostLife(life int, label string) game.TargetTax
 	}
 }
 
+// CostsLifePerTarget is the spell's OWN "This spell costs N life more
+// to cast for each target" (Phyrexian Purge, #6206, CR 601.2f): the
+// caster pays `life` for every target the spell names, checked against
+// their life total with the cast's other life costs (CR 119.4) and paid
+// with the rest of its additional costs (CR 601.2h).
+//
+// It goes in Spec.LifePerTarget rather than Spec.TargetTaxes, because
+// the clause is the card's own: no permanent charges it, so no CR 613.1f
+// ability-removing effect on the battlefield can take it away.
+func CostsLifePerTarget(life int, label string) game.LifePerTargetCost {
+	return game.LifePerTargetCost{Life: life, Label: label}
+}
+
+// checkLifePerTarget is Register's guard for Spec.LifePerTarget — the
+// bargain checkTargetTaxes makes, one slot over: a clause with no
+// printed Label gives a refusal and a picker note nobody can read, and
+// one that charges nothing is dead text claiming a rule.
+func checkLifePerTarget(card string, c game.LifePerTargetCost) {
+	if c.Life == 0 && c.Label == "" {
+		return
+	}
+	if c.Life <= 0 {
+		panic(fmt.Sprintf("effects.Register: %q per-target life cost %q charges no life", card, c.Label))
+	}
+	if c.Label == "" {
+		panic(fmt.Sprintf("effects.Register: %q per-target life cost has no printed Label -- the refusal and the picker quote it", card))
+	}
+}
+
 // checkTargetTaxes is Register's guard for Spec.TargetTaxes: a tax with
 // no printed Label produces a refusal and a picker note nobody can read,
 // one that charges nothing is dead text claiming a rule, and one with no

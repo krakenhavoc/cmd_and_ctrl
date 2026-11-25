@@ -510,6 +510,7 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
 	ch.SourceRingBearer = rec.RingBearer
 	ch.SourceIsPermanent = true
+	ch.SourceCastThisTurn = rec.CastThisTurn
 	ch.SourceCounters = copyCounterMap(rec.Counters)
 	return ch
 }

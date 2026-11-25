@@ -827,6 +827,10 @@ type PendingChoiceView struct {
 	Devour     int `json:"devour,omitempty"`
 	DevourDraw int `json:"devour_draw,omitempty"`
 	DevourLife int `json:"devour_life,omitempty"`
+	// DevourX marks devour whose N is the number of creatures devoured
+	// (#6267, Thromok the Insatiable): k creatures buy k*k counters, so
+	// Devour is absent. Absent on every other prompt.
+	DevourX bool `json:"devour_x,omitempty"`
 
 	// LifeCost is mandatory life paid by "pay_unless", or a "confirm" ACCEPT branch
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
@@ -4501,7 +4505,15 @@ type CastSurfaceView struct {
 	// keyed off target_mode alone. An empty-but-present entry means
 	// "no legal target right now", which the client treats as
 	// uncastable. Added in S20 sub-PR 1.
-	LegalTargets *LegalTargetsView `json:"legal_targets,omitempty"`
+	// CastCreatureTypes marks a spell that names a creature type as it is
+	// cast (#6245, CR 601.2c: Selective Snare's "of the creature type of
+	// your choice"): one option per type a creature on the battlefield
+	// has and that its target clause can find, with that clause's legal
+	// cards under it. The client asks for the type before the targets,
+	// narrows the picker to that type's cards and sends the type as
+	// `chosen_creature_type`. Absent on every other spell.
+	CastCreatureTypes []BeholdTypeOption `json:"cast_creature_types,omitempty"`
+	LegalTargets      *LegalTargetsView  `json:"legal_targets,omitempty"`
 	// Clauses is every clause of a MULTI-clause target statement, in
 	// printed order, each with its own legal set, count and printed
 	// wording — Bite Down's "target creature you control" then
@@ -5394,6 +5406,10 @@ type ActivatedAbilityView struct {
 	// because they may not differ. The engine refuses a `discard_ids` set
 	// whose names repeat. Public: it is the printed rule.
 	DiscardCostDifferentNames bool `json:"discard_cost_different_names,omitempty"`
+	// DiscardCostSameName marks the "with the same name" set rule (#6264,
+	// Sphinx of the Chimes): the picked cards must share a name. The
+	// server refuses a set that doesn't.
+	DiscardCostSameName bool `json:"discard_cost_same_name,omitempty"`
 	// RevealCostN / Label / Options describe a "Reveal N <quality> cards
 	// from your hand" cost component (#2598, ADR 0020's 2026-10-08
 	// amendment) — Martyr of Bones' "Reveal X black cards". RevealCostN
@@ -5864,6 +5880,15 @@ type ManaAbilityView struct {
 	// Tap picker and sends the answer as activate_mana_ability.tap_ids.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// TapOthersUntap marks the clause as the UNTAP form, as it does on
+	// ActivatedAbilityView (#6208, game.TapOthersCost.Untap) — Benthic
+	// Explorers' "{T}, Untap a tapped land an opponent controls". The
+	// cards are then the TAPPED permanents that could be untapped to
+	// pay, which for the one printed mana ability are an OPPONENT's, and
+	// the picker's verb is "Untap". No TapOthersFreesSource twin: the
+	// activator never controls the permanent, so the source is never
+	// among the options.
+	TapOthersUntap bool `json:"tap_others_untap,omitempty"`
 	// ExilePermanentLabel / ExilePermanentOptions are the mana-ability
 	// half of #1600's exile-a-permanent component — Food Chain's "Exile
 	// a creature you control". Same wire names and option shape as
@@ -7222,6 +7247,7 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	// answer about their own budget.
 	s.PermissionTypes = nil
 	s.LegalTargets = nil
+	s.CastCreatureTypes = nil
 	s.Clauses = nil
 	// #1389: a price is one seat's answer — a cost modifier may be
 	// scoped to one player.
@@ -7773,7 +7799,11 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// board where something charges for it. Asked of the engine's own
 	// accessor and only when a tax exists at all, so no board without
 	// one pays for the walk.
-	if g.TargetTaxesExistForEffect() {
+	// #6206: or because the SPELL charges itself for each target
+	// (Phyrexian Purge's "costs 3 life more to cast for each target").
+	// Asked by the face's catalog key, so the cheap check still comes
+	// before the live-card lookup.
+	if g.TargetTaxesExistForEffect() || !game.LifePerTargetForKey(f.key).Empty() {
 		if live, ok := liveCardForView(g, c); ok {
 			live.SetFace(f.index)
 			stampCastTargetTaxes(g, caster, live, &out)
@@ -8207,6 +8237,31 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	spec = flashIf.TargetSpecUnder(spec)
 	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
+	out.CastCreatureTypes = viewOfCastCreatureTypes(g, src, spec)
+	return out
+}
+
+// viewOfCastCreatureTypes is CastSurfaceView.CastCreatureTypes (#6245):
+// for a spell that names a creature type as it is cast, each candidate
+// type with the clause's legal cards when the spell has that type
+// stamped, as CastSpell stamps it. Nil for every other spell. Caller must
+// hold g.mu.
+func viewOfCastCreatureTypes(g *game.Game, src game.TargetSource, spec *game.TargetSpec) []BeholdTypeOption {
+	if src.Object == nil || spec == nil || !game.ChoosesCreatureTypeAsCast(*src.Object) {
+		return nil
+	}
+	var out []BeholdTypeOption
+	for _, t := range g.CastCreatureTypeCandidatesForEffect() {
+		typed := *src.Object
+		typed.NamedTribe = t
+		tsrc := src
+		tsrc.Object = &typed
+		lt := g.LegalTargetsForEffect(tsrc, spec)
+		if len(lt.Cards) == 0 {
+			continue
+		}
+		out = append(out, BeholdTypeOption{Type: t, Cards: cardIDStrings(lt.Cards)})
+	}
 	return out
 }
 
@@ -10564,6 +10619,9 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 		if tc := raw[i].TapOthers; !tc.Empty() {
 			views[i].TapOthersLabel = tc.Label
 			views[i].TapOthersOptions = tapOthersCostOptions(g, controller, card.InstanceID, tc, raw[i].TapCost)
+			// #6208: the untap form (Benthic Explorers), so the picker
+			// says "Untap" rather than "Tap".
+			views[i].TapOthersUntap = game.TapOthersUntaps(tc)
 		}
 		// #1600: the exile-a-permanent component (Food Chain), off the
 		// walk the engine validates against.
@@ -10965,6 +11023,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntrySacrifice {
 			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()
+			v.DevourX = c.DevourIsX()
 		}
 		if c.Kind == game.PendingChoiceMayCast {
 			v.AcceptLabel = c.AcceptLabel
@@ -13028,6 +13087,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Modes = nil
 	out.AdditionalCost = nil
 	out.LegalTargets = nil
+	out.CastCreatureTypes = nil
 	out.Clauses = nil
 	out.CantCast = ""
 	out.TapCost = nil
@@ -13140,6 +13200,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// player who can read the card, and each one quotes it: a mode
 	// prompt, an additional-cost label, a target clause's bounds.
 	out.LegalTargets = nil
+	out.CastCreatureTypes = nil
 	// #764: the per-clause legal sets name the card as loudly as the
 	// single one does — "target creature you control, then target
 	// creature or planeswalker you don't control" is the card.
@@ -14323,6 +14384,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
 			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf || a.Cost.BottomSelf)
+			if a.Cost.SacrificeAll {
+				// #6208: "Sacrifice all lands you control" — the engine's
+				// own set, the one ActivateCatalogAbility will take, as a
+				// demand of exactly that many, exactly as the cast path's
+				// #2097 cost ships it. The client confirms instead of
+				// picking, and an empty set is still a payment.
+				all := g.SacrificeAllCandidatesForEffect(caster, a.Cost.SacrificeOther)
+				v.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+			}
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
@@ -14363,6 +14433,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.DiscardCostCountFromX = dc.CountFromX
 			v.DiscardCostManaValueX = dc.ManaValueX
 			v.DiscardCostDifferentNames = dc.DifferentNames
+			v.DiscardCostSameName = dc.SameName
 			v.DiscardCostLabel = dc.Label
 			// ADR 0109 §7: a random clause has nothing to pick, so it
 			// stamps the flag and no options.

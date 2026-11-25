@@ -92,6 +92,12 @@ type Characteristic struct {
 	// a copy of one) rather than an ability or a permanent: "protection from
 	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
 	SourceIsSpell bool
+	// SourceCastThisTurn says the source is a permanent whose spell was
+	// cast this turn (CastProvenance.CastThisTurn, PermanentInfo.
+	// CastThisTurn for a departed one): "protection from permanents that
+	// were cast this turn" reads it (Emrakul, the World Anew, #6098).
+	// Written only by the source-snapshot builders, like the facts above.
+	SourceCastThisTurn bool `json:"-"`
 	// SourceCounters are the counters on a permanent source (#6149):
 	// "protection from permanents with corruption counters on them" reads
 	// it. Written only by the source-snapshot builders, like the facts
@@ -361,6 +367,15 @@ type Characteristic struct {
 	// reads it (beam_me_up.go).
 	CantBeBeamedUp bool `json:",omitempty"`
 
+	// FlagbearerTargetRule is "while an opponent is choosing targets as
+	// part of casting a spell they control or activating an ability they
+	// control, that player must choose at least one Flagbearer on the
+	// battlefield if able" (Coalition Flag, Standard Bearer; #6236, CR
+	// 601.2c). Written by a layer-6 self static, so it goes with the
+	// permanent's abilities, and read by checkFlagbearerTargetsLocked.
+	// flagbearer.go.
+	FlagbearerTargetRule bool `json:",omitempty"`
+
 	// CantTransform is "this permanent can't transform" (CR 101.2):
 	// Immerwolf's "Non-Human Werewolves you control can't transform"
 	// (ADR 0132 amendment 2026-10-16, #4071). Written by an ordinary
@@ -388,6 +403,17 @@ type Characteristic struct {
 	// a layer-6 self static writes it and foldPowerFloorLocked reads it
 	// once every layer has run (CR 613.11). power_floor.go.
 	AttackBlockNeedsOtherPower int `json:",omitempty"`
+
+	// PowerGatedGoads are "creatures your opponents control with power
+	// less than ~'s power are goaded" (Baeloth Barrityl, Entertainer,
+	// #6098): one entry per such static that reaches this creature,
+	// written in layer 6 by the static and turned into goad's CR 701.15b
+	// requirements by foldPowerGatedGoadsLocked once every layer has run.
+	// The comparison is between two FINISHED powers, which no layer-6
+	// effect can see, and CR 613.11 applies an effect that says a
+	// creature must attack after every other continuous effect, so the
+	// fold is the rules' own order. power_gated_goad.go.
+	PowerGatedGoads []PowerGatedGoad `json:",omitempty"`
 
 	// CantAttackWithoutAnyOf is "creatures without flying or islandwalk
 	// can't attack" (Stormtide Leviathan; Moat's shape): the keyword tokens
@@ -657,6 +683,7 @@ func (c Characteristic) clone() Characteristic {
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.BorrowedAbilities = append([]BorrowedAbility(nil), c.BorrowedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
+	out.PowerGatedGoads = append([]PowerGatedGoad(nil), c.PowerGatedGoads...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.DefenderWaivers = append([]DefenderWaiver(nil), c.DefenderWaivers...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)

@@ -994,3 +994,52 @@ Tests: `TestColorsOnlyReductionNeverTakesGeneric` (`internal/game`), `TestDefile
 
 Back-out: drop the flag and the Defilers' discounts fall back to generic mana (stronger than printed), so the five
 cards would have to leave the catalog with it.
+
+## Amendment (2026-11-25, #6206): a cost change aimed at PART of a cost (Memory Crystal)
+
+Memory Crystal prints "Buyback costs cost {2} less." Every modifier this ADR built prices an announcement's WHOLE
+cost: §2's three passes run over the one `ParsedCost` the pricer has already folded the announced additional costs'
+mana into (`AdditionalCostMana`, ADR 0073 §3), so by the time a modifier sees it a buyback {3} and the spell's own
+{U} are the same number. An ordinary `CostReduction` of {2} therefore gets both halves of the card wrong: it
+discounts a cast that paid no buyback at all, and §3's floor spends it on whatever generic mana it finds first (CR
+118.7a), so the spell comes out cheaper than printed.
+
+**`CostModifier.PricesOptionalCost`** is the component the modifier names instead: an optional-cost `Key`
+(`game.BuybackKey`), matched against the new **`CostQuery.PricingOptionalCost`** in `pricesAnnouncement`. That is the
+same partition `Activations` (#1184) and `SpecialActions` (#1319) are, a third door over, and it is total in both
+directions — a Sphere of Resistance never taxes a buyback cost, and the Crystal never discounts a spell.
+`effects.BuybackCostsLess(n, label)` is the constructor.
+
+The component is priced ON ITS OWN, by its own §2 pass, before its mana joins the total
+(`pricedComponentsLocked`, game/component_cost_modifier.go, called from the one pricer `printedCostLocked` so the
+payment, the auto-tap preview, the view's badge and the enumerator cannot disagree, §6). Three rules follow:
+
+- **The floor is the component's** (§3, CR 601.2f, 118.7a): {2} less off a buyback {1} leaves {0} and takes nothing
+  off the spell. Reducing part of a cost can never reduce the rest of it, and CR 118.8d says an additional cost is
+  not the spell's mana cost, so nothing here moves what the card "costs".
+- **Order is unobservable between the two passes.** A component reduction never touches the spell's own mana and a
+  whole-cost increase never adds to a component, so a Thalia on a bought-back spell adds its {1} either way. §2's
+  "increases before reductions" still holds inside each pass.
+- **Only the board's modifiers reach a component.** A self modifier (affinity, "this spell costs {1} less") and a
+  "next spell you cast this turn" promise are written against the spell's own cost, so `activeCostModifiersLocked`
+  does not show them a component; `effects.Register` refuses the field in `SelfCostModifiers`, on an ability's own
+  cost clause, and on any kind but an increase or a reduction.
+
+§4 is unchanged and reaches further: a component modifier that returns a negative amount refuses the cast, and so
+does a component whose cost carries {X} — the reduction a printed generic cannot absorb is kept against the cost it
+was measured against (`XReduced`, #2701) and a component's X is not the spell's, so there is no honest price. No
+printed optional cost with a keyword carries {X}. A buyback cost that is not mana ("Buyback—Sacrifice a land",
+Constant Mists; "Buyback—Pay 4 life", Slaughter) has no mana component for a generic reduction to take and is left
+exactly as printed.
+
+Nothing on the wire or in a snapshot changed: the buyback toggle still carries the clause as printed
+(`optional_costs[i].mana_cost`) and the price surfaces show the modified total, which is how every other cost
+modifier has always been shown.
+
+Tests (`internal/game/partial_cost_change_test.go`): `TestBuybackCostsLessPricesOnlyTheBuybackComponent`,
+`TestBuybackCostsLessFloorsAtTheBuybackCost`, `TestBuybackCostsLessDoesNotPriceAKickerCost`,
+`TestBuybackCostsLessLeavesANonManaBuybackAlone`, `TestABrokenComponentModifierRefusesTheCast`,
+`TestAComponentModifierRefusesACostCarryingX`.
+
+Back-out: drop `pricedComponentsLocked` from `printedCostLocked` and the component modifier does nothing — Memory
+Crystal would have to ship with a caveat rather than `full`.

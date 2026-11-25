@@ -60,8 +60,23 @@ func (c *PendingChoice) DevourOffer() (n, draw, life int) {
 		return 0, 0, 0
 	}
 	spec := f.applicable[0].effect.EntryCardChoice
-	if spec == nil || spec.Devour <= 0 {
+	if spec == nil || spec.Devour <= 0 || spec.DevourX {
 		return 0, 0, 0
 	}
 	return spec.Devour, spec.DevourDraw, spec.DevourLife
+}
+
+// DevourIsX reports an entry_sacrifice prompt for "Devour X, where X is
+// the number of creatures devoured this way" (#6267): k creatures named
+// buy k*k counters, so it has no fixed per-creature N for DevourOffer.
+func (c *PendingChoice) DevourIsX() bool {
+	if c == nil || c.Kind != PendingChoiceEntrySacrifice {
+		return false
+	}
+	f := c.replacementResume
+	if f == nil || len(f.applicable) != 1 {
+		return false
+	}
+	spec := f.applicable[0].effect.EntryCardChoice
+	return spec != nil && spec.DevourX
 }

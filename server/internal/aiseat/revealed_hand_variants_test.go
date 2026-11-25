@@ -125,3 +125,38 @@ func TestTheBotChoosesNothingFromItsOwnHandWhenItMay(t *testing.T) {
 		t.Errorf("the heuristic answered %q, want choose nothing", moves[d.Index].Label)
 	}
 }
+
+// #6271: an EachOf pick (Distended Mindbender: "a nonland card with mana
+// value 3 or less and a card with mana value 4 or greater") offers only
+// the answers with a card for each filter, never two cheap cards.
+func TestTheBotIsOfferedOneCardPerFilterOfAnEachOfPick(t *testing.T) {
+	g := newSettledTable(t, 22)
+	bot := g.Seats[g.Turn.ActiveSeat]
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+
+	cheapA, cheapB, big := uuid.New(), uuid.New(), uuid.New()
+	g.WithWriteLock(func() {
+		victim.Hand.Cards = nil
+		victim.Hand.PushTop(game.Card{InstanceID: cheapA, Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid", ManaCost: "{G}", Owner: victim.ID, Controller: victim.ID})
+		victim.Hand.PushTop(game.Card{InstanceID: cheapB, Name: "Giant Growth", TypeLine: "Instant", ManaCost: "{G}", Owner: victim.ID, Controller: victim.ID})
+		victim.Hand.PushTop(game.Card{InstanceID: big, Name: "Craw Wurm", TypeLine: "Creature — Wurm", ManaCost: "{4}{G}{G}", Owner: victim.ID, Controller: victim.ID})
+		if _, err := g.RevealedHandPickForEffect(game.RevealedHandDiscard{
+			Chooser: bot.ID, FromPlayer: victim.ID, Reason: "Test",
+			EachOf: []func(game.Card) bool{
+				func(c game.Card) bool { return !c.IsLand() && c.ManaValue() <= 3 },
+				func(c game.Card) bool { return c.ManaValue() >= 4 },
+			},
+		}); err != nil {
+			t.Fatalf("RevealedHandPickForEffect: %v", err)
+		}
+	})
+	picks := rhvPickMoves(t, legal.EnumerateFor(g, bot.ID))
+	if len(picks) != 2 {
+		t.Fatalf("offered %v, want the two pairs of a cheap card and the Wurm", picks)
+	}
+	for _, ids := range picks {
+		if len(ids) != 2 || (ids[0] != big.String() && ids[1] != big.String()) {
+			t.Errorf("offered %v, which is not a cheap card and the Wurm", ids)
+		}
+	}
+}
