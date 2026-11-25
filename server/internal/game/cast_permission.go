@@ -1836,6 +1836,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 			FromPermission: true,
 		}
 	}
+	if p.AltCostKey == AltCostKeyGrantedFaceDownFree {
+		// #6219: Illusionary Mask's free face-down cast (illusionary_mask.go).
+		return grantedFaceDownFreeOffer(p)
+	}
 	if p.AltCostKey == AltCostKeyGrantedSneak {
 		// #4680: the granted sneak's price and riders (sneak.go).
 		return grantedSneakOffer(p, card)

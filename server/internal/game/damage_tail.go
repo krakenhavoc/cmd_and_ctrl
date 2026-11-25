@@ -578,6 +578,10 @@ func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused boo
 	if ev == nil {
 		return false, nil
 	}
+	// #6219: Illusionary Mask's "would deal damage, be dealt damage —
+	// instead it's turned face up and deals damage, is dealt damage"
+	// (illusionary_mask.go), before anything reads the event.
+	g.unmaskForDamageLocked(ev)
 	g.prepareDamageEventLocked(ev)
 	// ADR 0108 §7: an event of an instance whose charged shield may have
 	// to be divided waits for the rest of the instance and the division

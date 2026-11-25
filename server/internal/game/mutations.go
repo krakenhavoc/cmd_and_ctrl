@@ -11428,6 +11428,10 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		}
 	}
 
+	// #6219: a masked combatant that would assign combat damage is
+	// turned face up first, and assigns as the face-up creature
+	// (Illusionary Mask, illusionary_mask.go).
+	g.unmaskCombatantsLocked(firstStrike)
 	// Snapshot per-card power BEFORE marking any damage so
 	// simultaneous resolution (CR 510.1c/d) sees consistent inputs.
 	power := make(map[uuid.UUID]int, len(g.Battlefield.Cards))
