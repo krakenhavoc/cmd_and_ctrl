@@ -2605,6 +2605,7 @@ frozenEntries[].event.auraHost.splice	number:int
 frozenEntries[].event.auraHostCreaturesOnly	bool
 frozenEntries[].event.auraHostFixed	bool
 frozenEntries[].event.auraHostSettled	bool
+frozenEntries[].event.auraHostYouControlOnly	bool
 frozenEntries[].event.canceled	bool
 frozenEntries[].event.cantBeRegenerated	bool
 frozenEntries[].event.cardId	custom(uuid.UUID)
@@ -24282,6 +24283,7 @@ movesAwaitingTokens[].auraHost.splice	number:int
 movesAwaitingTokens[].auraHostCreaturesOnly	bool
 movesAwaitingTokens[].auraHostFixed	bool
 movesAwaitingTokens[].auraHostSettled	bool
+movesAwaitingTokens[].auraHostYouControlOnly	bool
 movesAwaitingTokens[].canceled	bool
 movesAwaitingTokens[].cantBeRegenerated	bool
 movesAwaitingTokens[].cardId	custom(uuid.UUID)
@@ -52894,6 +52896,7 @@ pendingChoices[].replacementResume.event.auraHost.splice	number:int
 pendingChoices[].replacementResume.event.auraHostCreaturesOnly	bool
 pendingChoices[].replacementResume.event.auraHostFixed	bool
 pendingChoices[].replacementResume.event.auraHostSettled	bool
+pendingChoices[].replacementResume.event.auraHostYouControlOnly	bool
 pendingChoices[].replacementResume.event.canceled	bool
 pendingChoices[].replacementResume.event.cantBeRegenerated	bool
 pendingChoices[].replacementResume.event.cardId	custom(uuid.UUID)
