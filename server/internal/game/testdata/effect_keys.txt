@@ -118,6 +118,7 @@ body construct-a-cosmic-cube/control
 body copy/sea-gate-stormcaller-the-spell-just-cast
 body copy/surge-to-victory-exiled-card
 body copy/the-ability-you-just-activated
+body copy/the-spell-for-its-caster
 body copy/the-spell-per-commander-cast
 body copy/the-spell-you-just-cast
 body copy/the-spell-you-just-cast-twice
@@ -1552,6 +1553,9 @@ choose choose-cards/s82-old-b166-rank-officer-zombie
 choose choose-cards/s82-old-b170-deliver-unto-evil-return
 choose choose-cards/s82-old-b172-viviens-grizzly-take
 choose choose-cards/s82-old-b190-ledev-champion-tap
+choose choose-cards/s82-old-b206-fumble-attach
+choose choose-cards/s82-old-b206-return-picked
+choose choose-cards/s82-old-b206-sacrifice-picked
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1854,6 +1858,7 @@ condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
+condition cast/any-player-casts
 condition cast/the-named-spell-first-time-this-turn
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
@@ -2620,6 +2625,7 @@ option option-pick/s82-old-b062-tergrids-lantern
 option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-old-b113-enters-with-counters
 option option-pick/s82-old-b170-deliver-unto-evil-opponent
+option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -4998,6 +5004,7 @@ tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
 tail then/change-life
 tail then/chaos-warp-shuffle-reveal
+tail then/cheering-fanatic-named
 tail then/cindervines-damage
 tail then/clone-saga-named
 tail then/clutch-of-the-undercity-controller-loses-3
@@ -5224,6 +5231,8 @@ tail then/s82-old-b107-chandra-heart-of-fire-cast
 tail then/s82-old-b107-liliana-waker-haste
 tail then/s82-old-b166-cabal-therapist-named
 tail then/s82-old-b167-the-elderspell-destroyed
+tail then/s82-old-b206-fumble-gain-and-attach
+tail then/s82-old-b206-rotfeaster-maggot-gain
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

@@ -328,6 +328,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// cases are in scoped_cost_reduction_test.go here and in
 		// cards/effects.
 		ModSpellsCostLessForPlayer: true, ModExiledSpellsCostLessForPlayer: true,
+		// S82 batch 206: Cheering Fanatic's named reduction; cases in
+		// scoped_cost_reduction_test.go and cards/effects.
+		ModNamedSpellsCostLess: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,

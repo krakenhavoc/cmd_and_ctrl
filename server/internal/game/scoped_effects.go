@@ -1409,6 +1409,7 @@ var modKinds = map[ModKind]modKindSpec{
 	// (scoped_cost_reduction.go).
 	ModSpellsCostLessForPlayer:       {reader: readerRule},
 	ModExiledSpellsCostLessForPlayer: {reader: readerRule},
+	ModNamedSpellsCostLess:           {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
