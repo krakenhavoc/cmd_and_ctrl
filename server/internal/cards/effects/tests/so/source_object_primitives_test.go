@@ -689,6 +689,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"harness_infinity.go": true,
 		// "Exile Emergency Powers." (S82 old b179, #5521)
 		"emergency_powers.go": true,
+		// "Exile Wildest Dreams." (S82 old b261, #5539)
+		"wildest_dreams.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := effectstest.ExprString(e)

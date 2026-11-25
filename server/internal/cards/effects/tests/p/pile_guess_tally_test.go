@@ -149,6 +149,7 @@ var pgReviewed = map[string]string{
 	"48ad5bd6-9568-4813-be29-99aef8b9327a": "Split the Spoils — PileSplit",
 	"0ba134d8-ee7d-48ec-8dc6-57942b8e9261": "Liliana of the Veil — PileSplit",
 	"4b4f268d-34ae-416d-a412-66f4fe37659c": "Sphinx of Uthuun — PileSplit",
+	"7492ea06-24d5-4a1f-a6ac-c33743e91aa7": "Unesh, Criosphinx Sovereign — PileSplit",
 	"a3d048c8-e8df-4b50-a422-fc94a69f44bb": "Boneyard Parley — PileSplit",
 	// The face-down pile family, which is PileSplit underneath.
 	"8b2b00ab-f1c5-4057-9957-d7daac95a847": "Atris, Oracle of Half-Truths — face-down piles",
@@ -164,6 +165,7 @@ var pgReviewed = map[string]string{
 	"6f8a4998-35c7-4e30-a9e7-7d4ec933238a": "Triumph of Saint Katherine — notes its own pile",
 	"3bf20e68-0e19-4242-bfba-a8a1bb244685": "Ghastly Conscription — notes its face-down pile",
 	"39b359c1-48b8-43a7-b972-54764eadd2c7": "Jeskai Infiltrator — notes its face-down pile",
+	"7d359434-eb1b-478e-a745-10e2c564d89f": "Whims of the Fates — SeparateIntoPiles",
 	// Guesses, noted where the guess is asked.
 	"3fb5c9a6-3fab-4109-875b-83c92518c5eb": "Gollum, Scheming Guide — notes the opponent's guess",
 	"43e1b053-2cb9-4b1d-9e38-100cfa7267b6": "The Seventh Doctor — notes the defending player's guess",

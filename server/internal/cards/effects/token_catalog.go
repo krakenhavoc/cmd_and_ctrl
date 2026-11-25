@@ -418,6 +418,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Synapse Necromage's Fungus: can't block (The Lost Caverns of
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
+	// Hold the Perimeter's Goblin: can't block (Conspiracy: Take the Crown, S82 OLD b267, #5540).
+	printedS82OldB267GoblinToken,
 	// Streets of New Capenna's Fish: 1/1 blue, can't be blocked (S82 SNC b07, #5491).
 	printedS82SncB07FishToken,
 	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
@@ -428,6 +430,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedGapB154BananaToken,
 	// Svella, Ice Shaper's Icy Manalith: a colorless snow artifact (Kaldheim, S82 OLD batch 071, #5505).
 	printedOldB071IcyManalithToken,
+	// Tezzeret the Schemer's Etherium Cell (Aether Revolt, S82 OLD batch 254, #5536).
+	printedS82OldB254EtheriumCellToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
@@ -607,6 +611,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedOldB181IllusionToken,
 	// S82 OLD batch 207: Rite of Belzenlok's 6/6 Demon.
 	printedOldB207BelzenlokDemonToken,
+	// S82 OLD batch 228: Jace, Cunning Castaway's Illusion (sacrificed when targeted by a spell).
+	printedOldB228IllusionToken,
+	// S82 OLD batch 276: Make Mischief's Devil.
+	printedS82OldB276DevilToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

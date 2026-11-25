@@ -190,6 +190,8 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return fmt.Sprintf("Can't attack unless you have %d or more cards in hand.", r.ControllerHandAtLeast)
 	case r.ControllerGraveyardAtLeast > 0:
 		return fmt.Sprintf("Can't attack unless you have %d or more cards in your graveyard.", r.ControllerGraveyardAtLeast)
+	case r.ControllerHandAtMost > 0:
+		return fmt.Sprintf("Can't attack unless you have %d or fewer cards in hand.", r.ControllerHandAtMost)
 	case len(r.ControllerMustControl) > 0:
 		if n := queriesNoun(r.ControllerMustControl); n != "" {
 			return "Can't attack unless you control " + articleFor(strings.ToLower(n)) + " " + n + "."

@@ -188,6 +188,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 red Elemental with haste":                                  {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}}, // Tempt with Vengeance
 
 	"1/1 red Hamster":                                                  {Name: "Hamster", TypeLine: "Token Creature — Hamster", Power: 1, Toughness: 1, Colors: []string{"R"}},
+	"1/2 white Soldier with defender":                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/1 red Goblin":                                                   {Name: "Goblin", TypeLine: "Token Creature — Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Phyrexian Goblin":                                         {Name: "Phyrexian Goblin", TypeLine: "Token Creature — Phyrexian Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}},
 	"1/1 red Human":                                                    {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"R"}},
@@ -739,4 +740,6 @@ var TokenTable = map[string]game.Card{
 	"5/5 black Zombie Giant": {Name: "Zombie Giant", TypeLine: "Token Creature — Zombie Giant", Power: 5, Toughness: 5, Colors: []string{"B"}},
 	// S82 OLD batch 249 (#5535): Trial of Strength's Beast.
 	"4/2 green Beast": {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 2, Colors: []string{"G"}},
+	// S82 OLD batch 252 (#5536): Release the Gremlins and Gremlin Infestation's Gremlin.
+	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
 }
