@@ -17,7 +17,7 @@ import (
 // Refuse reads the spell's controller and mana value (X counted, CR 202.3e)
 // as it resolves, from last-known information if it has since left the
 // stack (CR 608.2h); a target no longer legal means no damage (CR 608.2b).
-// Cooperate is Reverberate's copy: any instant or sorcery spell, the copy
+// Cooperate is Reverberate's copy (effects.CmdrB21CopyTheTargetSpell): any instant or sorcery spell, the copy
 // made under its caster's control with the CR 707.10c retarget choice.
 // Aftermath is the engine's (CR 702.127a), as for Road // Ruin.
 //
@@ -51,15 +51,6 @@ func init() {
 		Name:         "Cooperate",
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetInstantOrSorcerySpell("target instant or sorcery spell"),
-		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return effects.CopySpell{
-				StackID:          item.Targets[0].ID,
-				Controller:       ctx.Controller(),
-				ChooseNewTargets: true,
-			}.Apply(ctx)
-		},
+		OnResolve:    effects.CmdrB21CopyTheTargetSpell,
 	})
 }
