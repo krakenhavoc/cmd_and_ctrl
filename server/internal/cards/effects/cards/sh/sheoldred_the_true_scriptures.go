@@ -64,14 +64,7 @@ func init() {
 				"Activate only as a sorcery and only if an opponent has eight or more cards in their graveyard.",
 			Cost:         effects.ManaCost("{4}{B}"),
 			SorcerySpeed: true,
-			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
-				for _, p := range g.Seats {
-					if p != nil && p.ID != controller && !p.Eliminated && p.Graveyard != nil && p.Graveyard.Size() >= 8 {
-						return true
-					}
-				}
-				return false
-			},
+			Condition:    effects.S82OldB089AnOpponentHasEightInGraveyard,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return effects.ExileAndReturnTransformed{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
 			},

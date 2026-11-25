@@ -666,6 +666,8 @@ choose avatar-b30/azula-experience-after-discard
 choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/acquisitions-expert-discard
+choose choose-cards/acquisitions-expert-reveal
 choose choose-cards/adventure-awaits-take
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
@@ -825,6 +827,7 @@ choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
+choose choose-cards/coveted-prize-cast
 choose choose-cards/crashing-wave-stun-among
 choose choose-cards/crashing-wave-stun-two
 choose choose-cards/creeping-inn-exile
@@ -1045,6 +1048,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/legion-angel-take
 choose choose-cards/leonardo-da-vinci-discarded
 choose choose-cards/leyline-dowser-milled
 choose choose-cards/lichs-mastery-exile
@@ -1300,6 +1304,7 @@ choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
 choose choose-cards/nael-avizoa-aeronaut-arranged
+choose choose-cards/nahiri-heir-of-the-ancients-attach-equipment
 choose choose-cards/nahiri-the-lithomancer-attach-equipment
 choose choose-cards/nahiri-the-lithomancer-put-equipment
 choose choose-cards/nahiris-resolve-exile
@@ -1324,6 +1329,7 @@ choose choose-cards/nicol-bolas-god-pharaoh-exile-two
 choose choose-cards/nicol-bolas-planeswalker-sacrifice
 choose choose-cards/nihiloor-tap-for-opponent
 choose choose-cards/ninjas-blades-loot
+choose choose-cards/nissa-of-shadowed-boughs-put
 choose choose-cards/niv-mizzet-reborn-color-pair
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
@@ -1431,6 +1437,7 @@ choose choose-cards/relentless-pursuit-take
 choose choose-cards/relic-of-progenitus-exile
 choose choose-cards/rent-is-due-tap-two
 choose choose-cards/research-shuffle
+choose choose-cards/resolute-strike-attach
 choose choose-cards/resonance-technician-investigate-twice
 choose choose-cards/resplendent-marshal-exile
 choose choose-cards/return-chosen-from-graveyard
@@ -2000,6 +2007,7 @@ confirm confirm/myriad-copy
 confirm confirm/mystic-remora-draw
 confirm confirm/narset-jeskai-waymaster-discard-hand
 confirm confirm/necroskitter-return
+confirm confirm/nissa-of-shadowed-boughs-animate
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
@@ -2423,10 +2431,12 @@ option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/liliana-of-the-dark-realms-pump
 option option-pick/lim-duls-hex-pay
+option option-pick/linvala-shield-of-sea-gate-keyword
 option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/master-of-ceremonies-answer
+option option-pick/master-of-winds-base-pt
 option option-pick/me-the-immortal-counter
 option option-pick/meandering-towershell-attacks
 option option-pick/memories-returning-opponent
@@ -2673,6 +2683,7 @@ payunless pay-unless/digsite-engineer-construct
 payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
 payunless pay-unless/dont-make-a-sound-surveil
+payunless pay-unless/drainpipe-vermin-discard
 payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
@@ -4766,6 +4777,7 @@ tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/congregation-at-dawn-order
 tail then/councils-deliberation-draw
+tail then/coveted-prize-free-cast
 tail then/created-gain-keyword-until-eot
 tail then/creeping-chill-drain
 tail then/crippling-fear-type-chosen
@@ -4899,6 +4911,7 @@ tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/mystery-key-draw-three
+tail then/nahiri-heir-of-the-ancients-attach-equipment
 tail then/nahiri-the-harbinger-fetched
 tail then/nahiri-the-lithomancer-attach-equipment
 tail then/nahiri-the-unforgiving-copy

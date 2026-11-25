@@ -561,6 +561,10 @@ var TokenTable = map[string]game.Card{
 	"0/0 green Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"G"}, PrintedPTKnown: true},
 	"0/0 green Hydra":  {Name: "Hydra", TypeLine: "Token Creature — Hydra", Colors: []string{"G"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 097: Grakmaw, Skyclave Ravager's X/X black and green Hydra (printed */*; a 0/0
+	// placeholder, set to the +1/+1 counters Grakmaw had as it created it).
+	"0/0 black and green Hydra": {Name: "Hydra", TypeLine: "Token Creature — Hydra", Colors: []string{"B", "G"}, PrintedPTKnown: true},
+
 	// S82 RPR batch 32: Stitcher Geralf's X/X blue Zombie (printed */*; a 0/0 placeholder,
 	// set to the total power exiled as it is created).
 	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},
