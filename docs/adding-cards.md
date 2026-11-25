@@ -3974,6 +3974,13 @@ though they didn't have swampwalk" (Quagmire) is a block rule,
 Staff of the Ages' every-landwalk waiver is
 `effects.BlockableAsThoughNoLandwalkAtAll()` (#6195).
 
+"This creature can block Dragons as though it had reach" (Dragon
+Hunter, #6250) is a block rule on the creature itself,
+`effects.CanBlockAsThoughItHadReach(effects.QuerySubtype("Dragon"))`: it
+waives the CR 702.9b flying restriction for the attackers its queries
+name and nothing else — the creature does not gain reach, and another
+permanent's copy of the rule grants it nothing.
+
 The five evasion keywords in #825 use that same pair function. Read colors,
 types and power from effective characteristics; shadow restricts both
 directions, while horsemanship restricts only the attacker's blockers. The

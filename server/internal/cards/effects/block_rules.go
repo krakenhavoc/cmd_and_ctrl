@@ -456,3 +456,13 @@ func BlockableAsThoughNoLandwalk(tokens ...string) game.BlockRule {
 func BlockableAsThoughNoLandwalkAtAll() game.BlockRule {
 	return game.BlockRule{IgnoreAllLandwalk: true}
 }
+
+// CanBlockAsThoughItHadReach — "This creature can block Dragons as
+// though it had reach" (Dragon Hunter, #6250; CR 702.9b, 702.17b). The
+// waiver is about the permanent that prints it and about the attackers
+// the queries name: it blocks a flying Dragon and still cannot block a
+// flying anything else, and it does not gain reach, so a card that
+// counts creatures with reach does not see it.
+func CanBlockAsThoughItHadReach(queries ...game.PermanentQuery) game.BlockRule {
+	return game.BlockRule{ReachAgainst: queries}
+}
