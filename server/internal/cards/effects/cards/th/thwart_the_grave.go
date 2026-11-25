@@ -22,18 +22,11 @@ import (
 // type no longer fits, is skipped (CR 608.2b).
 func init() {
 	effects.Register(effects.Spec{
-		OracleID:     "b545e26f-2034-409c-80cc-51b72e75e6e4",
-		Name:         "Thwart the Grave",
-		Completeness: effects.CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerValue},
-		SelfCostModifiers: []game.CostModifier{
-			effects.CostsLessEach(func(q game.CostQuery) int {
-				if q.Game == nil {
-					return 0
-				}
-				return effects.FinB9PartySize(q.Game, q.Controller)
-			}, "This spell costs {1} less to cast for each creature in your party."),
-		},
+		OracleID:          "b545e26f-2034-409c-80cc-51b72e75e6e4",
+		Name:              "Thwart the Grave",
+		Completeness:      effects.CompletenessFull,
+		Purpose:           game.Purpose{Answers: game.AnswerValue},
+		SelfCostModifiers: []game.CostModifier{effects.S82OldB091PartyCostReduction()},
 		Targets: effects.Clauses(
 			effects.TargetCardInGraveyard("target creature card from your graveyard", effects.YouOwn(), effects.Creature()),
 			effects.Distinct(effects.TargetCardInGraveyard("up to one target Cleric, Rogue, Warrior, or Wizard creature card from your graveyard",
