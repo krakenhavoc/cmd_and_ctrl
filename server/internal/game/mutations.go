@@ -12062,8 +12062,7 @@ func (g *Game) ShuffleLibrary(playerID uuid.UUID) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByAction)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil
