@@ -1,4 +1,4 @@
-package testsds
+package testsu
 
 import (
 	"testing"
