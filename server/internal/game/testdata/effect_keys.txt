@@ -1482,6 +1482,7 @@ choose choose-cards/s82-old-b061-blessing-of-frost-creatures
 choose choose-cards/s82-old-b061-burning-rune-demon-picked
 choose choose-cards/s82-old-b062-egon-exile-two
 choose choose-cards/s82-old-b063-skull-raid-discarded
+choose choose-cards/s82-old-b106-siege-striker-tap
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -3219,6 +3220,7 @@ run prompt-run/s82-neo-b18-echo-of-deaths-wail
 run prompt-run/s82-neo-sokenzan-smelter-construct
 run prompt-run/s82-old-b062-master-skald-exile
 run prompt-run/s82-old-b064-surtland-flinger-sacrifice
+run prompt-run/s82-old-b106-dire-fleet-warmonger-sacrifice
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -4480,6 +4482,7 @@ tail sacrificed-one/prompt-run/s82-gap-b156-kuldotha-flamefiend-sacrifice
 tail sacrificed-one/prompt-run/s82-neo-b18-echo-of-deaths-wail
 tail sacrificed-one/prompt-run/s82-neo-sokenzan-smelter-construct
 tail sacrificed-one/prompt-run/s82-old-b064-surtland-flinger-sacrifice
+tail sacrificed-one/prompt-run/s82-old-b106-dire-fleet-warmonger-sacrifice
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/seraph-of-new-phyrexia-pump
 tail sacrificed-one/prompt-run/shrapnel-slinger-sacrifice
