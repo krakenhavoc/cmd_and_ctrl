@@ -5932,7 +5932,9 @@ export interface ProtectionView {
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
   // (#4307), "multicolored" (#4834), "mana_value_at_least" (value = N)
-  // or "colorless" (a source with no colour, #5650).
+  // or "colorless" (a source with no colour, #5650), "mana_value"
+  // (exactly N, #6149) or "permanents_with_counter" (value = the
+  // counter kind, #6149).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
