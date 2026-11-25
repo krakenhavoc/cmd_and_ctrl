@@ -270,7 +270,7 @@ func (g *Game) damageSourceViewLocked(ev *ReplacementEvent) (damageSourceView, b
 	if c := findBattlefieldCard(g, id); c != nil {
 		ch := ev.SourceLKI
 		if ch == nil {
-			ch = SourceCharacteristics(c)
+			ch = g.asDamageSourceLocked(SourceCharacteristics(c), true)
 		}
 		return damageSourceView{
 			ch:         ch,
@@ -289,7 +289,7 @@ func (g *Game) damageSourceViewLocked(ev *ReplacementEvent) (damageSourceView, b
 			ch := rec.Characteristic
 			ch.Controller = rec.Controller
 			return damageSourceView{
-				ch:         &ch,
+				ch:         g.asDamageSourceLocked(&ch, true),
 				controller: rec.Controller,
 				power:      rec.Power,
 				permanent:  true,

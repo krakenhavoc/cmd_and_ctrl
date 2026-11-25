@@ -311,6 +311,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "OpponentsCantSearchLibraries", label: boolRow("Your opponents can't search libraries.")},
 	{field: "AttackingPlayerChoosesBlocks", label: boolRow("The attacking player chooses how each creature blocks each combat.")},
 	{field: "DrawsFromBottom", label: boolRow("You draw cards from the bottom of your library rather than the top.")},
+	{field: "ColorlessDamageSources", label: colorlessDamageSourceRows},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
 	{field: "DrawLimits", fallback: "Limits how many cards players draw", ownLabel: true},
@@ -418,6 +419,29 @@ func boolRow(label string) func(reflect.Value) []string {
 		}
 		return nil
 	}
+}
+
+// colorlessDamageSourceRows is the ColorlessDamageSources slot's row
+// (#6230): "Black and/or red permanents and spells are colorless sources
+// of damage."
+func colorlessDamageSourceRows(v reflect.Value) []string {
+	colors, _ := v.Interface().([]string)
+	if len(colors) == 0 {
+		return nil
+	}
+	words := map[string]string{"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
+	names := make([]string, 0, len(colors))
+	for i, c := range colors {
+		w := words[c]
+		if w == "" {
+			w = c
+		}
+		if i > 0 {
+			w = strings.ToLower(w)
+		}
+		names = append(names, w)
+	}
+	return []string{strings.Join(names, " and/or ") + " permanents and spells are colorless sources of damage."}
 }
 
 // attachOnlyToRows is the AttachOnlyTo slot's row (#5846): "Can be

@@ -1512,6 +1512,12 @@ type Spec struct {
 	// controller performs takes the bottom card (game/draw_from_bottom.go).
 	// Judged through CatalogAbilityKey as each draw is made.
 	DrawsFromBottom bool
+	// ColorlessDamageSources declares "<colours> permanents and spells
+	// are colorless sources of damage" (Ghostly Flame: "Black and/or red
+	// permanents and spells are colorless sources of damage", #6230):
+	// the colours, as game colour letters ("B", "R"). Read from the
+	// battlefield through game.CatalogColorlessDamageSources.
+	ColorlessDamageSources []string
 
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):

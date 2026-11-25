@@ -557,6 +557,12 @@ type CardDef struct {
 	// #6089). Read from the battlefield through CatalogDrawsFromBottom,
 	// keyed by CatalogAbilityKey; see draw_from_bottom.go.
 	DrawsFromBottom bool
+	// ColorlessDamageSources are the colours this permanent's printed
+	// "<colour> permanents and spells are colorless sources of damage"
+	// makes colourless as sources of damage (Ghostly Flame, #6230). Read
+	// from the battlefield through CatalogColorlessDamageSources, keyed by
+	// CatalogAbilityKey; see colorless_damage_sources.go.
+	ColorlessDamageSources []string
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -1418,6 +1424,12 @@ func init() {
 	CatalogDrawsFromBottom = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.DrawsFromBottom
+	}
+	CatalogColorlessDamageSources = func(key string) []string {
+		if d := catalogDef(key); d != nil {
+			return d.ColorlessDamageSources
+		}
+		return nil
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {

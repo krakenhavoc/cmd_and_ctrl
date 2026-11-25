@@ -1820,7 +1820,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AttackingPlayerChoosesBlocks": defFieldOwnRules,
 	// #6089: River Song changes which card its controller's draws take
 	// while its permanent is there.
-	"DrawsFromBottom": defFieldOwnRules,
+	"DrawsFromBottom": defFieldOwnRules, "ColorlessDamageSources": defFieldOwnRules,
 	// #5846: an Equipment's "can be attached only to …" (Konda's Banner)
 	// decides what another item's attach step does and when CR 704.5n
 	// unattaches it, while its permanent is there.

@@ -507,12 +507,14 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 	if ch != nil && findCardOnBattlefield(g, sourceID) >= 0 {
 		ch.SourceIsPermanent = true
 	}
-	if ch != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+	onStack := g.Stack != nil && g.Stack.Contains(c.InstanceID)
+	if ch != nil && onStack {
 		if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind == StackItemSpell {
 			ch.SourceIsSpell = true
 		}
 	}
-	return ch
+	// #6230: a card on the stack is a spell (an ability is not a card).
+	return g.asDamageSourceLocked(ch, ch != nil && (ch.SourceIsPermanent || onStack))
 }
 
 // damageTailFromFrame builds a combat damage tail from a queued
