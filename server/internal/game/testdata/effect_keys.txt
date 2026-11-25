@@ -322,6 +322,7 @@ body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
 body kroxa-and-kunoros/return
 body labyrinth-adversary/cant-block
+body lavabrink-floodgates/blast
 body leatherhead-swamp-stalker/destroy
 body legions-initiative/return-with-haste
 body leyline-tyrant/damage
@@ -1024,6 +1025,7 @@ choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
 choose choose-cards/karoo-return-an-untapped-plains
 choose choose-cards/kastral-put-bird
+choose choose-cards/kathril-keyword-counter-target
 choose choose-cards/kaya-spirits-justice-copy
 choose choose-cards/kaya-spirits-justice-exile
 choose choose-cards/kazandu-stomper-return-lands
@@ -1583,6 +1585,7 @@ choose choose-cards/tangle-wire-tap
 choose choose-cards/tasigur-the-golden-fang-return
 choose choose-cards/taster-of-wares-exile
 choose choose-cards/taster-of-wares-reveal
+choose choose-cards/tayam-return-permanent
 choose choose-cards/technomancer-return
 choose choose-cards/teferi-akosa-discard-the-one
 choose choose-cards/teferi-akosa-discard-two-or-creature
@@ -2427,6 +2430,7 @@ option option-pick/kharn-the-betrayer-opponent
 option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
 option option-pick/lantern-of-revealing-bottom
+option option-pick/lavabrink-floodgates-doom
 option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/liliana-of-the-dark-realms-pump
@@ -4643,6 +4647,7 @@ tail tail/gap-b216-durnan-exiled
 tail tail/gap-b82-savage-order-indestructible
 tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
+tail tail/kathril-next-keyword
 tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/lord-of-the-void-exiled
@@ -4668,6 +4673,7 @@ tail tail/s82-old-b005-karn-silver
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
+tail tail/tayam-after-mill
 tail tail/the-moment-then-sacrifice
 tail tail/time-reaper-gain-life
 tail tail/uchuulon-copy
@@ -4887,6 +4893,7 @@ tail then/laezels-acrobatics-returned
 tail then/lagrella-the-magpie-exiled-one
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
+tail then/lavabrink-floodgates-sacrificed
 tail then/lich-knights-conquest-return
 tail then/liliana-of-the-veil-sacrifice-pile
 tail then/lim-duls-vault-bottomed
