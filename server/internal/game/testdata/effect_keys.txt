@@ -2502,6 +2502,7 @@ option option-pick/energy-chosen-counter
 option option-pick/engine-clash
 option option-pick/engine-clash-opponent
 option option-pick/eowyn-lady-of-rohan-keyword
+option option-pick/epiphany-at-the-drownyard-chooser
 option option-pick/eumidian-wastewaker-choice
 option option-pick/eventides-shadow-remove
 option option-pick/exotic-pets-fish
@@ -4883,6 +4884,7 @@ tail tail/deadly-cover-up-exiled
 tail tail/devastating-mastery-wipe
 tail tail/dig-deep-counters
 tail tail/eagles-are-coming-birds
+tail tail/epiphany-at-the-drownyard-rest
 tail tail/fireflux-squad-reveal
 tail tail/fugitive-codebreaker-draw
 tail tail/gap-b213-intellect-devourer-hold
@@ -5083,6 +5085,7 @@ tail then/elven-farsight-after-scry
 tail then/empty-the-laboratory-reveal
 tail then/end-blaze-epiphany-choose
 tail then/epharas-dispersal-surveil
+tail then/epiphany-at-the-drownyard-take
 tail then/expose-the-culprit-cloak
 tail then/expressive-iteration-exile
 tail then/face-down-piles-to-hand
