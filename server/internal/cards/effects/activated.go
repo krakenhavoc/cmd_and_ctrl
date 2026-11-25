@@ -510,6 +510,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaValueFromSource {
 			out.ManaValueFromSource = true
 		}
+		// #6270 (Back from the Brink): and "pay its mana cost" off the
+		// exiled card; dropped, the copy would be free.
+		if c.ManaFromExiledCard {
+			out.ManaFromExiledCard = true
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {

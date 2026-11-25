@@ -134,6 +134,20 @@ type AbilityCost struct {
 	// bundle itself.
 	ManaValueFromSource bool
 
+	// ManaFromExiledCard is "Exile a creature card from your graveyard and
+	// pay its mana cost" (#6270, Back from the Brink): the mana component
+	// is the mana cost of the one card the activator names to ExileCards
+	// (CR 602.2b through 601.2f: the card is chosen as the cost is
+	// announced, and the total cost is then that card's cost plus any
+	// printed Mana, priced through every activation cost modifier). A
+	// card with no mana cost has a cost of {0} to pay (CR 202.1b).
+	// ExileCards must be a one-card clause; effects.Register refuses
+	// anything else. The ability's own rows and the view price it before
+	// a card is chosen at its printed Mana; the activation and the
+	// legal-move enumerator price it with the card
+	// (AbilityWithExiledCardCostForEffect).
+	ManaFromExiledCard bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'
@@ -2172,6 +2186,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #6270: "and pay its mana cost" — the card just named to the exile
+	// component sets the mana half, so every reader of the price below
+	// (the gate, the pricer, the payment) sees the total cost (CR 601.2f).
+	ab = g.AbilityWithExiledCardCostForEffect(playerID, ab, exiles)
 	// ADR 0109 §7 (#1902): "Put a card from your hand on top of your
 	// library" (Penance, Leashling), named at announce beside the
 	// discard and exile picks and never one of them (CR 118.3).

@@ -748,6 +748,11 @@ func Register(spec Spec) {
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
+		if ab.Cost.ManaFromExiledCard && (ab.Cost.ExileCards == nil || ab.Cost.ExileCards.N != 1 || ab.Cost.ExileCards.AnyNumber ||
+			ab.Cost.ExileCards.CountFromX || ab.Cost.ExileCards.CountOpponents || ab.Cost.ExileCards.Processes() || ab.Cost.ExileCards.ExilesSpell()) {
+			// #6270: "and pay its mana cost" reads the ONE card exiled.
+			panic(fmt.Sprintf("effects.Register: %q ability %d pays the mana cost of an exiled card without a one-card exile clause (#6270)", spec.Name, i))
+		}
 		CheckAbilityCostModifiers(spec.Name, i, ab)
 		// #4566: an either/or part of the cost (checkOrCost).
 		checkOrCost(spec.Name, i, ab.Cost)
