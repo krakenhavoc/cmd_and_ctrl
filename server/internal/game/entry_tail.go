@@ -395,6 +395,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ChosenCard = ObjectRef{}
 		c.Notes = nil
 		c.Devoured = 0
+		c.TributePaid = false
 		c.ModesChosen = nil
 		c.Provenance = CastProvenance{}
 		c.CraftedWith = nil

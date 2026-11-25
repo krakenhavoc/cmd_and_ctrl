@@ -190,6 +190,9 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "an exileInsteadOfYourGraveyard replacement names no player"
 		}
+	case ModNextEntersAsCopies:
+		// #6160: Mystic Reflection names the creature to copy.
+		return nextEntersAsCopiesModProblem(m)
 	case ModPermanentsEnterTapped:
 		// #6147: a card-type filter naming a non-permanent type.
 		return permanentsEnterTappedModProblem(m)
@@ -236,6 +239,9 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModCreaturesEnterTappedForOpponents, ModPermanentsEnterTapped:
 		// #6093: Cone of Cold's timed enters-tapped replacement; #6147,
 		// its "this turn" sibling.
+		return watchZoneMove
+	case ModNextEntersAsCopies:
+		// #6160: Mystic Reflection's one-shot entry copy.
 		return watchZoneMove
 	case ModLandManaIsColor:
 		return watchManaAdded
@@ -799,6 +805,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return shuffleInsteadOfEnteringFromExileAppliesLocked(g, ev)
 	case ModCreaturesEnterTappedForOpponents:
 		return creaturesEnterTappedForOpponentsAppliesLocked(g, e, ev)
+	case ModNextEntersAsCopies:
+		return nextEntersAsCopiesAppliesLocked(g, m, ev)
 	case ModPermanentsEnterTapped:
 		return permanentsEnterTappedAppliesLocked(g, m, ev)
 	case ModGainNoLife:
@@ -903,6 +911,10 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// "Enter tapped" (CR 614.1c): the permanent is tapped as it
 		// enters, so nothing sees it untapped.
 		ev.EntersTapped = true
+	case ModNextEntersAsCopies:
+		// #6160: "they enter as copies of the chosen creature" (CR 707.2,
+		// 614.1c), landed by the entry path before any event.
+		g.applyNextEntersAsCopiesLocked(e, mod, m, ev)
 	case ModGainNoLife:
 		// "That player gains no life instead": CR 614.10's null
 		// replacement. No EventChangeLife, so "whenever you gain life"
