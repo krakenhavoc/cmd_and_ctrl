@@ -73,6 +73,17 @@ type Characteristic struct {
 	// client's badge; nothing but the projection reads it.
 	AllCreatureTypes bool
 
+	// AllNonlegendaryCreatureNames records that this object has "all
+	// names of nonlegendary creature cards in addition to its name"
+	// (Spy Kit, #6257): a LAYER 3 name fact (CR 612, the layer a name is
+	// changed in), kept as a flag for the reason AllCreatureTypes is —
+	// thousands of names would not fit in Name. Name stays its own name.
+	// The name readers (CardNameMatches, PermanentHasName, the legend
+	// rule) ask it through HasAllNonlegendaryCreatureNames and the
+	// card-database hook NonlegendaryCreatureCardName (all_names.go). A
+	// later name SET clears it (CR 612.8: "loses any names it had").
+	AllNonlegendaryCreatureNames bool
+
 	// SourceManaValue, SourceManaValueKnown and SourceRingBearer are
 	// facts about a protection SOURCE (CR 702.16a), not characteristics
 	// a layer computes: the source's mana value (CR 202.3) and whether
@@ -381,6 +392,17 @@ type Characteristic struct {
 	// abilities does not lift it; every counter placement, cost and
 	// proliferate choice asks cantHaveCountersLocked (cant_have_counters.go).
 	CantHaveCounters bool `json:",omitempty"`
+
+	// ColorlessDamageSourceColors is a world rule the permanent carries
+	// on itself (#6230): "Black and/or red permanents and spells are
+	// colorless sources of damage" (Ghostly Flame) is "BR". A permanent
+	// or spell with any of these colours is a colourless source of
+	// damage while any permanent on the battlefield has it
+	// (damage_source_colorless.go): protection from a colour and every
+	// prevention or source filter that reads a damage source's colour see
+	// no colour (CR 105.2c). The object's own colours do not change.
+	// Colour letters, WUBRG; empty is no rule.
+	ColorlessDamageSourceColors string `json:",omitempty"`
 
 	// CantHavePlusOneCounters is "can't have +1/+1 counters put on it"
 	// (Blightbeetle's opposing creatures): CantHaveCounters narrowed to the

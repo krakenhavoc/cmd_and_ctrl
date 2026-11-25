@@ -584,6 +584,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.Toughness == b.Toughness &&
 		a.Name == b.Name &&
 		a.AllCreatureTypes == b.AllCreatureTypes &&
+		a.AllNonlegendaryCreatureNames == b.AllNonlegendaryCreatureNames &&
 		a.AbilitiesRemoved == b.AbilitiesRemoved &&
 		a.IntrinsicLandManaRemoved == b.IntrinsicLandManaRemoved &&
 		slices.Equal(a.RemovedOwnAbilities, b.RemovedOwnAbilities) &&

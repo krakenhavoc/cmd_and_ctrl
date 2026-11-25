@@ -1097,8 +1097,13 @@ func (g *Game) damageSourceCandidatesLocked(qs []PermanentQuery, controller uuid
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			ok := len(qs) == 0
-			for _, q := range qs {
-				ok = ok || q.matchesLocked(g, c)
+			if g.damageSourceIsColorlessLocked(c.EffectiveColors()) {
+				// #6230: a colourless source of damage (Ghostly Flame).
+				ok = matches(g.asDamageSourceLocked(SourceCharacteristics(c), true))
+			} else {
+				for _, q := range qs {
+					ok = ok || q.matchesLocked(g, c)
+				}
 			}
 			add(c.InstanceID, ok && (controller == uuid.Nil || c.Controller == controller))
 		}
@@ -1109,7 +1114,7 @@ func (g *Game) damageSourceCandidatesLocked(qs []PermanentQuery, controller uuid
 			if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind != StackItemSpell {
 				continue
 			}
-			ch := SourceCharacteristics(c)
+			ch := g.asDamageSourceLocked(SourceCharacteristics(c), true)
 			add(c.InstanceID, matches(ch) && (controller == uuid.Nil || ch.Controller == controller))
 		}
 	}
