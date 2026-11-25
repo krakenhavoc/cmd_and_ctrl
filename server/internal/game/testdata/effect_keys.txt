@@ -998,6 +998,7 @@ choose choose-cards/green-suns-twilight-placed
 choose choose-cards/green-suns-twilight-take
 choose choose-cards/grime-gorger-exile
 choose choose-cards/guided-passage-picked
+choose choose-cards/guild-summit-tap-gates
 choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/gyruda-reanimate
 choose choose-cards/harald-unites-the-elves-reanimate
@@ -1928,6 +1929,7 @@ confirm confirm/belanna-torres-scrapper-reveal
 confirm confirm/black-widow-counter-or-cast
 confirm confirm/bns-b52-taborax-draw-lose-life
 confirm confirm/bone-dancer-reanimate
+confirm confirm/book-devourer-discard-hand
 confirm confirm/braids-sacrifice
 confirm confirm/break-out-put
 confirm confirm/breathkeeper-seraph-return
@@ -5206,6 +5208,8 @@ tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/ulamogs-nullifier-counter
+tail then/unmoored-ego-draw
+tail then/unmoored-ego-named
 tail then/unnatural-selection-type-chosen
 tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
