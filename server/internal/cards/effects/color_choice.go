@@ -174,6 +174,21 @@ func ChooseColorTail(purpose game.ColorPurpose, g *game.Game, chooser, source uu
 	})
 }
 
+// ChooseColorsTail is ChooseColorTail for "the color or colors of your
+// choice" (#6146): the chooser names a non-empty set of colours and `then`
+// is told its letters in WUBRG order ("WU") as its Word. Split them with
+// game.ColorSetLetters and name them with game.ColorSetName.
+func ChooseColorsTail(purpose game.ColorPurpose, g *game.Game, chooser, source uuid.UUID, question string, then game.KeyedTail) {
+	g.QueueColorChoiceThenForEffect(game.ColorPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question,
+		Purpose:  purpose,
+		Multi:    true,
+		ThenTail: then,
+	})
+}
+
 // ChooseColorOtherThanTail is ChooseColorTail for "choose a color other than
 // <color>": the colour already named is not offered. Seal of the Guildpact's
 // second colour ("choose two colors" asks twice, and the two differ).

@@ -515,6 +515,12 @@ type PendingChoiceView struct {
 	// every other kind. Added by #780.
 	ColorPurpose string `json:"color_purpose,omitempty"`
 
+	// ColorMulti marks a "choose_color" prompt that asks for "the color
+	// or colors of your choice" (#6146): the answer is a non-empty set of
+	// color_options, sent in resolve_choice's `color` as their letters
+	// ("WU"). Absent on every other prompt, which takes one letter.
+	ColorMulti bool `json:"color_multi,omitempty"`
+
 	// ControlPurpose populates the "entry_controller" kind (ADR 0102):
 	// what giving the entering permanent away does to the seat that
 	// receives it — "harm" (Captive Audience) or "benefit" (Pendant of
@@ -1225,6 +1231,12 @@ type LegalTargetsView struct {
 	// than the exact count: "up to X target cards". The picker lets
 	// the player confirm with fewer.
 	UpToX bool `json:"up_to_x,omitempty"`
+	// CountFromKicks marks a clause whose count is one plus the number
+	// of times the spell is kicked (#6150, CR 601.2c): "choose another
+	// target for each time this spell was kicked" (Comet Storm). Min /
+	// Max are the unkicked count; the client adds the kicks it collected
+	// in the cost prompt.
+	CountFromKicks bool `json:"count_from_kicks,omitempty"`
 
 	// LifeTaxes is the extra life each legal card costs the caster to
 	// name, keyed by wire id (CR 601.2f, #3860): Terror of the Peaks'
@@ -1651,6 +1663,14 @@ type AdditionalCostView struct {
 	// than `min` means the cost cannot be paid right now, which makes
 	// the spell uncastable (CR 118.3).
 	DiscardOptions *LegalTargetsView `json:"discard_options,omitempty"`
+	// DiscardX marks "discard X cards" (Channeled Force, #6145): the
+	// count is the announced X, so DemandsX is set too and DiscardCards is
+	// absent; the picks on discard_ids number exactly X. DiscardXMax is the
+	// largest X the hand pays, absent at 0. A narrowed clause ("discard X
+	// land cards") lists its cards on DiscardOptions with min 0 and max
+	// that ceiling.
+	DiscardX    bool `json:"discard_x,omitempty"`
+	DiscardXMax int  `json:"discard_x_max,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
 	// caster's own board (CR 701.21a). Its min / max are how many
@@ -4785,6 +4805,10 @@ type CastPriceView struct {
 	// Life is the life a Bolas's-Citadel-shaped price charges on top
 	// (CR 119.4). Absent for every exile price today.
 	Life int `json:"life,omitempty"`
+	// CommanderTaxLife is the part of Life that is a commander tax paid
+	// in life (#6151, Liesa, Shroud of Dusk): 2 per previous cast from
+	// the command zone, in place of {2} each. Absent for every other card.
+	CommanderTaxLife int `json:"commander_tax_life,omitempty"`
 	// Energy is the energy a price charges on top (ADR 0129 §5): Amped
 	// Raptor's "an amount of {E} equal to its mana value". Absent for
 	// every price that charges none.
@@ -8385,6 +8409,10 @@ func viewOfCastPrices(g *game.Game, caster uuid.UUID, card game.Card, offers []*
 			// refuse; showing a guess would be worse than no badge.
 			continue
 		}
+		// #6151: a commander tax paid in life (Liesa) rides the price's
+		// life, as an offer's own life does.
+		v.CommanderTaxLife = g.CommanderTaxLifeForEffect(caster, card, params.FromZone)
+		v.Life += v.CommanderTaxLife
 		v.Cost = price.Total.String()
 		if v.Cost == "" {
 			v.Cost = "{0}"
@@ -8666,7 +8694,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, CountFromKicks: spec.CountFromKicks, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -8999,12 +9027,24 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
 	out := &AdditionalCostView{
 		DiscardCards: ac.DiscardCards,
-		DemandsX:     ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX),
+		DemandsX:     ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX),
 		Label:        ac.Label,
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
 	}
-	if ac.DiscardLand && ac.DiscardCards > 0 {
+	if ac.DiscardX {
+		// #6145: the same hand walk the validator reads
+		// (DiscardXCeilingForEffect).
+		out.DiscardX = true
+		out.DiscardXMax = g.DiscardXCeilingForEffect(caster, castID, ac)
+		if ac.DiscardFiltered() {
+			out.DiscardOptions = &LegalTargetsView{
+				Max:   out.DiscardXMax,
+				Cards: cardIDStrings(g.AdditionalDiscardOptionsForEffect(caster, castID, ac)),
+			}
+		}
+	}
+	if ac.DiscardFiltered() && ac.DiscardCards > 0 {
 		out.DiscardOptions = &LegalTargetsView{
 			Min:   ac.DiscardCards,
 			Max:   ac.DiscardCards,
@@ -11155,6 +11195,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceColor && len(c.ColorOptions) > 0 {
 			v.ColorOptions = legal.OrderColorOptionsLocked(g, c.Chooser, c.ColorOptions, c.ColorPurpose)
 			v.ColorPurpose = string(c.ColorPurpose)
+			v.ColorMulti = c.ColorMulti
 		}
 		// PendingChoiceCreatureType — S26. The option set is the
 		// whole CR 205.3m vocabulary; the clone keeps the engine's

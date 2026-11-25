@@ -726,6 +726,15 @@ const (
 	// A creature whose cost the engine cannot read is in neither set.
 	ScopeCreaturesOddManaValue  AffectedScope = "creaturesOddManaValue"
 	ScopeCreaturesEvenManaValue AffectedScope = "creaturesEvenManaValue"
+	// ScopeCreaturesPowerThreeOrLess is "creatures with power 3 or less",
+	// every player's, read live (S82 OLD, Temur Charm's "creatures with
+	// power 3 or less can't block this turn"). "Can't block" changes no
+	// characteristic, so CR 611.2c does not lock the set: a creature that
+	// arrives later, or whose power falls or rises, is judged as blockers
+	// are declared (CR 509.1b). Power is a layer-7 result, so, like
+	// ScopeCreaturesWithoutFlying, a record with this scope carries only
+	// mods read after the layer pass is finished (scopeReadsLayerResult).
+	ScopeCreaturesPowerThreeOrLess AffectedScope = "creaturesPowerThreeOrLess"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -735,7 +744,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesExceptObjects:
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects:
 		return true
 	}
 	return false
@@ -748,7 +757,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 // half-way through the pass (#1650).
 func scopeReadsLayerResult(scope AffectedScope) bool {
 	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands ||
-		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue
+		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue ||
+		scope == ScopeCreaturesPowerThreeOrLess
 }
 
 // panicOnLayerModUnderLayerScope refuses, at registration, a layer mod on
@@ -813,8 +823,9 @@ type Mod struct {
 	// mutated in place (see ScopedEffect's contract).
 	Amount int `json:"amount,omitempty"`
 	// Step and ExtraTurn are ModSkipExtraTurnStep's (ADR 0188 Decision
-	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Refused
-	// on every other kind (skipExtraTurnStepModProblem).
+	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Step is
+	// also ModSkipNextStep's (#6144). Refused on every other kind
+	// (skipExtraTurnStepModProblem).
 	Step      Step `json:"step,omitempty"`
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
@@ -1332,6 +1343,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
+	// #5514: Elspeth Conquers Death's chapter II, the same increase for
+	// noncreature spells only (scoped_cost_tax.go).
+	ModNoncreatureSpellsCostMoreForOpponents: {reader: readerRule},
 	// #6093: Commander Liara Portyr's and Will Kenrith's timed reduction
 	// (scoped_cost_reduction.go).
 	ModSpellsCostLessForPlayer:       {reader: readerRule},
@@ -1375,6 +1389,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipCombatPhases: {reader: readerRule},
 	// #5838: "skips their next combat phase" (Blinding Angel).
 	ModSkipNextCombatPhase: {reader: readerRule},
+	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
+	ModSkipNextStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1959,6 +1975,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := skipNextCombatPhaseModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := attackPermanentModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -2298,6 +2317,10 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 	case ScopeCreaturesThatArentLands:
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !target.IsLand()
+		}
+	case ScopeCreaturesPowerThreeOrLess:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && target.CurrentPower() <= 3
 		}
 	case ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
 		wantOdd := scope == ScopeCreaturesOddManaValue

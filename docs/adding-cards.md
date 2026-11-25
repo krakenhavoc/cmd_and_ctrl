@@ -37,6 +37,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
   - ["They are Food artifacts": putting a card onto the battlefield as a different type (ADR 0210, #4506)](#they-are-food-artifacts-putting-a-card-onto-the-battlefield-as-a-different-type-adr-0210-4506)
   - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
+  - [Epic (#6141, CR 702.50)](#epic-6141-cr-70250)
   - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](#players-cant-play-lands-adr-0109-4-1895)
@@ -3689,6 +3690,27 @@ pick)` (pass `uuid.Nil` to decline) → assert on the battlefield card.
 Assert the OBSERVABLE result — name, P/T, types, counters, and for
 anything with a catalog entry, its behaviour — because a copy that
 rewrote only the display fields looks identical on the wire.
+
+### Epic (#6141, CR 702.50)
+
+Wrap the spell's `OnResolve` in `effects.Epic`. It applies both epic
+abilities (CR 702.50a) and then the spell's own text: the caster's
+"can't cast spells" for the rest of the game (an outright cast ban with
+`IndefiniteDuration`, on the player's statics) and a delayed trigger at
+each of the caster's upkeeps that copies the spell as it resolved, X,
+modes, kicker and targets included, offering new targets (CR 707.10c).
+The trigger carries the spell as snapshot data (`DelayedTrigger.CopiesSpell`),
+so it needs the original card nowhere. The copy loses the epic keyword
+(CR 707.9b), so its own resolution runs the text alone.
+
+```go
+OnResolve: effects.Epic(func(item *game.StackItem, ctx *effects.Context) error {
+    // the spell's text
+}),
+```
+
+Tests: [epic_test.go](../server/internal/game/epic_test.go) and Enduring
+Ideal's.
 
 ### Exchanging text boxes (ADR 0160)
 

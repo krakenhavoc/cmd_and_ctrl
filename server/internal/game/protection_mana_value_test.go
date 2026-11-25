@@ -39,7 +39,9 @@ func TestProtectionGrammarParsesManaValueAndRingBearers(t *testing.T) {
 		"protection from mana value 3 or more",
 		"protection from mana value or less",
 		"protection from mana value X or less",
-		"protection from mana value 3",
+		// "protection from mana value 3" (an exact value) joined the
+		// grammar with #6149 (Rebbec): protection_6149_test.go.
+		"protection from mana value X",
 		"protection from Ring-bearer's",
 	} {
 		if _, ok := ParseProtectionQuality(bad); ok {

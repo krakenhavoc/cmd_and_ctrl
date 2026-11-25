@@ -221,6 +221,11 @@ type CardDef struct {
 	// #4475, Kíli the Resourceful). Read from the battlefield through
 	// Game.EquipCostAlternativeLocked.
 	EquipCostAlternatives []EquipCostAlternative
+	// CyclingCostAlternatives are the "you may pay {0} rather than pay
+	// cycling costs" clauses this permanent contributes to its controller
+	// (CR 118.9, CR 702.29, New Perspectives). Read from the battlefield
+	// through Game.CyclingCostAlternativeLocked.
+	CyclingCostAlternatives []EquipCostAlternative
 	// TargetTaxes are the "spells <whom> cast that target <what> cost an
 	// additional N life" statics this permanent contributes (CR 601.2f,
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
@@ -638,6 +643,10 @@ type CardDef struct {
 	// MadnessLife is the "Pay N life" a madness cost adds to its mana
 	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
 	MadnessLife int
+	// CommanderTaxInLife is "Rather than pay {2} for each previous time
+	// you've cast this spell from the command zone this game, pay 2 life
+	// that many times" (#6151), read through CommanderTaxInLifeFor.
+	CommanderTaxInLife bool
 
 	// XCeiling is the spell's printed "X can't be greater than
 	// <count>" (#2581), read at announce through XCeilingFor; see
@@ -1053,6 +1062,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogCyclingCostAlternatives = func(key string) []EquipCostAlternative {
+		if d := catalogDef(key); d != nil {
+			return d.CyclingCostAlternatives
+		}
+		return nil
+	}
 	CatalogTargetTaxes = func(key string) []TargetTax {
 		if d := catalogDef(key); d != nil {
 			return d.TargetTaxes
@@ -1438,6 +1453,10 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogCommanderTaxInLife = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.CommanderTaxInLife
 	}
 	CatalogMadnessLife = func(key string) int {
 		if d := catalogDef(key); d != nil {

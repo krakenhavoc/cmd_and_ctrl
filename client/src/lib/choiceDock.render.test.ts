@@ -29,6 +29,7 @@ import { _resetForTests as resetModals } from "./modalLayers";
 import { targeting, setConfirmHandler } from "./targeting";
 import { defaultSettings, settings } from "./settings";
 import { GAME_OVER_GRACE_MS } from "./choiceDock";
+import { L } from "./labels";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
 
 vi.mock("./components/board/Board.svelte", async () => ({
@@ -800,6 +801,33 @@ describe("mana_pick and choose_color, inline", () => {
     expect(dlg.querySelector(".dock-hint")?.textContent?.length).toBeGreaterThan(0);
     click(dlg.querySelectorAll<HTMLButtonElement>(".mana-option")[3]);
     expect(answers()).toEqual([{ choice_id: "choice-1", color: "R" }]);
+  });
+
+  it("choose_color with color_multi: toggles, refuses an empty set, sends the set (#6146)", async () => {
+    const c = await mountGame(
+      withChoice({
+        kind: "choose_color",
+        reason: "Scuttlemutt — choose one or more colors",
+        color_options: ["W", "U", "B", "R", "G"],
+        color_purpose: "benefit",
+        color_multi: true,
+      }),
+    );
+    const dlg = expectInDock(c, "Scuttlemutt — choose one or more colors");
+    const symbols = () => dlg.querySelectorAll<HTMLButtonElement>(".mana-option");
+    const choose = () => buttons(dlg, L.chooseColors)[0];
+    expect(choose().disabled).toBe(true);
+    click(choose());
+    expect(answers()).toEqual([]);
+    click(symbols()[1]);
+    expect(symbols()[1].getAttribute("aria-pressed")).toBe("true");
+    expect(answers()).toEqual([]);
+    click(symbols()[0]);
+    click(symbols()[3]);
+    click(symbols()[3]);
+    expect(choose().disabled).toBe(false);
+    click(choose());
+    expect(answers()).toEqual([{ choice_id: "choice-1", color: "UW" }]);
   });
 });
 

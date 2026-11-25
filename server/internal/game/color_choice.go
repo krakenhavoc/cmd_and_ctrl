@@ -263,6 +263,11 @@ type ColorPrompt struct {
 	// colours: "colorless or the color of your choice" (Angelic
 	// Intervention, #5650). The tail is then told "C" as its Word.
 	OrColorless bool
+	// Multi asks for "the color or colors of your choice" (#6146,
+	// CR 105.3): the chooser names a non-empty set of the options and the
+	// tail is told its letters in WUBRG order ("WU") as its Word; split
+	// them with ColorSetLetters. Never combined with OrColorless.
+	Multi bool
 	// ThenTail receives the answer (#4253): a registered tail
 	// (RegisterTail) told the colour as its Word. It runs with g.mu held
 	// and may queue further choices. The prompt holds no closure, so a
@@ -286,7 +291,9 @@ func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
 		ColorOptions: normaliseColorOptions(p.Options),
 		ColorPurpose: p.Purpose,
 	}
-	if p.OrColorless {
+	if p.Multi {
+		c.ColorMulti = true
+	} else if p.OrColorless {
 		// After the colours, which normaliseColorOptions has just
 		// narrowed to real ones: the one door through which "C" reaches
 		// a choose_color prompt.
@@ -332,16 +339,24 @@ func (g *Game) ResolveColorChoice(choiceID, chooserID uuid.UUID, color string) e
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	color = strings.ToUpper(strings.TrimSpace(color))
-	legal := false
-	for _, o := range choice.ColorOptions {
-		if o == color {
-			legal = true
-			break
+	if choice.ColorMulti {
+		set, ok := colorSetAnswer(color, choice.ColorOptions)
+		if !ok {
+			return ErrInvalidParam
 		}
-	}
-	if !legal {
-		return ErrInvalidParam
+		color = set
+	} else {
+		color = strings.ToUpper(strings.TrimSpace(color))
+		legal := false
+		for _, o := range choice.ColorOptions {
+			if o == color {
+				legal = true
+				break
+			}
+		}
+		if !legal {
+			return ErrInvalidParam
+		}
 	}
 	frame := chooseValueFrameOf(choice)
 	source := choice.Source
@@ -382,4 +397,71 @@ func (g *Game) ChosenColorOf(sourceID uuid.UUID) string {
 		return g.Battlefield.Cards[i].ChosenColor
 	}
 	return ""
+}
+
+// colorSetAnswer reads the answer to a ColorMulti prompt (#6146): the
+// letters of a non-empty set of `options`, in any order and case, with
+// spaces or commas between them or none ("wu", "U,W"). It returns the
+// set in WUBRG order with no repeats. An empty answer, or one naming a
+// colour that is not on offer, is refused: "the color or colors of your
+// choice" is at least one colour (CR 105.3 gives an object new colours;
+// it never makes it colorless).
+func colorSetAnswer(answer string, options []string) (string, bool) {
+	offered := map[string]bool{}
+	for _, o := range options {
+		offered[o] = true
+	}
+	named := map[string]bool{}
+	for _, r := range strings.ToUpper(answer) {
+		switch r {
+		case ' ', ',':
+			continue
+		}
+		letter := string(r)
+		if !offered[letter] {
+			return "", false
+		}
+		named[letter] = true
+	}
+	var b strings.Builder
+	for _, c := range AllColors {
+		if named[c] {
+			b.WriteString(c)
+		}
+	}
+	if b.Len() == 0 {
+		return "", false
+	}
+	return b.String(), true
+}
+
+// ColorSetLetters splits a colour-set Word ("WU", from a ColorMulti
+// prompt) into its letters, keeping only real colours in WUBRG order.
+// A single-colour answer comes back as a one-element set.
+func ColorSetLetters(word string) []string {
+	up := strings.ToUpper(word)
+	var out []string
+	for _, c := range AllColors {
+		if strings.Contains(up, c) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ColorSetName is the English name of a colour set ("WU" → "white and
+// blue", "WUB" → "white, blue and black"), for labels and event text.
+func ColorSetName(word string) string {
+	letters := ColorSetLetters(word)
+	names := make([]string, len(letters))
+	for i, l := range letters {
+		names[i] = ColorName(l)
+	}
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 }

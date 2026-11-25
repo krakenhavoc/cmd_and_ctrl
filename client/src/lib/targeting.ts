@@ -113,6 +113,10 @@ export interface CastChoices {
   // payment for a multikicker. Undefined and [] are the same thing
   // to the server: decline them all.
   optionalCosts?: number[];
+  // #6150: how many of those payments are a kicker or multikicker —
+  // CR 702.33d's "the number of times it was kicked", which sizes a
+  // `count_from_kicks` clause. Set with optionalCosts by kicksOf.
+  kicks?: number;
   // ADR 0202 (CR 702.47a): the cards in the caster's hand revealed to
   // splice onto this spell — `card_id`s from the card's `splice_offers`,
   // in the order their text happens (the order they were ticked). Each
@@ -1075,6 +1079,11 @@ function countOf(
     // "Up to X": the announced X is a ceiling and zero picks is legal.
     return { min: lt.up_to_x ? 0 : x, max: x };
   }
+  if (lt.count_from_kicks) {
+    // #6150: one target plus one for each time the spell is kicked.
+    const n = 1 + (choices?.kicks ?? 0);
+    return { min: n, max: n };
+  }
   return { min: lt.min ?? 1, max: lt.max ?? 1 };
 }
 
@@ -1188,6 +1197,14 @@ export function isModal(card: CardView): boolean {
 // the chosen branch's (castAdditionalCost).
 export function discardCostOf(card: CardView, choices?: CastChoices): number {
   return castAdditionalCost(card, choices)?.discard_cards ?? 0;
+}
+
+// discardXCount is how many cards a "discard X cards" additional cost
+// (#6145, Channeled Force) takes for this cast: the announced X, or 0 for
+// every other cost. Its picker opens after the X prompt, not before it.
+export function discardXCount(card: CardView, choices?: CastChoices): number {
+  if (!castAdditionalCost(card, choices)?.discard_x) return 0;
+  return Math.max(choices?.xValue ?? 0, 0);
 }
 
 // costBranchesOf returns the branches of a card's either/or additional
@@ -1416,6 +1433,20 @@ export function optionalCostSelection(counts: Map<number, number>): number[] {
     for (let i = 0; i < n; i++) out.push(index);
   }
   return out;
+}
+
+// kicksOf counts the kicker and multikicker payments in an optional-cost
+// selection (#6150): each index names one payment of the offer at that
+// position, and an offer keyed "kicker" or "multikicker" is a kick
+// (CR 702.33d).
+export function kicksOf(card: CardView, selection: number[]): number {
+  const offers = optionalCostsOf(card);
+  let n = 0;
+  for (const i of selection) {
+    const key = offers.find((o) => o.index === i)?.key;
+    if (key === "kicker" || key === "multikicker") n++;
+  }
+  return n;
 }
 
 // optionalCostOpponentOptions returns the players a gift offer may be
@@ -2167,6 +2198,11 @@ export function xCeilingFor(card: CardView, altCost: string | undefined): number
   // #1948: "exile X cards from your graveyard" — X is what the graveyard
   // pays, the same number the server refuses above.
   const ac = card.additional_cost;
+  // #6145: "discard X cards" — X is what the hand pays.
+  if (ac?.discard_x) {
+    const discardMax = ac.discard_x_max ?? 0;
+    return ceiling === undefined ? discardMax : Math.min(ceiling, discardMax);
+  }
   if (ac?.exile_cost_x) {
     const exileMax = ac.exile_cost_x_max ?? 0;
     return ceiling === undefined ? exileMax : Math.min(ceiling, exileMax);

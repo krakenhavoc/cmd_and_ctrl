@@ -71,6 +71,8 @@
       type="button"
       class="mana-option"
       class:has-rider={!!o.rider}
+      class:pressed={!!o.pressed}
+      aria-pressed={o.pressed === undefined ? undefined : o.pressed}
       disabled={!!o.disabled}
       title={o.rider ? `${o.title} — ${o.rider}` : o.title}
       aria-label={o.rider ? `${o.title}, ${o.rider}` : o.title}
@@ -141,6 +143,12 @@
     border-color: color-mix(in srgb, var(--accent-strong) 90%, transparent);
     transform: translateY(-2px);
     outline: none;
+  }
+  /* #6146: a toggled colour on a "colors of your choice" picker. */
+  .mana-option.pressed {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong) 60%, transparent);
   }
   .mana-option:disabled {
     opacity: 0.45;

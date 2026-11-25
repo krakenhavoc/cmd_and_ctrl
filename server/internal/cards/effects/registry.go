@@ -38,6 +38,8 @@ func Register(spec Spec) {
 	CheckSpecPurposes(spec)
 	// ADR 0208 §5: a sticker sheet's ability stickers.
 	registerStickerSheet(spec)
+	// #6150: a target count set by the kicks.
+	checkCountFromKicks(spec)
 	if spec.Modes != nil {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))
@@ -2768,7 +2770,7 @@ func CheckPlayerKeywords(spec Spec) {
 // placeholder, or a protection or hexproof-from token the closed
 // grammar parses.
 func playerKeywordHonoured(kw string) bool {
-	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType {
+	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType || kw == game.ProtectionFromTheChosenCardName {
 		return true
 	}
 	if _, ok := game.ParseProtectionQuality(kw); ok {
