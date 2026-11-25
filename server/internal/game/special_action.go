@@ -461,6 +461,11 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// is neither), and nothing here asks them.
 		return g.SorcerySpeedOpenLocked(playerID)
 
+	case SpecialActionPayToCancel:
+		// #6220: "before that step" — any time they have priority while
+		// the trigger waits, on any turn, with anything on the stack.
+		return true
+
 	case SpecialActionIgnoreEffect:
 		// CR 116.2d: "any time they have priority". No turn restriction,
 		// no empty-stack requirement, and LEGAL UNDER SPLIT SECOND for
@@ -544,6 +549,11 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// other kind takes one.
 	if kind == SpecialActionIgnoreEffect {
 		return g.performIgnoreEffectLocked(p, cardID, params)
+	}
+	// #6220: "unless they pay {N} before that step" is paid on a waiting
+	// delayed trigger, named by its ID, not on a card.
+	if kind == SpecialActionPayToCancel {
+		return g.performPayToCancelLocked(p, cardID, params)
 	}
 	// CR 901.9 (ADR 0216 §4): the planar die is taken on no card.
 	if kind == SpecialActionPlanarDie {

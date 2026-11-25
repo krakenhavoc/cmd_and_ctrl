@@ -1180,6 +1180,7 @@ var delayedTriggerFields = plan(
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 	"CopiesSpell", carried, "", // #6141, CR 702.50a: epic's spell record
 	"WhileExiled", carried, "", // #6221, CR 603.4: "if that card is exiled" (delayed_recast.go)
+	"PayToCancel", carried, "", // #6220: "unless they pay {N} before that step"
 )
 
 var pendingChoiceFields = plan(

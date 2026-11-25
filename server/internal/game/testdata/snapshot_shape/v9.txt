@@ -1540,6 +1540,9 @@ delayedTriggers[].params.objects[]	object
 delayedTriggers[].params.objects[].epoch	number:int
 delayedTriggers[].params.objects[].id	custom(uuid.UUID)
 delayedTriggers[].params.player	custom(uuid.UUID)
+delayedTriggers[].payToCancel	object
+delayedTriggers[].payToCancel.cost	string
+delayedTriggers[].payToCancel.player	custom(uuid.UUID)
 delayedTriggers[].repeats	bool
 delayedTriggers[].sourceCardId	custom(uuid.UUID)
 delayedTriggers[].sourceObject	object

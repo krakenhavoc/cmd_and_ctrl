@@ -2907,6 +2907,19 @@ export interface IgnorableEffectView {
   sacrifice_ids: string[];
 }
 
+// PayToCancelView is a "… unless they pay {N} before that step" payment
+// waiting on the seat (#6220; Nafs Asp, Sabertooth Cobra): a button on the
+// seat's own panel that sends `special_action { kind: "pay_to_cancel",
+// card_id: id, strict: true, auto_tap: true }` while the seat has priority.
+// `label` is what happens if it isn't paid, `at` the step it happens at.
+export interface PayToCancelView {
+  id: string;
+  cost: string;
+  label: string;
+  source_name?: string;
+  at: string;
+}
+
 // PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
 // (#4885): Channel's "until end of turn, any time you could activate a
 // mana ability, you may pay 1 life. If you do, add {C}." The owner sends
@@ -3223,6 +3236,11 @@ export interface PlayerView {
   // which permanent to give up, then sends `special_action
   // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
   ignorable_effects?: IgnorableEffectView[];
+  // #6220: the "… unless they pay {N} before that step" payments waiting on
+  // this seat. Its own frame only. Each row is a button that sends
+  // `special_action { kind: "pay_to_cancel", card_id: id, strict: true,
+  // auto_tap: true }`; live while the seat's legal_moves carry that move.
+  pay_to_cancel?: PayToCancelView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.

@@ -629,6 +629,12 @@ type ScheduleDelayedTrigger struct {
 	// controller's own and the step has not begun yet. Pair with
 	// ControllerTurnOnly.
 	AfterThisTurn bool
+
+	// PayToCancel is "… unless they pay {N} before that step" (#6220):
+	// the player it names may pay the cost any time they have priority
+	// while the trigger waits, and then it never fires. Pair it with
+	// TurnOf for "their next <step>".
+	PayToCancel *game.PayToCancel
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -653,6 +659,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		OnExtraTurn:        s.OnExtraTurn,
 		OnPhaseID:          s.OnPhase,
 		AfterThisTurn:      s.AfterThisTurn,
+		PayToCancel:        s.PayToCancel,
 	}
 	if s.EachThisTurn {
 		d := ctx.Game.UntilEndOfTurnDuration()
