@@ -33,12 +33,7 @@ func S82OldB089CardHasKicker(c game.Card) bool {
 // S82OldB089PartyCostReduction is "This spell costs {1} less to cast for
 // each creature in your party." (CR 700.8), counted as the spell is cast.
 func S82OldB089PartyCostReduction() game.CostModifier {
-	return CostsLessEach(func(q game.CostQuery) int {
-		if q.Game == nil {
-			return 0
-		}
-		return FinB9PartySize(q.Game, q.Controller)
-	}, "This spell costs {1} less to cast for each creature in your party.")
+	return CostsLessEach(OldB094PartySizeForCost, "This spell costs {1} less to cast for each creature in your party.")
 }
 
 // S82OldB089AnOpponentHasEightInGraveyard is an activation condition:
