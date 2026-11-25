@@ -406,6 +406,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// #6260: Gather Specimens' entry-controller replacement. Its cases
+		// are in scoped_enters_under_control_test.go.
+		ModCreaturesEnterUnderYourControl: true,
 		// #6160: Mystic Reflection's one-shot entry copy. Its cases are in
 		// scoped_enter_as_copies_test.go.
 		ModNextEntersAsCopies: true,
