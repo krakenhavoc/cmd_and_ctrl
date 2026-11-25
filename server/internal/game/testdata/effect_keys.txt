@@ -2009,6 +2009,7 @@ confirm confirm/narset-jeskai-waymaster-discard-hand
 confirm confirm/necroskitter-return
 confirm confirm/nissa-of-shadowed-boughs-animate
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
+confirm confirm/nylea-keen-eyed-to-graveyard
 confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
@@ -4332,6 +4333,7 @@ tail prishes-wanderings/searched
 tail profane-transfusion/token
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
+tail purphoros-bronze-blooded/entered
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
 tail put-from-hand/jadzi-journey-lands
@@ -4726,6 +4728,7 @@ tail then/and-they-shall-know-no-fear-type-chosen
 tail then/angelic-intervention-protection-then-counter
 tail then/another-round-return
 tail then/arcum-dagsson-search
+tail then/ashiok-nightmare-muse-exile
 tail then/audacious-swap-exiled
 tail then/audacious-swap-shuffle-exile
 tail then/aven-interrupter-plot
