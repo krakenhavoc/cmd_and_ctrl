@@ -508,6 +508,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,
+		// #6241: cases in cant_get_counters_test.go.
+		ModPlayerCantGetCounters: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
