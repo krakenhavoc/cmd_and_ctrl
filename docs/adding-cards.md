@@ -4370,6 +4370,25 @@ lift defender for every target (Stalked Researcher, Ghalta) write it as
 losing the keyword, which differs only to a card that counts creatures
 with defender; prefer the waiver for a new card.
 
+A mass restriction over a FILTERED set — Goblin Locksmith's "creatures
+with defender can't block this turn", Rumbling Ruin's "creatures your
+opponents control with power less than or equal to that number can't
+block this turn" (#6237) — is the two query-filtered live scopes
+(`game.ScopeCreaturesMatching`, `game.ScopeOpponentsCreaturesMatching`):
+
+```go
+effects.CantBlockThisTurnMatching(false, label,
+    game.PermanentQuery{Types: []string{"creature"}, Keyword: "defender"}) // Goblin Locksmith
+effects.CantBlockThisTurnMatching(true, label,
+    game.PermanentQuery{Types: []string{"creature"}}.WithPowerAtMost(n))   // Rumbling Ruin
+```
+
+The filter is DATA on the record's mods (`Mod.Match`), so a number in it
+is locked as the ability resolves while the SET stays live (CR 611.2c):
+a creature that arrives later in the turn and matches can't block
+either, and one pumped past the bound can. Reach for a filtered scope
+rather than a new constant whenever the clause carries a number.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped
