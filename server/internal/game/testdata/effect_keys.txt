@@ -3330,6 +3330,7 @@ run prompt-run/exploit-stitched-assistant
 run prompt-run/exploit-vulturous-aven
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
+run prompt-run/extricator-of-sin-horror
 run prompt-run/extus-oriq-overlord-avatar
 run prompt-run/fall-of-the-first-civilization-keep
 run prompt-run/fall-of-the-impostor-exile
@@ -4754,6 +4755,7 @@ tail sacrificed-one/prompt-run/exploit-silumgar-scavenger
 tail sacrificed-one/prompt-run/exploit-skull-skaab
 tail sacrificed-one/prompt-run/exploit-stitched-assistant
 tail sacrificed-one/prompt-run/exploit-vulturous-aven
+tail sacrificed-one/prompt-run/extricator-of-sin-horror
 tail sacrificed-one/prompt-run/feed-the-pack-wolves
 tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
