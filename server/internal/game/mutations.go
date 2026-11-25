@@ -12316,7 +12316,7 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			}
 			// #4692: and one can't be put on a permanent that can't have
 			// counters put on it (cant_have_counters.go).
-			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCountersLocked(&z.Cards[i]) {
+			if delta > 0 && z.Kind == ZoneBattlefield && g.cantHaveCounterKindLocked(&z.Cards[i], name) {
 				return nil
 			}
 			hadCounters := len(z.Cards[i].Counters) > 0
