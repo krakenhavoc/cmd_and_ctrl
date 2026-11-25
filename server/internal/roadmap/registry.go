@@ -3454,6 +3454,16 @@ var items = []Item{
 	},
 
 	{
+		Slug: "partner", Name: "Partner (as an ability a permanent has)", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A permanent with partner, partner—[text] or partner with [name] has the partner ability, so an effect that counts it sees it (Akroma, Vision of Ixidor). Choosing two commanders is deck construction.",
+		Rules:    []string{"702.124a", "702.124n"},
+		Issue:    6162,
+		Keywords: []string{"partner"},
+		Probe:    hasKeyword("partner"),
+		Printed:  printedKeyword("partner"),
+		Examples: []string{"Akroma, Vision of Ixidor", "Rograkh, Son of Rohgahh", "Brinelin, the Moon Kraken"},
+	},
+	{
 		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "\"Partner with [name]\" lets two named legendary cards be your commanders together, and searches for the other one when it enters.",
 		Rules:    []string{"702.124j"},

@@ -77,6 +77,17 @@ var canonicalKeywords = map[string]bool{
 	// and through it every "of the chosen type" / "shares a creature
 	// type" read in the engine.
 	KeywordChangeling: true,
+	// partner (CR 702.124) joins with #6162. Its rules are deck
+	// construction and are enforced there (ADR 0144), from the printed
+	// text, not from this token; the token is here so a PERMANENT has the
+	// ability where the layer system can see it, which is what an effect
+	// that counts it reads (Akroma, Vision of Ixidor's "+1/+1 if it has
+	// … partner"). CR 702.124n: an effect that names "partner" without a
+	// variant means partner, partner—[text] and partner with [name], so
+	// all three are this one token (Scryfall's "Partner" covers the first
+	// two, and "Partner with" is mapped in CanonicalKeywords); choose a
+	// Background and Doctor's companion are not partner here.
+	KeywordPartner: true,
 	// Landwalk (CR 702.14) joins with #705, in the same change that
 	// teaches BlockPairRefusalLocked to read the defending player's
 	// lands (landwalk.go). One token per kind the engine enforces;
@@ -465,6 +476,10 @@ var canonicalKeywords = map[string]bool{
 // rather than by the combat engine.
 const KeywordChangeling = "changeling"
 
+// KeywordPartner is the partner ability as a permanent has it (#6162,
+// CR 702.124n): partner, partner—[text] and partner with [name] alike.
+const KeywordPartner = "partner"
+
 // KeywordFlanking is the canonical token for flanking (CR 702.25a):
 // each instance is one engine trigger (flanking.go, #5784), and the
 // trigger reads it off the blocker (#5757).
@@ -681,6 +696,13 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	}
 	if canonicalKeywords[kw] {
 		return []string{kw}, true
+	}
+	// "Partner with" is Scryfall's array entry for partner with [name]
+	// (CR 702.124j), one of the abilities CR 702.124n calls partner. Only
+	// the bare array entry: a printed "Partner with Pir" line also carries
+	// a triggered ability (the search), so it is not a keyword-only line.
+	if kw == "partner with" {
+		return []string{KeywordPartner}, true
 	}
 	// Toxic (CR 702.164) is the other parameterised keyword: "Toxic 2"
 	// is one token, "toxic 2", and a bare "toxic" was refused above
