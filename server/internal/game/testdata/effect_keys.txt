@@ -2665,6 +2665,7 @@ option option-pick/s82-old-b064-alrund-card-type
 option option-pick/s82-old-b113-enters-with-counters
 option option-pick/s82-old-b170-deliver-unto-evil-opponent
 option option-pick/s82-old-b206-friend-or-foe
+option option-pick/s82-old-b315-veteran-warleader-keyword
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
