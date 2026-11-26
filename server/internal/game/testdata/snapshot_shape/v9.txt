@@ -95173,6 +95173,11 @@ turnTally.sacrificedCardTypes	map:string
 turnTally.sacrificedCardTypes{}	number:int
 turnTally.sacrificedSubtypes	map:string
 turnTally.sacrificedSubtypes{}	number:int
+turnTally.spellColors	array
+turnTally.spellColors[]	object
+turnTally.spellColors[].colors	string
+turnTally.spellColors[].player	custom(uuid.UUID)
+turnTally.spellColors[].spell	custom(uuid.UUID)
 turnTally.spellNames	array
 turnTally.spellNames[]	object
 turnTally.spellNames[].name	string

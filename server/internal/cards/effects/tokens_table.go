@@ -792,4 +792,8 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 503 (#5586): Predatory Advantage's Lizard.
 	"2/2 green Lizard": {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 2, Toughness: 2, Colors: []string{"G"}},
+
+	// S82 OLD batch 510 (#5588): Puppet Conjurer's Homunculus and Godsire's Beast.
+	"0/1 blue Homunculus artifact creature": {Name: "Homunculus", TypeLine: "Token Artifact Creature — Homunculus", Power: 0, Toughness: 1, Colors: []string{"U"}},
+	"8/8 red and green and white Beast":     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 8, Toughness: 8, Colors: []string{"R", "G", "W"}},
 }

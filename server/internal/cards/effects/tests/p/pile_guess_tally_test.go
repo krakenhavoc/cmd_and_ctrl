@@ -153,6 +153,7 @@ var pgReviewed = map[string]string{
 	"7492ea06-24d5-4a1f-a6ac-c33743e91aa7": "Unesh, Criosphinx Sovereign — PileSplit",
 	"a3d048c8-e8df-4b50-a422-fc94a69f44bb": "Boneyard Parley — PileSplit",
 	"33befbd6-56ac-45a7-a4d0-448167162707": "Epiphany at the Drownyard — PileSplit",
+	"a9d58cad-c1c2-4bd2-80f2-da9ce60801df": "Brilliant Ultimatum — PileSplit",
 	// The face-down pile family, which is PileSplit underneath.
 	"8b2b00ab-f1c5-4057-9957-d7daac95a847": "Atris, Oracle of Half-Truths — face-down piles",
 	"9baff93e-4ef9-404d-884b-f651a11f3742": "Fortune's Favor — face-down piles",

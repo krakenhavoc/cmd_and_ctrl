@@ -1332,7 +1332,9 @@ func CheckIgnorableEffect(spec Spec) {
 	marked = marked || spec.PlayersCantSearchLibraries
 	ig := spec.IgnorableEffect
 	if ig == nil {
-		if marked {
+		// Mindlock Orb's "Players can't search libraries" has no ignore to
+		// declare; every other marked restriction needs one.
+		if marked && !(spec.PlayersCantSearchLibraries && len(spec.CastRestrictions) == 0 && len(spec.LandPlayRestrictions) == 0) {
 			panic(fmt.Sprintf("effects.Register: %q marks a restriction Ignorable but declares no IgnorableEffect", spec.Name))
 		}
 		return

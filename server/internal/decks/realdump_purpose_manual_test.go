@@ -387,6 +387,12 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 505 (#5586).
 	"Identity Crisis": "exiles the cards in one player's hand and graveyard, not permanents",
+
+	// S82 OLD batch 500 (#5585).
+	"Mirror of Fate": "it exiles its controller's own library, not permanents, and puts chosen exiled cards back on top: a library rearrangement, not a board wipe",
+
+	// S82 old sets, batch 525 (own group).
+	"Unnerving Assault": "-1/-0 to the opponents' creatures until end of turn kills nothing, and the other half pumps the caster's own creatures",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
