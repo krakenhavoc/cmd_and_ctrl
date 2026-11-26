@@ -1834,6 +1834,7 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vapor-snare-return-a-land
 choose choose-cards/vault-101-attach
 choose choose-cards/vault-101-put
 choose choose-cards/vault-13-dwellers-journey-return-two
@@ -2124,6 +2125,7 @@ confirm confirm/curse-of-shallow-graves
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
 confirm confirm/dawnbreak-reclaimer-return
+confirm confirm/dead-reckoning-tuck
 confirm confirm/deadly-complication-unsuspect
 confirm confirm/decoy-gambit-draw-or-bounce
 confirm confirm/delifs-cone-gain-life
@@ -5849,6 +5851,9 @@ tail wishclaw-talisman/hand-it-over
 tail wondrous-crucible/copy-and-cast
 tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
+tail wwk/dead-reckoning-tucked
+tail wwk/scrib-nibblers-exiled-a-land-card
+tail wwk/vapor-snare-after-return
 tail yannik-scavenging-sentinel/exiled
 tail yavimaya-bloomsage/prepare
 tail yawgmoths-vile-offering/destroy-then-exile-this
