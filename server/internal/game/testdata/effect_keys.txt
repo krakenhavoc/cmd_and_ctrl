@@ -3771,6 +3771,7 @@ tail abundance/ordered
 tail abundance/taken
 tail abyssal-harvester/exile-other-nightmares
 tail abyssal-harvester/nightmare-copy
+tail act-of-authority/hand-over
 tail advanced-reconstruction/exile-random
 tail aesir-escape-valhalla/after-exile
 tail aether-rift/offer-return-of-discarded-creature
@@ -4544,6 +4545,7 @@ tail mass/demonic-junker-counters
 tail mass/descent-of-the-dragons-dragons
 tail mass/faerie-slumber-party-faeries
 tail mass/flood-of-tears-put
+tail mass/from-the-ashes-search
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
