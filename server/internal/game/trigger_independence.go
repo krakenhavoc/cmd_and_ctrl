@@ -118,6 +118,10 @@ const (
 	// control this turn (Sulu, Space Swashbuckler). The turn's entry
 	// tally only rises.
 	FootprintCondEquipmentOrSpacecraftEntered FootprintCond = "equipment_or_spacecraft_entered"
+	// FootprintCondPlaneswalkerEntered: a planeswalker entered the
+	// battlefield under the item's controller's control this turn (Oath of
+	// Liliana). The turn's entry tally only rises.
+	FootprintCondPlaneswalkerEntered FootprintCond = "planeswalker_entered"
 	// FootprintCondPermanentReturned: a permanent was put into the item's
 	// controller's hand from the battlefield this turn (Miles O'Brien,
 	// Transporter Ops). The turn's tally only rises.
@@ -846,6 +850,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.TurnTally.CreaturesDied > 0
 	case FootprintCondEquipmentOrSpacecraftEntered:
 		return g.EnteredWithSubtypeThisTurn(you, "Equipment") > 0 || g.EnteredWithSubtypeThisTurn(you, "Spacecraft") > 0
+	case FootprintCondPlaneswalkerEntered:
+		return g.EnteredWithCardTypeThisTurn(you, "planeswalker") > 0
 	case FootprintCondPermanentReturned:
 		return tally.PermanentsReturnedToHand > 0
 	case FootprintCondCelebration:

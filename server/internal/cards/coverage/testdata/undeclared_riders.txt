@@ -14,6 +14,7 @@ Bothersome Noisemaker | amass | on a triggered row that is not the card's enters
 Cait Sith, Fortune Teller | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Call of the Ring | ring | on a triggered row that is not the card's enters effect, which nothing prices
 Caparocti Sunborn | discover | the text makes it conditional or optional
+Catacomb Sifter | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Celeborn the Wise | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Champions from Beyond | scry | on a triggered row that is not the card's enters effect, which nothing prices
 Chimil, the Inner Sun | discover | on a triggered row that is not the card's enters effect, which nothing prices

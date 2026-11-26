@@ -338,6 +338,21 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 273 (#5540).
 	"Public Execution": "destroys one target creature; the -2/-0 on the player's other creatures is a combat trick that destroys nothing",
+
+	// S82 OLD batch 281 (#5542).
+	"Sengir Autocrat": "exiles only Serf tokens when it leaves the battlefield, the three it made and any others: a token cleanup of its own side effect, not a board wipe",
+
+	// S82 OLD batch 296 (#5545).
+	"Inverter of Truth": "exiles the cards of its controller's own library, face down, and shuffles their graveyard in: it touches no permanent, so there is no board to wipe",
+
+	// S82 OLD batch 304 (#5546).
+	"Necromancer's Covenant": "exiles the creature cards in one graveyard, which holds cards and no permanents, and makes a Zombie for each: graveyard hate, not a board wipe",
+
+	// S82 OLD batch 310 (#5547).
+	"Roilmage's Trick": "a one-turn -X/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
+
+	// S82 OLD batch 312 (#5547).
+	"Dampening Pulse": "a standing -1/-0 on the opponents' creatures that destroys nothing: it weakens their attacks, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

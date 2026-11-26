@@ -144,6 +144,7 @@ var pgReviewed = map[string]string{
 	"f25af42d-f1bf-4bd3-aded-ecadafdbf6e6": "Do or Die — PileSplit",
 	"2274c7ae-5a40-4fd4-a4ac-6f56b23034e4": "Jace, Architect of Thought — PileSplit",
 	"eedb1527-548a-435a-a3e1-8ad7d9d6d8a9": "Intrude on the Mind — PileSplit",
+	"0aa556a6-66aa-42f1-ba41-0001e10c20a4": "Steam Augury — PileSplit",
 	"591edddc-3736-44cf-9719-117c24ff3980": "Make an Example — PileSplit",
 	"7ee394a2-84de-42e8-834e-6c1030be0aef": "Sphinx of Clear Skies — PileSplit",
 	"48ad5bd6-9568-4813-be29-99aef8b9327a": "Split the Spoils — PileSplit",
@@ -151,6 +152,7 @@ var pgReviewed = map[string]string{
 	"4b4f268d-34ae-416d-a412-66f4fe37659c": "Sphinx of Uthuun — PileSplit",
 	"7492ea06-24d5-4a1f-a6ac-c33743e91aa7": "Unesh, Criosphinx Sovereign — PileSplit",
 	"a3d048c8-e8df-4b50-a422-fc94a69f44bb": "Boneyard Parley — PileSplit",
+	"33befbd6-56ac-45a7-a4d0-448167162707": "Epiphany at the Drownyard — PileSplit",
 	// The face-down pile family, which is PileSplit underneath.
 	"8b2b00ab-f1c5-4057-9957-d7daac95a847": "Atris, Oracle of Half-Truths — face-down piles",
 	"9baff93e-4ef9-404d-884b-f651a11f3742": "Fortune's Favor — face-down piles",

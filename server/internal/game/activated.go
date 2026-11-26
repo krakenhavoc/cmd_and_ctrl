@@ -2848,7 +2848,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// #5457: "Put a card an opponent owns from exile into that
 		// player's graveyard" (Void Attendant). The picks leave exile,
 		// so nothing is recorded as exiled.
-		if _, err := g.payProcessCostLocked(playerID, cardID, exiles); err != nil {
+		if err := g.payProcessCostLocked(playerID, cardID, exiles); err != nil {
 			return err
 		}
 		exiles = nil

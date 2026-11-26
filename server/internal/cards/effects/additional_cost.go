@@ -858,7 +858,7 @@ func checkForageBranches(name string, ac *game.AdditionalCost) {
 // checkCastExileCardsClause is checkExileCardsClause for a CAST's
 // exile-cards cost (#3536, #1948): graveyard only, and either a printed
 // count or the X form ("exile X cards"), which has no printed count of
-// its own (ExileCost.CountFromX, N zero).
+// its own (ExileCost.CountFromX, N zero); or a processing clause (#5457).
 func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
 	// #5240: collect evidence X sized by the targets is the one any-number
 	// clause a cast may print (checkCollectEvidenceFromTargets holds where).
@@ -874,7 +874,10 @@ func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec.AnyNumber {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
 	}
-	if ec.Zone() != game.ZoneGraveyard {
+	// #5457: a processing clause ("put a card an opponent owns from exile into
+	// that player's graveyard", Processor Assault) is a cast's cost too: the
+	// zone it reads is exile, and what it moves is not exiled at all.
+	if ec.Zone() != game.ZoneGraveyard && !ec.Processes() {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — a cast exiles from the graveyard (#3536)", name, where, ec.Zone()))
 	}
 	if ec.CountFromX {

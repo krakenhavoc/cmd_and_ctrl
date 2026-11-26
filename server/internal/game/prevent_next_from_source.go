@@ -236,21 +236,15 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 	}
 	out := make([]PermanentQuery, len(qs))
 	for i, q := range qs {
-		out[i] = PermanentQuery{
-			Types:      copyStrings(q.Types),
-			Subtypes:   copyStrings(q.Subtypes),
-			Supertypes: copyStrings(q.Supertypes),
-			Colors:     copyStrings(q.Colors),
-			Keyword:    q.Keyword,
-			Enchanted:  q.Enchanted,
-
-			WithoutKeyword: q.WithoutKeyword,
-
-			HasPowerAtMost:  q.HasPowerAtMost,
-			PowerAtMost:     q.PowerAtMost,
-			HasPowerAtLeast: q.HasPowerAtLeast,
-			PowerAtLeast:    q.PowerAtLeast,
-		}
+		// Copy the whole struct, then the slices: a field added to
+		// PermanentQuery later (Names, HasExactPT, Untapped, WithoutKeyword,
+		// ToughnessOverPower) must survive the copy.
+		out[i] = q
+		out[i].Types = copyStrings(q.Types)
+		out[i].Subtypes = copyStrings(q.Subtypes)
+		out[i].Supertypes = copyStrings(q.Supertypes)
+		out[i].Colors = copyStrings(q.Colors)
+		out[i].Names = copyStrings(q.Names)
 	}
 	return out
 }
