@@ -3212,6 +3212,7 @@ payunless pay-unless/nim-deathmantle-return-and-attach
 payunless pay-unless/nimble-hobbit-tap
 payunless pay-unless/nothing
 payunless pay-unless/numa-joraga-chieftain-paid
+payunless pay-unless/nurturer-initiate-pump
 payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
 payunless pay-unless/old-b051-copy-that-spell
