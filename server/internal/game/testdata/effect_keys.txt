@@ -2776,6 +2776,7 @@ option option-pick/put-attacking-from-graveyard-finality
 option option-pick/put-attacking-from-hand
 option option-pick/put-attacking-from-library
 option option-pick/rattleback-apothecary-keyword
+option option-pick/razor-barrier-protection
 option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
 option option-pick/realms-uncharted-opponent
