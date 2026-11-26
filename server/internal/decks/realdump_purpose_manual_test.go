@@ -372,6 +372,12 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 421 (#5566).
 	"Street Sweeper": "its \"destroy all Auras attached to target land\" reaches only the Auras on the one land it targets, not a board",
+
+	// S82 OLD batch 447 (#5572).
+	"Witchbane Orb": "its \"destroy all Curses attached to you\" reaches only the Curses on its controller, not a board",
+
+	// S82 OLD batch 449 (#5572).
+	"Hysterical Blindness": "a one-turn -4/-0 on the opponents' creatures that destroys nothing: a combat trick, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

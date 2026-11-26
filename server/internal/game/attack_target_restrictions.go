@@ -158,6 +158,12 @@ type AttackTargetRestriction struct {
 	// extra turns" (Medomai the Ageless, S82 OLD b394, CR 508.1c, CR 500.7).
 	// Read live at declaration.
 	CantAttackDuringExtraTurns bool `json:",omitempty"`
+	// MustBePairedWithKeyword, when set, forbids attacking anything unless
+	// the attacking creature is paired (CR 702.95b) with a creature that
+	// has this keyword: "can't attack or block unless it's paired with a
+	// creature with soulbond" (Flowering Lumberknot, S82 OLD b437). Read
+	// live at declaration, through the partner's layered abilities.
+	MustBePairedWithKeyword string `json:",omitempty"`
 	// ControllerHandAtLeast, when above zero, forbids attacking anything
 	// while the attacking creature's controller has fewer cards than this
 	// in hand: "can't attack unless you have seven or more cards in hand"
@@ -273,6 +279,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerMustHaveCastNoncreature == o.ControllerMustHaveCastNoncreature &&
 		r.CantAttackDuringExtraTurns == o.CantAttackDuringExtraTurns &&
+		r.MustBePairedWithKeyword == o.MustBePairedWithKeyword &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
 		r.ControllerGraveyardAtLeast == o.ControllerGraveyardAtLeast &&
 		r.ControllerHandAtMost == o.ControllerHandAtMost &&
@@ -302,7 +309,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.CantAttackDuringExtraTurns || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
+		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.CantAttackDuringExtraTurns || r.MustBePairedWithKeyword != "" || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
 		len(r.ControllerMustControlAnother) > 0
 }
 
@@ -341,6 +348,11 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	}
 	if r.CantAttackDuringExtraTurns && g.Turn.Extra {
 		return "this is an extra turn"
+	}
+	if kw := r.MustBePairedWithKeyword; kw != "" {
+		if p := g.PairedPartner(findBattlefieldCard(g, self)); p == nil || !HasKeyword(p, kw) {
+			return "it isn't paired with a creature with " + kw
+		}
 	}
 	if r.ControllerMustHaveCastNoncreature && g.CastTallyFor(you).Noncreature < 1 {
 		return g.playerNameLocked(you) + " hasn't cast a noncreature spell this turn"

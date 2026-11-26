@@ -6196,6 +6196,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMu
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -16503,6 +16504,7 @@ frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustNotContro
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -24372,6 +24374,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMu
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotAnAbility	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
@@ -24699,6 +24702,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustNotControl[].Types
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotAnAbility	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwner	bool
@@ -25031,6 +25035,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustNo
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAnAbility	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwner	bool
@@ -30241,6 +30246,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMu
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -40548,6 +40554,7 @@ movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustNotContro
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -49825,6 +49832,7 @@ pendingChoices[].assist.spend.CostHasC	bool
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.FaceDownSpell	bool
+pendingChoices[].assist.spend.FlashbackSpell	bool
 pendingChoices[].assist.spend.ForetellSpell	bool
 pendingChoices[].assist.spend.FreerunningSpell	bool
 pendingChoices[].assist.spend.HasDevoid	bool
@@ -53343,6 +53351,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderM
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
@@ -54462,6 +54471,7 @@ pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMu
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].NotOwner	bool
@@ -54778,6 +54788,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Defe
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -61673,6 +61684,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestri
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -71980,6 +71992,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].De
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].NotOwner	bool
@@ -81698,6 +81711,7 @@ pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustNot
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].NotOwner	bool
@@ -82719,6 +82733,7 @@ pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustNotCont
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustNotControl[].Types[]	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustNotControl[].Untapped	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderMustNotControl[].WithoutKeyword	string
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].MustBePairedWithKeyword	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotAnAbility	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].NotOwner	bool

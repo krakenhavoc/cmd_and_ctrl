@@ -148,6 +148,7 @@ body decayed/sacrifice
 body decayed/schedule
 body delayed/biolume-egg-return-transformed
 body delayed/daretti-scrap-savant-return
+body delayed/old-b443-return-this-card-transformed
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
 body departed/token-copies-of-artifacts-and-creatures
@@ -896,6 +897,7 @@ choose choose-cards/coral-atoll-return-an-untapped-island
 choose choose-cards/corpse-appraiser-take
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
+choose choose-cards/counterlash-cast
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
 choose choose-cards/coveted-prize-cast
@@ -904,6 +906,7 @@ choose choose-cards/crashing-wave-stun-two
 choose choose-cards/creeping-inn-exile
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
+choose choose-cards/curse-of-oblivion-exile
 choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
 choose choose-cards/danitha-benalias-hope-attach
@@ -922,6 +925,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/desecrator-hag-greatest-power
 choose choose-cards/devastating-mastery-bounce
 choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/devout-invocation-tap
@@ -1465,6 +1469,7 @@ choose choose-cards/old-b193-prototype-portal-imprint
 choose choose-cards/old-b271-covenant-of-minds-all-to-hand
 choose choose-cards/old-b386-reincarnation-return
 choose choose-cards/old-b387-order-of-succession-pick
+choose choose-cards/old-b447-graveyard-shovel-exile
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -1654,6 +1659,7 @@ choose choose-cards/s82-old-b415-dimir-charm-rest
 choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
+choose choose-cards/s82-old-b449-scholar-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2113,6 +2119,7 @@ confirm confirm/cosmic-rebirth-battlefield-or-hand
 confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/cultivator-of-blades-pump
+confirm confirm/curse-of-echoes-copy
 confirm confirm/curse-of-shallow-graves
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
@@ -2369,6 +2376,7 @@ confirm confirm/wasteland-strangler-confirm
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/wernog-riders-chaplain
 confirm confirm/wheel-of-potential-exile-hand
+confirm confirm/whirlpool-whelm-top-or-hand
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
@@ -2469,6 +2477,7 @@ drawthen s82-old-b322/jace-discard
 drawthen s82-old-b406/blast-of-genius-discard
 drawthen s82-old-b431/discard-a-card-at-random
 drawthen s82-old-b431/see-beyond-pick
+drawthen s82-old-b449-scholar-loot
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2617,6 +2626,7 @@ option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/craig-boone-damage
 option option-pick/creeping-renaissance-type
+option option-pick/curse-of-the-pierced-heart-recipient
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
@@ -2797,6 +2807,8 @@ option option-pick/s82-old-b322-alhammarret-name
 option option-pick/s82-old-b348-butcher-of-the-horde-keyword
 option option-pick/s82-old-b408-angelic-skirmisher
 option option-pick/s82-old-b408-thrull-parasite-counter
+option option-pick/s82-old-b435-primal-surge
+option option-pick/s82-old-b435-rite-of-ruin-order
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3157,6 +3169,10 @@ payunless pay-unless/numa-joraga-chieftain-paid
 payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
 payunless pay-unless/old-b051-copy-that-spell
+payunless pay-unless/old-b455-copy-entered-creature
+payunless pay-unless/old-b456-alliance-of-arms
+payunless pay-unless/old-b456-mana-charged-dragon
+payunless pay-unless/old-b456-shared-trauma
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3367,6 +3383,7 @@ run engine/explore-each-pick
 run gap-b55-birthing-ritual/sacrifice
 run gap/tragic-lesson-return-a-land-or-discard
 run giant-opportunity/sacrifice-two-foods
+run permanents-pick/s82-old-b432-sunken-hope-bounce
 run prompt-run/ace-fearless-rebel-sacrifice
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
@@ -3375,6 +3392,7 @@ run prompt-run/altar-of-the-wretched-payout
 run prompt-run/ambrosia-whiteheart-return
 run prompt-run/angelic-aberration-sacrifice
 run prompt-run/annihilator-sacrifice
+run prompt-run/archdemon-of-greed-cant-sacrifice
 run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/arid-archway-return-land
@@ -3630,6 +3648,7 @@ run prompt-run/s82-old-b243-riches-take
 run prompt-run/s82-old-b244-cruel-reality-lose
 run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-old-b339-abzan-advantage-bolster
+run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -3752,6 +3771,7 @@ searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
 searchrule search/different-powers
 searchrule search/one-card-per-color
+searchrule search/s82-old-b428-island-swamp-mountain
 searchrule search/total-mana-value-at-most
 searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
@@ -4118,6 +4138,7 @@ tail dawnhand-eulogist/after-mill
 tail daxos-of-meletis/gain-life
 tail deathgorge-scavenger/exiled-card-riders
 tail deathrender/attach-to-it
+tail deaths-caress/gain-life
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demilich/copy-exiled
@@ -4509,6 +4530,7 @@ tail if-it-was/generals-enforcer-token
 tail if-it-was/ignis-scientia-food
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
+tail if-it-was/old-b447-graveyard-shovel-life
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
 tail if-it-went/aspiring-champion-ruinous-ascension
@@ -4529,6 +4551,7 @@ tail inquisitorial-rosette/menace
 tail insidious-roots/counter-on-each-plant
 tail instrument-of-the-bards/treasure-if-legendary
 tail interpret-the-signs/reveal-and-draw
+tail into-the-maw-of-hell/damage
 tail intuition/choose
 tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
@@ -4632,6 +4655,7 @@ tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
 tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
+tail mass/paraselene-life
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
@@ -4676,8 +4700,10 @@ tail mill-then/sludge-titan
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
 tail mimic-vat/return-others
+tail mindshrieker/boost-by-milled-mana-value
 tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
+tail mirror-mad-phantasm/shuffled-in-then-reveal
 tail mirror-march/exile-the-copies
 tail misfortune-teller/exiled-card-clause
 tail mission-briefing/choose
@@ -4812,6 +4838,7 @@ tail push-the-limit/sacrifice-animate-haste
 tail put-from-hand/jadzi-journey-lands
 tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/aspiring-champion-shuffle-then-demon-damage
+tail put-from-library/call-to-the-kindred-bottom
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
 tail put-from-library/guild-feud-opponent
@@ -4845,6 +4872,7 @@ tail reality-fracture-helpers/after-exile
 tail reality-fracture/surveil-keep-noncreature-nonland
 tail realms-uncharted/choose
 tail reason-believe/rest-to-hand
+tail recipient/aggravate-attacks-if-able
 tail recipient/cant-be-regenerated-if-dealt-damage
 tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
@@ -5381,6 +5409,7 @@ tail then/expose-the-culprit-cloak
 tail then/expressive-iteration-exile
 tail then/face-down-piles-to-hand
 tail then/fact-or-fiction-take
+tail then/faiths-shield-fateful-hour-protection
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
@@ -5457,6 +5486,7 @@ tail then/laezels-acrobatics-exiled
 tail then/laezels-acrobatics-returned
 tail then/lagrella-the-magpie-exiled-one
 tail then/land-becomes-chosen-type
+tail then/lash-out-clashed
 tail then/last-light-of-durins-day-search
 tail then/lavabrink-floodgates-sacrificed
 tail then/lich-knights-conquest-return
@@ -5509,6 +5539,7 @@ tail then/old-b081-fact-or-fiction-take
 tail then/old-b179-emergency-powers-next
 tail then/old-b240-unesh-take
 tail then/old-b386-augury-adept-gain
+tail then/old-b443-seance-copy
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
@@ -5527,6 +5558,7 @@ tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/planetary-annihilation-damage
 tail then/play-with-fire-scry
+tail then/pollen-lullaby-clashed
 tail then/polygraph-orb-punisher-sacrificed
 tail then/precognitive-perception-draw
 tail then/prevent-damage-from-chosen-color
@@ -5595,12 +5627,14 @@ tail then/s82-old-b371-disciple-of-deceit-search
 tail then/s82-old-b371-king-macar-gold
 tail then/s82-old-b371-ritual-of-the-returned-zombie
 tail then/s82-old-b378-vortex-shuffle
+tail then/s82-old-b435-primal-surge-exiled
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
+tail then/scattering-stroke-clashed
 tail then/scour-the-desert-birds
 tail then/scrap-mastery-exiled
 tail then/scrap-mastery-put
@@ -5673,6 +5707,7 @@ tail then/transforming-flourish-cast
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
+tail then/tyrant-of-discord-repeat
 tail then/ulamogs-nullifier-counter
 tail then/ulamogs-reclaimer-then
 tail then/unmoored-ego-draw
@@ -5698,6 +5733,7 @@ tail then/wash-out-color-chosen
 tail then/wasp-of-the-bitter-end-destroy
 tail then/wasteland-strangler-then
 tail then/wave-of-vitriol-sacrificed
+tail then/whirlpool-whelm-clashed
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled

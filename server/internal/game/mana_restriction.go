@@ -308,6 +308,15 @@ const (
 	// cast from exile for its foretell cost. An activation never satisfies
 	// it, and a face-down spell has no abilities.
 	ManaRestrictSpellForetell = "spell:foretell"
+	// ManaRestrictSpellFlashback permits the token only on a spell that has
+	// flashback (CR 702.34): the "spells with flashback" half of Altar of
+	// the Lost's "spend this mana only to cast spells with flashback from a
+	// graveyard", combined with ManaRestrictCastFromGraveyard through
+	// ManaRestrictAnyOf. It asks about the card being cast: one that offers
+	// a flashback alternative cost, or whose cast claims the flashback cost
+	// (a card another effect gave flashback). An activation never satisfies
+	// it, and a face-down spell has no abilities.
+	ManaRestrictSpellFlashback = "spell:flashback"
 )
 
 // ManaRestrictAltCost builds "spend this mana only to pay a [keyword]
@@ -639,6 +648,12 @@ type ManaSpendContext struct {
 	// payment that is not a cast.
 	ForetellSpell bool
 
+	// FlashbackSpell is set when the spell being cast offers a flashback
+	// alternative cost: what ManaRestrictSpellFlashback reads (together with
+	// AltCost, for a flashback another effect granted). False for every
+	// payment that is not a cast.
+	FlashbackSpell bool
+
 	// SpellOwner is the owner of the spell being cast (CR 108.3): what
 	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
 	// ManaSpendForCast; zero for every payment that is not a cast.
@@ -888,6 +903,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		NoAbilitiesSpell: c.FaceDown || PrintsNoAbilities(c),
 		FreerunningSpell: !c.FaceDown && AlternativeCostByKey(CatalogKey(c), "freerunning") != nil,
 		ForetellSpell:    (!c.FaceDown || CardIsForetold(c)) && CardHasForetell(c),
+		FlashbackSpell:   !c.FaceDown && AlternativeCostByKey(CatalogKey(c), "flashback") != nil,
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		spellName:        spellNameForSpend(c),
@@ -1012,6 +1028,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCumulativeUpkeep
 	case ManaRestrictSpellForetell:
 		return ctx.Purpose == SpendPurposeCast && ctx.ForetellSpell
+	case ManaRestrictSpellFlashback:
+		return ctx.Purpose == SpendPurposeCast && (ctx.FlashbackSpell || ctx.AltCost == "flashback")
 	case ManaRestrictNoGeneric:
 		// Decided per symbol by the solvers (noGeneric), not by the
 		// object being paid for: nothing here to refuse.
