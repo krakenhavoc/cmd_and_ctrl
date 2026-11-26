@@ -1902,6 +1902,7 @@ choose choose-cards/winter-cynical-opportunist-put
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/wolf-of-devils-breach-damage
+choose choose-cards/worldpurge-kept
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
 choose choose-cards/xenagos-the-reveler-put
@@ -5830,6 +5831,8 @@ tail then/whirlpool-whelm-clashed
 tail then/whispering-specter-discard
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
+tail then/worldpurge-after-the-bounce
+tail then/worldpurge-shuffle
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
 tail then/zaffai-after-scry

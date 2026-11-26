@@ -792,4 +792,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 503 (#5586): Predatory Advantage's Lizard.
 	"2/2 green Lizard": {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 2, Toughness: 2, Colors: []string{"G"}},
+
+	// S82 OLD batch 535 (#5591): Din of the Fireherd's Elemental.
+	"5/5 black and red Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"B", "R"}},
 }
