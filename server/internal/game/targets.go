@@ -645,6 +645,13 @@ type TargetSpec struct {
 	// admits nothing.
 	OwnedBySourceOwner bool
 
+	// NotSourceOwner is "target player other than this artifact's owner"
+	// (Crown of Doom): a player target must not be the clause's source's
+	// OWNER, whoever controls it now. DATA judged in the shared player
+	// walk, for the reason OwnedBySourceOwner is. With no source object
+	// the owner is unknown and the clause admits every player.
+	NotSourceOwner bool
+
 	// OfSourcesChosenType is "target card of the chosen type": the
 	// candidate must have the creature type chosen for the clause's own
 	// source as it entered (Card.NamedTribe, CR 614.12) — Dawn-Blessed
@@ -1643,7 +1650,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
-			if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) {
+			if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 				continue
 			}
 			out.Players = append(out.Players, p.ID)
@@ -1919,7 +1926,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
 			return false
 		}
-		if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) {
+		if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
@@ -2529,6 +2536,15 @@ func (s *TargetSpec) sourceOwnerAdmits(src TargetSource, c Card) bool {
 		return true
 	}
 	return src.Object != nil && src.Object.Owner != uuid.Nil && c.Owner == src.Object.Owner
+}
+
+// notSourceOwnerAdmits is NotSourceOwner's gate: true without the flag;
+// with it, every player but the source object's owner.
+func (s *TargetSpec) notSourceOwnerAdmits(src TargetSource, p *Player) bool {
+	if !s.NotSourceOwner || src.Object == nil || src.Object.Owner == uuid.Nil {
+		return true
+	}
+	return p.ID != src.Object.Owner
 }
 
 // validateTargetsLocked is the announce-time gate (CR 601.2c) for a

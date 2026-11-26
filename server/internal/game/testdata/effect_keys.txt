@@ -1614,6 +1614,7 @@ choose choose-cards/s82-old-b322-jace-flip
 choose choose-cards/s82-old-b337-write-into-being
 choose choose-cards/s82-old-b338-reclaim-creature
 choose choose-cards/s82-old-b338-reclaim-land
+choose choose-cards/s82-old-b343-wrens-run-packmaster-champion
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
