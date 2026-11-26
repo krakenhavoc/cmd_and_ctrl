@@ -141,6 +141,7 @@ body dalkovan-encampment/warriors
 body damage/old-b071-return-the-listed-object
 body damage/that-much-to-each-other-opponent
 body dash/return
+body death-frenzy/gain-one-life
 body death-to-our-enemies/divided-damage
 body decayed/sacrifice
 body decayed/schedule
@@ -2736,6 +2737,7 @@ option option-pick/s82-old-b170-deliver-unto-evil-opponent
 option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-old-b315-veteran-warleader-keyword
 option option-pick/s82-old-b322-alhammarret-name
+option option-pick/s82-old-b348-butcher-of-the-horde-keyword
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
