@@ -5589,6 +5589,7 @@ tail then/mirror-match-exile-at-end-of-combat
 tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/morbid-bloom-saprolings
 tail then/mortal-obstinacy-destroy
 tail then/murk-strider-then
 tail then/mystery-key-draw-three
