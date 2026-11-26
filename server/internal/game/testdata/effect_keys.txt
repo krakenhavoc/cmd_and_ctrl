@@ -249,6 +249,7 @@ body flicker/return-exiled-with-additional-counters
 body flicker/return-exiled-with-flying-counter
 body flicker/return-exiled-with-plus-one-counter
 body flicker/s82-old-b167-return-exiled-creature-with-counter
+body flickerform/return
 body flip/the-source
 body foe-razer-regent/two-counters
 body foray-of-orcs/damage
@@ -2082,6 +2083,7 @@ confirm confirm/cosmic-rebirth-battlefield-or-hand
 confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/cultivator-of-blades-pump
+confirm confirm/curse-of-shallow-graves
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
 confirm confirm/dawnbreak-reclaimer-return
@@ -4337,6 +4339,8 @@ tail flare-of-cultivation/basic-land-to-hand
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step
+tail flickerform/return-auras
+tail flickerform/schedule-return
 tail flourishing-bloom-kin/forest-to-hand
 tail foggy-swamp-visions/copy-exiled
 tail foggy-swamp-visions/sacrifice-copies
