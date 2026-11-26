@@ -115,3 +115,11 @@ func (g *Game) altFlashbackLocked(playerID uuid.UUID, card Card, params CastSpel
 	alt := g.claimedAltCostLocked(playerID, card, params)
 	return alt != nil && alt.Key == "flashback"
 }
+
+// altDashLocked is CostQuery.AltDash for one announcement: whether the
+// alternative cost the cast claims is a dash cost (CR 702.109a). Caller must
+// hold g.mu.
+func (g *Game) altDashLocked(playerID uuid.UUID, card Card, params CastSpellParams) bool {
+	alt := g.claimedAltCostLocked(playerID, card, params)
+	return alt != nil && alt.Dash
+}
