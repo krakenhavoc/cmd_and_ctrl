@@ -1924,6 +1924,8 @@ coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
 coinflip coin-flip/the-gold-saucer-treasure
+coinflip coin-flip/volatile-rig-damaged
+coinflip coin-flip/volatile-rig-died
 coinflip coin-flip/yusri-fortunes-flame
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
