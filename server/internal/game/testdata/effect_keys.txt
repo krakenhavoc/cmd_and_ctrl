@@ -1663,6 +1663,7 @@ choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
 choose choose-cards/s82-old-b452-sutured-ghoul-exile
+choose choose-cards/s82-old-b498-living-tsunami-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -4949,6 +4950,7 @@ tail s82-old-b170/bond-of-insight-return
 tail s82-old-b370/deicide-after-exile
 tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
+tail s82-old-b498/living-tsunami-after-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
