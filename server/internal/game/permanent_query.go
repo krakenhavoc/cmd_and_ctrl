@@ -89,6 +89,12 @@ type PermanentQuery struct {
 	// "each creature with toughness greater than its power" (Immobilizer
 	// Eldrazi, S82 OLD b295). Needs a battlefield permanent.
 	ToughnessOverPower bool `json:",omitempty"`
+	// Monocolored asks for a permanent of exactly one colour: "monocolored
+	// creatures can't block this turn" (Awe for the Guilds, S82 OLD b403,
+	// CR 105.2b). Read through the layers (the permanent's effective colours),
+	// so a colourless permanent and a multicoloured one are both out. Additive
+	// within the snapshot schema (omitted when false).
+	Monocolored bool `json:",omitempty"`
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -127,6 +133,7 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast &&
 		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness &&
 		q.Untapped == o.Untapped && q.ToughnessOverPower == o.ToughnessOverPower &&
+		q.Monocolored == o.Monocolored &&
 		q.WithoutKeyword == o.WithoutKeyword
 }
 
@@ -174,6 +181,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if q.ToughnessOverPower && c.CurrentToughness() <= c.PowerForComparison() {
+		return false
+	}
+	if q.Monocolored && len(c.EffectiveColors()) != 1 {
 		return false
 	}
 	if q.boundsPower() {
@@ -307,6 +317,9 @@ func (q PermanentQuery) Noun() string {
 	}
 	if q.Enchanted {
 		words = append(words, "enchanted")
+	}
+	if q.Monocolored {
+		words = append(words, "monocolored")
 	}
 	for _, c := range q.Colors {
 		words = append(words, ColorName(c))

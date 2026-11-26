@@ -782,8 +782,12 @@ type PendingChoice struct {
 	// a keyed outside-the-game collection pick's (#4256,
 	// RegisterOutsidePick: the key names its filter too) and a keyed
 	// pay-unless prompt's decline (#4256, RegisterPayUnlessElse).
-	PickDestination   PickDestination
-	PickOptional      bool
+	PickDestination PickDestination
+	PickOptional    bool
+	// PickUpTo is "choose up to N" on a revealed-hand pick (Reap Intellect,
+	// S82 OLD b403): any number of the candidates from none to Count, not
+	// exactly Count. Additive within the snapshot schema (omitted when false).
+	PickUpTo          bool
 	PickFromGraveyard bool
 	PickThen          string
 	// PickMatchArg is the one word a keyed outside-the-game collection
@@ -3487,6 +3491,10 @@ type RevealedHandDiscard struct {
 	// Optional is "You may choose": the chooser may choose nothing
 	// (Nightsnare, Extract the Truth).
 	Optional bool
+	// UpTo is "You choose up to N": any number of the candidates from none
+	// to Count (Reap Intellect's "up to X nonland cards"). It needs no
+	// Optional beside it.
+	UpTo bool
 	// Revealed says the hand was already revealed this resolution (Cloak
 	// and Dagger, Entwined reveals it, then asks whether to take a card
 	// from it), so the pick does not reveal it a second time. Read when

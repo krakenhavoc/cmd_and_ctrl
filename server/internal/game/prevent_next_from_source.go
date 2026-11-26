@@ -238,7 +238,7 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 	for i, q := range qs {
 		// Copy the whole struct, then the slices: a field added to
 		// PermanentQuery later (Names, HasExactPT, Untapped, WithoutKeyword,
-		// ToughnessOverPower) must survive the copy.
+		// ToughnessOverPower, Monocolored) must survive the copy.
 		out[i] = q
 		out[i].Types = copyStrings(q.Types)
 		out[i].Subtypes = copyStrings(q.Subtypes)
