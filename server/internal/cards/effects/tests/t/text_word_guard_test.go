@@ -82,6 +82,7 @@ var textWordLiteralAllowed = map[string]string{
 	"lashknife.go":         "alternative cost, judged as cast",
 	"bards_company.go":     "alternative cost, judged as cast",
 	"illusion_spinners.go": "flash condition, judged as cast (Bard's Company's shape)",
+	"hungering_yeti.go":    "flash condition, judged as cast (Bard's Company's shape)",
 	"orims_cure.go":        "alternative cost, judged as cast",
 	"ramosian_rally.go":    "alternative cost, judged as cast",
 	"sivvis_ruse.go":       "alternative cost, judged as cast",

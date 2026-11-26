@@ -5453,6 +5453,7 @@ tail then/s82-old-b314-blight-herder-scions
 tail then/s82-old-b314-pathway-arrows-tap
 tail then/s82-old-b316-hellion-eruption-tokens
 tail then/s82-old-b323-throwing-knife-damage
+tail then/s82-old-b340-supplant-form-copy
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
