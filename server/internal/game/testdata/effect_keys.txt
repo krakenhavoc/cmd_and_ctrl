@@ -1001,6 +1001,7 @@ choose choose-cards/gap-b56-ral-exile-two
 choose choose-cards/gap-b56-tamiyo-investigate-twice-each
 choose choose-cards/gap-b98-exile-chosen-permanents
 choose choose-cards/garnet-princess-of-alexandria-remove
+choose choose-cards/gather-the-pack-take
 choose choose-cards/gerrards-verdict-life
 choose choose-cards/gert-and-old-lace-search
 choose choose-cards/gift-of-perfection-assimilate
@@ -1864,6 +1865,8 @@ choose resolution-cast/s82-old-b162-exiled-rest-to-bottom
 choose resolution-cast/sanwell-avenger-ace-rest-to-bottom
 choose resolution-cast/smugglers-buggy-after-cast
 choose resolution-cast/swindlers-scheme-free-cast
+choose resolution-cast/talent-of-the-telepath-first
+choose resolution-cast/talent-of-the-telepath-rest
 choose resolution-cast/the-seventh-doctor-investigate
 choose resolution-cast/treasure-keeper-bottom-rest
 choose resolution-cast/vaan-street-thief-after-cast
@@ -2183,6 +2186,7 @@ confirm confirm/pias-revolution-opponent-answer
 confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
+confirm confirm/psychic-rebuttal-copy
 confirm confirm/purestrain-genestealer-remove-counter
 confirm confirm/pygmy-hippo-lose-mana
 confirm confirm/questing-phelddagrif-draw
