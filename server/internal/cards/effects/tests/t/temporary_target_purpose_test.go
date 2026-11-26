@@ -218,6 +218,9 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// is a change of control, which a direction cannot carry; Act of
 	// Treason, whose words the pattern does not catch, declares none.
 	"Word of Seizing": "a change of control, not a change to the target",
+	// "Untap target creature an opponent controls and gain control of it
+	// until end of turn" (Commander 2011): Word of Seizing's change of control.
+	"Ray of Command": "a change of control, not a change to the target",
 	// "At the beginning of the next end step, destroy that creature if it
 	// attacked this turn": the trample and power are a benefit, the
 	// destruction a harm that lasts.

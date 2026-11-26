@@ -497,6 +497,7 @@ body rampage/pump
 body ratchet-field-medic/return
 body ratonhnhaketon/return-equipment
 body ravenous-rotbelly/edict
+body ray-of-command/tap-the-creature
 body rebound/cast
 body rebound/the-spell-you-just-cast
 body reckless-blaze/add-red
@@ -1409,6 +1410,7 @@ choose choose-cards/mordor-on-the-march-exile
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/murk-strider-picked
+choose choose-cards/murmurs-from-beyond-chosen
 choose choose-cards/myr-battlesphere-tap
 choose choose-cards/mystic-meditation-discard-two-unless-creature
 choose choose-cards/nael-avizoa-aeronaut-arranged
@@ -1660,6 +1662,7 @@ choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
+choose choose-cards/s82-old-b452-sutured-ghoul-exile
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1936,6 +1939,7 @@ coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
+coinflip coin-flip/creepy-doll-destroy
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-kaboomist
 coinflip coin-flip/goblin-psychopath
@@ -1953,6 +1957,7 @@ coinflip coin-flip/nothing
 coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
+coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
@@ -2050,6 +2055,7 @@ condition old-b050/any-creature-blocks
 condition old-b059/flying-creatures-hit-a-player
 condition old-b059/you-cast-mv-5-or-more
 condition pit-automaton/next-exhaust-activation
+condition ray-of-command/lost-control-of-the-creature
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
 condition stolen-uniform/lost-control-of-the-equipment
@@ -2159,6 +2165,7 @@ confirm confirm/flaxen-intruder-sacrifice
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
+confirm confirm/furnace-scamp-sacrifice
 confirm confirm/gain-life
 confirm confirm/galadriel-reveal
 confirm confirm/gap-b218-amber-gristle-discard-hand
@@ -2284,6 +2291,9 @@ confirm confirm/s82-old-b104-sweep-away
 confirm confirm/s82-old-b105-sanctum-of-calm-waters
 confirm confirm/s82-old-b246-remove-a-minus-one-counter
 confirm confirm/s82-old-b371-dakra-mystic
+confirm confirm/s82-old-b450-caravan-vigil-morbid
+confirm confirm/s82-old-b450-cloistered-youth-transform
+confirm confirm/s82-old-b450-thraben-sentry-transform
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -2377,6 +2387,7 @@ confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/wernog-riders-chaplain
 confirm confirm/wheel-of-potential-exile-hand
 confirm confirm/whirlpool-whelm-top-or-hand
+confirm confirm/whispering-specter-sacrifice
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
@@ -2528,6 +2539,7 @@ number number/fatal-lore-draw-up-to-three
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
+number number/gremlin-mine-remove-charge-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/life-bidding-opening-bid
 number number/life-bidding-raise
@@ -2734,6 +2746,7 @@ option option-pick/moonlight-bargain-card
 option option-pick/morgul-knife-wound-pay-or-exile
 option option-pick/multiform-wonder-keyword
 option option-pick/multiple-choice-player
+option option-pick/murmurs-from-beyond-chosen
 option option-pick/mutinous-massacre-parity
 option option-pick/myrkuls-edict-chosen
 option option-pick/narset-of-the-ancient-way-mana
@@ -4104,6 +4117,7 @@ tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
+tail cumulative-upkeep/jötun-grunt-cumulative-upkeep-put-two-cards-from-a-single-graveyard-on-the-bottom-of-their-owner-s-library
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
@@ -4486,6 +4500,7 @@ tail grist-the-plague-swarm/mill-two
 tail grizzled-angler/after-mill
 tail grolnok/croak-counter
 tail grubs-command/after-mill
+tail gruesome-encore/entered
 tail gul-dukat/drain-each-opponent
 tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
@@ -4501,6 +4516,7 @@ tail heirloom-mirror/transform
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
 tail herald-of-amity/after-exile
+tail heretics-punishment/damage-by-greatest-mana-value
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
@@ -4743,6 +4759,7 @@ tail necron-deathmark/after-mill
 tail necron-monolith/after-mill
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
+tail nemesis-trap/copy
 tail neo-b15/discover-the-impossible-cast
 tail neo-invoke-the-ancients/counters
 tail nesting-grounds/remove
@@ -5420,6 +5437,7 @@ tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
+tail then/furnace-scamp-damage
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/gales-redirection-exiled
@@ -5704,6 +5722,7 @@ tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
 tail then/transforming-flourish-cast
+tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
@@ -5734,6 +5753,7 @@ tail then/wasp-of-the-bitter-end-destroy
 tail then/wasteland-strangler-then
 tail then/wave-of-vitriol-sacrificed
 tail then/whirlpool-whelm-clashed
+tail then/whispering-specter-discard
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled
