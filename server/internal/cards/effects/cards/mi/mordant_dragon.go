@@ -1,8 +1,6 @@
 package cardsmi
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -41,7 +39,7 @@ func init() {
 			effects.Optional(game.TriggeredAbility{
 				Watches:     []game.EventKind{game.EventDealDamage},
 				AppliesTo:   effects.ThisDealtCombatDamageToAPlayer,
-				TargetsFrom: mordantDragonTarget,
+				TargetsFrom: effects.S82OldB458TargetCreatureThatPlayerControls,
 				Key:         name + " — have it deal that much damage to target creature that player controls",
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					if item.Trigger == nil {
@@ -57,21 +55,4 @@ func init() {
 			}, name+" — have it deal that much damage to target creature that player controls?"),
 		},
 	})
-}
-
-// mordantDragonTarget is "target creature that player controls": a creature
-// controlled by the player the combat damage was dealt to.
-func mordantDragonTarget(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game.TargetSpec {
-	player := tc.Event.Target
-	if player == uuid.Nil {
-		return nil
-	}
-	return &game.TargetSpec{
-		Mode: "creature", Label: "target creature that player controls",
-		Zones: []game.ZoneKind{game.ZoneBattlefield},
-		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-			return c.IsCreature() && c.Controller == player
-		},
-		Min: 1, Max: 1,
-	}
 }

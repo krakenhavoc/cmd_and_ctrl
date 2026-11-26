@@ -378,6 +378,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 449 (#5572).
 	"Hysterical Blindness": "a one-turn -4/-0 on the opponents' creatures that destroys nothing: a combat trick, not a board wipe",
+
+	// S82 OLD batch 458 (#5575).
+	"Cathedral Membrane": "its death trigger deals 6 damage only to the creature it blocked (one creature in combat), not to a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
