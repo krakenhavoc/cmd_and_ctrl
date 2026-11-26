@@ -742,4 +742,6 @@ var TokenTable = map[string]game.Card{
 	"4/2 green Beast": {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 2, Colors: []string{"G"}},
 	// S82 OLD batch 252 (#5536): Release the Gremlins and Gremlin Infestation's Gremlin.
 	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
+	// S82 OLD batch 316 (#5548): Hellion Eruption's Hellion.
+	"4/4 red Hellion": {Name: "Hellion", TypeLine: "Token Creature — Hellion", Power: 4, Toughness: 4, Colors: []string{"R"}},
 }
