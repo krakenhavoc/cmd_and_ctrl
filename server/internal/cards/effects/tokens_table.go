@@ -772,4 +772,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 375 (#5559): Forlorn Pseudamma's token (Aerie Worshippers uses b370's Bird row).
 	"2/2 black Zombie enchantment creature": {Name: "Zombie", TypeLine: "Token Enchantment Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+	// S82 OLD batch 426 (#5566): Grove of the Guardian's Elemental.
+	"8/8 green and white Elemental with vigilance": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 8, Toughness: 8, Colors: []string{"G", "W"}, Keywords: []string{"vigilance"}},
 }

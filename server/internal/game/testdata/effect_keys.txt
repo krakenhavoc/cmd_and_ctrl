@@ -1651,6 +1651,7 @@ choose choose-cards/s82-old-b408-vizkopa-confessor-exile
 choose choose-cards/s82-old-b408-vizkopa-confessor-reveal
 choose choose-cards/s82-old-b415-dimir-charm-rest
 choose choose-cards/s82-old-b416-cleric-return-angel
+choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3985,6 +3986,7 @@ tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
 tail card-name/day-of-the-moon-goad
 tail card-name/s82-old-b321-infinite-obliteration
+tail card-name/s82-old-b426-slaughter-games
 tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
