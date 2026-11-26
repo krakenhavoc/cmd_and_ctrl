@@ -779,4 +779,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 427 (#5567): Thunderheads' Weird (the printed token's Weird face).
 	"3/3 blue Weird with defender and flying": {Name: "Weird", TypeLine: "Token Creature — Weird", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"defender", "flying"}},
+
+	// S82 OLD batch 461 (#5575): Chancellor of the Forge's Goblins (the printed token has no haste; the text gives it).
+	"1/1 red Phyrexian Goblin with haste": {Name: "Phyrexian Goblin", TypeLine: "Token Creature — Phyrexian Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 }
