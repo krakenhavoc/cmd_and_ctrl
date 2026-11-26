@@ -963,6 +963,7 @@ choose choose-cards/elaborate-firecannon-untap
 choose choose-cards/eladamri-korvecdal-reveal
 choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
+choose choose-cards/elite-arcanist-imprint
 choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elspeth-resplendent-dig
 choose choose-cards/elven-passage-behold
@@ -5393,6 +5394,7 @@ tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
+tail then/jaces-mindseeker-cast
 tail then/jeskai-infiltrator-exiled
 tail then/jinx-delayed-draw
 tail then/kaito-dancing-shadow-bounced
