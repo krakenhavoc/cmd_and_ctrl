@@ -3034,6 +3034,7 @@ payunless pay-unless/edgars-awakening-return
 payunless pay-unless/eirdu-transform
 payunless pay-unless/eldrazi-obligator-threaten
 payunless pay-unless/electro-assaulting-battery-damage
+payunless pay-unless/electropotence-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
 payunless pay-unless/elven-bow-token-and-attach
