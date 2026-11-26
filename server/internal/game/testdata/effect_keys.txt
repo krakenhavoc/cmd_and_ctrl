@@ -287,6 +287,7 @@ body good-king-mog/copy-a-non-saga-token
 body gorbag-of-minas-morgul/modes
 body graf-reaver/destroy
 body grant/double-strike-and-trample-until-eot
+body grave-betrayal/return
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
