@@ -484,6 +484,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
+	"EntersDevouredTally":       repFieldCarried,
 	"TributeOpponent":           repFieldCarried,
 	"EntersTributePaid":         repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
@@ -826,6 +827,7 @@ type replacementEventSnapshot struct {
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
+	EntersDevouredTally       int                 `json:"entersDevouredTally,omitempty"`
 	TributeOpponent           *uuid.UUID          `json:"tributeOpponent,omitempty"`
 	EntersTributePaid         bool                `json:"entersTributePaid,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
@@ -947,6 +949,7 @@ type exchangeEntrySnapshot struct {
 	Haste              bool             `json:"haste,omitempty"`
 	CopyUntilEndOfTurn bool             `json:"copyUntilEndOfTurn,omitempty"`
 	Devoured           int              `json:"devoured,omitempty"`
+	DevouredTally      int              `json:"devouredTally,omitempty"`
 	Counters           map[string]int   `json:"counters,omitempty"`
 	Copy               *PrintedValues   `json:"copy,omitempty"`
 	Unlocked           DoorMask         `json:"unlocked,omitempty"`
@@ -962,7 +965,7 @@ func snapshotExchangeEntry(e *settledExchangeEntry) *exchangeEntrySnapshot {
 		CardID: e.CardID, Actor: uuidPtrOrNil(e.Actor), NewZoneOwner: uuidPtrOrNil(e.NewZoneOwner),
 		Attacking: uuidPtrOrNil(e.Attacking), CopySource: uuidPtrOrNil(e.CopySource),
 		OldZone: e.OldZone, NewZone: e.NewZone, Tapped: e.Tapped, Prepared: e.Prepared, Haste: e.Haste,
-		CopyUntilEndOfTurn: e.CopyUntilEndOfTurn, Devoured: e.Devoured, Counters: copyStringIntMap(e.Counters),
+		CopyUntilEndOfTurn: e.CopyUntilEndOfTurn, Devoured: e.Devoured, DevouredTally: e.DevouredTally, Counters: copyStringIntMap(e.Counters),
 		Copy: copyPrintedValues(e.Copy), Unlocked: e.Unlocked, FaceDown: e.FaceDown, Listed: copyFaceDownListing(e.Listed),
 	}
 }
@@ -975,7 +978,7 @@ func restoreExchangeEntry(s *exchangeEntrySnapshot) *settledExchangeEntry {
 		CardID: s.CardID, Actor: uuidOrNil(s.Actor), NewZoneOwner: uuidOrNil(s.NewZoneOwner),
 		Attacking: uuidOrNil(s.Attacking), CopySource: uuidOrNil(s.CopySource),
 		OldZone: s.OldZone, NewZone: s.NewZone, Tapped: s.Tapped, Prepared: s.Prepared, Haste: s.Haste,
-		CopyUntilEndOfTurn: s.CopyUntilEndOfTurn, Devoured: s.Devoured, Counters: copyStringIntMap(s.Counters),
+		CopyUntilEndOfTurn: s.CopyUntilEndOfTurn, Devoured: s.Devoured, DevouredTally: s.DevouredTally, Counters: copyStringIntMap(s.Counters),
 		Copy: copyPrintedValues(s.Copy), Unlocked: s.Unlocked, FaceDown: s.FaceDown, Listed: copyFaceDownListing(s.Listed),
 	}
 }
@@ -1311,6 +1314,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
+		EntersDevouredTally:       ev.EntersDevouredTally,
 		TributeOpponent:           uuidPtrOrNil(ev.TributeOpponent),
 		EntersTributePaid:         ev.EntersTributePaid,
 		EntersWithHaste:           ev.EntersWithHaste,
@@ -1498,6 +1502,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
+		EntersDevouredTally:       s.EntersDevouredTally,
 		TributeOpponent:           uuidOrNil(s.TributeOpponent),
 		EntersTributePaid:         s.EntersTributePaid,
 		EntersWithHaste:           s.EntersWithHaste,

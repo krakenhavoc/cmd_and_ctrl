@@ -1374,6 +1374,9 @@ type cardSnapshot struct {
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
+	// DevouredTally is the devoured creatures of the tallied type. Old
+	// snapshots have no key and read zero.
+	DevouredTally int `json:"devouredTally,omitempty"`
 	// TributePaid is CR 702.104a's paid tribute (#6251). Old snapshots
 	// have no key and read "not paid", which only a tribute card reads.
 	TributePaid bool `json:"tributePaid,omitempty"`
@@ -3397,6 +3400,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Notes:                      append([]string(nil), c.Notes...),
 		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
 		Devoured:                   c.Devoured,
+		DevouredTally:              c.DevouredTally,
 		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
@@ -4607,6 +4611,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Notes:                      append([]string(nil), c.Notes...),
 		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
 		Devoured:                   c.Devoured,
+		DevouredTally:              c.DevouredTally,
 		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,

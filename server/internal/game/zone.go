@@ -360,6 +360,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.Notes = nil
 		c.PlayerNotes = nil
 		c.Devoured = 0
+		c.DevouredTally = 0
 		c.TributePaid = false
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's

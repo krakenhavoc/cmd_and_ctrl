@@ -112,6 +112,7 @@ battlefield.cards[].damageMarked	number:int
 battlefield.cards[].dealtCombatDamage	bool
 battlefield.cards[].dealtDamage	bool
 battlefield.cards[].devoured	number:int
+battlefield.cards[].devouredTally	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
 battlefield.cards[].durationCopyBase.ColorCDADropped	bool
@@ -685,6 +686,7 @@ delayedTriggers[].copiesSpell.card.damageMarked	number:int
 delayedTriggers[].copiesSpell.card.dealtCombatDamage	bool
 delayedTriggers[].copiesSpell.card.dealtDamage	bool
 delayedTriggers[].copiesSpell.card.devoured	number:int
+delayedTriggers[].copiesSpell.card.devouredTally	number:int
 delayedTriggers[].copiesSpell.card.durationCopyBase	object
 delayedTriggers[].copiesSpell.card.durationCopyBase.ActiveFace	number:int
 delayedTriggers[].copiesSpell.card.durationCopyBase.ColorCDADropped	bool
@@ -1663,6 +1665,7 @@ enteringTokens[].damageMarked	number:int
 enteringTokens[].dealtCombatDamage	bool
 enteringTokens[].dealtDamage	bool
 enteringTokens[].devoured	number:int
+enteringTokens[].devouredTally	number:int
 enteringTokens[].durationCopyBase	object
 enteringTokens[].durationCopyBase.ActiveFace	number:int
 enteringTokens[].durationCopyBase.ColorCDADropped	bool
@@ -2292,6 +2295,7 @@ exile.cards[].damageMarked	number:int
 exile.cards[].dealtCombatDamage	bool
 exile.cards[].dealtDamage	bool
 exile.cards[].devoured	number:int
+exile.cards[].devouredTally	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
 exile.cards[].durationCopyBase.ColorCDADropped	bool
@@ -7244,6 +7248,7 @@ frozenEntries[].event.entersAsCopyOf.TypeLine	string
 frozenEntries[].event.entersAsCopyOf.VariableToughness	bool
 frozenEntries[].event.entersAttacking	custom(uuid.UUID)
 frozenEntries[].event.entersDevoured	number:int
+frozenEntries[].event.entersDevouredTally	number:int
 frozenEntries[].event.entersPrepared	bool
 frozenEntries[].event.entersTapped	bool
 frozenEntries[].event.entersTributePaid	bool
@@ -11259,6 +11264,7 @@ frozenEntries[].event.keywordActionTail.armyToken.damageMarked	number:int
 frozenEntries[].event.keywordActionTail.armyToken.dealtCombatDamage	bool
 frozenEntries[].event.keywordActionTail.armyToken.dealtDamage	bool
 frozenEntries[].event.keywordActionTail.armyToken.devoured	number:int
+frozenEntries[].event.keywordActionTail.armyToken.devouredTally	number:int
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase	object
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.ColorCDADropped	bool
@@ -14050,6 +14056,7 @@ frozenEntries[].event.millTail.run.planned[].damageMarked	number:int
 frozenEntries[].event.millTail.run.planned[].dealtCombatDamage	bool
 frozenEntries[].event.millTail.run.planned[].dealtDamage	bool
 frozenEntries[].event.millTail.run.planned[].devoured	number:int
+frozenEntries[].event.millTail.run.planned[].devouredTally	number:int
 frozenEntries[].event.millTail.run.planned[].durationCopyBase	object
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.ColorCDADropped	bool
@@ -14553,6 +14560,7 @@ frozenEntries[].event.millTail.run.seen[].damageMarked	number:int
 frozenEntries[].event.millTail.run.seen[].dealtCombatDamage	bool
 frozenEntries[].event.millTail.run.seen[].dealtDamage	bool
 frozenEntries[].event.millTail.run.seen[].devoured	number:int
+frozenEntries[].event.millTail.run.seen[].devouredTally	number:int
 frozenEntries[].event.millTail.run.seen[].durationCopyBase	object
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.ColorCDADropped	bool
@@ -17320,6 +17328,7 @@ frozenEntries[].event.tokenGroups[].template.damageMarked	number:int
 frozenEntries[].event.tokenGroups[].template.dealtCombatDamage	bool
 frozenEntries[].event.tokenGroups[].template.dealtDamage	bool
 frozenEntries[].event.tokenGroups[].template.devoured	number:int
+frozenEntries[].event.tokenGroups[].template.devouredTally	number:int
 frozenEntries[].event.tokenGroups[].template.durationCopyBase	object
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.ColorCDADropped	bool
@@ -18592,6 +18601,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.damageMarked	number:in
 frozenEntries[].event.tokensAfterMove[].groups[].template.dealtCombatDamage	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.dealtDamage	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.devoured	number:int
+frozenEntries[].event.tokensAfterMove[].groups[].template.devouredTally	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.ColorCDADropped	bool
@@ -19109,6 +19119,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].damageMarked	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].dealtCombatDamage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].dealtDamage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].devoured	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].devouredTally	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ColorCDADropped	bool
@@ -19612,6 +19623,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].damageMarked	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].dealtCombatDamage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].dealtDamage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].devoured	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].devouredTally	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ColorCDADropped	bool
@@ -23143,6 +23155,7 @@ frozenEntries[].event.zoneRoute.exchange.copyUntilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.exchange.counters	map:string
 frozenEntries[].event.zoneRoute.exchange.counters{}	number:int
 frozenEntries[].event.zoneRoute.exchange.devoured	number:int
+frozenEntries[].event.zoneRoute.exchange.devouredTally	number:int
 frozenEntries[].event.zoneRoute.exchange.faceDown	string
 frozenEntries[].event.zoneRoute.exchange.haste	bool
 frozenEntries[].event.zoneRoute.exchange.listed	object
@@ -23999,6 +24012,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].damageMarked	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].dealtCombatDamage	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].dealtDamage	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].devoured	number:int
+frozenEntries[].event.zoneRoute.simultaneousExit[].devouredTally	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.ActiveFace	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.ColorCDADropped	bool
@@ -25622,6 +25636,7 @@ lastKnownStack[].card.damageMarked	number:int
 lastKnownStack[].card.dealtCombatDamage	bool
 lastKnownStack[].card.dealtDamage	bool
 lastKnownStack[].card.devoured	number:int
+lastKnownStack[].card.devouredTally	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
 lastKnownStack[].card.durationCopyBase.ColorCDADropped	bool
@@ -26648,6 +26663,7 @@ match.decks[].fixed[].damageMarked	number:int
 match.decks[].fixed[].dealtCombatDamage	bool
 match.decks[].fixed[].dealtDamage	bool
 match.decks[].fixed[].devoured	number:int
+match.decks[].fixed[].devouredTally	number:int
 match.decks[].fixed[].durationCopyBase	object
 match.decks[].fixed[].durationCopyBase.ActiveFace	number:int
 match.decks[].fixed[].durationCopyBase.ColorCDADropped	bool
@@ -27149,6 +27165,7 @@ match.decks[].main[].damageMarked	number:int
 match.decks[].main[].dealtCombatDamage	bool
 match.decks[].main[].dealtDamage	bool
 match.decks[].main[].devoured	number:int
+match.decks[].main[].devouredTally	number:int
 match.decks[].main[].durationCopyBase	object
 match.decks[].main[].durationCopyBase.ActiveFace	number:int
 match.decks[].main[].durationCopyBase.ColorCDADropped	bool
@@ -27653,6 +27670,7 @@ match.decks[].side[].damageMarked	number:int
 match.decks[].side[].dealtCombatDamage	bool
 match.decks[].side[].dealtDamage	bool
 match.decks[].side[].devoured	number:int
+match.decks[].side[].devouredTally	number:int
 match.decks[].side[].durationCopyBase	object
 match.decks[].side[].durationCopyBase.ActiveFace	number:int
 match.decks[].side[].durationCopyBase.ColorCDADropped	bool
@@ -31554,6 +31572,7 @@ movesAwaitingTokens[].entersAsCopyOf.TypeLine	string
 movesAwaitingTokens[].entersAsCopyOf.VariableToughness	bool
 movesAwaitingTokens[].entersAttacking	custom(uuid.UUID)
 movesAwaitingTokens[].entersDevoured	number:int
+movesAwaitingTokens[].entersDevouredTally	number:int
 movesAwaitingTokens[].entersPrepared	bool
 movesAwaitingTokens[].entersTapped	bool
 movesAwaitingTokens[].entersTributePaid	bool
@@ -35569,6 +35588,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.damageMarked	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.dealtCombatDamage	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.dealtDamage	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.devoured	number:int
+movesAwaitingTokens[].keywordActionTail.armyToken.devouredTally	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase	object
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.ColorCDADropped	bool
@@ -38360,6 +38380,7 @@ movesAwaitingTokens[].millTail.run.planned[].damageMarked	number:int
 movesAwaitingTokens[].millTail.run.planned[].dealtCombatDamage	bool
 movesAwaitingTokens[].millTail.run.planned[].dealtDamage	bool
 movesAwaitingTokens[].millTail.run.planned[].devoured	number:int
+movesAwaitingTokens[].millTail.run.planned[].devouredTally	number:int
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase	object
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.ColorCDADropped	bool
@@ -38863,6 +38884,7 @@ movesAwaitingTokens[].millTail.run.seen[].damageMarked	number:int
 movesAwaitingTokens[].millTail.run.seen[].dealtCombatDamage	bool
 movesAwaitingTokens[].millTail.run.seen[].dealtDamage	bool
 movesAwaitingTokens[].millTail.run.seen[].devoured	number:int
+movesAwaitingTokens[].millTail.run.seen[].devouredTally	number:int
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase	object
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.ColorCDADropped	bool
@@ -41630,6 +41652,7 @@ movesAwaitingTokens[].tokenGroups[].template.damageMarked	number:int
 movesAwaitingTokens[].tokenGroups[].template.dealtCombatDamage	bool
 movesAwaitingTokens[].tokenGroups[].template.dealtDamage	bool
 movesAwaitingTokens[].tokenGroups[].template.devoured	number:int
+movesAwaitingTokens[].tokenGroups[].template.devouredTally	number:int
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase	object
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.ColorCDADropped	bool
@@ -42902,6 +42925,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.damageMarked	number:in
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.dealtCombatDamage	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.dealtDamage	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.devoured	number:int
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.devouredTally	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.ColorCDADropped	bool
@@ -43419,6 +43443,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].damageMarked	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].dealtCombatDamage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].dealtDamage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].devoured	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].devouredTally	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.ColorCDADropped	bool
@@ -43922,6 +43947,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].damageMarked	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].dealtCombatDamage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].dealtDamage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].devoured	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].devouredTally	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.ColorCDADropped	bool
@@ -47453,6 +47479,7 @@ movesAwaitingTokens[].zoneRoute.exchange.copyUntilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.exchange.counters	map:string
 movesAwaitingTokens[].zoneRoute.exchange.counters{}	number:int
 movesAwaitingTokens[].zoneRoute.exchange.devoured	number:int
+movesAwaitingTokens[].zoneRoute.exchange.devouredTally	number:int
 movesAwaitingTokens[].zoneRoute.exchange.faceDown	string
 movesAwaitingTokens[].zoneRoute.exchange.haste	bool
 movesAwaitingTokens[].zoneRoute.exchange.listed	object
@@ -48309,6 +48336,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].damageMarked	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].dealtCombatDamage	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].dealtDamage	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].devoured	number:int
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].devouredTally	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.ActiveFace	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.ColorCDADropped	bool
@@ -50462,6 +50490,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.damageMarked	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.dealtCombatDamage	bool
 pendingChoices[].attackSplit.settled.chosen[].template.dealtDamage	bool
 pendingChoices[].attackSplit.settled.chosen[].template.devoured	number:int
+pendingChoices[].attackSplit.settled.chosen[].template.devouredTally	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase	object
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.ActiveFace	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.ColorCDADropped	bool
@@ -50985,6 +51014,7 @@ pendingChoices[].attackSplit.settled.groups[].template.damageMarked	number:int
 pendingChoices[].attackSplit.settled.groups[].template.dealtCombatDamage	bool
 pendingChoices[].attackSplit.settled.groups[].template.dealtDamage	bool
 pendingChoices[].attackSplit.settled.groups[].template.devoured	number:int
+pendingChoices[].attackSplit.settled.groups[].template.devouredTally	number:int
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase	object
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.ActiveFace	number:int
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.ColorCDADropped	bool
@@ -52237,6 +52267,7 @@ pendingChoices[].attackSplit.template.damageMarked	number:int
 pendingChoices[].attackSplit.template.dealtCombatDamage	bool
 pendingChoices[].attackSplit.template.dealtDamage	bool
 pendingChoices[].attackSplit.template.devoured	number:int
+pendingChoices[].attackSplit.template.devouredTally	number:int
 pendingChoices[].attackSplit.template.durationCopyBase	object
 pendingChoices[].attackSplit.template.durationCopyBase.ActiveFace	number:int
 pendingChoices[].attackSplit.template.durationCopyBase.ColorCDADropped	bool
@@ -53181,6 +53212,7 @@ pendingChoices[].copyWalk.src.damageMarked	number:int
 pendingChoices[].copyWalk.src.dealtCombatDamage	bool
 pendingChoices[].copyWalk.src.dealtDamage	bool
 pendingChoices[].copyWalk.src.devoured	number:int
+pendingChoices[].copyWalk.src.devouredTally	number:int
 pendingChoices[].copyWalk.src.durationCopyBase	object
 pendingChoices[].copyWalk.src.durationCopyBase.ActiveFace	number:int
 pendingChoices[].copyWalk.src.durationCopyBase.ColorCDADropped	bool
@@ -63324,6 +63356,7 @@ pendingChoices[].replacementResume.event.entersAsCopyOf.TypeLine	string
 pendingChoices[].replacementResume.event.entersAsCopyOf.VariableToughness	bool
 pendingChoices[].replacementResume.event.entersAttacking	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entersDevoured	number:int
+pendingChoices[].replacementResume.event.entersDevouredTally	number:int
 pendingChoices[].replacementResume.event.entersPrepared	bool
 pendingChoices[].replacementResume.event.entersTapped	bool
 pendingChoices[].replacementResume.event.entersTributePaid	bool
@@ -67339,6 +67372,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.damageMarke
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.dealtDamage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.devoured	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.devouredTally	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.ColorCDADropped	bool
@@ -70130,6 +70164,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].damageMarked	num
 pendingChoices[].replacementResume.event.millTail.run.planned[].dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].dealtDamage	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].devoured	number:int
+pendingChoices[].replacementResume.event.millTail.run.planned[].devouredTally	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.ColorCDADropped	bool
@@ -70633,6 +70668,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].damageMarked	number
 pendingChoices[].replacementResume.event.millTail.run.seen[].dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].dealtDamage	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].devoured	number:int
+pendingChoices[].replacementResume.event.millTail.run.seen[].devouredTally	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.ColorCDADropped	bool
@@ -73400,6 +73436,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.damageMarked	num
 pendingChoices[].replacementResume.event.tokenGroups[].template.dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.dealtDamage	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.devoured	number:int
+pendingChoices[].replacementResume.event.tokenGroups[].template.devouredTally	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.ColorCDADropped	bool
@@ -74672,6 +74709,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.dam
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.dealtDamage	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.devoured	number:int
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.devouredTally	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.ColorCDADropped	bool
@@ -75189,6 +75227,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].dama
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].dealtDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].devoured	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].devouredTally	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ColorCDADropped	bool
@@ -75692,6 +75731,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].damageM
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].dealtDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].devoured	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].devouredTally	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ColorCDADropped	bool
@@ -79223,6 +79263,7 @@ pendingChoices[].replacementResume.event.zoneRoute.exchange.copyUntilEndOfTurn	b
 pendingChoices[].replacementResume.event.zoneRoute.exchange.counters	map:string
 pendingChoices[].replacementResume.event.zoneRoute.exchange.counters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.exchange.devoured	number:int
+pendingChoices[].replacementResume.event.zoneRoute.exchange.devouredTally	number:int
 pendingChoices[].replacementResume.event.zoneRoute.exchange.faceDown	string
 pendingChoices[].replacementResume.event.zoneRoute.exchange.haste	bool
 pendingChoices[].replacementResume.event.zoneRoute.exchange.listed	object
@@ -80079,6 +80120,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].damageMark
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].dealtCombatDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].dealtDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].devoured	number:int
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].devouredTally	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.ActiveFace	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.ColorCDADropped	bool
@@ -82849,6 +82891,7 @@ pendingChoices[].targetWalk.frame.source.damageMarked	number:int
 pendingChoices[].targetWalk.frame.source.dealtCombatDamage	bool
 pendingChoices[].targetWalk.frame.source.dealtDamage	bool
 pendingChoices[].targetWalk.frame.source.devoured	number:int
+pendingChoices[].targetWalk.frame.source.devouredTally	number:int
 pendingChoices[].targetWalk.frame.source.durationCopyBase	object
 pendingChoices[].targetWalk.frame.source.durationCopyBase.ActiveFace	number:int
 pendingChoices[].targetWalk.frame.source.durationCopyBase.ColorCDADropped	bool
@@ -83883,6 +83926,7 @@ pendingChoices[].triggerFrame.source.damageMarked	number:int
 pendingChoices[].triggerFrame.source.dealtCombatDamage	bool
 pendingChoices[].triggerFrame.source.dealtDamage	bool
 pendingChoices[].triggerFrame.source.devoured	number:int
+pendingChoices[].triggerFrame.source.devouredTally	number:int
 pendingChoices[].triggerFrame.source.durationCopyBase	object
 pendingChoices[].triggerFrame.source.durationCopyBase.ActiveFace	number:int
 pendingChoices[].triggerFrame.source.durationCopyBase.ColorCDADropped	bool
@@ -85238,6 +85282,7 @@ phasedOut.cards[].damageMarked	number:int
 phasedOut.cards[].dealtCombatDamage	bool
 phasedOut.cards[].dealtDamage	bool
 phasedOut.cards[].devoured	number:int
+phasedOut.cards[].devouredTally	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
 phasedOut.cards[].durationCopyBase.ColorCDADropped	bool
@@ -85746,6 +85791,7 @@ planechase.deck.cards[].damageMarked	number:int
 planechase.deck.cards[].dealtCombatDamage	bool
 planechase.deck.cards[].dealtDamage	bool
 planechase.deck.cards[].devoured	number:int
+planechase.deck.cards[].devouredTally	number:int
 planechase.deck.cards[].durationCopyBase	object
 planechase.deck.cards[].durationCopyBase.ActiveFace	number:int
 planechase.deck.cards[].durationCopyBase.ColorCDADropped	bool
@@ -86252,6 +86298,7 @@ planechase.faceUp.cards[].damageMarked	number:int
 planechase.faceUp.cards[].dealtCombatDamage	bool
 planechase.faceUp.cards[].dealtDamage	bool
 planechase.faceUp.cards[].devoured	number:int
+planechase.faceUp.cards[].devouredTally	number:int
 planechase.faceUp.cards[].durationCopyBase	object
 planechase.faceUp.cards[].durationCopyBase.ActiveFace	number:int
 planechase.faceUp.cards[].durationCopyBase.ColorCDADropped	bool
@@ -87018,6 +87065,7 @@ resolving.card.damageMarked	number:int
 resolving.card.dealtCombatDamage	bool
 resolving.card.dealtDamage	bool
 resolving.card.devoured	number:int
+resolving.card.devouredTally	number:int
 resolving.card.durationCopyBase	object
 resolving.card.durationCopyBase.ActiveFace	number:int
 resolving.card.durationCopyBase.ColorCDADropped	bool
@@ -88228,6 +88276,7 @@ seats[].attractionDeck.cards[].damageMarked	number:int
 seats[].attractionDeck.cards[].dealtCombatDamage	bool
 seats[].attractionDeck.cards[].dealtDamage	bool
 seats[].attractionDeck.cards[].devoured	number:int
+seats[].attractionDeck.cards[].devouredTally	number:int
 seats[].attractionDeck.cards[].durationCopyBase	object
 seats[].attractionDeck.cards[].durationCopyBase.ActiveFace	number:int
 seats[].attractionDeck.cards[].durationCopyBase.ColorCDADropped	bool
@@ -88924,6 +88973,7 @@ seats[].command.cards[].damageMarked	number:int
 seats[].command.cards[].dealtCombatDamage	bool
 seats[].command.cards[].dealtDamage	bool
 seats[].command.cards[].devoured	number:int
+seats[].command.cards[].devouredTally	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
 seats[].command.cards[].durationCopyBase.ColorCDADropped	bool
@@ -89432,6 +89482,7 @@ seats[].companion.cards[].damageMarked	number:int
 seats[].companion.cards[].dealtCombatDamage	bool
 seats[].companion.cards[].dealtDamage	bool
 seats[].companion.cards[].devoured	number:int
+seats[].companion.cards[].devouredTally	number:int
 seats[].companion.cards[].durationCopyBase	object
 seats[].companion.cards[].durationCopyBase.ActiveFace	number:int
 seats[].companion.cards[].durationCopyBase.ColorCDADropped	bool
@@ -89941,6 +89992,7 @@ seats[].departedPermanents[].source.damageMarked	number:int
 seats[].departedPermanents[].source.dealtCombatDamage	bool
 seats[].departedPermanents[].source.dealtDamage	bool
 seats[].departedPermanents[].source.devoured	number:int
+seats[].departedPermanents[].source.devouredTally	number:int
 seats[].departedPermanents[].source.durationCopyBase	object
 seats[].departedPermanents[].source.durationCopyBase.ActiveFace	number:int
 seats[].departedPermanents[].source.durationCopyBase.ColorCDADropped	bool
@@ -90453,6 +90505,7 @@ seats[].emblems.cards[].damageMarked	number:int
 seats[].emblems.cards[].dealtCombatDamage	bool
 seats[].emblems.cards[].dealtDamage	bool
 seats[].emblems.cards[].devoured	number:int
+seats[].emblems.cards[].devouredTally	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
 seats[].emblems.cards[].durationCopyBase.ColorCDADropped	bool
@@ -91057,6 +91110,7 @@ seats[].graveyard.cards[].damageMarked	number:int
 seats[].graveyard.cards[].dealtCombatDamage	bool
 seats[].graveyard.cards[].dealtDamage	bool
 seats[].graveyard.cards[].devoured	number:int
+seats[].graveyard.cards[].devouredTally	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
 seats[].graveyard.cards[].durationCopyBase.ColorCDADropped	bool
@@ -91561,6 +91615,7 @@ seats[].hand.cards[].damageMarked	number:int
 seats[].hand.cards[].dealtCombatDamage	bool
 seats[].hand.cards[].dealtDamage	bool
 seats[].hand.cards[].devoured	number:int
+seats[].hand.cards[].devouredTally	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
 seats[].hand.cards[].durationCopyBase.ColorCDADropped	bool
@@ -92070,6 +92125,7 @@ seats[].junkyard.cards[].damageMarked	number:int
 seats[].junkyard.cards[].dealtCombatDamage	bool
 seats[].junkyard.cards[].dealtDamage	bool
 seats[].junkyard.cards[].devoured	number:int
+seats[].junkyard.cards[].devouredTally	number:int
 seats[].junkyard.cards[].durationCopyBase	object
 seats[].junkyard.cards[].durationCopyBase.ActiveFace	number:int
 seats[].junkyard.cards[].durationCopyBase.ColorCDADropped	bool
@@ -92600,6 +92656,7 @@ seats[].library.cards[].damageMarked	number:int
 seats[].library.cards[].dealtCombatDamage	bool
 seats[].library.cards[].dealtDamage	bool
 seats[].library.cards[].devoured	number:int
+seats[].library.cards[].devouredTally	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
 seats[].library.cards[].durationCopyBase.ColorCDADropped	bool
@@ -93148,6 +93205,7 @@ seats[].sideboard.cards[].damageMarked	number:int
 seats[].sideboard.cards[].dealtCombatDamage	bool
 seats[].sideboard.cards[].dealtDamage	bool
 seats[].sideboard.cards[].devoured	number:int
+seats[].sideboard.cards[].devouredTally	number:int
 seats[].sideboard.cards[].durationCopyBase	object
 seats[].sideboard.cards[].durationCopyBase.ActiveFace	number:int
 seats[].sideboard.cards[].durationCopyBase.ColorCDADropped	bool
@@ -94072,6 +94130,7 @@ stack.cards[].damageMarked	number:int
 stack.cards[].dealtCombatDamage	bool
 stack.cards[].dealtDamage	bool
 stack.cards[].devoured	number:int
+stack.cards[].devouredTally	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
 stack.cards[].durationCopyBase.ColorCDADropped	bool

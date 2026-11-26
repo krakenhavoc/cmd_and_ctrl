@@ -631,6 +631,13 @@ type ReplacementEvent struct {
 	// sacrifice is chosen.
 	EntersDevoured int
 
+	// EntersDevouredTally is how many of the creatures devoured as this
+	// permanent enters had the creature type the devour clause tallies
+	// (EntryCardChoice.DevourTally): Voracious Dragon's "the number of
+	// Goblins it devoured". Copied onto Card.DevouredTally by every
+	// battlefield landing, and carried like EntersDevoured.
+	EntersDevouredTally int
+
 	// TributeOpponent is the opponent chosen for this permanent's
 	// tribute (CR 702.104a, #6251): written by the tribute's
 	// "choose an opponent" (an EntryController effect with
