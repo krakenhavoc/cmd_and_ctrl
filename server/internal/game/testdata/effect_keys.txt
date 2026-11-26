@@ -1468,6 +1468,7 @@ choose choose-cards/old-b193-prototype-portal-imprint
 choose choose-cards/old-b271-covenant-of-minds-all-to-hand
 choose choose-cards/old-b386-reincarnation-return
 choose choose-cards/old-b387-order-of-succession-pick
+choose choose-cards/old-b447-graveyard-shovel-exile
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -4521,6 +4522,7 @@ tail if-it-was/generals-enforcer-token
 tail if-it-was/ignis-scientia-food
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
+tail if-it-was/old-b447-graveyard-shovel-life
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
 tail if-it-went/aspiring-champion-ruinous-ascension
@@ -4541,6 +4543,7 @@ tail inquisitorial-rosette/menace
 tail insidious-roots/counter-on-each-plant
 tail instrument-of-the-bards/treasure-if-legendary
 tail interpret-the-signs/reveal-and-draw
+tail into-the-maw-of-hell/damage
 tail intuition/choose
 tail invasion-of-arcavios/library-found
 tail invasion-of-kaldheim/draw-and-play
@@ -4644,6 +4647,7 @@ tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
 tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
+tail mass/paraselene-life
 tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
