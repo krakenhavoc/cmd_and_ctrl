@@ -381,6 +381,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 458 (#5575).
 	"Cathedral Membrane": "its death trigger deals 6 damage only to the creature it blocked (one creature in combat), not to a board",
+
+	// S82 OLD batch 500 (#5585).
+	"Mirror of Fate": "it exiles its controller's own library, not permanents, and puts chosen exiled cards back on top: a library rearrangement, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

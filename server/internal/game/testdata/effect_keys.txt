@@ -1301,6 +1301,7 @@ choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
 choose choose-cards/mind-swords-exile-two
 choose choose-cards/minion-of-the-mighty-put
+choose choose-cards/mirror-of-fate-chosen
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mission-briefing-chosen
@@ -4740,6 +4741,7 @@ tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
 tail mirror-mad-phantasm/shuffled-in-then-reveal
 tail mirror-march/exile-the-copies
+tail mirror-of-fate/put-on-top
 tail misfortune-teller/exiled-card-clause
 tail mission-briefing/choose
 tail mistbreath-elder/after-bounce
