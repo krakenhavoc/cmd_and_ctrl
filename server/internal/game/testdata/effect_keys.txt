@@ -5462,6 +5462,7 @@ tail then/old-b071-cosima-draw
 tail then/old-b081-fact-or-fiction-take
 tail then/old-b179-emergency-powers-next
 tail then/old-b240-unesh-take
+tail then/old-b386-augury-adept-gain
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
