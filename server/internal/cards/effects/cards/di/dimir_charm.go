@@ -46,11 +46,6 @@ func init() {
 					return nil
 				}
 				return effects.CounterTarget{StackID: target.ID}.Apply(ctx)
-			case ctx.HasMode(1):
-				if target.Kind != game.TargetCard || !dimirCharmLegal(ctx, target) {
-					return nil
-				}
-				return effects.DestroyTarget{Target: target.ID}.Apply(ctx)
 			case ctx.HasMode(2):
 				if target.Kind != game.TargetPlayer || !dimirCharmLegal(ctx, target) {
 					return nil
@@ -71,6 +66,12 @@ func init() {
 					ThenKey:    dimirCharmPick,
 					Asked:      game.NewAskedItem(item),
 				})
+			case ctx.HasMode(1):
+				// The modes are exclusive; the destroy is last because it ends the spell.
+				if target.Kind != game.TargetCard || !dimirCharmLegal(ctx, target) {
+					return nil
+				}
+				return effects.DestroyTarget{Target: target.ID}.Apply(ctx)
 			}
 			return nil
 		},

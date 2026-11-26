@@ -105,6 +105,8 @@ var xMattersAllowlist = map[string]string{
 	"sanguine_sacrament.go Sanguine Sacrament": "at X=0 it gains no life but still puts itself on the bottom of its owner's library instead of the graveyard, a real play: the fixed rider happens whatever X is",
 
 	"displacement_wave.go Displacement Wave": "at X=0 it still returns every nonland permanent with mana value 0 (a token, a free artifact), a real play: the X picks which permanents go back, it is not a quantity",
+
+	"gridlock.go Gridlock": "X is the target count (CountFromX on S82OldB411XTargetNonlandPermanents' targets), which the scan cannot see; at X=0 it targets nothing and taps nothing",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its
