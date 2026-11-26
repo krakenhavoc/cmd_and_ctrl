@@ -5652,6 +5652,7 @@ tail tomb-fortress/after-mill
 tail tombstone-stairwell/next-players-tombspawn
 tail too-greedily-too-deep/damage
 tail toph-hardheaded-teacher/lesson-counter
+tail tormented-hero/gain-life-lost
 tail town-greeter/after-mill
 tail transwarp-hub/after-mill
 tail treasure-map/check-landmarks
