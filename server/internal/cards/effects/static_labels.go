@@ -170,6 +170,9 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 			return "Can't attack unless defending player controls " + articleFor(strings.ToLower(n)) + " " + n + "."
 		}
 		return "Can't attack unless defending player controls a certain permanent."
+	case len(r.DefenderMustNotControl) > 0:
+		n := game.PermanentQueriesNoun(r.DefenderMustNotControl)
+		return "Can't attack if defending player controls " + articleFor(strings.ToLower(n)) + " " + n + "."
 	case r.DefenderMustBePoisoned:
 		return "Can't attack unless defending player is poisoned."
 	case r.DefenderMustBeMonarch:
@@ -185,11 +188,20 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack unless you have the city's blessing."
 	case r.ControllerHandAtLeast > 0:
 		return fmt.Sprintf("Can't attack unless you have %d or more cards in hand.", r.ControllerHandAtLeast)
+	case r.ControllerGraveyardAtLeast > 0:
+		return fmt.Sprintf("Can't attack unless you have %d or more cards in your graveyard.", r.ControllerGraveyardAtLeast)
+	case r.ControllerHandAtMost > 0:
+		return fmt.Sprintf("Can't attack unless you have %d or fewer cards in hand.", r.ControllerHandAtMost)
 	case len(r.ControllerMustControl) > 0:
 		if n := queriesNoun(r.ControllerMustControl); n != "" {
 			return "Can't attack unless you control " + articleFor(strings.ToLower(n)) + " " + n + "."
 		}
 		return "Can't attack unless you control a certain permanent."
+	case len(r.ControllerMustControlAnother) > 0:
+		if n := queriesNoun(r.ControllerMustControlAnother); n != "" {
+			return "Can't attack unless you control another " + n + "."
+		}
+		return "Can't attack unless you control another certain permanent."
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
 	case r.PlayerMustHaveActedLastTurn:

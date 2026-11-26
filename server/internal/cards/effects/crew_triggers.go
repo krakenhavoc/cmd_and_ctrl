@@ -43,15 +43,7 @@ func WhenThisCrewsOrSaddles(label string, crew, saddle bool, effect func(g *game
 		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 			return source != nil && ev.CardID == source.InstanceID
 		},
-		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-			item := game.NewTriggeredItem(source, label)
-			epoch := -1
-			if c, ok := g.LookupCardForEffect(ev.Target); ok {
-				epoch = c.ObjectEpoch
-			}
-			item.Params.Object = game.ObjectRef{ID: ev.Target, Epoch: epoch}
-			return item
-		},
+		Build:  BuildNamingTheEventTarget(label),
 		Effect: effect,
 	}
 }

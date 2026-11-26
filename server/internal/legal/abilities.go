@@ -245,7 +245,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
 	defer func() {
-		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX = game.AbilityOrigin{}, false, false, false, false
+		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX, e.rowCostHasC = game.AbilityOrigin{}, false, false, false, false, false
 	}()
 	// #4475: an equip ability's {0} twin (game/equip_cost_alternative.go)
 	// is offered as a row of its own, addressed by its own index and ref,
@@ -268,6 +268,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// could blight, since that creature is the activation's price.
 	for _, er := range e.expandBlightPicks(e.expandUnattachPicks(source.InstanceID, expandCostBranches(abilities))) {
 		row, ab, costBranch, unattach, blight := er.row, er.ab, er.branch, er.unattach, er.blight
+		// #6148, CR 606.5: the loyalty cost as the engine charges it,
+		// combined with every addition on the board (Carth the Lion).
+		ab.Cost = g.LoyaltyAdjustedCostForEffect(e.seat, ab.Cost)
+		// #6205: and every sacrifice the board imposes on it (Drought),
+		// folded as the activation folds it. A cost the fold can't join
+		// can't be activated now.
+		var foldOK bool
+		if ab.Cost, foldOK = g.ImposedSacrificeAbilityCostForEffect(e.seat, *source, ab.Cost); !foldOK {
+			continue
+		}
 		idx, wireIndex, wireRef := row, row, origins.Ref(row)
 		if row >= own {
 			tw := twins[row-own]
@@ -278,6 +288,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		e.rowEquip = ab.Equip
 		e.rowClassLevel = ab.ClassLevel
 		e.rowCostHasX = ab.Cost.XSlots() > 0
+		e.rowCostHasC = game.CostStringHasColorless(ab.Cost.Mana)
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and
@@ -295,7 +306,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// #3275, CR 118.3: "Sacrifice this" can't be paid by a
 		// permanent that can't be sacrificed (validateSacrificeCostLocked
 		// refuses it, #544).
-		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.SacrificeCostBarredForEffect(source.InstanceID) {
 			continue
 		}
 		// #1208: ONE identity for both reads below, built the way
@@ -468,6 +479,18 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// its early return run only when nothing reads targets, and
 		// otherwise each announcement below is priced on its own —
 		// ADR 0048 addendum §14's rule for a cast, one path over.
+		// #6270: "Exile a creature card from your graveyard and pay its
+		// mana cost" has no price until the card is named, so the card
+		// is pinned first — the first one the seat can pay for, in the
+		// order the exile payment would take them — and the ability is
+		// priced with it, as ActivateCatalogAbility prices it.
+		var pinnedExile []uuid.UUID
+		if ab.Cost.ManaFromExiledCard {
+			var ok bool
+			if ab, pinnedExile, ok = e.exiledCardCostPick(source, zone, ab); !ok {
+				continue
+			}
+		}
 		var basePay abilityManaPayment
 		perTarget := false
 		// #5382: an activation cost increase (Skyseer's Chariot) can
@@ -543,7 +566,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			// #1213: a VARIABLE count is an announcement, so the
 			// enumerator offers a bounded ladder of counts rather
 			// than one payment — see variableSacrificePayments.
-			if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
+			if ab.Cost.SacrificeAll {
+				// #6208: "Sacrifice all lands you control" has ONE payment,
+				// the engine's own set (empty included), named on the move so
+				// a policy prices what the activation gives up.
+				sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, ab.Cost.SacrificeOther)}
+			} else if game.SacrificeCostVariable(ab.Cost.SacrificeOther) {
 				sacrificeSets = e.variableSacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
 			} else {
 				sacrificeSets = e.sacrificePayments(pool, ab.Cost.SacrificeOther, source.InstanceID)
@@ -669,6 +697,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if discardIDs == nil {
 					continue
 				}
+			} else if dc.SameName {
+				// #6264: "with the same name" — the cheapest N that share
+				// a name, or no move when no name is held N times.
+				discardIDs = g.DiscardSameNamePaymentForEffect(e.seat, dc, e.cheapestFuelFirst(opts))
+				if discardIDs == nil {
+					continue
+				}
 			} else {
 				discardIDs = e.cheapestFuelFirst(opts)[:dc.N]
 			}
@@ -705,8 +740,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				for _, s := range revealSets {
 					revealMaxX = max(revealMaxX, len(s))
 				}
-			} else if len(pool) >= rc.N {
-				revealSets = [][]uuid.UUID{pool[:rc.N:rc.N]}
+			} else if pay := g.RevealCardsPaymentForEffect(e.seat, source.InstanceID, rc); len(pay) == rc.N {
+				// #6208: the engine's own one payment, not the first N of
+				// the walk — a "that share a color" clause's first two
+				// candidates need not share one with each other.
+				revealSets = [][]uuid.UUID{pay}
 			} else {
 				revealSets = nil
 			}
@@ -725,6 +763,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		exileIDs, ok := e.exileCardsPayment(ab.Cost.ExileCards, source.InstanceID, discardIDs)
 		if !ok {
 			continue
+		}
+		if pinnedExile != nil {
+			// #6270: the card the price was read off.
+			exileIDs = pinnedExile
 		}
 		// ADR 0109 §7 (#1902): "Put a card from your hand on top of
 		// your library", solved as the discard is — ONE payment, the
@@ -2425,12 +2467,18 @@ type manaParams struct {
 	// #1600: Food Chain's "Exile a creature you control" — the field
 	// activateParams carries under the same name.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+	// #6085: the cards Rosheen, Roaring Prophet's "Reveal any number of
+	// …" shows — the field activateParams' reveal cost uses.
+	RevealIDs []string `json:"reveal_ids,omitempty"`
 	// #2215: the activation tops up a mana component of its cost from
 	// the seat's other sources. Set on every move whose ability has one.
 	AutoTap bool `json:"auto_tap,omitempty"`
 	// ADR 0131 §2: how many symbols of the mana component are paid with
 	// 2 life each — ManaAbilityParams.PhyrexianLife.
 	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// #6125: the X a mana ability with X in its cost announces —
+	// ManaAbilityParams.XValue.
+	XValue int `json:"x_value,omitempty"`
 	// #5397: the branch of an either/or cost the move pays (forage: 0
 	// exiles three graveyard cards named in exile_ids, 1 sacrifices the
 	// Food named in sacrifice_ids) — activateParams.CostBranch's field.
@@ -2459,7 +2507,8 @@ func (e *enumerator) manaMoves() {
 		// this ability" mana rows (Mana Cache), and manaMovesForSource
 		// holds each row to game.MayActivateMana, the predicate
 		// ActivateManaAbility refuses with.
-		if source.Controller != e.seat && !game.HasAnyPlayerManaAbility(*source) {
+		// #6204: and a land under the seat's Piracy permission.
+		if source.Controller != e.seat && !g.MayReachManaAcrossLocked(e.seat, *source) {
 			continue
 		}
 		// CR 602.5, the mana half: Arrest stops these too, Faith's
@@ -2534,6 +2583,13 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 	// can't pay is no move (CR 118.3).
 	for _, mr := range expandManaCostBranches(abilities) {
 		idx, ab := mr.row, mr.ab
+		// #6205: a sacrifice the board imposes (Drought on a filter
+		// land's {B/R}) folds into the row's sacrifice clause, as
+		// ActivateManaAbility folds it.
+		var foldOK bool
+		if ab, foldOK = g.ImposedSacrificeManaAbilityForEffect(e.seat, *source, ab); !foldOK {
+			continue
+		}
 		// CR 113.6 (#1228): the ability has to function from the zone
 		// the card is in. Same predicate the engine gates on, so a
 		// Forest sitting in a hand is never offered as a mana source
@@ -2544,7 +2600,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// CR 602.2 (#1864): who may activate this row — the one
 		// predicate ActivateManaAbility asks.
-		if !game.MayActivateMana(e.seat, *source, zone, ab) {
+		if !g.MayActivateManaLocked(e.seat, *source, zone, ab) {
 			continue
 		}
 		// #1183: "Activate each exhaust ability only once", and
@@ -2557,7 +2613,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// #3275, CR 118.3: a Treasure that can't be sacrificed can't
 		// pay its own sacrifice (validateSacrificeCostLocked).
-		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.SacrificeCostBarredForEffect(source.InstanceID) {
 			continue
 		}
 		// ADR 0155 Decision 7: the lent once-each-turn row, as
@@ -2599,7 +2655,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		// CR 119.4 and CR 119.8, the same predicate one path
 		// over (#544, #1200).
-		if !g.CanPayLifeLocked(e.p, ab.LifeCost) {
+		if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost) {
 			continue
 		}
 		// ADR 0129 §5, CR 118.3: the energy component, through the
@@ -2634,6 +2690,13 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// #5382: a tap-only mana ability an activation cost increase
 		// taxes owes mana too (CR 605.3 through 602.2b).
 		manaCharged := g.ManaAbilityChargesManaForEffect(e.seat, *source, ab)
+		// #6125: an {X} in the mana (Wizard's Rockets) is offered at X = 1,
+		// the smallest activation that makes mana; a sacrifice-X clause
+		// (Springjack Pasture) announces the number its payment sacrifices.
+		manaX := 0
+		if ab.DemandsX() && !game.SacrificeCountFromX(ab.SacrificeOther) {
+			manaX = 1
+		}
 		if manaCharged {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
 			if err != nil {
@@ -2641,9 +2704,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			}
 			// #1600: widened as ActivateManaAbility widens it.
 			manaSpend = game.ManaSpendForAbilityRow(*source, origins.At(idx))
-			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, 0)
+			manaSpend.CostHasX = manaSpend.CostHasX || cost.XSlots > 0
+			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, manaX)
 			sourceOnly := game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{})
-			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend, sourceOnly) {
+			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, manaX, manaSpend, sourceOnly) {
 				// ADR 0131 §2: a printed {B/P} on the cost, or a {B} a
 				// life-for-mana grant (K'rrik) makes payable with life,
 				// may pay what the board cannot. Mana first, then the
@@ -2656,10 +2720,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				found := false
 				for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
 					reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, manaSpend, n)
-					if !g.CanPayLifeLocked(e.p, ab.LifeCost+life) {
+					if !g.CanPayLifeForManaAbilityLocked(e.p, ab.LifeCost+life) {
 						break
 					}
-					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, 0, manaSpend, sourceOnly) {
+					if g.AutoTapTopUpForEffectExcluding(e.seat, reduced, manaX, manaSpend, sourceOnly) {
 						manaCostAsPaid, manaLife, found = reduced, n, true
 						break
 					}
@@ -2733,6 +2797,14 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if !ok {
 			continue
 		}
+		// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) —
+		// ONE move, revealing every matching card, the most mana the
+		// ability can make. Revealing moves nothing, so it does not
+		// compete with the discard or the exile above.
+		var manaRevealIDs []uuid.UUID
+		if game.RevealCardsAnyNumber(ab.RevealCards) {
+			manaRevealIDs = g.RevealCardsOptionsForEffect(e.seat, source.InstanceID, ab.RevealCards)
+		}
 		// #789: the counter components, enumerated by the SAME
 		// functions the activated path uses, because it is the
 		// same component. A Vivid land with no charge counters is
@@ -2761,7 +2833,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 					// tapped for it (ManaActivationAutoTapExclusions).
 					if manaCharged && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
 						len(manaDiscardIDs) > 0 || len(manaExileIDs) > 0) &&
-						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
+						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, manaX, manaSpend,
 							game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{
 								SacrificeIDs: sacs, TapIDs: taps, DiscardIDs: manaDiscardIDs,
 								ExileIDs: manaExileIDs, ExilePermanentIDs: exiles,
@@ -2834,8 +2906,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								DiscardIDs:        idStrings(manaDiscardIDs),
 								ExileIDs:          idStrings(manaExileIDs),
 								ExilePermanentIDs: idStrings(exiles),
+								RevealIDs:         idStrings(manaRevealIDs),
 								AutoTap:           manaCharged,
 								PhyrexianLife:     manaLife,
+								XValue:            manaMoveX(ab, manaX, sacs),
 								CostBranch:        mr.branch,
 							}),
 						})
@@ -2995,4 +3069,32 @@ func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, t
 		return nil, false
 	}
 	return out, true
+}
+
+// exiledCardCostPick is #6270's pin: the first card of the exile
+// component's candidates (cheapest fuel first, as exileCardsPayment
+// takes them) whose mana cost the seat can pay, with `ab` priced off it
+// (game.AbilityWithExiledCardCostForEffect, the activation's own
+// pricer). ok is false when no candidate is affordable.
+func (e *enumerator) exiledCardCostPick(source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape) (game.ActivatedAbilityShape, []uuid.UUID, bool) {
+	for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, source.InstanceID, ab.Cost.ExileCards)) {
+		priced := e.g.AbilityWithExiledCardCostForEffect(e.seat, ab, []uuid.UUID{id})
+		if priced.Cost.Mana == "" {
+			return priced, []uuid.UUID{id}, true
+		}
+		if _, ok := e.abilityManaPayment(source, zone, priced, nil); ok {
+			return priced, []uuid.UUID{id}, true
+		}
+	}
+	return ab, nil, false
+}
+
+// manaMoveX is the X a mana move announces (#6125): the number a
+// sacrifice-X clause sacrifices, or the {X} the move pays (`manaX`).
+// Zero for an ability with no X.
+func manaMoveX(ab game.ManaAbilityShape, manaX int, sacs []uuid.UUID) int {
+	if game.SacrificeCountFromX(ab.SacrificeOther) {
+		return len(sacs)
+	}
+	return manaX
 }

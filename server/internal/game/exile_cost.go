@@ -318,6 +318,26 @@ type ExileCost struct {
 	// before it ("a card an opponent owns"), additive.
 	ExiledWithSource bool
 
+	// ToLibraryBottom is "Put N cards from your graveyard on the bottom of
+	// your library" as a CR 602 ability's cost (#6121, Battlefield
+	// Scrounger's threshold ability): the same pick out of the activator's
+	// own graveyard, but the payer puts each card on the bottom of its
+	// owner's library instead of exiling it. Not an exile, so nothing is
+	// recorded on PaidCost.Exiled and no exile watcher sees it. The cards
+	// go in the order named, which is the owner's arrangement (CR 401.4:
+	// the owner may arrange cards put in one position at the same time;
+	// the payer of this cost is their owner). A CR 602 ability with a
+	// printed count from the graveyard only; effects.Register refuses it
+	// anywhere else. False is every clause before it, additive.
+	ToLibraryBottom bool `json:",omitempty"`
+
+	// MinCards is the floor of an AnyNumber clause on the NUMBER of cards:
+	// "Exile one or more creature cards from your graveyard" (Corpseweft) is
+	// AnyNumber with MinCards 1, so an empty pick does not pay the cost. It
+	// is read by FloorMet beside the other floors. Zero is no count floor,
+	// every clause before it, additive.
+	MinCards int `json:",omitempty"`
+
 	// ManaValueAtLeast is the other floor an AnyNumber clause may read:
 	// the chosen cards' total mana value must be this or more. It is
 	// collect evidence N (CR 701.59a, #5193: "exile any number of cards
@@ -357,6 +377,16 @@ type ExileCost struct {
 	// client already has (exile_cost_any_number), so the wire is unchanged.
 	// Build it with effects.ExileXFromGraveyardAsCost.
 	CountIsX bool
+
+	// TopOnly is "Exile the top <kind> card of your graveyard" (#6194:
+	// Zombie Scavengers, Necratog, Alms, Nature's Kiss): the clause names
+	// no card of the payer's choosing, but the topmost N cards of the pile
+	// that match it (CR 404.2: a graveyard is kept in order, and the
+	// last card of Zone.Cards is its top). The walk offers exactly those,
+	// so the picker, the payable check and the validator agree. A
+	// graveyard clause with a printed count only; effects.Register
+	// refuses it elsewhere. False is every clause before it, additive.
+	TopOnly bool
 }
 
 // TotalManaValue is the sum of `cards`' mana values as they sit in a
@@ -381,7 +411,7 @@ func (e *ExileCost) FloorMet(cards []Card) bool {
 	if e == nil {
 		return true
 	}
-	return e.SymbolTotal.Met(cards) && TotalManaValue(cards) >= e.ManaValueAtLeast
+	return len(cards) >= e.MinCards && e.SymbolTotal.Met(cards) && TotalManaValue(cards) >= e.ManaValueAtLeast
 }
 
 // ManaSymbolTotal is "<N> or more <colour> mana symbols among their mana
@@ -571,6 +601,10 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 		}
 		out = append(out, c.InstanceID)
 	}
+	if cost.TopOnly {
+		// #6194: only the topmost N matches, never one below them.
+		out = topOfPileOrder(out, g.ExileCostCountForEffect(playerID, cost))
+	}
 	return out
 }
 
@@ -677,6 +711,10 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		if !g.exileCostOwnerOKLocked(playerID, sourceID, cost, c) || !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
+		if cost.TopOnly && !slices.Contains(g.ExileCostOptionsForEffect(playerID, sourceID, cost), id) {
+			// #6194: a matching card below the topmost N is not "the top".
+			return nil, ErrInvalidParam
+		}
 		named = append(named, *c)
 	}
 	// "Any number of … with N or more <colour> mana symbols among their
@@ -763,6 +801,33 @@ func (g *Game) payExileCardsCostToLocked(playerID, sourceID uuid.UUID, ids []uui
 	return nil
 }
 
+// payGraveyardToBottomCostLocked pays a ToLibraryBottom clause (#6121):
+// each named card leaves its owner's graveyard for the bottom of that
+// library, in the order named (CR 401.4), through the one exit primitive
+// with MustSettleNow like every other cost (CR 601.2h / 602.2b). It is
+// not an exile, so a commander put there is a commander put into a
+// library, and CR 903.9a's command-zone offer is asked with the answers
+// gathered before the payment (#1397).
+//
+// Caller must hold g.mu for writing and have validated the list.
+func (g *Game) payGraveyardToBottomCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+	for _, id := range ids {
+		if _, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:          id,
+			Dst:             ZoneLibrary,
+			ToBottom:        true,
+			Actor:           playerID,
+			Source:          sourceID,
+			Cause:           MoveCause{Kind: MoveCauseCost, Controller: playerID},
+			MustSettleNow:   true,
+			commanderAnswer: commanderAnswerFor(answers, id),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // payProcessCostLocked pays a processing clause (ExileCost.Processes,
 // #5457): each named card an opponent owns leaves exile for its owner's
 // graveyard, through the one exit primitive with MustSettleNow like every
@@ -772,11 +837,11 @@ func (g *Game) payExileCardsCostToLocked(playerID, sourceID uuid.UUID, ids []uui
 // processed this way lands in the graveyard and is offered the command
 // zone by the CR 903.9a state-based action, like one sacrificed to a cost.
 //
-// It returns the cards really moved, which differ from `ids` only for a
-// face-down pick (processedCardLocked).
+// A face-down pick moves a card other than the one named
+// (processedCardLocked).
 //
 // Caller must hold g.mu for writing and have validated the list.
-func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
+func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) error {
 	moved := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		id = g.processedCardLocked(playerID, sourceID, id, ids, moved)
@@ -788,11 +853,11 @@ func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUI
 			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
 		}); err != nil {
-			return moved, err
+			return err
 		}
 		moved = append(moved, id)
 	}
-	return moved, nil
+	return nil
 }
 
 // processedCardLocked is the card a processing cost really moves for the

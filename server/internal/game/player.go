@@ -247,6 +247,16 @@ type Player struct {
 	// over after leaving the game began nothing.
 	ExtraTurnsBegun int
 
+	// LifeAsTurnBegan is this player's life total as the current turn
+	// began (#6164, Sengir, the Dark Baron's "that player's life total as
+	// the turn began"), and LifeAsTurnBeganSeq the Turn.Seq it was taken
+	// on. Stamped for every player in the game when a turn begins
+	// (startTurnLocked); read through LifeAsTurnBeganForEffect, which
+	// falls back to the current life when the stamp is not this turn's
+	// (a game restored from a file written before the field).
+	LifeAsTurnBegan    int
+	LifeAsTurnBeganSeq int
+
 	// UpkeepsBegun counts the upkeep steps this player has begun
 	// (ADR 0108 §5, #1888). It goes up by one as the step begins,
 	// before any "at the beginning of your upkeep" trigger is checked,
@@ -325,6 +335,17 @@ type Player struct {
 	// CR 800.4a takes their objects out of the game, and never changed.
 	// Nil while they play. The seat view sends it to everyone.
 	FinalBoard *FinalBoard
+
+	// DepartedPermanents is what the player controlled on the battlefield
+	// when they left the game (#6123, departed_permanents.go): each
+	// permanent as a token copy would copy it (CR 707.2, its copiable
+	// values then) and the card types it had (CR 608.2h, last-known
+	// information), written once by leaveGameLocked before CR 800.4a takes
+	// their objects out of the game, and never changed. Leaving the game is
+	// not a zone change, so no last-known record of the battlefield object
+	// survives it; this is the one record of "each artifact and creature
+	// they controlled" (Miss Highwater). Nil while they play.
+	DepartedPermanents []DepartedPermanent
 
 	// Removed is set when an admin removed this seat from a game that
 	// had started (#3093, ADR 0060's 2026-10-12 amendment). The player

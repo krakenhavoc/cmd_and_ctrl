@@ -118,3 +118,13 @@ The sentence above, that the London-mulligan bottom pick "is still a closure, so
 - **Not built:** "at the beginning of THE first upkeep" (the Chancellors, Providence: any player's first upkeep, which is the starting player's) and "the first main phase" are the same slot with a different step or turn. Each is a field when a card needs it.
 
 Snapshot impact: none. `OpeningHandAction` is catalog data, and an armed trigger is an ordinary `DelayedTrigger` naming a registered body.
+
+## Amendment 2026-11-25 — the other reveal moments (#6101)
+
+The 2026-11-24 amendment's "not built" line is built: `OpeningHandReveal.At` names the moment, and `effects.RevealFromOpeningHand(at, label, body)` declares it. The zero value is the old "your first upkeep", so Devourer of Destiny is unchanged.
+
+- **`RevealAtTheFirstUpkeep`**, "at the beginning of the first upkeep" (Chancellor of the Dross, of the Forge, of the Spires). The game's first upkeep is the starting player's, whoever revealed. By decision 3 it has begun by the time any seat answers, so every seat's trigger goes on `PendingTriggers` at once, the way the starting player's does for the 2026-11-24 shape. The revealing player controls it. Should an answer somehow arrive in the untap step, it is scheduled for the next upkeep, which is the first; after turn one it arms nothing.
+- **`RevealAtYourFirstMainPhase`**, "at the beginning of your first main phase of the game" (Chancellor of the Tangle). A delayed trigger at the beginning of the revealing player's next precombat main phase (`ControllerTurnOnly`). The table is in turn one's upkeep, so that is still ahead for every seat, the starting player's included. The mana the trigger adds stays in the pool until that phase ends (CR 106.4, 500.5).
+- **`RevealAtEachOpponentsFirstSpell`**, "when each opponent casts their first spell of the game" (Chancellor of the Annex). One delayed trigger for each opponent who has not left, `On: EventCast` under the condition `cast/opening-hand-reveal-that-players-first-spell` (an on-disk key) with that opponent in `CondParams.Player`, and no duration (`IndefiniteDuration`). Each triggers once, at that opponent's next cast (CR 603.7b), and carries the spell as the item's payload. No player can cast a spell before the reveal is answered, since nobody has had priority yet, so that next cast is the opponent's first spell of the game. The game keeps no per-game spell tally, and none is needed.
+
+Snapshot impact: none. The armed triggers are ordinary `DelayedTrigger`s naming a registered body and a registered condition. Closure ratchet: none (`At` is a string).

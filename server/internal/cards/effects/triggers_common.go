@@ -1437,3 +1437,30 @@ func YouTappedAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Chara
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.IsCreature() && c.Controller != source.Controller
 }
+
+// YouPayLife — "Whenever you pay life" (Font of Agonies, #6234; CR
+// 119.4). Watch game.EventChangeLife. True for life the source's
+// controller PAID as a cost, whatever paid it (a spell's or ability's
+// cost, Phyrexian mana, ward, a "pay N life" choice); never for damage
+// or an effect's life loss. "That many" is -ev.Amount, the life that
+// actually moved.
+func YouPayLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventChangeLife && ev.LifePayment && ev.Amount < 0 && ev.Target == source.Controller
+}
+
+// AnOpponentShufflesTheirLibrary — "Whenever an opponent shuffles their
+// library" (Psychic Surgery, Cosi's Trickster; #6215). Watch
+// game.EventLibraryShuffled. Every shuffle counts, a search's included,
+// and a library of zero or one card too (CR 701.24e).
+func AnOpponentShufflesTheirLibrary(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventLibraryShuffled && ev.Actor != uuid.Nil && ev.Actor != source.Controller
+}
+
+// ASpellOrAbilityShufflesALibrary — "Whenever a spell or ability causes
+// a player to shuffle their library" (Psychogenic Probe; #6215). Watch
+// game.EventLibraryShuffled; "that player" is ev.Actor. The sandbox's
+// manual shuffle (game.ShuffleByAction) is no spell or ability, and the
+// opening and mulligan shuffles emit no event.
+func ASpellOrAbilityShufflesALibrary(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventLibraryShuffled && ev.Label == game.ShuffleByEffect && ev.Actor != uuid.Nil
+}

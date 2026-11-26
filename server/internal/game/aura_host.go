@@ -129,6 +129,11 @@ func (g *Game) enteringAuraLocked(ev *ReplacementEvent) (Card, *TargetSpec, bool
 	} else if ev.EntersAsCopyOf != nil {
 		return Card{}, nil, false
 	}
+	if ev.entersAs.losesAura() {
+		// #6235: it enters as a non-Aura enchantment, which enchants
+		// nothing.
+		return Card{}, nil, false
+	}
 	var card Card
 	found := false
 	if z := g.findCardZoneLocked(ev.CardID); z != nil {
@@ -193,7 +198,7 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 	quality := SourceCharacteristics(&aura)
 	var out LegalTargets
 	for _, id := range matches.Players {
-		if ev.auraHostCreaturesOnly {
+		if ev.auraHostCreaturesOnly || ev.auraHostYouControlOnly {
 			continue
 		}
 		p := g.playerByIDLocked(id)
@@ -221,10 +226,17 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 			if host == nil || (HasProtection(host) && ProtectedFrom(host, quality)) {
 				continue
 			}
+			// #6203: "can't be enchanted" (CR 303.4f's legal choice).
+			if g.auraBarredFromHostLocked(&aura, host, true) {
+				continue
+			}
 			if ev.auraHostCreaturesOnly && !host.IsCreature() {
 				continue
 			}
-		} else if ev.auraHostCreaturesOnly {
+			if ev.auraHostYouControlOnly && host.Controller != chooser {
+				continue
+			}
+		} else if ev.auraHostCreaturesOnly || ev.auraHostYouControlOnly {
 			// "Only creatures can be enchanted this way": a card in a
 			// graveyard is not one (Animate Dead's own clause is skipped).
 			continue

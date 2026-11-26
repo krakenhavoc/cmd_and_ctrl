@@ -72,13 +72,16 @@ import "github.com/google/uuid"
 // loses loyalty — the clauses stay additive.
 //
 // `inst` is the damage instance the damage belongs to; what it marks is
-// recorded for heal-on-damage (heal_damage.go).
+// recorded for heal-on-damage (heal_damage.go). `sourceID` is the damage
+// source, whose share of the marked damage is recorded for "lethal
+// damage dealt by a single source" (#6209, single_source_lethal.go);
+// uuid.Nil is an unattributed mark and is recorded as one source too.
 //
 // Returns ok=false when the card is not on the battlefield. excess is the
 // excess damage (CR 120.10) this event dealt, for the damage event to carry.
 //
 // Caller must hold g.mu.
-func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *damageTail, result DamageResultSource, inst DamageInstance) (ok bool, minusOneCounters, excess int) {
+func (g *Game) applyDamageToPermanentLocked(cardID, sourceID uuid.UUID, amount int, t *damageTail, result DamageResultSource, inst DamageInstance) (ok bool, minusOneCounters, excess int) {
 	if amount <= 0 {
 		return false, 0, 0
 	}
@@ -116,6 +119,9 @@ func (g *Game) applyDamageToPermanentLocked(cardID uuid.UUID, amount int, t *dam
 		counters, marked := result.DamageToCreature(amount)
 		c.DamageMarked += marked
 		c.noteMarkedDamageInstance(inst, marked)
+		// #6209: and which source marked it, for Ogre Enforcer's
+		// "lethal damage dealt by a single source".
+		c.noteMarkedDamageSource(sourceID, marked)
 		minusOneCounters = counters
 		if t.deathtouch {
 			c.MarkedLethalByDeathtouch = true
@@ -198,4 +204,5 @@ func clearBattlefieldDamage(c *Card) {
 	c.DamageMarked = 0
 	c.damageInstance, c.damageInstanceMarked = 0, 0
 	c.MarkedLethalByDeathtouch = false
+	clearMarkedDamageSources(c)
 }

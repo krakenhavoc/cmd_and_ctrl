@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { manaAbilityNeedsPrompt, manaTapNeedsPicker, manaTapPayment } from "./manaAbilityCost";
+import {
+  manaAbilityNeedsPrompt,
+  manaTapNeedsPicker,
+  manaTapPayment,
+  manaXPayment,
+} from "./manaAbilityCost";
+import { modesUnderChoices } from "./targeting";
+import type { CardView } from "./protocol";
 import type { ManaAbilityView } from "./protocol";
 
 function ability(extra: Partial<ManaAbilityView>): ManaAbilityView {
@@ -34,6 +41,18 @@ describe("manaAbilityNeedsPrompt", () => {
       manaAbilityNeedsPrompt(ability({ tap_others_options: { cards: ["bear"], min: 1, max: 1 } })),
     ).toBe(true);
   });
+
+  // #6085: Rosheen, Roaring Prophet asks which cards with {X} to reveal
+  // while the hand holds one, and taps straight out (revealing none) when
+  // it holds none.
+  it("asks before Rosheen's reveal only when there is a card to show", () => {
+    expect(
+      manaAbilityNeedsPrompt(
+        ability({ reveal_cost_any_number: true, reveal_cost_options: ["fireball"] }),
+      ),
+    ).toBe(true);
+    expect(manaAbilityNeedsPrompt(ability({ reveal_cost_any_number: true }))).toBe(false);
+  });
 });
 
 describe("manaTapPayment", () => {
@@ -65,5 +84,48 @@ describe("manaTapNeedsPicker", () => {
   it("asks nothing with nothing to tap or no such cost", () => {
     expect(manaTapNeedsPicker({ cards: [], min: 0, max: 0 })).toBe(false);
     expect(manaTapNeedsPicker(undefined)).toBe(false);
+  });
+});
+
+// #6125: X in a mana ability's cost.
+describe("manaXPayment", () => {
+  it("asks before an {X} row and sends the X named", () => {
+    const rockets = ability({ demands_x: true, mana_cost: "{X}" });
+    expect(manaAbilityNeedsPrompt(rockets)).toBe(true);
+    expect(manaXPayment(rockets, 3, undefined)).toEqual({ x_value: 3 });
+    expect(manaXPayment(rockets, 0, undefined)).toEqual({});
+  });
+
+  it("takes a sacrifice-X row's X from the permanents sacrificed", () => {
+    const pasture = ability({
+      demands_x: true,
+      sacrifice_options: { cards: ["g1", "g2"], count_from_x: true },
+    });
+    expect(manaXPayment(pasture, undefined, ["g1", "g2"])).toEqual({ x_value: 2 });
+  });
+
+  it("sends nothing for a row with no X", () => {
+    expect(manaXPayment(ability({}), 2, undefined)).toEqual({});
+  });
+});
+
+// #6125: "Choose X" (Doomsday Confluence) takes exactly the X announced.
+describe("modesUnderChoices for Choose X", () => {
+  it("bounds the picker at the announced X", () => {
+    const card = {
+      instance_id: "c",
+      name: "Doomsday Confluence",
+      modes: {
+        prompt: "Choose X",
+        min: 0,
+        max: 0,
+        repeatable: true,
+        count_is_x: true,
+        options: [],
+      },
+    } as unknown as CardView;
+    const m = modesUnderChoices(card, { xValue: 3 }).modes;
+    expect(m?.min).toBe(3);
+    expect(m?.max).toBe(3);
   });
 });

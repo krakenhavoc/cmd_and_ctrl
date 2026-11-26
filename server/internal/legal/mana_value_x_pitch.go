@@ -54,3 +54,21 @@ func (e *enumerator) handManaValue(id uuid.UUID) (int, bool) {
 	}
 	return 0, false
 }
+
+// maxEnumeratedAltExileX caps the X an "Exile X cards from your
+// graveyard" alternative cost announces in a move (#6122): any X up to
+// the graveyard is legal; the bot is offered small ones.
+const maxEnumeratedAltExileX = 3
+
+// exileXAltPayments is the ladder of payments for an alternative cost
+// whose graveyard exile counts the spell's X (#6122, Summons of
+// Saruman's flashback): for each X from `floor` up to the pool and the
+// cap, the first X cards of `pool` (cheapest fuel first), announcing X.
+func (e *enumerator) exileXAltPayments(pool []uuid.UUID, floor int) (sets [][]uuid.UUID, xs []int) {
+	top := min(len(pool), maxEnumeratedAltExileX)
+	for x := max(floor, 0); x <= top; x++ {
+		sets = append(sets, append([]uuid.UUID(nil), pool[:x]...))
+		xs = append(xs, x)
+	}
+	return sets, xs
+}

@@ -31,6 +31,29 @@ func DiscardLandCost() *game.AdditionalCost {
 	return &game.AdditionalCost{DiscardCards: 1, DiscardLand: true, Label: "Discard a land card"}
 }
 
+// DiscardXCost is "As an additional cost to cast this spell, discard X
+// cards" (Channeled Force, Firestorm, #6145); DiscardXLandCost and
+// DiscardXCreatureCost are the "X land cards" (Scorched Earth) and "X
+// creature cards" (Aether Tide) spellings. The count is the X announced
+// with the cast (CR 107.3a), the same X the spell's text reads back with
+// ctx.X(), so "Destroy X target lands" is the existing CountFromX target
+// clause. The discarded cards are read back with ctx.Discarded(). The
+// mandatory slot only; Register refuses it beside another claimant on X.
+// See game.AdditionalCost.DiscardX.
+func DiscardXCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardX: true, Label: "Discard X cards"}
+}
+
+// DiscardXLandCost is "discard X land cards"; see DiscardXCost.
+func DiscardXLandCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardX: true, DiscardLand: true, Label: "Discard X land cards"}
+}
+
+// DiscardXCreatureCost is "discard X creature cards"; see DiscardXCost.
+func DiscardXCreatureCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardX: true, DiscardCreature: true, Label: "Discard X creature cards"}
+}
+
 // discardLabel spells the clause the way the card prints it, since
 // the client shows it verbatim above the picker.
 func discardLabel(n int) string {
@@ -590,8 +613,8 @@ func checkReplicateTapCost(spec Spec) bool {
 			continue
 		}
 		switch {
-		case oc.Key != game.ReplicateKey && oc.Key != game.ConspireKey && oc.Key != cmdr2B11FlashByTappingKey:
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot, a replicate cost, conspire and a flash-by-tapping cost may (#3868, #4092, #4690, #5368)", spec.Name, oc.Key))
+		case oc.Key != game.ReplicateKey && oc.Key != game.ConspireKey && oc.Key != game.KickerKey && oc.Key != cmdr2B11FlashByTappingKey:
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot, a replicate cost, conspire, a kicker (KickerTapUntapped) and a flash-by-tapping cost may (#3868, #4092, #4690, #5368)", spec.Name, oc.Key))
 		case tc.UpTo || tc.AnyNumber || tc.ExcludeSource || tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc):
 			panic(fmt.Sprintf("effects.Register: %q replicate cost taps no fixed number of permanents — build it with ReplicateTapping (#4092)", spec.Name))
 		case tc.Label == "":
@@ -636,11 +659,12 @@ func checkTapListAlone(spec Spec) {
 // PayLife is a branch's or an optional cost's (KickerPayLife,
 // BuybackPayLife; ADR 0100's 2026-11-20 amendment).
 func CheckEitherCost(spec Spec) {
-	if ac := spec.AdditionalCost; ac != nil && ac.DiscardLand && ac.DiscardCards <= 0 {
-		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land cards but discards nothing (DiscardLandCost)", spec.Name))
+	if ac := spec.AdditionalCost; ac != nil && ac.DiscardFiltered() && ac.DiscardCards <= 0 && !ac.DiscardX {
+		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land or creature cards but discards nothing (DiscardLandCost)", spec.Name))
 	}
+	checkDiscardX(spec)
 	for _, oc := range spec.OptionalCosts {
-		if oc.DiscardLand {
+		if oc.DiscardLand || oc.DiscardCreature || oc.DiscardX {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q discards a land card — only the mandatory slot may (#5457)", spec.Name, oc.Key))
 		}
 		if oc.ExileFromHand != nil {
@@ -690,8 +714,13 @@ func CheckEitherCost(spec Spec) {
 		}
 	}
 	// #5247: the activated form's clause check — a count of at least one
-	// over a clause that matches permanents.
-	checkReturnClause(spec.Name, "additional cost", ac.ReturnToHand)
+	// over a clause that matches permanents. #6122: or the X form, which
+	// shares one announced X with nothing else (CR 107.3a).
+	if game.ReturnToHandCountFromX(ac.ReturnToHand) {
+		checkReturnXClause(spec, ac)
+	} else {
+		checkReturnClause(spec.Name, "additional cost", ac.ReturnToHand)
+	}
 	if ec := ac.ExileCards; ec != nil {
 		checkCastExileCardsClause(spec.Name, "additional cost", ec)
 		// #1948: "exile X cards" shares ONE announced X with every other
@@ -720,8 +749,10 @@ func CheckEitherCost(spec Spec) {
 			} else if rc.Chosen {
 				// Monstrous Emergence's "choose a creature you control or reveal a
 				// creature card from your hand" (ChooseOrRevealCost): a behold of a
-				// card type that records its pick, alone on the slot.
-				if (!rc.Behold && !rc.Colorless) || rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+				// card type that records its pick, alone on the slot. Without
+				// Behold it is a plain reveal from the hand (Charge of the
+				// Forever-Beast, S82OldB116RevealACreatureCardCost).
+				if rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
 					panic(fmt.Sprintf("effects.Register: %q declares a malformed choose-or-reveal cost — build it with ChooseOrRevealCost, alone on the mandatory slot", spec.Name))
 				}
 			} else if !rc.Exile {
@@ -777,7 +808,7 @@ func CheckEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s beholds and exiles — only the mandatory slot may (BeholdAndExileCost, #4687)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):
 			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no creature type, or one narrowed by colour — a cast's reveal branch names a creature type only", spec.Name, where))
-		case b.DiscardLand:
+		case b.DiscardLand || b.DiscardCreature || b.DiscardX:
 			panic(fmt.Sprintf("effects.Register: %q %s discards a land card — only the mandatory slot may (#5457)", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
@@ -827,7 +858,7 @@ func checkForageBranches(name string, ac *game.AdditionalCost) {
 // checkCastExileCardsClause is checkExileCardsClause for a CAST's
 // exile-cards cost (#3536, #1948): graveyard only, and either a printed
 // count or the X form ("exile X cards"), which has no printed count of
-// its own (ExileCost.CountFromX, N zero).
+// its own (ExileCost.CountFromX, N zero); or a processing clause (#5457).
 func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
 	// #5240: collect evidence X sized by the targets is the one any-number
 	// clause a cast may print (checkCollectEvidenceFromTargets holds where).
@@ -843,7 +874,10 @@ func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec.AnyNumber {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
 	}
-	if ec.Zone() != game.ZoneGraveyard {
+	// #5457: a processing clause ("put a card an opponent owns from exile into
+	// that player's graveyard", Processor Assault) is a cast's cost too: the
+	// zone it reads is exile, and what it moves is not exiled at all.
+	if ec.Zone() != game.ZoneGraveyard && !ec.Processes() {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — a cast exiles from the graveyard (#3536)", name, where, ec.Zone()))
 	}
 	if ec.CountFromX {
@@ -1160,4 +1194,59 @@ func WhenPaid(cost game.AdditionalCost, clause *game.TargetSpec) game.Additional
 	}
 	cost.Targets = clause
 	return cost
+}
+
+// checkDiscardX refuses a "discard X cards" cost (#6145) the cast path
+// has no shape for: a fixed count beside it (one clause, one count), or
+// another component claiming the same announced X (CR 107.3a makes X one
+// number, and no printed card pays two costs with it).
+func checkDiscardX(spec Spec) {
+	ac := spec.AdditionalCost
+	if ac == nil || !ac.DiscardX {
+		return
+	}
+	if ac.DiscardCards != 0 {
+		panic(fmt.Sprintf("effects.Register: %q discards X cards AND a fixed count — build it with DiscardXCost alone", spec.Name))
+	}
+	if ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) || game.SacrificeCountFromX(ac.Sacrifice) ||
+		game.ReturnToHandCountFromX(ac.ReturnToHand) {
+		panic(fmt.Sprintf("effects.Register: %q discards X cards beside another cost paid with X — one announced X cannot pay both", spec.Name))
+	}
+}
+
+// ReturnXToHandCost is "As an additional cost to cast this spell, return
+// X <permanents> you control to their owner's hand" (#6122, Infernal
+// Harvest's "return X Swamps you control"). X is the one number the cast
+// announces (CR 107.3a, 601.2b), so a card with no {X} in its mana cost
+// still announces it; the caster names exactly X permanents on
+// `return_ids`, and the spell reads X back with ctx.X(), so "deals X
+// damage divided as you choose" is the existing DivideX clause. X = 0
+// returns nothing. The largest X is the number of permanents the clause
+// matches (game.ReturnToHandXCeilingForEffect). `label` is the clause
+// without the verb ("X Swamps you control").
+func ReturnXToHandCost(label string, preds ...CardPredicate) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		ReturnToHand: &game.ReturnToHandCost{CountFromX: true, Filter: TargetPermanent(label, preds...), Label: label},
+		Label:        "Return " + label + " to their owner's hand",
+	}
+}
+
+// checkReturnXClause is the boot-time rule for a "return X …" additional
+// cost (#6122): no fixed count beside it, a clause over permanents, the
+// mandatory slot only (the caller), and no other component paid with the
+// same announced X — one X cannot pay two printed costs (CR 107.3a).
+func checkReturnXClause(spec Spec, ac *game.AdditionalCost) {
+	rc := ac.ReturnToHand
+	switch {
+	case rc.Count != 0:
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents AND a fixed count — build it with ReturnXToHandCost alone", spec.Name))
+	case rc.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents with no Label — build it with ReturnXToHandCost", spec.Name))
+	case rc.Filter.CountFromX || rc.Filter.AllowSame || rc.Filter.Players:
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents over a clause that counts by X, repeats or admits players", spec.Name))
+	case ac.PayLifeX || ac.BlightX || ac.DiscardX || (ac.ExileCards != nil && ac.ExileCards.CountFromX) || game.SacrificeCountFromX(ac.Sacrifice):
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents beside another cost paid with X — one announced X cannot pay both", spec.Name))
+	case spec.TapCost != nil && spec.TapCost.DemandsX():
+		panic(fmt.Sprintf("effects.Register: %q returns X permanents beside a waterbend {X} — one announced X cannot pay both", spec.Name))
+	}
 }

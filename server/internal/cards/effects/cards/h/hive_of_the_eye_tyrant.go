@@ -1,8 +1,6 @@
 package cardsh
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -25,17 +23,8 @@ import (
 const hiveOfTheEyeTyrantAttackExile = "hive-of-the-eye-tyrant/attack-exile"
 
 func init() {
-	attack := effects.WheneverThisAttacks("Hive of the Eye Tyrant — exile target card from defending player's graveyard",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := effects.NewContext(g, item)
-			for _, id := range effects.LegalTargetCards(item, g) {
-				if err := (effects.ExileTarget{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	attack.TargetsFrom = hiveDefendingGraveyardCard
+	attack := effects.WheneverThisAttacks("Hive of the Eye Tyrant — exile target card from defending player's graveyard", effects.OldB238ExileEachLegalTargetCard)
+	attack.TargetsFrom = effects.OldB238DefendingGraveyardCardTarget
 	effects.Register(effects.Spec{
 		OracleID:      "d17163d4-dd43-4de6-b7cf-576448160b7f",
 		Name:          "Hive of the Eye Tyrant",
@@ -61,18 +50,3 @@ func init() {
 // hiveDefendingGraveyardCard is "target card from defending player's
 // graveyard": any card in the graveyard of the player the source attacked.
 // No defending player gives no clause (CR 603.3d drops it).
-func hiveDefendingGraveyardCard(_ game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
-	defender := g.DefendingPlayerForAttackForEffect(source.AttackingTarget)
-	if defender == uuid.Nil {
-		return nil
-	}
-	return &game.TargetSpec{
-		Mode:  "card_in_graveyard",
-		Label: "target card from defending player's graveyard",
-		Zones: []game.ZoneKind{game.ZoneGraveyard},
-		CardOK: func(_ *game.Game, _ uuid.UUID, c game.Card, _ game.ZoneKind) bool {
-			return c.Owner == defender
-		},
-		Min: 1, Max: 1,
-	}
-}

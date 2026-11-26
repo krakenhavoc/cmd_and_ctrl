@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -238,6 +239,17 @@ type CostQuery struct {
 	// for an activation or special action.
 	TappingToPay int
 
+	// RemovingCounters is how many counters the announcement removes to a
+	// cast's "remove any number of counters" additional cost (#6121,
+	// AdditionalCost.RemoveCounters) — Hierophant Bio-Titan's "This spell
+	// costs {2} less to cast for each counter removed this way". Announced
+	// at CR 601.2b, read at 601.2f, filled from the counts on
+	// CastSpellParams.CounterCounts by the one pricer
+	// (CastCountersAnnouncedForAdditionalCost). Zero for an activation or
+	// special action, and for a cast whose counters pay an alternative
+	// cost instead.
+	RemovingCounters int
+
 	// OptionalCosts is the announcement's optional-cost indices
 	// (CastSpellParams.OptionalCosts), settled at CR 601.2b and read at
 	// 601.2f by a modifier of the spell's own: Bite Down on Crime's "This
@@ -310,6 +322,13 @@ type CostQuery struct {
 	// it is announcing, as AltBlitz is. False for every other cast.
 	AltFlashback bool
 
+	// AltDash reports that the alternative cost this cast claims is a dash
+	// cost (AlternativeCost.Dash, CR 702.109a): Warbringer's "Dash costs you
+	// pay cost {2} less" must not touch the same creature cast for its mana
+	// cost. Filled by the one pricer and by the enumerator from the offer it
+	// is announcing, as AltBlitz is. False for every other cast.
+	AltDash bool
+
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
 	// Augurelt's "spells you cast this way cost {2} less to cast". Read
@@ -365,6 +384,26 @@ type CostQuery struct {
 	// spell" — would have started taxing every activated ability in
 	// the game the day this field appeared.
 	Ability *AbilityCostSubject
+
+	// PricingOptionalCost names the OPTIONAL ADDITIONAL COST this query
+	// prices ON ITS OWN rather than the announcement's whole total
+	// (#6206): "buyback" while the buyback component of a cast is being
+	// priced for Memory Crystal's "Buyback costs cost {2} less"
+	// (CR 702.27a, 118.8, 601.2f). Empty for every query that prices a
+	// whole cast, an activation or a special action, which is every
+	// query but the component pass's.
+	//
+	// It is the SELECTOR for CostModifier.PricesOptionalCost, exactly as
+	// Ability's and SpecialAction's nil-ness is for Activations and
+	// SpecialActions: pricesAnnouncement shows a component query only the
+	// modifiers aimed at that component, and the whole-cost pass only the
+	// modifiers aimed at no component. Without that partition a Sphere of
+	// Resistance would tax every buyback cost on the table and Memory
+	// Crystal would discount the spell itself.
+	//
+	// See component_cost_modifier.go, which is the only thing that sets
+	// it.
+	PricingOptionalCost string
 
 	// SpecialAction names the CR 116.2 special action being priced
 	// when this query is about a foretell, suspend or turn-face-up
@@ -425,6 +464,18 @@ type AbilityCostSubject struct {
 	// query's FromZone is the hand or the command zone, where the card
 	// with the ability is (CR 113.6).
 	Ninjutsu bool
+
+	// Cycling is the CR 702.29 cycling bit (ActivatedAbilityShape.Cycling,
+	// typecycling included, CR 702.29e): "Cycling abilities you activate
+	// cost {2} less to activate" (Fluctuator). The query's FromZone is the
+	// hand, where the card being cycled is (CR 113.6).
+	Cycling bool
+
+	// Loyalty is the CR 606 loyalty-ability bit (ActivatedAbilityShape.Cost.Loyalty
+	// is set, #5514): "Loyalty abilities of planeswalkers your opponents control
+	// cost {1} more to activate" (Eidolon of Obstruction). Read off the cost
+	// component, never the label, which is prose.
+	Loyalty bool
 
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation — set by manaAbilityCostQueryLocked (#1191), so a
@@ -585,6 +636,38 @@ type CostModifier struct {
 	// ability's mana component.
 	Activations bool
 
+	// PricesOptionalCost names the optional additional cost this
+	// modifier prices INSTEAD of the announcement's whole total (#6206):
+	// Memory Crystal's "Buyback costs cost {2} less" is BuybackKey. The
+	// empty string — every modifier written before this — prices the
+	// whole cost.
+	//
+	// A cost change aimed at PART of a cost (CR 118.7, 118.8d: an
+	// additional cost never changes the spell's mana cost, only what its
+	// controller has to pay) cannot be expressed by the whole-cost pass:
+	// a {2} reduction of the whole total would discount a buyback-free
+	// cast, and would spend itself on the spell's own generic mana
+	// before it ever reached the buyback cost. So the component is
+	// priced on its own, by its own CR 601.2f pass over the modifiers
+	// aimed at it, and what that pass leaves is what joins the total
+	// (component_cost_modifier.go). The generic floor is the same one:
+	// a {2} reduction of a buyback {1} leaves {0} and takes nothing off
+	// anything else.
+	//
+	// The same partition Activations and SpecialActions are, a third
+	// door over: the KEY, matched against CostQuery.PricingOptionalCost
+	// in pricesAnnouncement. A modifier prices one component or a whole
+	// announcement and never both, because every printed clause says
+	// which ("Buyback costs cost {2} less" and "spells cost {2} less"
+	// are different sentences). Only the board's modifiers reach a
+	// component: a self modifier (affinity, "this spell costs {1} less")
+	// is written against the spell's own cost, so the component pass
+	// never shows it one, and effects.Register refuses the field in the
+	// self slot rather than let it be dead text.
+	//
+	// Data, a string, so the ADR 0041 closure ratchet gains no route.
+	PricesOptionalCost string
+
 	// SpecialActions declares that this modifier prices a CR 116.2
 	// SPECIAL ACTION's cost — Ranar the Ever-Watchful's "The first
 	// card you foretell each turn costs {0} to foretell" (#1319) —
@@ -613,6 +696,16 @@ type CostModifier struct {
 	// graveyard or exile. Use the effects.Eminence constructor rather
 	// than setting it by hand.
 	Eminence bool
+
+	// OnStack declares that this modifier functions while its card is a
+	// spell on the stack, and only then (CR 113.6b, #6222): Kaervek's
+	// Torch's "As long as Kaervek's Torch is on the stack, spells that
+	// target it cost {2} more to cast." It is gathered from every spell
+	// on the stack except the one being priced, bound to that spell with
+	// its controller as "you" (CR 108.4), and never from the battlefield,
+	// a command zone, an emblem or a plane. Use the effects.WhileOnTheStack
+	// constructor rather than setting it by hand.
+	OnStack bool
 
 	// KeepsOneMana is a per-reduction floor (S79, #302): "This effect
 	// can't reduce the mana in that cost to less than one mana"
@@ -779,7 +872,16 @@ type boundCostModifier struct {
 // activation and a special action are three different announcements,
 // and a modifier prices exactly one of them — never the other two. See
 // CostModifier.Activations and CostModifier.SpecialActions.
+//
+// #6206 adds the PART of the announcement as a fourth partition: a
+// modifier aimed at one optional additional cost ("Buyback costs cost
+// {2} less") prices that component and never the whole total, and a
+// modifier aimed at no component never reaches one. The two are told
+// apart by the key alone, so neither can leak into the other's pass.
 func (m CostModifier) pricesAnnouncement(q CostQuery) bool {
+	if m.PricesOptionalCost != q.PricingOptionalCost {
+		return false
+	}
 	switch {
 	case q.Ability != nil:
 		return m.Activations
@@ -813,7 +915,7 @@ func (g *Game) appendEminenceCostModifiersLocked(out []boundCostModifier, q Cost
 			src := p.Command.Cards[i]
 			src.Controller = p.ID
 			for _, m := range mods {
-				if !m.Eminence || !m.pricesAnnouncement(q) {
+				if !m.Eminence || m.OnStack || !m.pricesAnnouncement(q) {
 					continue
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
@@ -864,13 +966,16 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 			}
 			src := g.Battlefield.Cards[i]
 			for _, m := range mods {
-				if !m.pricesAnnouncement(q) {
+				if m.OnStack || !m.pricesAnnouncement(q) {
 					continue
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}
 		}
 	}
+	// #6222, CR 113.6b: a spell's "as long as this is on the stack"
+	// modifier, from every other spell on the stack.
+	out = g.appendStackCostModifiersLocked(out, q)
 	// ADR 0140: eminence. A cost modifier that declares Eminence also
 	// works while its card is in its owner's command zone (The Ur-Sphinx:
 	// "As long as this is in the command zone or on the battlefield,
@@ -915,6 +1020,19 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 		return out
 	}
 	if q.SpecialAction != nil {
+		return out
+	}
+	// #6206: a component query (PricingOptionalCost) prices ONE optional
+	// additional cost of the cast, so what reaches it is the board's
+	// component modifiers and nothing else. The two lists below are
+	// written against the SPELL's own cost — affinity and "this spell
+	// costs {1} less" in the self slot, "the next creature spell you cast
+	// this turn costs {1} less" on the caster — and CR 118.8d says an
+	// additional cost is not the spell's mana cost, so neither may come
+	// off a buyback cost. Neither carries a key, so this is a skip rather
+	// than a filter: nothing in either list can price a component, and
+	// effects.Register refuses the field in the self slot.
+	if q.PricingOptionalCost != "" {
 		return out
 	}
 	// #1852: "the next <kind> spell you cast this turn costs {N} less",
@@ -1163,6 +1281,8 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			Equip:    ab.Equip,
 			PowerUp:  ab.PowerUp,
 			Ninjutsu: ab.Ninjutsu,
+			Cycling:  ab.Cycling,
+			Loyalty:  ab.Cost.Loyalty != nil,
 			own:      ab.CostModifiers,
 		},
 		Targets: targets,
@@ -1226,6 +1346,10 @@ func (g *Game) AbilityManaCostForTargetsForEffect(activator uuid.UUID, source Ca
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AbilityManaCostAtXForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef, x int) (ParsedCost, error) {
+	// #6240, CR 107.3c: an X the text defines is a number by now.
+	if ab.Cost.ManaValueOfExiledWith && ab.Cost.Mana == "" {
+		ab.Cost.Mana = "{" + strconv.Itoa(g.exiledWithManaValueLocked(source)) + "}"
+	}
 	base, err := ParseCost(ab.Cost.Mana)
 	if err != nil {
 		return ParsedCost{}, err

@@ -210,7 +210,7 @@ func TestColouredPassMovesAHybridOffTheColourARunNeeds(t *testing.T) {
 // sameRequirement decides what a run is. A field it does not compare
 // would merge two different requirements into one run.
 func TestSameRequirementReadsEveryField(t *testing.T) {
-	if n := reflect.TypeFor[ColorRequirement]().NumField(); n != 7 {
+	if n := reflect.TypeFor[ColorRequirement]().NumField(); n != 8 {
 		t.Fatalf("ColorRequirement has %d fields; compare the new one in sameRequirement and update this count", n)
 	}
 	base := ColorRequirement{Options: []string{"B"}}
@@ -222,6 +222,7 @@ func TestSameRequirementReadsEveryField(t *testing.T) {
 		{Options: []string{"B"}, Snow: true},
 		{Options: []string{"B"}, AnyMana: true},
 		{Options: []string{"B"}, LifeGranted: true},
+		{Options: []string{"B"}, SnowAny: true},
 	} {
 		if sameRequirement(base, other) {
 			t.Errorf("sameRequirement(%+v, %+v) = true", base, other)

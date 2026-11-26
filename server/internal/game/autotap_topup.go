@@ -154,7 +154,7 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			snow = append(snow, i)
 			continue
 		}
-		if req.AnyMana || len(req.Options) != 1 {
+		if req.AnyMana || req.SnowAny || len(req.Options) != 1 {
 			flexible = append(flexible, i)
 			continue
 		}
@@ -196,6 +196,18 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 			key := takeCredit(c, false)
 			credit(k + 1)
 			giveCredit(key)
+		}
+		// #6161: a slot widened to snow mana of any colour also takes
+		// snow mana of the colours it does not print.
+		if r := cost.Required[i]; r.SnowAny && !r.AnyMana {
+			for _, c := range genericColorOrder {
+				if containsFold(r.Options, c) || !has(c, true) {
+					continue
+				}
+				key := takeCredit(c, true)
+				credit(k + 1)
+				giveCredit(key)
+			}
 		}
 		unpaid[i] = true
 		credit(k + 1)
@@ -313,6 +325,9 @@ func requirementKey(r ColorRequirement) string {
 	if r.AnyMana {
 		b.WriteString("+any")
 	}
+	if r.SnowAny {
+		b.WriteString("+snowany")
+	}
 	return b.String()
 }
 
@@ -356,6 +371,20 @@ func (g *Game) autoTapTopUpWithLocked(
 	prefer ManaSourceKinds,
 	triggerMana bool,
 ) (tapPlan, ParsedCost, bool) {
+	// #6227: "You can't spend mana to cast this spell" — no source
+	// could pay, so there is no plan to make and nothing to exclude it
+	// from. The floating pool answers on its own, and under NoMana it
+	// says yes only to a cost with nothing left in it: the convoke taps
+	// and the delve exiles covered the whole of the mana. Without this
+	// the planner would tap a land for a cast that cannot spend what it
+	// makes.
+	if ctx.NoMana {
+		p := g.playerByIDLocked(controller)
+		if p == nil || !p.ManaPool.CanPayFor(cost, xValue, ctx) {
+			return nil, ParsedCost{}, false
+		}
+		return nil, ParsedCost{}, true
+	}
 	// #2556: "Spend only mana produced by basic lands to cast this
 	// spell" — the sources that could not pay are out of every plan
 	// below, the pool top-up and the costed pass alike.

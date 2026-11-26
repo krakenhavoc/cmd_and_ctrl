@@ -458,6 +458,9 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 		g.PendingDealSeat = &seat
 		return
 	}
+	// Power Play (#5557): a face-up conspiracy that says its owner is the
+	// starting player overrides the roll's choice.
+	startingSeat = g.conspiracyStartingSeatLocked(startingSeat)
 	// CR 103.2b: companions are revealed once the starting player is
 	// known, before the libraries are shuffled and hands drawn (ADR
 	// 0172 §5).
@@ -504,6 +507,8 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 	// The one turn that does not begin through the rotation seam
 	// still counts as a turn begun (ADR 0063 Decision 3).
 	g.noteTurnBegunLocked(startingSeat)
+	// #6164: and every player's life as it began.
+	g.stampLifeAsTurnBeganLocked()
 }
 
 // cloneOpeningRoll deep-copies the window, so an undo entry or a

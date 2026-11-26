@@ -78,14 +78,14 @@ func (g *Game) LandManaOptionsForEffect(player, land uuid.UUID) (opts []LandMana
 		if !ManaAbilityFunctionsFromZone(ab, ZoneBattlefield) {
 			continue
 		}
-		if ab.SacrificeOther != nil || !ab.TapOthers.Empty() || ab.DiscardCards != nil || ab.ExileCards != nil ||
+		if ab.SacrificeOther != nil || !ab.TapOthers.Empty() || ab.DiscardCards != nil || ab.ExileCards != nil || ab.RevealCards != nil || ab.DemandsX() ||
 			!ab.ExilePermanents.Empty() || ab.ExileSelf || ab.Branched() {
 			continue
 		}
 		if ab.TapCost && (card.Tapped || g.ActivationSummoningSickLocked(card, player)) {
 			continue
 		}
-		if ab.SacrificeCost && g.CantBeSacrificedForEffect(land) {
+		if ab.SacrificeCost && g.SacrificeCostBarredForEffect(land) {
 			continue
 		}
 		if g.ManaAbilityExhausted(player, land, ab) || g.BorrowedRowSpentLocked(land, origins.At(idx)) {
@@ -97,7 +97,7 @@ func (g *Game) LandManaOptionsForEffect(player, land uuid.UUID) (opts []LandMana
 		if g.ActivationGateLocked(player, *card, ZoneBattlefield, ActivationAbility{Label: ab.Label, Mana: true}) != nil {
 			continue
 		}
-		if !g.CanPayLifeLocked(p, ab.LifeCost) || EnergyShortfall(p, ab.EnergyCost) != nil {
+		if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) || EnergyShortfall(p, ab.EnergyCost) != nil {
 			continue
 		}
 		if g.ManaAbilityChargesManaForEffect(player, *card, ab) { // #5382: a tax counts

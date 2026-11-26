@@ -67,6 +67,15 @@ export const ErrorCode = {
   // `reason` is the whole price ("{1}{1}"), `missing` the shortfall.
   // Nothing was spent; the declaration is still open, blocks staged.
   BlockTaxUnpaid: "block_tax_unpaid",
+  // #6190 (CR 508.1h / 509.1d): a declare_attacker, declare_attackers or
+  // finish_blocks refused because a NON-MANA cost to attack or block was
+  // not paid — Exalted Dragon's "unless you sacrifice a land", Hollow
+  // Warrior's tapped creature, Floodtide Serpent's returned enchantment.
+  // `reason` is the clause as the card prints it and `card_id` the
+  // creature it is about, so the dock can open the picker that pays it;
+  // the permanents ride the declaration as `sacrifice_ids` / `tap_ids` /
+  // `return_ids`. Nothing was staged and there is no override.
+  CombatCostUnpaid: "combat_cost_unpaid",
   // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
   // refused because the declaration breaks a CR 508.1c count limit
   // (Silent Arbiter's "no more than one creature can attack each
@@ -785,8 +794,9 @@ export interface OutcomeView {
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
   // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
   // of only mandatory actions repeated with no way to stop, CR 732.4 —
-  // a draw).
-  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // a draw) or "draw_effect" (an effect stated that the game is a draw,
+  // CR 104.4c — Divine Intervention; `source` is its card).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop" | "draw_effect";
   // The object whose effect won, for an effect win; the loop's card,
   // for a mandatory loop's draw.
   source?: string;
@@ -1907,7 +1917,9 @@ export interface PendingChoiceView {
     // opponents ride pick_options, one per seat with `player` set, and
     // the answer is {option_index: N} as for option_pick.
     // control_purpose says whether the permanent hurts or helps the
-    // seat that receives it.
+    // seat that receives it, or is "tribute" (CR 702.104a, #6251): the
+    // chosen opponent decides whether to pay the tribute, and the
+    // control does not change.
     | "entry_controller"
     // ADR 0109 §10, CR 702.136a: riot's "a +1/+1 counter, or haste?",
     // asked before the permanent enters. The {choice_id, apply} payload
@@ -2084,6 +2096,11 @@ export interface PendingChoiceView {
   // and "C" last on the one prompt that asks "colorless or the color of
   // your choice" (#5650).
   color_amounts?: Record<string, number>;
+  // #6146: on a "choose_color" prompt that asks for "the color or colors
+  // of your choice": the answer is a non-empty set of color_options, sent
+  // as their letters in resolve_choice's `color` ("WU"). Absent on every
+  // other prompt, which takes one letter.
+  color_multi?: boolean;
   // #780: on a "choose_color" prompt — the card's own declaration of
   // what it will DO with the colour it is handed. Public (it is a
   // reading of the printed text) and absent on every other kind, and
@@ -2099,7 +2116,7 @@ export interface PendingChoiceView {
   // ADR 0102: populated for kind "entry_controller" — what giving the
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
-  control_purpose?: "harm" | "benefit" | string;
+  control_purpose?: "harm" | "benefit" | "tribute" | string;
   // #3309: populated for kind "aura_host" — what the entering Aura does
   // to the permanent it enchants. Absent when the card declares none.
   // The bot reads it; the client ignores it.
@@ -2243,6 +2260,14 @@ export interface PendingChoiceView {
   pay_life?: number;
   pay_damage?: number;
   pay_nothing?: boolean;
+  // #6187: "discard N cards at random" (CR 701.9b). A yes or no; the
+  // server picks the cards. "Yes" pays only with N cards in hand.
+  pay_random_discard?: number;
+  // #6189: a payment that names nothing and is not mana — "put three
+  // -1/-1 counters on this permanent", "draw a card", "exile the top
+  // card of your library". pay_cost holds its printed words, and
+  // `payable` is whether the chooser can make it (CR 118.3).
+  pay_state?: PayStateView;
   // ADR 0187 §5: an either payment — one offer with two or more ways to
   // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
   // One entry per branch, in the card's order; pay_cost holds the whole
@@ -2276,6 +2301,12 @@ export interface PendingChoiceView {
   // answers are {apply: true} (begin the search, then the Agent's controller
   // picks) and {apply: false} (don't search).
   search_undecided?: boolean;
+  // #6216: the cards in the searcher's library they may cast right now
+  // because they are searching it ("While you're searching your library,
+  // you may cast this card from your library", Panglacial Wurm). Each is
+  // cast with a cast_spell naming this prompt as `search_cast`; the search
+  // then goes on. Chooser-only.
+  search_castable?: CardView[];
   // #3217: on a "search your library and/or graveyard" prompt, the
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
@@ -2398,6 +2429,9 @@ export interface PendingChoiceView {
   devour?: number;
   devour_draw?: number;
   devour_life?: number;
+  // #6267: devour whose N is the number of creatures devoured (Thromok
+  // the Insatiable): k creatures buy k*k counters, and `devour` is absent.
+  devour_x?: boolean;
   // #74: populated for kind "confirm" — the life the ACCEPT branch
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
@@ -2616,6 +2650,14 @@ export interface DamageAssignmentView {
   // player a blocker's among their attackers. No trample, and
   // covers_lethal is never set, so the split is never sent unasked.
   banding?: boolean;
+  // #6192: the permanent whose static, rather than banding, hands this
+  // division to the defending player (Defensive Formation). Display only.
+  defender_assigns_by?: string;
+  // #6192: an unblocked attacker that may assign its combat damage to a
+  // creature the defending player controls (Cunning Giant):
+  // blocker_card_ids are those creatures, and the answer is all of
+  // attacker_power on exactly one of them, or all of it to the player.
+  one_creature?: boolean;
   // #2956 (ADR 0147): the server's canonical split
   // (legal.CanonicalDamageSplit), the one the bots answer with. The
   // prompt pre-fills it, and with "Auto-assign combat damage" on the
@@ -2863,6 +2905,22 @@ export interface IgnorableEffectView {
   source_name: string;
   label: string;
   sacrifice_ids: string[];
+  // #6247: the ignore's price in mana (Leonin Arbiter's "{2}"). Set, the
+  // row pays it with auto-tap and names no sacrifice.
+  mana_cost?: string;
+}
+
+// PayToCancelView is a "… unless they pay {N} before that step" payment
+// waiting on the seat (#6220; Nafs Asp, Sabertooth Cobra): a button on the
+// seat's own panel that sends `special_action { kind: "pay_to_cancel",
+// card_id: id, strict: true, auto_tap: true }` while the seat has priority.
+// `label` is what happens if it isn't paid, `at` the step it happens at.
+export interface PayToCancelView {
+  id: string;
+  cost: string;
+  label: string;
+  source_name?: string;
+  at: string;
 }
 
 // PlayerManaAbilityView is a mana ability a PLAYER has, bound to no card
@@ -3181,6 +3239,11 @@ export interface PlayerView {
   // which permanent to give up, then sends `special_action
   // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
   ignorable_effects?: IgnorableEffectView[];
+  // #6220: the "… unless they pay {N} before that step" payments waiting on
+  // this seat. Its own frame only. Each row is a button that sends
+  // `special_action { kind: "pay_to_cancel", card_id: id, strict: true,
+  // auto_tap: true }`; live while the seat's legal_moves carry that move.
+  pay_to_cancel?: PayToCancelView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.
@@ -3293,6 +3356,11 @@ export interface ModeSpecView {
   // (Mystic Confluence). The picker offers a count per option rather
   // than a toggle, and each occurrence is asked for its own targets.
   repeatable?: boolean;
+  // #6125: "Choose X. You may choose the same mode more than once."
+  // (Doomsday Confluence): the mode count is the X the cast announces.
+  // `min` / `max` are 0 here; the client asks X first and then takes
+  // exactly X modes (modesUnderChoices).
+  count_is_x?: boolean;
   // #1655: the bounds with the card's optional costs announced —
   // Inscription of Ruin's "if this spell was kicked, choose any number
   // instead", Depth Defiler-shaped "choose both instead". `min` / `max`
@@ -3349,6 +3417,13 @@ export interface AdditionalCostView {
   // when any card pays. Fewer cards than `min` means the cost cannot be
   // paid right now, so the spell is uncastable.
   discard_options?: LegalTargetsView;
+  // #6145: "discard X cards" (Channeled Force). `demands_x` is set too, so
+  // the X prompt opens first; the picks on `discard_ids` must number
+  // exactly the announced X (`discard_cards` is absent). `discard_x_max`
+  // is the largest X the hand pays, absent at 0. A narrowed clause
+  // ("discard X land cards") lists its cards on `discard_options`.
+  discard_x?: boolean;
+  discard_x_max?: number;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.
@@ -3459,6 +3534,20 @@ export interface AdditionalCostView {
   exile_cost_from_targets?: boolean;
   exile_cost_target_mana_values?: Record<string, number>;
   payable?: boolean;
+  // #6121: "you may remove any number of +1/+1 counters from among
+  // creatures you control" (Hierophant Bio-Titan) carries the activated
+  // ability's counter block, under the names an alternative cost's
+  // counters use (#5390), so the counter picker reads it as it reads an
+  // ability. The payment rides cast_spell as `counter_source_ids` and
+  // `counter_counts`; none is a payment (a variable count, floor zero).
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
+  counter_cost_options?: CounterCostOptionView[];
 }
 
 // SpliceOfferView is one card in the viewer's hand that may be spliced
@@ -3650,6 +3739,14 @@ export interface AlternativeCostView {
   // the server will accept. Exactly N still appears; paying down to
   // zero is legal.
   life?: number;
+  // #6256: the "have an opponent gain N life" half of the cost
+  // (Invigorate's 3), with `opponent_options` the opponents who could
+  // be given it. Taking the offer means naming one of them, sent back
+  // on cast_spell as `alt_cost_opponent`. An absent list beside a
+  // non-zero amount means nobody can gain the life (CR 614.17b) and
+  // the offer cannot be taken.
+  opponent_gains_life?: number;
+  opponent_options?: string[];
   // ADR 0129 §5: the "pay N {E}" half of the cost (Nissa, Worldsoul
   // Speaker's eight, Primal Prayers' one, Amped Raptor's "equal to its
   // mana value"). Absent for the costs that charge none. Like `life`, for
@@ -3831,9 +3928,46 @@ export interface PayCardsView {
   // "minus_one_counter" (#5746): the permanents of the clause's kind the
   // chooser controls that can have a counter put on them; each one named
   // gets a -1/-1 counter.
-  action: "discard" | "sacrifice" | "exile_graveyard" | "tap" | "minus_one_counter";
+  // "hand_to_library_top" (#6187): the chooser's hand, as a discard's;
+  // each one named goes on top of their library. "sacrifice_total_power"
+  // (#6187, Phyrexian Dreadnought): any number of options, at least one,
+  // whose `powers` add up to `total_power` or more; `count` is then 0.
+  action:
+    | "discard"
+    | "sacrifice"
+    | "exile_graveyard"
+    | "tap"
+    | "minus_one_counter"
+    | "hand_to_library_top"
+    | "sacrifice_total_power"
+    // #6189, the cumulative-upkeep payments: a counter on a creature an
+    // opponent controls, an opponent gaining life, an opponent creating
+    // a token, and gaining control of a land you don't control.
+    | "counter_opponent_creature"
+    | "opponent_gains_life"
+    | "opponent_creates_token"
+    | "gain_control_land"
+    // #6121: Jötun Grunt's "two cards from a single graveyard": options
+    // are the cards in every seat's graveyard; the picks from each one
+    // number a multiple of `group_size`.
+    | "graveyard_library_bottom";
   count: number;
   options: string[];
+  // #6189: `picks: "players"` means the options are SEAT ids, not
+  // cards; `repeats` means one option may pay more than once (CR
+  // 702.24a: each choice is made separately for each age counter).
+  picks?: "players";
+  repeats?: boolean;
+  total_power?: number;
+  powers?: Record<string, number>;
+  group_size?: number;
+}
+
+// A pay-unless payment that names nothing and is not mana (#6189).
+export interface PayStateView {
+  action: "counters_on_source" | "draw" | "exile_library_top";
+  count: number;
+  payable: boolean;
 }
 
 // One branch of an either payment (ADR 0187 §5).
@@ -3945,6 +4079,12 @@ export interface SpecialActionView {
   // auto-tap together. Absent beside demands_x when not even X = 0 is
   // payable.
   x_max?: number;
+  // #6249 (CR 702.37e): a "turn_face_up" row whose morph cost is
+  // "reveal a <colour> card in your hand" (Temur Charger). The viewer's
+  // hand cards that may be revealed to pay it; the client asks which one
+  // and the payload carries it as `reveal_id`. The row is offered only
+  // while this is non-empty. Absent on every other row.
+  reveal_options?: string[];
 }
 
 // RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):
@@ -4321,6 +4461,12 @@ export interface ActivatedAbilityView {
   // count), so the picker greys a repeat and opens even when the options
   // number exactly `discard_cost_n`. The engine refuses a repeat.
   discard_cost_different_names?: boolean;
+  // #6264: "Discard two nonland cards with the same name" (Sphinx of the
+  // Chimes). The picks must share a name (either half of a split card), so
+  // the picker greys a card that shares none with those already picked and
+  // opens even at exactly `discard_cost_n` options. The engine refuses a
+  // set that doesn't share one.
+  discard_cost_same_name?: boolean;
   // #2598: "Reveal X black cards from your hand" (Martyr of Bones). The
   // clause as printed without the verb, the printed count (absent for the
   // X form) and the matching hand cards — the controller's alone.
@@ -4364,6 +4510,10 @@ export interface ActivatedAbilityView {
   // `exile_cost_symbol_min` symbols of the colour letter
   // `exile_cost_symbol_color`. The server refuses a pick below the floor.
   exile_cost_any_number?: boolean;
+  // #6121: "Put N cards from your graveyard on the bottom of your library"
+  // (Battlefield Scrounger): the graveyard pick on `exile_ids`, but the
+  // cards go to the bottom of the library in the order picked, not to exile.
+  exile_cost_to_library_bottom?: boolean;
   exile_cost_symbol_color?: string;
   exile_cost_symbol_min?: number;
   // #5193: collect evidence N's floor — an `exile_cost_any_number` pick is
@@ -4503,6 +4653,10 @@ export interface ActivatedAbilityView {
   // permanent now. Absent on every other row.
   grantor_only?: boolean;
   activator?: string;
+  // #6170: "Only the player this creature is attacking may activate this
+  // ability" (Capricopian). Open to the viewer only while the card's
+  // `attacking_target` is the viewer's seat. Absent on every other row.
+  defending_player_only?: boolean;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
@@ -4776,6 +4930,11 @@ export interface LegalTargetsView {
   // With count_from_x: the announced X is a ceiling ("up to X target
   // cards"), so the picker confirms with any number from 0 to X.
   up_to_x?: boolean;
+  // #6150: the clause's count is one plus the number of times the spell
+  // is kicked ("choose another target for each time this spell was
+  // kicked", Comet Storm). min / max are the unkicked count; the picker
+  // adds the kicks collected in the cost prompt (CastChoices.kicks).
+  count_from_kicks?: boolean;
   // #764: the clause's printed wording, shown in the picker banner
   // when a statement has more than one clause and the banner has to
   // say which question it is asking.
@@ -4841,6 +5000,9 @@ export interface LegalTargetsView {
   // Manipulator), not the one collected in the X prompt. A card with no
   // entry in the map meets no bound.
   mana_value_equals_x?: boolean;
+  // #6122: "with power X" (Ent-Draught Basin), narrowed from `powers` by
+  // an EXACT match.
+  power_equals_x?: boolean;
   power_at_most_x?: boolean;
   toughness_at_most_x?: boolean;
   x_from_counters_removed?: boolean;
@@ -4930,6 +5092,12 @@ export interface CastSurfaceView {
   // structured TargetSpec — the players and card instance IDs its
   // target slot accepts right now. Absent for free-form cards. Both
   // lists empty = no legal target = not castable right now.
+  // #6245: a spell that names a creature type as it is cast (Selective
+  // Snare's "of the creature type of your choice", CR 601.2c). One option
+  // per type with the target clause's legal cards under it; the client
+  // asks for the type before the targets, narrows the picker to that
+  // type's cards and sends the type as `chosen_creature_type`.
+  cast_creature_types?: BeholdTypeOption[];
   legal_targets?: LegalTargetsView;
   // #764: every clause of a MULTI-clause target statement, in
   // printed order, each with its own legal set, count and printed
@@ -5128,6 +5296,9 @@ export interface CastPriceView {
   cost: string;
   // Life charged on top (CR 119.4). Absent for every exile price today.
   life?: number;
+  // #6151: the part of `life` that is a commander tax paid in life
+  // (Liesa, Shroud of Dusk), 2 per earlier cast from the command zone.
+  commander_tax_life?: number;
   // ADR 0129 §5: energy charged on top (Amped Raptor's "an amount of {E}
   // equal to its mana value"). Absent for every price that charges none.
   energy?: number;
@@ -5250,6 +5421,25 @@ export interface FinalCardView {
   attached_to_name?: string;
 }
 
+// CombatCostDemandView is one non-mana cost to attack or block, as the
+// server states it (#6190): which picker to open, the clause as the card
+// prints it, how many permanents it asks for, and the candidates that
+// could pay. The client re-derives none of it.
+export interface CombatCostDemandView {
+  // Which cost component, and so which id list the answer goes in:
+  // `sacrifice` → sacrifice_ids, `tap` → tap_ids, `return` → return_ids.
+  kind: "sacrifice" | "tap" | "return";
+  // The clause without the verb ("a land", "two Islands"), and the name
+  // of the permanent that charges it.
+  clause?: string;
+  source?: string;
+  // How many permanents must be named, and the instance ids that could
+  // pay, in battlefield order. Fewer candidates than `count` means the
+  // declaration cannot be made at all.
+  count: number;
+  candidates?: string[];
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -5344,7 +5534,8 @@ export interface CardView extends CastSurfaceView {
   // (#1573 — the holder of the cast permission over it may look:
   // Gonti, Night Minister; Outrageous Robbery), or one of the
   // CR 708.2 permanent states
-  // "manifested" / "morphed" / "disguised" / "cloaked". PUBLIC —
+  // "manifested" / "morphed" / "disguised" / "cloaked" / "turned" /
+  // "masked" (#6219, Illusionary Mask). PUBLIC —
   // everyone can see that a permanent is a morph — so it survives the
   // non-knower redaction and labels the card back.
   face_down_kind?: string;
@@ -5444,6 +5635,21 @@ export interface CardView extends CastSurfaceView {
   // block only beside another blocker of its controller's. Omitted
   // otherwise.
   cant_block_alone?: boolean;
+  // #6190 (CR 508.1h / 509.1d): the NON-MANA costs this creature's
+  // controller must pay to attack or block with it — Exalted Dragon's
+  // "unless you sacrifice a land", Hollow Warrior's "unless you tap an
+  // untapped creature you control", Floodtide Serpent's "unless you
+  // return an enchantment you control to its owner's hand".
+  //
+  // `attack_cost` is priced against a target the creature may attack,
+  // so it is present only while it could be declared attacking;
+  // `block_cost` is priced for the creature alone, so the dock can show
+  // the price before the block is staged. Both omitted at a table with
+  // no such cost on it. The permanents are the player's choice and ride
+  // the declaration as `sacrifice_ids` / `tap_ids` / `return_ids`; see
+  // combatCost.ts.
+  attack_cost?: CombatCostDemandView[];
+  block_cost?: CombatCostDemandView[];
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat
@@ -5912,7 +6118,9 @@ export interface ProtectionView {
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
   // (#4307), "multicolored" (#4834), "mana_value_at_least" (value = N)
-  // or "colorless" (a source with no colour, #5650).
+  // or "colorless" (a source with no colour, #5650), "mana_value"
+  // (exactly N, #6149) or "permanents_with_counter" (value = the
+  // counter kind, #6149).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
@@ -5994,6 +6202,13 @@ export interface ManaAbilityView {
   // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #6208: `tap_others_untap` turns the clause over here too, "Untap a
+  // tapped land an opponent controls" (Benthic Explorers): the options
+  // are the TAPPED permanents that could be untapped to pay — an
+  // OPPONENT's, for the one printed mana ability — and the picker's verb
+  // is "Untap". There is no `tap_others_frees_source` twin, because the
+  // activator never controls the permanent.
+  tap_others_untap?: boolean;
   // #1600: "Exile a creature you control" on a mana ability (Food
   // Chain). Same fields as ActivatedAbilityView's; the answer rides
   // activate_mana_ability as `exile_permanent_ids`.
@@ -6025,6 +6240,20 @@ export interface ManaAbilityView {
   // fields of the same names; the engine refuses a pick below the floor.
   exile_cost_any_number?: boolean;
   exile_cost_mana_value_min?: number;
+  // #6125: X in the row's cost — Wizard's Rockets' "{X}, {T}, Sacrifice
+  // this artifact", Springjack Pasture's "Sacrifice X Goats". The client
+  // asks for X (or, for a sacrifice-X clause, takes the number picked) and
+  // sends it on activate_mana_ability as `x_value`.
+  demands_x?: boolean;
+  // #6085: "Reveal any number of <quality> cards from your hand" — Rosheen,
+  // Roaring Prophet's "{T}: Reveal any number of cards with {X} in their
+  // mana cost in your hand. Add {C}{C} for each card revealed this way."
+  // Any number of `reveal_cost_options`, none included; the picks ride
+  // activate_mana_ability as `reveal_ids`. The options are the
+  // controller's hand, so other viewers never see them.
+  reveal_cost_any_number?: boolean;
+  reveal_cost_label?: string;
+  reveal_cost_options?: string[];
   // #5397: an either/or part of the cost — forage, Thornvault Forager's
   // "{T}, Forage: Add two mana in any combination of colors" (exile three
   // cards from your graveyard, or sacrifice a Food). The same entries
@@ -6201,6 +6430,10 @@ export interface TurnView {
   // charges. Seat 0 is a real answer. Absent when the game is not in
   // play. It cannot see a replacement skip (Trouble in Pairs).
   next_seat?: number;
+  // #6223: true while the game's turn order runs the other way round the
+  // table (Aeon Engine). next_seat already follows it. Absent is the
+  // default order.
+  turn_order_reversed?: boolean;
   // #3826: what the viewer's own next pass hands over. "ends_turn": it is
   // the viewer's turn, they hold priority on an empty stack and no later
   // step of the turn grants priority. "your_turn_next": the same in
@@ -6270,6 +6503,9 @@ export interface BlockTaxView {
   each?: string;
   // The printed clauses that tax this seat's blocks.
   labels: string[];
+  // #6191: the life the blocks staged now cost (Heat Wave's "pays 1 life
+  // for each blocking creature"). Absent with none.
+  life?: number;
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all

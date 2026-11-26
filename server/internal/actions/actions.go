@@ -335,6 +335,17 @@ type attackTaxParams struct {
 	AutoTap       bool     `json:"auto_tap,omitempty"`
 	LockedSources []string `json:"locked_sources,omitempty"`
 	PhyrexianLife int      `json:"phyrexian_life,omitempty"`
+	// #6190: the permanents a NON-MANA cost to attack or block is paid
+	// with (CR 508.1h, 509.1d) — Exalted Dragon's sacrificed land,
+	// Hollow Warrior's tapped creature, Floodtide Serpent's returned
+	// enchantment. The same three field names a cast and an activation
+	// already send for the same three cost components, so a client that
+	// can pay one can pay this. Absent from every payload built before
+	// the cost existed, and refused rather than ignored for a
+	// declaration that owes nothing.
+	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	TapIDs       []string `json:"tap_ids,omitempty"`
+	ReturnIDs    []string `json:"return_ids,omitempty"`
 }
 
 // decode turns the wire form into the engine's params, naming the
@@ -352,6 +363,24 @@ func (p attackTaxParams) decode(action string) (game.DeclareAttackersParams, err
 				return game.DeclareAttackersParams{}, fmt.Errorf("%s locked_sources[%d]: %w", action, i, err)
 			}
 			out.LockedSources = append(out.LockedSources, id)
+		}
+	}
+	// #6190: the non-mana payment, one list per cost component.
+	for _, l := range []struct {
+		name string
+		raw  []string
+		dst  *[]uuid.UUID
+	}{
+		{"sacrifice_ids", p.SacrificeIDs, &out.Pay.SacrificeIDs},
+		{"tap_ids", p.TapIDs, &out.Pay.TapIDs},
+		{"return_ids", p.ReturnIDs, &out.Pay.ReturnIDs},
+	} {
+		for i, raw := range l.raw {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return game.DeclareAttackersParams{}, fmt.Errorf("%s %s[%d]: %w", action, l.name, i, err)
+			}
+			*l.dst = append(*l.dst, id)
 		}
 	}
 	return out, nil
@@ -734,15 +763,19 @@ func dispatch(g *game.Game, a Action) error {
 			// #2947, CR 608.2g: the resolution_cast prompt this cast
 			// answers. A copy cast during the resolution that made it
 			// needs no priority either.
-			ResolutionCast string           `json:"resolution_cast,omitempty"`
-			InstanceID     string           `json:"instance_id"`
-			FromZone       string           `json:"from_zone,omitempty"`
-			Targets        []castTargetWire `json:"targets,omitempty"`
-			Modes          []int            `json:"modes,omitempty"`
-			XValue         int              `json:"x_value,omitempty"`
-			Distribution   map[string]int   `json:"distribution,omitempty"`
-			HoldPriority   bool             `json:"hold_priority,omitempty"`
-			SplitSecond    bool             `json:"split_second,omitempty"`
+			ResolutionCast string `json:"resolution_cast,omitempty"`
+			// #6216, CR 608.2g: the search_library prompt this cast is
+			// made during (Panglacial Wurm's "while you're searching your
+			// library"). Nobody holds priority for it either.
+			SearchCast   string           `json:"search_cast,omitempty"`
+			InstanceID   string           `json:"instance_id"`
+			FromZone     string           `json:"from_zone,omitempty"`
+			Targets      []castTargetWire `json:"targets,omitempty"`
+			Modes        []int            `json:"modes,omitempty"`
+			XValue       int              `json:"x_value,omitempty"`
+			Distribution map[string]int   `json:"distribution,omitempty"`
+			HoldPriority bool             `json:"hold_priority,omitempty"`
+			SplitSecond  bool             `json:"split_second,omitempty"`
 			// S15 sub-PR 3 — strict-mode flag + override hatch.
 			// Strict comes from the client's gameplay.strictMana
 			// setting; ForceCast is set by the override toast that
@@ -794,6 +827,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 702.174a). Present exactly when optional_costs
 			// names the card's gift cost.
 			GiftOpponent string `json:"gift_opponent,omitempty"`
+			// #6256 — the opponent an alternative cost's "have an
+			// opponent gain N life" gives the life to (Invigorate).
+			// Present exactly when the claimed alternative_cost names
+			// that price.
+			AltCostOpponent string `json:"alt_cost_opponent,omitempty"`
 			// #1703 — the creatures tapped to pay an announced
 			// teamwork cost (CR 702.194a), and the one creature an
 			// announced blight cost puts its -1/-1 counters on
@@ -816,6 +854,9 @@ func dispatch(g *game.Game, a Action) error {
 			// then names the objects of that type. Absent unless the
 			// announced optional behold chooses its type.
 			BeholdType string `json:"behold_type,omitempty"`
+			// #6245 — the creature type a spell that chooses one as it
+			// is cast names (Selective Snare, CR 601.2c).
+			ChosenCreatureType string `json:"chosen_creature_type,omitempty"`
 			// #3402 — the permanents a mandatory exile-a-permanent
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
@@ -891,7 +932,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		if p.ControlledPlay == "" && p.ResolutionCast == "" {
+		if p.ControlledPlay == "" && p.ResolutionCast == "" && p.SearchCast == "" {
 			// A controller casts as the player they control only to
 			// make the play the effect demands (ADR 0166), or while
 			// they play that player's whole turn (ADR 0167 §4) or one
@@ -976,6 +1017,13 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			params.GiftOpponent = id
 		}
+		if p.AltCostOpponent != "" {
+			id, err := uuid.Parse(p.AltCostOpponent)
+			if err != nil {
+				return fmt.Errorf("cast_spell alt_cost_opponent: %w", err)
+			}
+			params.AltCostOpponent = id
+		}
 		if p.AssistPlayer != "" {
 			id, err := uuid.Parse(p.AssistPlayer)
 			if err != nil {
@@ -1031,6 +1079,7 @@ func dispatch(g *game.Game, a Action) error {
 		params.CounterKind = p.CounterKind
 		params.CounterKinds = p.CounterKinds
 		params.BeholdType = p.BeholdType
+		params.ChosenCreatureType = p.ChosenCreatureType
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {
@@ -1077,6 +1126,18 @@ func dispatch(g *game.Game, a Action) error {
 				return game.ErrPlayerControlled
 			}
 			return g.CastForResolutionChoice(a.Player, choiceID, instanceID, params)
+		}
+		if p.SearchCast != "" {
+			choiceID, err := uuid.Parse(p.SearchCast)
+			if err != nil {
+				return fmt.Errorf("cast_spell search_cast: %w", err)
+			}
+			// The searcher casts, as themselves (the resolution_cast
+			// rule above).
+			if a.Actor != a.Caller && !g.ControlUntilOfPlayer(a.Caller).PlaysForThem() {
+				return game.ErrPlayerControlled
+			}
+			return g.CastWhileSearching(a.Player, choiceID, instanceID, params)
 		}
 		return g.CastSpell(a.Player, instanceID, params)
 
@@ -2903,6 +2964,11 @@ func dispatch(g *game.Game, a Action) error {
 			// an "Exile a creature you control" cost on a MANA ability
 			// (Food Chain). The same field activate_ability uses.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #6085 — reveal_ids names the cards a "Reveal any number of
+			// … cards from your hand" mana ability reveals (Rosheen,
+			// Roaring Prophet). The field activate_ability's reveal cost
+			// uses. See game.ManaAbilityParams.RevealIDs.
+			RevealIDs []string `json:"reveal_ids,omitempty"`
 			// #1443 — the colour a pipe slot adds, named BEFORE the
 			// source is tapped, so no mana_pick is queued. `color` is
 			// the one-slot spelling (a painland, Birds of Paradise,
@@ -2924,6 +2990,10 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #6125 — x_value is the X a mana ability with X in its cost
+			// announces (Wizard's Rockets' {X}, Springjack Pasture's
+			// "Sacrifice X Goats"). See game.ManaAbilityParams.XValue.
+			XValue int `json:"x_value,omitempty"`
 			// #5397 — cost_branch is the branch of an either/or cost
 			// the activation pays: forage on a mana ability (Thornvault
 			// Forager), 0 exiles three graveyard cards (exile_ids), 1
@@ -3010,6 +3080,14 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			manaExilePermanentIDs = append(manaExilePermanentIDs, id)
 		}
+		manaRevealIDs := make([]uuid.UUID, 0, len(p.RevealIDs))
+		for _, raw := range p.RevealIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability reveal_ids: %w", err)
+			}
+			manaRevealIDs = append(manaRevealIDs, id)
+		}
 		return g.ActivateManaAbility(a.Player, cardID, p.AbilityIndex, game.ManaAbilityParams{
 			Ref:               p.Ref,
 			SacrificeIDs:      sacIDs,
@@ -3021,9 +3099,11 @@ func dispatch(g *game.Game, a Action) error {
 			DiscardIDs:        manaDiscardIDs,
 			ExileIDs:          manaExileIDs,
 			ExilePermanentIDs: manaExilePermanentIDs,
+			RevealIDs:         manaRevealIDs,
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
 			PhyrexianLife:     p.PhyrexianLife,
+			XValue:            p.XValue,
 			CostBranch:        p.CostBranch,
 		})
 
@@ -3075,6 +3155,10 @@ func dispatch(g *game.Game, a Action) error {
 			// cost (Aurelia's Vindicator's disguise {X}{3}{W}), chosen
 			// as the action is taken. Refused on any other cost.
 			XValue int `json:"x_value,omitempty"`
+			// #6249, CR 702.37e: the hand card a turn_face_up whose morph
+			// cost is "reveal a <colour> card in your hand" reveals.
+			// Required for that offer, refused on every other.
+			RevealID string `json:"reveal_id,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -3096,6 +3180,13 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("special_action sacrifice_id: %w", err)
 			}
 		}
+		var revealID uuid.UUID
+		if p.RevealID != "" {
+			revealID, err = uuid.Parse(p.RevealID)
+			if err != nil {
+				return fmt.Errorf("special_action reveal_id: %w", err)
+			}
+		}
 		route, routeOK := game.ParseTurnFaceUpRoute(p.Route)
 		if !routeOK {
 			return fmt.Errorf("special_action route: %q is not mana_cost, morph or disguise", p.Route)
@@ -3113,6 +3204,7 @@ func dispatch(g *game.Game, a Action) error {
 			XValue:  p.XValue,
 
 			SacrificeID: sacrificeID,
+			RevealID:    revealID,
 		})
 
 	case TypeSacrificePermanent:

@@ -143,6 +143,7 @@
   import type { PaperPaymentPrompt } from "../lib/protocol";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import AttackLifeModal from "../lib/components/board/AttackLifeModal.svelte";
+  import CombatCostModal from "../lib/components/board/CombatCostModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
   import PhaseDisplay from "../lib/components/board/PhaseDisplay.svelte";
@@ -252,6 +253,15 @@
     clampAttackLife,
     type AttackLifePrompt,
   } from "../lib/attackLife";
+  // #6190: a non-mana cost to attack or block asks which permanents pay
+  // it before the declaration goes out (CR 508.1h, 509.1d).
+  import {
+    attackCostAsks,
+    blockCostAsks,
+    combatCostPrompt,
+    type CombatCostParams,
+    type CombatCostPrompt,
+  } from "../lib/combatCost";
   import {
     hasMatchedResponse,
     hasPlay,
@@ -2097,16 +2107,24 @@
     if (!params) return;
     combatSelection = null;
     // #4198: a Phyrexian tax asks mana or life first.
-    const sendOne = (life: number): void => {
-      client.sendAction(
-        "declare_attacker",
-        actingPlayer,
-        life > 0 ? { ...params, phyrexian_life: life } : params,
-      );
+    const sendOne = (life: number, cost: CombatCostParams = {}): void => {
+      client.sendAction("declare_attacker", actingPlayer, {
+        ...params,
+        ...(life > 0 ? { phyrexian_life: life } : {}),
+        ...cost,
+      });
       play("attack");
     };
-    if (askAttackLife([targetPlayerID], "Re-declare attacker", sendOne)) return;
-    sendOne(0);
+    // #6190: the permanents a non-mana cost takes are named first; the
+    // Phyrexian question, when there is one, follows with them in hand.
+    const attacker = params.attacker;
+    const withCost = (cost: CombatCostParams): void => {
+      if (askAttackLife([targetPlayerID], "Re-declare attacker", (life) => sendOne(life, cost)))
+        return;
+      sendOne(0, cost);
+    };
+    if (askCombatCost([attacker], "Re-declare attacker", withCost)) return;
+    withCost({});
   }
 
   // #4198: a Phyrexian attack tax (Norn's Annex's {W/P}) asks, before the
@@ -2129,6 +2147,39 @@
     ask?.send(n);
   }
 
+  // #6190: a NON-MANA cost to attack or block (CR 508.1h, 509.1d) —
+  // Exalted Dragon's land, Hollow Warrior's tapped creature, Floodtide
+  // Serpent's returned enchantment. The permanents are named on the
+  // declaration itself, so the sheet opens before it is sent and its
+  // answer rides it. Returns true when the question is open (the caller
+  // sends nothing now); cancelling sends nothing at all, which is the
+  // rule that a player is never required to pay (CR 508.1d, 509.1c).
+  let combatCostAsk = $state<{
+    prompt: CombatCostPrompt;
+    send: (params: CombatCostParams) => void;
+  } | null>(null);
+  function askCombatCost(
+    attackers: string[],
+    verb: string,
+    send: (params: CombatCostParams) => void,
+  ): boolean {
+    const prompt = combatCostPrompt(attackCostAsks(view, attackers), verb);
+    if (!prompt) return false;
+    combatCostAsk = { prompt, send };
+    return true;
+  }
+  function askBlockCost(verb: string, send: (params: CombatCostParams) => void): boolean {
+    const prompt = combatCostPrompt(blockCostAsks(view, actingID), verb);
+    if (!prompt) return false;
+    combatCostAsk = { prompt, send };
+    return true;
+  }
+  function answerCombatCost(params: CombatCostParams): void {
+    const ask = combatCostAsk;
+    combatCostAsk = null;
+    ask?.send(params);
+  }
+
   // #3266: the primary's "Attack with N". One declare_attackers carries
   // every staged attacker and its target; once the server has taken it
   // the primary's pass follows, as pressing next after declaring did. A
@@ -2138,24 +2189,39 @@
   function commitAttack(): void {
     if (attackCommit) return;
     if (!stagedParams(attackStage)) return;
-    // #4198: a Phyrexian tax asks mana or life before anything is sent.
+    const verb = `Attack with ${attackStage.length}`;
+    // #6190: a non-mana cost to attack asks which permanents pay it
+    // first, then #4198's Phyrexian question with those picks in hand.
+    const withCost = (cost: CombatCostParams): void => {
+      if (
+        askAttackLife(
+          attackStage.map((s) => s.target),
+          verb,
+          (life) => sendStagedAttack(life, cost),
+        )
+      ) {
+        return;
+      }
+      sendStagedAttack(0, cost);
+    };
     if (
-      askAttackLife(
-        attackStage.map((s) => s.target),
-        `Attack with ${attackStage.length}`,
-        sendStagedAttack,
+      askCombatCost(
+        attackStage.map((s) => s.attacker),
+        verb,
+        withCost,
       )
     ) {
       return;
     }
-    sendStagedAttack(0);
+    withCost({});
   }
-  function sendStagedAttack(life: number): void {
+  function sendStagedAttack(life: number, cost: CombatCostParams = {}): void {
     if (attackCommit) return;
     const targets = attackStage.map((s) => s.target);
     const symbols = attackLifeSymbols(view, targets).total;
-    const params = stagedParams(attackStage, clampAttackLife(life, symbols, actingLife));
-    if (!params) return;
+    const staged = stagedParams(attackStage, clampAttackLife(life, symbols, actingLife));
+    if (!staged) return;
+    const params = { ...staged, ...cost };
     combatSelection = null;
     const frame = client.sendAction("declare_attackers", actingPlayer, params);
     if (frame) attackCommit = { frame, seq: $lastSeq, ids: attackStage.map((s) => s.attacker) };
@@ -2533,10 +2599,23 @@
     blockListOpen = false;
     const declining = viewerStagedBlocks === 0;
     const holding = actingHasPriority;
-    // #5375 (ADR 0221): staged blocks under a block tax pay it as the
-    // declaration completes; auto_tap lets the server tap for it.
-    const frame = client.sendAction("finish_blocks", actingID, finishBlocksParams(viewerBlockTax));
-    noBlocksPass = declining && holding && frame ? { frame, seq: $lastSeq } : null;
+    const send = (cost: CombatCostParams = {}): void => {
+      if (!actingID) return;
+      // #5375 (ADR 0221): staged blocks under a block tax pay it as the
+      // declaration completes; auto_tap lets the server tap for it.
+      // #6190: a non-mana cost rides the same action, from the sheet.
+      const payload = { ...(finishBlocksParams(viewerBlockTax) ?? {}), ...cost };
+      const frame = client.sendAction(
+        "finish_blocks",
+        actingID,
+        Object.keys(payload).length > 0 ? payload : undefined,
+      );
+      noBlocksPass = declining && holding && frame ? { frame, seq: $lastSeq } : null;
+    };
+    // #6190: what the staged blocks owe in permanents is named before
+    // the declaration completes (CR 509.1d).
+    if (!declining && askBlockCost("Done blocking", send)) return;
+    send();
   }
   $effect(() => {
     const p = noBlocksPass;
@@ -4136,6 +4215,11 @@
         life={actingLife}
         onConfirm={answerAttackLife}
         onCancel={() => (attackLifeAsk = null)}
+      />
+      <CombatCostModal
+        prompt={combatCostAsk?.prompt ?? null}
+        onConfirm={answerCombatCost}
+        onCancel={() => (combatCostAsk = null)}
       />
     {/if}
   </div>

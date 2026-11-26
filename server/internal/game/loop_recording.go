@@ -1162,7 +1162,7 @@ func (g *Game) askNextLoopSeatLocked() {
 	}
 	n := len(g.Seats)
 	for off := 1; off < n; off++ {
-		p := g.Seats[(from+off+n)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(from, off)]
 		if p == nil || p.Eliminated || asked[p.ID] || p.ID == r.Recorder {
 			continue
 		}

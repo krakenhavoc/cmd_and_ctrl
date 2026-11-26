@@ -44,14 +44,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Eddie Brock — return target creature card with mana value 1 or less from your graveyard to the battlefield",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					t, ok := ctx.ClauseTarget(0)
-					if !ok || t.Kind != game.TargetCard {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-				}),
+				ReturnTheFirstClauseTargetToBattlefield),
 				TargetCardInGraveyard("target creature card with mana value 1 or less in your graveyard", Creature(), YouOwn(), ManaValueLE(1))),
 		},
 		Activated: []ActivatedAbility{{

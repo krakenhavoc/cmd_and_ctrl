@@ -74,6 +74,21 @@ type PermanentQuery struct {
 	HasExactPT     bool `json:",omitempty"`
 	ExactPower     int  `json:",omitempty"`
 	ExactToughness int  `json:",omitempty"`
+	// Untapped asks for an untapped permanent: "an untapped creature with
+	// power 2 or less" (Mogg Jailer, #6197). Read live off the
+	// battlefield permanent.
+	Untapped bool `json:",omitempty"`
+	// WithoutKeyword is a canonical keyword token the permanent must NOT
+	// have: "creatures without flying your opponents control can't block"
+	// (Stoneshock Giant, S82 older sets batch 271). Read through
+	// HasKeyword like Keyword, so a granted flying counts. Additive within
+	// the snapshot schema (omitted when empty).
+	WithoutKeyword string `json:",omitempty"`
+	// ToughnessOverPower asks for a permanent whose toughness is greater
+	// than its power, both read live after the layers and its counters:
+	// "each creature with toughness greater than its power" (Immobilizer
+	// Eldrazi, S82 OLD b295). Needs a battlefield permanent.
+	ToughnessOverPower bool `json:",omitempty"`
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -110,7 +125,9 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.Enchanted == o.Enchanted &&
 		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
 		q.HasPowerAtLeast == o.HasPowerAtLeast && q.PowerAtLeast == o.PowerAtLeast &&
-		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness
+		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness &&
+		q.Untapped == o.Untapped && q.ToughnessOverPower == o.ToughnessOverPower &&
+		q.WithoutKeyword == o.WithoutKeyword
 }
 
 // samePermanentQueries compares two any-of lists in order.
@@ -144,10 +161,19 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 	if q.Keyword != "" && !HasKeyword(c, q.Keyword) {
 		return false
 	}
+	if q.WithoutKeyword != "" && HasKeyword(c, q.WithoutKeyword) {
+		return false
+	}
 	if len(q.Names) > 0 && !slices.ContainsFunc(q.Names, func(n string) bool { return strings.EqualFold(n, c.Effective().Name) }) {
 		return false
 	}
 	if q.Enchanted && !g.isEnchantedLocked(c.InstanceID) {
+		return false
+	}
+	if q.Untapped && c.Tapped {
+		return false
+	}
+	if q.ToughnessOverPower && c.CurrentToughness() <= c.PowerForComparison() {
 		return false
 	}
 	if q.boundsPower() {
@@ -188,6 +214,29 @@ func (g *Game) controlsMatchingLocked(player uuid.UUID, qs []PermanentQuery) boo
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.Controller != player {
+			continue
+		}
+		for _, q := range qs {
+			if q.matchesLocked(g, c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// controlsMatchingOtherThanLocked is controlsMatchingLocked without the
+// permanent `self`: "another" (CR 109.1) is a different object, not a different
+// name.
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) controlsMatchingOtherThanLocked(player, self uuid.UUID, qs []PermanentQuery) bool {
+	if player == uuid.Nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != player || c.InstanceID == self {
 			continue
 		}
 		for _, q := range qs {
@@ -253,6 +302,9 @@ func permanentQueriesPlural(qs []PermanentQuery) string {
 // Island").
 func (q PermanentQuery) Noun() string {
 	var words []string
+	if q.Untapped {
+		words = append(words, "untapped")
+	}
 	if q.Enchanted {
 		words = append(words, "enchanted")
 	}
@@ -287,8 +339,14 @@ func (q PermanentQuery) Noun() string {
 	case q.HasPowerAtLeast:
 		with = append(with, fmt.Sprintf("power %d or greater", q.PowerAtLeast))
 	}
+	if q.ToughnessOverPower {
+		with = append(with, "toughness greater than its power")
+	}
 	if len(with) > 0 {
 		s += " with " + strings.Join(with, " and ")
+	}
+	if q.WithoutKeyword != "" {
+		s += " without " + q.WithoutKeyword
 	}
 	return s
 }

@@ -510,6 +510,8 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
 	ch.SourceRingBearer = rec.RingBearer
 	ch.SourceIsPermanent = true
+	ch.SourceCastThisTurn = rec.CastThisTurn
+	ch.SourceCounters = copyCounterMap(rec.Counters)
 	return ch
 }
 
@@ -643,6 +645,13 @@ type TargetSpec struct {
 	// admits nothing.
 	OwnedBySourceOwner bool
 
+	// NotSourceOwner is "target player other than this artifact's owner"
+	// (Crown of Doom): a player target must not be the clause's source's
+	// OWNER, whoever controls it now. DATA judged in the shared player
+	// walk, for the reason OwnedBySourceOwner is. With no source object
+	// the owner is unknown and the clause admits every player.
+	NotSourceOwner bool
+
 	// OfSourcesChosenType is "target card of the chosen type": the
 	// candidate must have the creature type chosen for the clause's own
 	// source as it entered (Card.NamedTribe, CR 614.12) — Dawn-Blessed
@@ -772,6 +781,17 @@ type TargetSpec struct {
 	AsCastOpponentSlot int
 	AsCastMinPoison    int
 
+	// TappedOnlyAsCast is "You can't choose an untapped creature as this
+	// spell's target as you cast it" (Enthralling Hold, #6168): a
+	// candidate card must be tapped, but only on the walk of the card
+	// being CAST (TargetSource.casting, CR 601.2c) — the legal set the
+	// picker and the bot see and the announce check. The CR 608.2b
+	// re-check, a copy's new targets and an Aura's CR 704.5m enchant
+	// check never read it, so the Aura still resolves and stays attached
+	// after the creature untaps. DATA, judged in sourceAdmits
+	// (tapped_as_cast.go).
+	TappedOnlyAsCast bool
+
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
 	// on the stack, its controller chooses one of their opponents, and
@@ -789,6 +809,20 @@ type TargetSpec struct {
 	// the client's walk and the bot's enumerator skip it the same way.
 	// Build it with effects.OfAnOpponentsChoice.
 	ChosenByOpponent bool
+
+	// ChosenByFirstTargetsController narrows a ChosenByOpponent clause's
+	// chooser to one player: the controller of the permanent picked for
+	// the first clause (slot 0) of the same mode. Mogg Assassin's "You
+	// choose target creature an opponent controls, and that opponent
+	// chooses target creature" (#6171): in a multiplayer game "that
+	// opponent" is not the controller's to name, so the engine names them
+	// (opponentChoosersForStepLocked) and asks no "which opponent"
+	// question. Everything else about the clause is ChosenByOpponent's:
+	// legality is judged for the ability's controller (CR 601.2c, CR
+	// 115.1). Meaningless without ChosenByOpponent; effects.Register
+	// refuses it alone and on the first clause. Build it with
+	// effects.OfTheFirstTargetsController.
+	ChosenByFirstTargetsController bool
 
 	// ChosenByTriggerActor is "target … that player controls of their
 	// choice" on a triggered ability (#1997, ADR 0019 amendment
@@ -910,6 +944,16 @@ type TargetSpec struct {
 	// Meaningless without ChosenByTriggerActor; effects.Register refuses it
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
+
+	// DealtCombatDamageBySource is "target player who was dealt combat
+	// damage by this creature this turn" (Hope of Ghirapur): a player
+	// candidate must have been dealt combat damage this turn by the
+	// clause's own source object (damaged_by_source.go). DATA, judged
+	// beside PlayerOK in the player walk, so the legal set, the announce
+	// check (CR 601.2c) and the resolution re-check (CR 608.2b) are one
+	// answer; a walk with no source object admits nobody. Build it with
+	// effects.DealtCombatDamageBySource.
+	DealtCombatDamageBySource bool
 
 	// chooser is the opponent who chooses this clause, once bound
 	// (bindStepChoosers). Unexported and never set on a catalog spec,
@@ -1072,6 +1116,17 @@ type TargetSpec struct {
 	// cost was uncharged — and which was strictly stronger than the
 	// printed card (issue #259).
 	CountFromX bool
+
+	// CountFromKicks makes the clause's target count one plus the number
+	// of times the spell was kicked (#6150, CR 601.2c, 702.33c-d): "choose
+	// any target, then choose another target for each time this spell was
+	// kicked" (Comet Storm, Strength of the Tajuru). Min and Max are the
+	// unkicked count, 1. TargetSpecUnderOptionalCosts binds it to the
+	// announced kicks wherever the announcement is judged (announce, the
+	// CR 608.2b re-check, the move enumerator); the wire ships it as
+	// count_from_kicks so the picker asks for 1 + kicks. A spell's single
+	// card-level clause only (effects.Register).
+	CountFromKicks bool
 
 	// UpToX turns CountFromX into "up to X": the announced X is the
 	// CEILING and zero targets is a legal pick ("up to X target cards
@@ -1249,6 +1304,15 @@ type TargetSpec struct {
 	// two statistics by one X.
 	PowerAtMostX     bool
 	ToughnessAtMostX bool
+
+	// PowerEqualsX is "with power X" (#6122, Ent-Draught Basin's "{X},
+	// {T}: Put a +1/+1 counter on target creature with power X"): the
+	// power bound of PowerAtMostX with ManaValueEqualsX's exact
+	// comparison. X is announced before targets are chosen (CR 601.2b-c
+	// via CR 602.2b), and the power is read as CR 208.1 has it, at
+	// announce and again at the CR 608.2b re-check. Counts as the power
+	// statistic, so effects.Register refuses it beside another one.
+	PowerEqualsX bool `json:",omitempty"`
 
 	// BoundByCountersRemoved switches the bound's INPUT from the
 	// announced X to the number of counters the activation's cost
@@ -1452,6 +1516,13 @@ func (s *TargetSpec) WithPowerAtMostX() *TargetSpec {
 	return s
 }
 
+// WithPowerEqualsX marks the clause "with power X" (#6122, Ent-Draught
+// Basin). Mutates and returns the receiver, as WithPowerAtMostX does.
+func (s *TargetSpec) WithPowerEqualsX() *TargetSpec {
+	s.PowerEqualsX = true
+	return s
+}
+
 // WithToughnessAtMostX marks the clause "with toughness X or less"
 // (ADR 0109 §9, Finale of Eternity). Mutates and returns the receiver.
 func (s *TargetSpec) WithToughnessAtMostX() *TargetSpec {
@@ -1579,7 +1650,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
-			if !spec.playerChooserAdmits(g, src, p) {
+			if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 				continue
 			}
 			out.Players = append(out.Players, p.ID)
@@ -1855,7 +1926,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
 			return false
 		}
-		if !spec.playerChooserAdmits(g, src, p) {
+		if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
@@ -2001,6 +2072,10 @@ const (
 	// reference creature, which is itself attacking ("creature
 	// blocking equipped creature").
 	CombatBlocking CombatRole = "blocking"
+	// CombatBlockingOrBlockedBy: the candidate is either of the two
+	// above ("creature blocking or blocked by this creature", Steadfast
+	// Armasaur).
+	CombatBlockingOrBlockedBy CombatRole = "blocking_or_blocked_by"
 )
 
 // SourceCombat is one combat relation between a candidate and the
@@ -2080,6 +2155,18 @@ func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	case CombatBlocking:
 		return ref.attacking && c.IsBlockingAttacker(ref.id)
+	case CombatBlockingOrBlockedBy:
+		if ref.attacking && c.IsBlockingAttacker(ref.id) {
+			return true
+		}
+		if c.AttackingTarget == uuid.Nil {
+			return false
+		}
+		for _, a := range ref.blocks {
+			if a == c.InstanceID {
+				return true
+			}
+		}
 	}
 	return false
 }
@@ -2403,7 +2490,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
@@ -2449,6 +2536,15 @@ func (s *TargetSpec) sourceOwnerAdmits(src TargetSource, c Card) bool {
 		return true
 	}
 	return src.Object != nil && src.Object.Owner != uuid.Nil && c.Owner == src.Object.Owner
+}
+
+// notSourceOwnerAdmits is NotSourceOwner's gate: true without the flag;
+// with it, every player but the source object's owner.
+func (s *TargetSpec) notSourceOwnerAdmits(src TargetSource, p *Player) bool {
+	if !s.NotSourceOwner || src.Object == nil || src.Object.Owner == uuid.Nil {
+		return true
+	}
+	return p.ID != src.Object.Owner
 }
 
 // validateTargetsLocked is the announce-time gate (CR 601.2c) for a

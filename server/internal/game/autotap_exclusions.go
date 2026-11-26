@@ -226,9 +226,21 @@ func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacr
 // 601.2h); refusing it is the weaker-than-printed direction, and the
 // player can float the mana by hand first.
 func ActivationAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, params ActivateAbilityParams) map[uuid.UUID]bool {
-	return WithAutoTapExclusions(
-		AbilityAutoTapExclusions(sourceID, cost, params.TapIDs, params.SacrificeIDs, params.DiscardIDs, params.ExileIDs),
-		params.WaterbendIDs, params.TopIDs, params.randomDiscards, params.ExilePermanentIDs)
+	// #6208: a "sacrifice all" clause (Tomb of Urami's lands) takes
+	// every matching permanent, so excluding them outright would leave
+	// the activation nothing to fund its mana component with. They are
+	// SACRIFICE-NAMED instead, as the cast path's #2097 set is: CR 601.2g
+	// activates mana abilities before CR 601.2h pays, so a land may tap
+	// for the {2}{B}{B} and then be sacrificed, and only a mana ability
+	// that sacrifices it would leave the cost nothing to take.
+	sacrificed := params.SacrificeIDs
+	var named [][]uuid.UUID
+	if cost.SacrificeAll {
+		sacrificed, named = nil, [][]uuid.UUID{params.SacrificeIDs}
+	}
+	return WithSacrificeNamedExclusions(WithAutoTapExclusions(
+		AbilityAutoTapExclusions(sourceID, cost, params.TapIDs, sacrificed, params.DiscardIDs, params.ExileIDs),
+		params.WaterbendIDs, params.TopIDs, params.randomDiscards, params.ExilePermanentIDs), named...)
 }
 
 // ManaActivationAutoTapExclusions is the set a MANA ability's own
@@ -306,10 +318,10 @@ func (g *Game) excludeNonQualifyingSourcesLocked(controller uuid.UUID, excluded 
 		}
 	}
 	if g.Battlefield != nil {
+		// Every permanent, not only the controller's: under a Piracy
+		// permission (#6204) another player's land is a source too.
 		for _, c := range g.Battlefield.Cards {
-			if c.Controller == controller {
-				skip(c)
-			}
+			skip(c)
 		}
 	}
 	if p := g.playerByIDLocked(controller); p != nil {

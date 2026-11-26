@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // alternative_cost.go — S22: a cost paid *instead of* a spell's mana
 // cost (CR 118.9). The fourth kind of cost the engine models, after
@@ -119,6 +123,40 @@ type AlternativeCost struct {
 	// #693 renumbering tail.)
 	Life int
 
+	// OpponentGainsLife is "rather than pay this spell's mana cost, you
+	// may have an opponent gain N life" (Invigorate, #6256): the amount
+	// one opponent the CASTER names gains. The choice rides
+	// CastSpellParams.AltCostOpponent, the way gift's recipient and an
+	// "an opponent gains 5 life" splice cost's do
+	// (SpliceCost.OpponentGainsLife), and it is paid as that opponent's
+	// life change through gainLifeAsCostLocked — one the CR 614 window
+	// sees, and one an opponent who cannot gain life cannot be given (CR
+	// 614.17b), so such a player is not offered and the offer is
+	// withheld when no opponent is left who could gain it (CR 118.3).
+	//
+	// The card's own gate ("if you control a Forest") is a Condition,
+	// not part of this.
+	OpponentGainsLife int
+	// RevealHand is "you may reveal your hand rather than pay this
+	// spell's mana cost" (Land Grant, #6214): the whole payment is
+	// showing the hand to every player, which costs nothing material and
+	// is therefore always payable. The card's own gate ("if you have no
+	// land cards in hand") is a Condition, not part of this.
+	//
+	// Paid in payAlternativeCostLocked, with the spell already on the
+	// stack, so the hand every seat sees is the one that paid: the
+	// Land Grant itself has left it (CR 601.2a).
+	RevealHand bool
+
+	// EachOtherPlayerGainsLife is "rather than pay this spell's mana
+	// cost, you may have each other player gain N life" (Reverent
+	// Silence's 6, Skyshroud Cutter's 5, #6214). A cost like Life, but
+	// paid by the other players gaining rather than by the caster losing
+	// — so nothing withholds the offer: a player who cannot gain life
+	// simply gains none, and the cost is still paid (CR 118.9 lists no
+	// payability test for it beyond the gain being possible).
+	EachOtherPlayerGainsLife int
+
 	// Energy is a "pay N {E}" component of the alternative cost (CR
 	// 107.14, CR 118.9): Nissa, Worldsoul Speaker's eight, Primal
 	// Prayers' one, and Amped Raptor's "an amount of {E} equal to its
@@ -200,6 +238,16 @@ type AlternativeCost struct {
 	// coincidence of escape rather than a rule: FromZone is the
 	// place, this is the price, and the two are still independent.
 	ExileFromGraveyard *TargetSpec
+
+	// GraveyardTopOnly narrows ExileFromGraveyard to the topmost N
+	// cards of the caster's graveyard that match it (#6194: Spinning
+	// Darkness's "You may exile the top three black cards of your
+	// graveyard rather than pay this spell's mana cost"). The cards are
+	// not the caster's to pick (CR 404.2, the pile's order): the walk
+	// offers exactly those, and the validator refuses any other. With
+	// fewer than N matches it can't be paid, as before. False is every
+	// offer before it, additive.
+	GraveyardTopOnly bool
 
 	// Sacrifice is a "sacrifice N <permanents>" component of the
 	// price — Dread Return's "Flashback—Sacrifice three creatures",
@@ -297,6 +345,14 @@ type AlternativeCost struct {
 	// is two cards under a set rule (TargetSpec.EachOf), which the
 	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
+
+	// DiscardSharesColorWithSpell narrows a DiscardFromHand component to
+	// a card that shares a colour with the SPELL being cast (#6214,
+	// Dream Halls' granted "discard a card that shares a color with that
+	// spell"). The colours are the spell's as it is cast, read off the
+	// stack object, so an effect that changed them counts. Unused by
+	// every other offer.
+	DiscardSharesColorWithSpell bool
 
 	// Forage marks the non-mana payment of this cost as a forage (CR
 	// 701.61a): exile three cards from your graveyard, or sacrifice a Food
@@ -748,6 +804,12 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		}
 		return a.ReturnToHand, ZoneBattlefield, n
 	case a.ExileFromGraveyard != nil:
+		// #6122: "Exile X cards from your graveyard" (Summons of Saruman's
+		// flashback) has no printed count; it is the announced X, which
+		// the validator reads (AltCostCountFromX).
+		if a.ExileFromGraveyard.CountFromX {
+			return a.ExileFromGraveyard, ZoneGraveyard, 0
+		}
 		n := a.ExileFromGraveyard.Min
 		if n < 1 {
 			n = 1
@@ -799,11 +861,36 @@ func (a *AlternativeCost) Beholds() bool {
 // #5679: so is an offer that removes X counters (CountersDefineX), where
 // the number removed is the X.
 func (a *AlternativeCost) PaymentDefinesX() bool {
-	if a.CountersDefineX() {
+	if a.CountersDefineX() || a.CardCountFromX() {
 		return true
 	}
 	spec, _, _ := a.cardComponent()
 	return spec != nil && spec.ManaValueEqualsX
+}
+
+// CardCountFromX reports whether this offer's card component is "exile X
+// cards from your graveyard" (#6122, CR 107.3a): Summons of Saruman's
+// "Flashback—{3}{U}{R}, Exile X cards from your graveyard." The number of
+// cards named is the spell's X, announced with the cast (an alternative
+// cost that includes X, so CR 107.3b does not lock it at 0), and the
+// spell reads it with ctx.X(). X = 0 exiles nothing. Nil-safe.
+func (a *AlternativeCost) CardCountFromX() bool {
+	return a != nil && a.ExileFromGraveyard != nil && a.ExileFromGraveyard.CountFromX
+}
+
+// AltCostXCeilingForEffect is the largest X an offer whose card count is
+// the X (CardCountFromX) lets `playerID` announce for `castID`: every
+// card in their graveyard the clause accepts, the spell itself excluded
+// (CR 601.2a has moved it to the stack). 0 for every other offer. The
+// view and the bot enumerator read it, so neither offers an X the
+// validator refuses.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AltCostXCeilingForEffect(playerID, castID uuid.UUID, alt *AlternativeCost) int {
+	if !alt.CardCountFromX() {
+		return 0
+	}
+	return len(g.AltCostCandidatesLocked(playerID, castID, alt))
 }
 
 // CountersDefineX reports whether this offer removes X counters, X being
@@ -1129,6 +1216,11 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if EnergyShortfall(p, alt.Energy) != nil {
 		return false
 	}
+	// #6256, CR 614.17b: "have an opponent gain 3 life" needs an
+	// opponent who can gain it — the splice cost's own list.
+	if alt.OpponentGainsLife > 0 && len(g.SpliceOpponentsLocked(playerID)) == 0 {
+		return false
+	}
 	// #5390, CR 118.3: "removing six counters from among creatures you
 	// control" — the counters the caster's creatures hold, in all kinds,
 	// must reach N. The activation's own predicate, with the spell as
@@ -1151,6 +1243,10 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if spec == nil {
 		return true
 	}
+	// #6122: "exile X cards" is paid at X = 0 by exiling nothing.
+	if spec.CountFromX && alt.CardCountFromX() {
+		return true
+	}
 	// #3931: harmonize taps UP TO one creature, so naming none pays it
 	// and the board never withholds the offer.
 	if alt.TapOthers != nil && alt.TapOthers.UpTo {
@@ -1163,7 +1259,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 		if c.InstanceID == castID {
 			continue
 		}
-		if g.altCostCardOKLocked(p, alt, spec, zone, c) {
+		if g.altCostCardOKForSpellLocked(p, castID, alt, spec, zone, c) {
 			if setRule {
 				pool = append(pool, c.InstanceID)
 				continue
@@ -1180,7 +1276,7 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	return setRule && g.CostSetPaymentForEffect(spec, zone, pool) != nil
 }
 
-// altCostCardOKLocked is the per-card half of an alternative cost's
+// altCostCardOKForSpellLocked is the per-card half of an alternative cost's
 // card component: may THIS card pay it?
 //
 // The one predicate, shared by the payability check above and by
@@ -1199,7 +1295,22 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 // the sacrifice component it makes the offer the view stamps and the
 // candidates the enumerator pays from the same rule the announce
 // validator then judges the named permanents by.
-func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *TargetSpec, zone ZoneKind, c Card) bool {
+// `castID` is the spell being cast, read by an offer whose predicate
+// compares a payment with it (#6214: Dream Halls' "discard a card that
+// shares a color with that spell"); uuid.Nil where the caller has none.
+func (g *Game) altCostCardOKForSpellLocked(p *Player, castID uuid.UUID, alt *AlternativeCost, spec *TargetSpec, zone ZoneKind, c Card) bool {
+	if alt != nil && alt.DiscardSharesColorWithSpell {
+		// CR 118.9's granted cost reads the spell's colours wherever it
+		// is as the cost is offered or paid — its hand as the view
+		// asks, the stack once CR 601.2a has moved it — which is how
+		// conspire's shares-a-colour clause reads its source
+		// (tapOthersColorOKLocked). A spell the engine cannot find
+		// shares nothing, so the walk never admits more than printed.
+		spell := g.findCardByIDLocked(castID)
+		if spell == nil || !sharesColor(spell, &c) {
+			return false
+		}
+	}
 	if zone == ZoneBattlefield {
 		// CR 701.21a for the sacrifice, "an Island YOU CONTROL" for the
 		// bounce: a cost is paid with your own permanents.
@@ -1214,12 +1325,37 @@ func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *Target
 		}
 		// #3275, CR 118.3: a permanent that can't be sacrificed can't
 		// pay a sacrifice.
-		if alt != nil && alt.Sacrifice != nil && g.permanentCantBeSacrificedLocked(&c) {
+		if alt != nil && alt.Sacrifice != nil && g.sacrificeCostBarredLocked(&c) {
 			return false
 		}
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
 	}
 	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
+}
+
+// validateAltCostOpponentLocked checks the opponent half of an
+// alternative cost's claim (#6256, CR 601.2b): required exactly when the
+// claimed offer has an OpponentGainsLife component, refused — not
+// ignored — when it does not, and otherwise one of the opponents who
+// could be given the life (SpliceOpponentsLocked, CR 614.17b).
+//
+// Caller must hold g.mu.
+func (g *Game) validateAltCostOpponentLocked(caster uuid.UUID, alt *AlternativeCost, chosen uuid.UUID) error {
+	if alt == nil || alt.OpponentGainsLife <= 0 {
+		if chosen != uuid.Nil {
+			return ErrInvalidParam
+		}
+		return nil
+	}
+	if chosen == uuid.Nil {
+		return ErrInvalidParam
+	}
+	for _, id := range g.SpliceOpponentsLocked(caster) {
+		if id == chosen {
+			return nil
+		}
+	}
+	return ErrInvalidParam
 }
 
 // validateAlternativeCostPaymentLocked checks the non-mana half of a
@@ -1305,6 +1441,10 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// "source" the validator is handed excludes nothing.
 		return g.validateTapOthersCostLocked(playerID, castID, alt.TapOthers, ids)
 	}
+	// #6122: "exile X cards" names exactly the announced X.
+	if alt.CardCountFromX() {
+		want = max(x, 0)
+	}
 	// Exactly `want`, not "at least": escape's five is a price, and
 	// a caster who named four has not paid it while one who named
 	// six has overpaid by a card the cost never asked for.
@@ -1328,7 +1468,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// The same per-card predicate AlternativeCostPayableLocked
 		// counts candidates with, so "the client was offered this"
 		// and "the engine accepts this" are one rule (#695).
-		if !g.altCostCardOKLocked(p, alt, spec, zone, c) {
+		if !g.altCostCardOKForSpellLocked(p, castID, alt, spec, zone, c) {
 			return ErrInvalidParam
 		}
 		// #3175, CR 107.3a / 601.2b: "a white card with mana value X" —
@@ -1337,6 +1477,16 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// line that ties the two together.
 		if spec.ManaValueEqualsX && !boundAdmitsAt(g, spec, c, x) {
 			return ErrInvalidParam
+		}
+	}
+	if alt.GraveyardTopOnly && zone == ZoneGraveyard {
+		// #6194: "the top three black cards" are those three, and no
+		// matching card below them.
+		top := g.AltCostCandidatesLocked(playerID, castID, alt)
+		for _, id := range ids {
+			if !slices.Contains(top, id) {
+				return ErrInvalidParam
+			}
 		}
 	}
 	// ADR 0135 §2: a set rule over the picks (Foil's "an Island card
@@ -1433,10 +1583,15 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 		if c.InstanceID == castID {
 			continue
 		}
-		if !g.altCostCardOKLocked(p, alt, spec, kind, c) {
+		if !g.altCostCardOKForSpellLocked(p, castID, alt, spec, kind, c) {
 			continue
 		}
 		out = append(out, c.InstanceID)
+	}
+	if alt.GraveyardTopOnly && kind == ZoneGraveyard {
+		// #6194: only the topmost N matches, never one below them.
+		_, _, want := alt.cardComponent()
+		return topOfPileOrder(out, want)
 	}
 	if alt.Sacrifice != nil || alt.TapOthers != nil {
 		// #1727: a sacrifice payment is offered in the order every
@@ -1464,9 +1619,18 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 // would make Force of Will free.
 //
 // Caller must hold g.mu.
-func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, opponent uuid.UUID, answers map[uuid.UUID]bool) error {
 	if alt == nil {
 		return nil
+	}
+	// #6256, CR 118.9: "have an opponent gain 3 life" — the named
+	// opponent's life change, paid as a cost the way an "an opponent
+	// gains 5 life" splice cost is (gainLifeAsCostLocked), with the
+	// spell as its source.
+	if alt.OpponentGainsLife > 0 {
+		if err := g.gainLifeAsCostLocked(castID, opponent, alt.OpponentGainsLife); err != nil {
+			return err
+		}
 	}
 	// ADR 0129 §5: the energy, through the one path that pays it (CR
 	// 107.14), naming the spell as the source so the log reads "pays 8
@@ -1474,6 +1638,24 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 	// energy payment.
 	if err := g.payEnergyLocked(playerID, alt.Energy, castID); err != nil {
 		return err
+	}
+	// #6214: Land Grant's whole payment — the hand, shown to every
+	// seat, with the spell already on the stack.
+	if alt.RevealHand {
+		g.RevealHandForEffect(playerID)
+	}
+	// #6214, CR 118.9: Reverent Silence's "have each other player gain
+	// 6 life", paid as a cost (gainLifeAsCostLocked, as a splice cost's
+	// gain is), in seat order from the caster.
+	if alt.EachOtherPlayerGainsLife > 0 {
+		for _, other := range g.Seats {
+			if other == nil || other.ID == playerID || other.Eliminated {
+				continue
+			}
+			if err := g.gainLifeAsCostLocked(castID, other.ID, alt.EachOtherPlayerGainsLife); err != nil {
+				return err
+			}
+		}
 	}
 	// #793: the cost path. Snuff Out's "pay 4 life" is a cost, so it
 	// runs the CR 614 window (CR 119.4 — paying life is losing life)

@@ -77,26 +77,44 @@ var canonicalKeywords = map[string]bool{
 	// and through it every "of the chosen type" / "shares a creature
 	// type" read in the engine.
 	KeywordChangeling: true,
+	// partner (CR 702.124) joins with #6162. Its rules are deck
+	// construction and are enforced there (ADR 0144), from the printed
+	// text, not from this token; the token is here so a PERMANENT has the
+	// ability where the layer system can see it, which is what an effect
+	// that counts it reads (Akroma, Vision of Ixidor's "+1/+1 if it has
+	// … partner"). CR 702.124n: an effect that names "partner" without a
+	// variant means partner, partner—[text] and partner with [name], so
+	// all three are this one token (Scryfall's "Partner" covers the first
+	// two, and "Partner with" is mapped in CanonicalKeywords); choose a
+	// Background and Doctor's companion are not partner here.
+	KeywordPartner: true,
 	// Landwalk (CR 702.14) joins with #705, in the same change that
 	// teaches BlockPairRefusalLocked to read the defending player's
 	// lands (landwalk.go). One token per kind the engine enforces;
-	// the rarer variants (snow swampwalk, legendary landwalk,
-	// desertwalk) join with their first card. landwalkTokens in
+	// the rarer variants join with their first card (desertwalk;
+	// snow and legendary landwalk, #6143). landwalkTokens in
 	// landwalk.go is the other half of this list, and
 	// TestLandwalkTokensAreCanonical keeps the two in step.
-	"plainswalk":        true,
-	"islandwalk":        true,
-	"swampwalk":         true,
-	"mountainwalk":      true,
-	"forestwalk":        true,
-	"desertwalk":        true,
-	"nonbasic landwalk": true,
-	"artifact landwalk": true,
-	"fear":              true,
-	"intimidate":        true,
-	"shadow":            true,
-	"horsemanship":      true,
-	"skulk":             true,
+	"plainswalk":         true,
+	"islandwalk":         true,
+	"swampwalk":          true,
+	"mountainwalk":       true,
+	"forestwalk":         true,
+	"desertwalk":         true,
+	"nonbasic landwalk":  true,
+	"artifact landwalk":  true,
+	"snow landwalk":      true,
+	"legendary landwalk": true,
+	"snow plainswalk":    true,
+	"snow islandwalk":    true,
+	"snow swampwalk":     true,
+	"snow mountainwalk":  true,
+	"snow forestwalk":    true,
+	"fear":               true,
+	"intimidate":         true,
+	"shadow":             true,
+	"horsemanship":       true,
+	"skulk":              true,
 	// cycling (CR 702.29) joins with #660, in the same change that
 	// teaches the engine to honour it: a cycling ability is a real
 	// CR 602 activation from hand now (effects.Cycling,
@@ -395,7 +413,8 @@ var canonicalKeywords = map[string]bool{
 	// to the other player (CR 702.22j-k). Every consumer reads the token
 	// off the layered ability list, so printed, imported and granted
 	// banding (Helm of Chatzuk) are the same. Not cumulative
-	// (CR 702.22m). "Bands with other" is not this token and stays out.
+	// (CR 702.22m). "Bands with other [quality]" is not this token: it
+	// is its own parameterised token, read by bands_with_other.go (#6142).
 	KeywordBanding: true,
 	// undying (CR 702.93) and persist (CR 702.79) join with #2075 (ADR
 	// 0113 §4). Dies triggers: harvestLTB derives one per instance on
@@ -457,6 +476,10 @@ var canonicalKeywords = map[string]bool{
 // card's types, in every zone, and so it is consulted by HasSubtype
 // rather than by the combat engine.
 const KeywordChangeling = "changeling"
+
+// KeywordPartner is the partner ability as a permanent has it (#6162,
+// CR 702.124n): partner, partner—[text] and partner with [name] alike.
+const KeywordPartner = "partner"
 
 // KeywordFlanking is the canonical token for flanking (CR 702.25a):
 // each instance is one engine trigger (flanking.go, #5784), and the
@@ -567,6 +590,21 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if g.scopedTargetingBarLocked(c, src.Controller) {
 		return false
 	}
+	// #6263: "can't be the targets of blue or black spells" -- a record
+	// that asks the source's colours, spells only (targeting_bar_colors.go).
+	if g.colorSpellTargetingBarLocked(c, src) {
+		return false
+	}
+	// #6196: "can't be the target of Aura spells", "of white spells or
+	// abilities from white sources", "of abilities from artifact
+	// sources", "of spells unless it attacked or blocked this turn" — a
+	// static on the permanent reading a QUALITY of the source, with
+	// protection's matcher and none of protection's other clauses
+	// (source_targeting_bar.go). Ahead of hexproof, as the other bars
+	// are: no hexproof waiver lifts it.
+	if _, barred := g.sourceTargetingBarLocked(c, src); barred {
+		return false
+	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
@@ -581,6 +619,11 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	// CR 702.16b. The pre-test is cheap and the snapshot is not, so
 	// a board with no protection on it pays one ability-list walk.
 	if HasProtection(c) && ProtectedFrom(c, src.Characteristics()) {
+		return false
+	}
+	// #6203: an Aura spell can't target a permanent it can't enchant
+	// ("can't be enchanted", "… by other Auras"; CR 303.4).
+	if src.IsSpell() && src.Object != nil && g.auraBarredFromHostLocked(src.Object, c, true) {
 		return false
 	}
 	return true
@@ -674,6 +717,13 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	}
 	if canonicalKeywords[kw] {
 		return []string{kw}, true
+	}
+	// "Partner with" is Scryfall's array entry for partner with [name]
+	// (CR 702.124j), one of the abilities CR 702.124n calls partner. Only
+	// the bare array entry: a printed "Partner with Pir" line also carries
+	// a triggered ability (the search), so it is not a keyword-only line.
+	if kw == "partner with" {
+		return []string{KeywordPartner}, true
 	}
 	// Toxic (CR 702.164) is the other parameterised keyword: "Toxic 2"
 	// is one token, "toxic 2", and a bare "toxic" was refused above

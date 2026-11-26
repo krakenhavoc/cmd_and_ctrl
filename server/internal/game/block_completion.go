@@ -322,7 +322,7 @@ func (g *Game) defendingSeatsAPNAPLocked() []uuid.UUID {
 	}
 	var out []uuid.UUID
 	for i := 0; i < n; i++ {
-		s := g.Seats[(start+i)%n]
+		s := g.Seats[g.SeatInTurnOrderForEffect(start, i)]
 		if s == nil {
 			continue
 		}
@@ -471,6 +471,14 @@ func (g *Game) completeAllBlockDeclarationsLocked() bool {
 //
 // Caller must hold g.mu in write mode, with fresh layers.
 func (g *Game) beginBlockDeclarationLocked() {
+	// #6200: Camouflage replaces the declaration with piles; nobody is
+	// completed as "declared, none" before their piles are asked.
+	if g.beginBlocksByPilesLocked() {
+		if !g.allBlockDeclarationsCompleteLocked() {
+			g.grantPriorityLocked(NoPriority)
+		}
+		return
+	}
 	g.autoCompleteBlockDeclarationsLocked()
 	// #2021: with nobody left declaring (or nobody defending at all)
 	// the declaration is over as the step begins.

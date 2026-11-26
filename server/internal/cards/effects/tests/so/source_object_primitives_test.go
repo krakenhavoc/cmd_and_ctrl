@@ -644,6 +644,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		// "Shuffle Beacon of Immortality into its owner's library." (#3245)
 		"beacon_of_immortality.go": true,
 		"temporal_mastery.go":      true, "temporal_trespass.go": true,
+		// "Exile Bond of Insight." / "Exile Deliver Unto Evil." (S82 OLD batch 170, #5520)
+		"s82_old_b170_helpers.go": true,
 		// "Exile Draconic Intervention." (#3537)
 		"draconic_intervention.go": true,
 		"bound_determined.go":      true, // Bound's "Exile this card." (ADR 0106 PR 3)
@@ -685,6 +687,10 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"flamescroll_celebrant_revel_in_silence.go": true,
 		// "Exile Harness Infinity." (S82 STX b047, #5502)
 		"harness_infinity.go": true,
+		// "Exile Emergency Powers." (S82 old b179, #5521)
+		"emergency_powers.go": true,
+		// "Exile Wildest Dreams." (S82 old b261, #5539)
+		"wildest_dreams.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := effectstest.ExprString(e)

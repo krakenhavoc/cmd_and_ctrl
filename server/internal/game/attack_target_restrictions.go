@@ -118,6 +118,12 @@ type AttackTargetRestriction struct {
 	// Island" (ADR 0107 §2, #1879). Plain data, so the Characteristic
 	// stays snapshot-safe.
 	DefenderMustControl []PermanentQuery `json:",omitempty"`
+	// DefenderMustNotControl is the opposite clause: it forbids attacking
+	// any target whose defending player (CR 508.5) controls a permanent
+	// matching ANY of these queries: "can't attack if defending player
+	// controls an untapped creature with power 2 or less" (Mogg Jailer,
+	// #6197, CR 508.1c). Read live at declaration.
+	DefenderMustNotControl []PermanentQuery `json:",omitempty"`
 	// DefenderMustBePoisoned forbids attacking any target whose
 	// defending player has no poison counters: "can't attack unless
 	// defending player is poisoned" (CR 122.1f).
@@ -141,6 +147,12 @@ type AttackTargetRestriction struct {
 	// Swordtooth, #2696, CR 702.131c). Read live at declaration, like
 	// every clause here; the blessing is never lost once earned.
 	ControllerMustHaveCitysBlessing bool `json:",omitempty"`
+	// ControllerMustHaveCastNoncreature forbids attacking anything
+	// until the attacking creature's controller has cast a noncreature
+	// spell this turn: "can't attack unless you've cast a noncreature
+	// spell this turn" (Silburlind Snapper, S82 OLD b293, CR 508.1c).
+	// Read live at declaration from the per-turn cast tally.
+	ControllerMustHaveCastNoncreature bool `json:",omitempty"`
 	// ControllerHandAtLeast, when above zero, forbids attacking anything
 	// while the attacking creature's controller has fewer cards than this
 	// in hand: "can't attack unless you have seven or more cards in hand"
@@ -148,6 +160,18 @@ type AttackTargetRestriction struct {
 	// the city's blessing a fact about the controller alone, so it refuses
 	// every target while it is unmet.
 	ControllerHandAtLeast int `json:",omitempty"`
+	// ControllerGraveyardAtLeast, when above zero, forbids attacking anything
+	// while the attacking creature's controller has fewer cards than this in
+	// their graveyard: "can't attack unless there are five or more cards in
+	// your graveyard" (River Serpent, CR 508.1c). Read live at declaration,
+	// a fact about the controller alone like ControllerHandAtLeast.
+	ControllerGraveyardAtLeast int `json:",omitempty"`
+	// ControllerHandAtMost, when above zero, forbids attacking anything while
+	// the attacking creature's controller has more cards than this in hand:
+	// "can't attack unless you have one or fewer cards in hand" (Hazoret the
+	// Fervent, CR 508.1c). Read live at declaration, a fact about the
+	// controller alone like ControllerHandAtLeast.
+	ControllerHandAtMost int `json:",omitempty"`
 	// ControllerMustControl, when set, forbids attacking anything while the
 	// attacking creature's controller controls no permanent matching ANY of
 	// these queries: "can't attack unless you control a 1/1 creature"
@@ -155,6 +179,13 @@ type AttackTargetRestriction struct {
 	// alone, read live at declaration, so it refuses every target while
 	// unmet.
 	ControllerMustControl []PermanentQuery `json:",omitempty"`
+	// ControllerMustControlAnother is ControllerMustControl for "another":
+	// the attacking creature itself does not count toward the clause, so
+	// "can't attack unless you control another creature with power 4 or
+	// greater" (Warden of the Chained, #5514, CR 508.1c, CR 109.1) is judged
+	// over the controller's other permanents. Read live at declaration, like
+	// every clause here.
+	ControllerMustControlAnother []PermanentQuery `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -226,6 +257,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 	return r.Source == o.Source && r.SourceName == o.SourceName &&
 		r.NotOwner == o.NotOwner && r.NotOwnersPlaneswalkers == o.NotOwnersPlaneswalkers &&
 		samePermanentQueries(r.DefenderMustControl, o.DefenderMustControl) &&
+		samePermanentQueries(r.DefenderMustNotControl, o.DefenderMustNotControl) &&
 		r.DefenderMustBePoisoned == o.DefenderMustBePoisoned &&
 		r.DefenderMustBeMonarch == o.DefenderMustBeMonarch &&
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
@@ -234,8 +266,12 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.NotPlayerOnly == o.NotPlayerOnly && r.NotPlayerBattles == o.NotPlayerBattles &&
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
+		r.ControllerMustHaveCastNoncreature == o.ControllerMustHaveCastNoncreature &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
+		r.ControllerGraveyardAtLeast == o.ControllerGraveyardAtLeast &&
+		r.ControllerHandAtMost == o.ControllerHandAtMost &&
 		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
+		samePermanentQueries(r.ControllerMustControlAnother, o.ControllerMustControlAnother) &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
 		r.NotAnAbility == o.NotAnAbility && r.PowerAtMostHandOf == o.PowerAtMostHandOf
 }
@@ -258,9 +294,10 @@ func inactiveLastTurnReason(name string) string {
 // asksOfTheDefender reports whether r has any clause about the target's
 // defending player (CR 508.5), as opposed to only the owner clauses.
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
-	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
+	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0 || len(r.ControllerMustControl) > 0
+		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
+		len(r.ControllerMustControlAnother) > 0
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -270,10 +307,14 @@ func (r AttackTargetRestriction) asksOfTheDefender() bool {
 // "unless you control more creatures than defending player".
 //
 // Caller must hold g.mu with fresh layers.
-func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defender uuid.UUID) string {
+func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defender, self uuid.UUID) string {
 	name := g.playerNameLocked(defender)
 	if len(r.DefenderMustControl) > 0 && !g.controlsMatchingLocked(defender, r.DefenderMustControl) {
 		return name + " controls no " + PermanentQueriesNoun(r.DefenderMustControl)
+	}
+	if qs := r.DefenderMustNotControl; len(qs) > 0 && g.controlsMatchingLocked(defender, qs) {
+		n := PermanentQueriesNoun(qs)
+		return name + " controls " + articleForWord(n) + " " + n
 	}
 	p := g.playerByIDLocked(defender)
 	if r.DefenderMustBePoisoned && (p == nil || p.Counters[CounterPoison] < 1) {
@@ -292,13 +333,33 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	if r.ControllerMustHaveCitysBlessing && !g.CitysBlessingForEffect(you) {
 		return g.playerNameLocked(you) + " doesn't have the city's blessing"
 	}
+	if r.ControllerMustHaveCastNoncreature && g.CastTallyFor(you).Noncreature < 1 {
+		return g.playerNameLocked(you) + " hasn't cast a noncreature spell this turn"
+	}
 	if n := r.ControllerHandAtLeast; n > 0 {
 		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {
 			return g.playerNameLocked(you) + " has fewer than " + countWord(n) + " cards in hand"
 		}
 	}
+	if n := r.ControllerGraveyardAtLeast; n > 0 {
+		if yp := g.playerByIDLocked(you); yp == nil || yp.Graveyard == nil || yp.Graveyard.Size() < n {
+			return g.playerNameLocked(you) + " has fewer than " + countWord(n) + " cards in their graveyard"
+		}
+	}
+	if n := r.ControllerHandAtMost; n > 0 {
+		if yp := g.playerByIDLocked(you); yp != nil && yp.Hand != nil && yp.Hand.Size() > n {
+			noun := " cards in hand"
+			if n == 1 {
+				noun = " card in hand"
+			}
+			return g.playerNameLocked(you) + " has more than " + countWord(n) + noun
+		}
+	}
 	if qs := r.ControllerMustControl; len(qs) > 0 && !g.controlsMatchingLocked(you, qs) {
 		return g.playerNameLocked(you) + " controls no " + PermanentQueriesNoun(qs)
+	}
+	if qs := r.ControllerMustControlAnother; len(qs) > 0 && !g.controlsMatchingOtherThanLocked(you, self, qs) {
+		return g.playerNameLocked(you) + " controls no other " + PermanentQueriesNoun(qs)
 	}
 	return ""
 }
@@ -416,7 +477,7 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 		if defender == uuid.Nil {
 			return false, uuid.Nil, ""
 		}
-		if why := r.unmetDefenderClauseLocked(g, attacker.Controller, defender); why != "" {
+		if why := r.unmetDefenderClauseLocked(g, attacker.Controller, defender, attacker.InstanceID); why != "" {
 			return true, defender, why
 		}
 	}
@@ -619,7 +680,7 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 			if p == nil || p.Eliminated || p.ID == c.Controller {
 				continue
 			}
-			if why := r.unmetDefenderClauseLocked(g, c.Controller, p.ID); why != "" {
+			if why := r.unmetDefenderClauseLocked(g, c.Controller, p.ID, c.InstanceID); why != "" {
 				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r, Why: why})
 			}
 		}

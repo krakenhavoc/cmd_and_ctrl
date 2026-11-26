@@ -176,6 +176,11 @@ var exitPayoutAllowlist = map[string]string{
 		"it is not in a graveyard. The values are read before the move because that is the last moment the " +
 		"card is guaranteed findable in the library (CR 608.2h).",
 	"grenzo_dungeon_warden.go:45": "The same read as grenzo_dungeon_warden.go:42: the card's power against Grenzo's.",
+
+	"rite_of_the_serpent.go:39": "Rite of the Serpent's `had` is \"If that creature had a +1/+1 counter on it\": a question " +
+		"about the creature as the spell resolves (CR 608.2h), asked before the destroy because that is the last " +
+		"moment it is guaranteed findable. The Snake is not gated on the destruction: the clause is true of an " +
+		"indestructible or regenerated creature too, so gating it on the destroyed list would be weaker than printed.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

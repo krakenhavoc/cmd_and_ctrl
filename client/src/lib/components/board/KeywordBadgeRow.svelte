@@ -106,8 +106,18 @@
   // duplicate `{#each}` key, which Svelte 5 throws on. Deduped here
   // rather than server-side, because the ability list is the
   // engine's truth and the row is a presentation of it.
+  // #6162: partner is on the permanent's ability list so the rules layer
+  // can read it (Akroma, Vision of Ixidor counts it), but it is a
+  // deck-construction ability (CR 702.124a) and does nothing on the
+  // battlefield. A badge on every partner commander would be noise in the
+  // row a player scans for what a creature does in combat, so it is not
+  // drawn; the card's own text still says Partner.
   const plain = $derived([
-    ...new Set((abilities ?? []).filter((kw) => !kw.toLowerCase().startsWith("protection from "))),
+    ...new Set(
+      (abilities ?? []).filter(
+        (kw) => !kw.toLowerCase().startsWith("protection from ") && kw.toLowerCase() !== "partner",
+      ),
+    ),
   ]);
   const protections = $derived([
     ...new Map((protection ?? []).map((p) => [p.printed.toLowerCase(), p])).values(),
@@ -172,6 +182,10 @@
     // information (#2181). A designation, not a characteristic (#2145).
     if (p.kind === "mana_value_at_most") return `MV≤${p.value ?? ""}`;
     if (p.kind === "mana_value_at_least") return `MV≥${p.value ?? ""}`;
+    // #6149: an exact value (Rebbec grants one per value), and a counter
+    // kind ("permanents with corruption counters on them").
+    if (p.kind === "mana_value") return `MV=${p.value ?? ""}`;
+    if (p.kind === "permanents_with_counter") return (p.value ?? "ctr").slice(0, 3).toUpperCase();
     if (p.kind === "ring_bearer") return "RNG";
     // Four qualities that name a count or a class, not a word: the first
     // three letters of "creatures with two or more creature types" and

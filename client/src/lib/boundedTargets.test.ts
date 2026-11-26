@@ -69,6 +69,16 @@ describe("X bounds on power, toughness and exact mana value", () => {
     ).toEqual(["b"]);
   });
 
+  // #6122: "target creature with power X" (Ent-Draught Basin) is exact.
+  it("narrows power X by an exact match", () => {
+    expect(
+      withinX(
+        { cards: ["a", "b", "c"], power_equals_x: true, powers: { a: 1, b: 2, c: 3 } },
+        { xValue: 2 },
+      ),
+    ).toEqual(["b"]);
+  });
+
   it("a card with no value meets no bound", () => {
     expect(
       withinX({ cards: ["a", "b"], power_at_most_x: true, powers: { a: 0 } }, { xValue: 9 }),

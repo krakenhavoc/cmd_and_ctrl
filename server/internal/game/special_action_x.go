@@ -83,7 +83,7 @@ func (g *Game) SpecialActionXCeilingForEffect(actor uuid.UUID, card Card, sa Spe
 	if err != nil {
 		return 0, false
 	}
-	spend := specialActionSpendContext(sa.Kind)
+	spend := specialActionSpendContextFor(sa, card)
 	payable := func(x int) bool {
 		paid := g.CostAsPaidByForEffect(actor, spend, cost, x)
 		return p.ManaPool.CanPayFor(paid, x, spend) || g.AutoTapTopUpForEffectExcluding(actor, paid, x, spend, nil)

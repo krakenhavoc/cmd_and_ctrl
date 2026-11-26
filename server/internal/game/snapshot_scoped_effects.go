@@ -453,6 +453,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := nextFromSourceModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6160: Mystic Reflection's entry copy names its object.
+			if problem := nextEntersAsCopiesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// ADR 0108 §3: a multiplier's vocabulary (Sources,
 			// Recipients) is as much a key as its kind, and its fields
 			// on another kind are a newer binary's shape.
@@ -522,9 +526,37 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			if problem := skipNextCombatPhaseModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #6144: a next-step skip naming no player or another step.
+			if problem := skipNextStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6218: a return-at-untap record naming no player or object.
+			if problem := returnAtNextUntapModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6226: a this-turn skip naming no player, turn or part.
+			if problem := skipThisTurnModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6244: a next-loss replacement naming no player.
+			if problem := nextLossInsteadModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6147: an enters-tapped filter naming a non-permanent type.
+			if problem := permanentsEnterTappedModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #5521: an enters-with-a-counter replacement naming no player.
+			if problem := creaturesEnterWithPlusOneCounterModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #5718: the table-wide targeting bar is a game record that
 			// names nothing.
 			if problem := tableTargetingBarModProblem(e.Scope, m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #6263: a colour bar naming no colour, or a non-colour.
+			if problem := colorSpellTargetingBarModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 			// #2567: an attack-this-permanent requirement naming no
@@ -552,6 +584,11 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 		// #6087: a creaturesExceptObjects record spares named objects,
 		// and objects on a restriction anywhere else are a newer shape.
 		if problem := exceptObjectsScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
+		// #6237: a query-filtered record's filter rides its mods, and a
+		// record with the scope and no query is a newer shape.
+		if problem := matchingScopeProblem(e.Scope, e.Mods); problem != "" {
 			unknown = append(unknown, problem)
 		}
 		if !KnownAffectedScope(e.Scope) {

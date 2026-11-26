@@ -65,16 +65,7 @@ func init() {
 				return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == ev.Actor
 			}, "Curse of Leeches — they lose 1 life and you gain 1 life",
 				// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
-				effects.Do(
-					effects.Instruction(func(ctx *effects.Context) error {
-						victim := ctx.Item.Trigger.Event.Actor
-						if ctx.Game.PlayerByIDForEffect(victim) != nil {
-							return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, victim, -1)
-						}
-						return nil
-					}),
-					effects.GainLife{Amount: 1},
-				)),
+				effects.EnchantedPlayerLosesOneYouGainOne()),
 		},
 	})
 	effects.Register(effects.Spec{

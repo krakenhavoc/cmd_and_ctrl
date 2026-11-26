@@ -40,6 +40,17 @@ const ModSpellsCostLessForPlayer ModKind = "spellsCostLessForPlayer"
 // narrowed to spells cast from exile (CostQuery.FromZone).
 const ModExiledSpellsCostLessForPlayer ModKind = "exiledSpellsCostLessForPlayer"
 
+// ModNamedSpellsCostLess is "spells with the chosen name cost {Amount} less to
+// cast" for as long as the record lasts, whoever casts them (Cheering
+// Fanatic, S82 batch 206). The name rides Mod.Text; Player stays empty.
+const ModNamedSpellsCostLess ModKind = "namedSpellsCostLess"
+
+// NamedSpellsCostLessMod is the record's mod: spells named `name` (any face,
+// CR 201.2b), cast by any player, cost `n` less.
+func NamedSpellsCostLessMod(name string, n int) Mod {
+	return Mod{Kind: ModNamedSpellsCostLess, Text: name, Amount: n}
+}
+
 // SpellsCostLessForPlayerMod is the record's mod: spells `player` casts
 // cost `n` less, narrowed to `types` (any of them; none is every spell).
 func SpellsCostLessForPlayerMod(player uuid.UUID, n int, types ...string) Mod {
@@ -54,7 +65,7 @@ func ExiledSpellsCostLessForPlayerMod(player uuid.UUID, n int, types ...string) 
 
 // costLessForPlayer reports whether m is one of the two reduction kinds.
 func costLessForPlayer(m Mod) bool {
-	return m.Kind == ModSpellsCostLessForPlayer || m.Kind == ModExiledSpellsCostLessForPlayer
+	return m.Kind == ModSpellsCostLessForPlayer || m.Kind == ModExiledSpellsCostLessForPlayer || m.Kind == ModNamedSpellsCostLess
 }
 
 // scopedCostReductionModProblem is the registration check: "" when the mod
@@ -65,7 +76,11 @@ func scopedCostReductionModProblem(m Mod) string {
 	if !costLessForPlayer(m) {
 		return ""
 	}
-	if m.Player == uuid.Nil {
+	if m.Kind == ModNamedSpellsCostLess {
+		if m.Text == "" {
+			return fmt.Sprintf("a %s mod names no card", m.Kind)
+		}
+	} else if m.Player == uuid.Nil {
 		return fmt.Sprintf("a %s mod names no player", m.Kind)
 	}
 	if m.Amount < 0 {
@@ -87,6 +102,19 @@ func (g *Game) appendScopedCostReductionLocked(out []boundCostModifier, q CostQu
 			}
 			player, n, types := m.Player, m.Amount, m.Types
 			fromExile := m.Kind == ModExiledSpellsCostLessForPlayer
+			if m.Kind == ModNamedSpellsCostLess {
+				name := m.Text
+				cm := CostModifier{
+					Kind:      CostReduction,
+					Label:     e.Label,
+					AppliesTo: func(q CostQuery) bool { return CardNameMatches(q.Card, name) },
+					Amount:    func(CostQuery) int { return n },
+				}
+				if cm.pricesAnnouncement(q) {
+					out = append(out, boundCostModifier{modifier: cm, source: Card{Controller: e.Controller, Name: e.Label}})
+				}
+				continue
+			}
 			cm := CostModifier{
 				Kind:  CostReduction,
 				Label: e.Label,

@@ -29,19 +29,7 @@ func init() {
 			Purpose: effects.ForTargets(effects.HarmUntilEOT(0, 0, 0)),
 			Cost:    effects.Plus(effects.TapCost(), effects.RemoveCountersXFromThis(game.CounterCharge, 0)),
 			Targets: effects.TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				x := ctx.CountersRemoved()
-				if x <= 0 {
-					return nil
-				}
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return effects.BoostUntilEOT{Target: t.ID, Power: -x, Toughness: -x}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  effects.OldB350TargetGetsMinusXUntilEOT,
 		}},
 	})
 }

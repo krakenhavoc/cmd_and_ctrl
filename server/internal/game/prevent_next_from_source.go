@@ -236,19 +236,15 @@ func clonePermanentQueries(qs []PermanentQuery) []PermanentQuery {
 	}
 	out := make([]PermanentQuery, len(qs))
 	for i, q := range qs {
-		out[i] = PermanentQuery{
-			Types:      copyStrings(q.Types),
-			Subtypes:   copyStrings(q.Subtypes),
-			Supertypes: copyStrings(q.Supertypes),
-			Colors:     copyStrings(q.Colors),
-			Keyword:    q.Keyword,
-			Enchanted:  q.Enchanted,
-
-			HasPowerAtMost:  q.HasPowerAtMost,
-			PowerAtMost:     q.PowerAtMost,
-			HasPowerAtLeast: q.HasPowerAtLeast,
-			PowerAtLeast:    q.PowerAtLeast,
-		}
+		// Copy the whole struct, then the slices: a field added to
+		// PermanentQuery later (Names, HasExactPT, Untapped, WithoutKeyword,
+		// ToughnessOverPower) must survive the copy.
+		out[i] = q
+		out[i].Types = copyStrings(q.Types)
+		out[i].Subtypes = copyStrings(q.Subtypes)
+		out[i].Supertypes = copyStrings(q.Supertypes)
+		out[i].Colors = copyStrings(q.Colors)
+		out[i].Names = copyStrings(q.Names)
 	}
 	return out
 }
@@ -275,6 +271,11 @@ func nextFromSourceModProblem(m Mod) string {
 		// checks it).
 		sourced := m.SourceZone != "" || m.SpentBatch != 0 || m.SpentInstance != 0
 		if m.Kind == ModMultiplyDamage {
+			sourced = false
+		}
+		// #6160: Mystic Reflection's entry copy is spent by an entry in
+		// one event batch (nextEntersAsCopiesModProblem checks it).
+		if m.Kind == ModNextEntersAsCopies && m.SourceZone == "" && m.SpentInstance == 0 {
 			sourced = false
 		}
 		// ADR 0108 §9: a redirection reads the one source vocabulary
@@ -559,6 +560,9 @@ func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
 		return false
 	}
 	if q.Keyword != "" && !slices.Contains(ch.Abilities, q.Keyword) {
+		return false
+	}
+	if q.WithoutKeyword != "" && slices.Contains(ch.Abilities, q.WithoutKeyword) {
 		return false
 	}
 	if len(q.Names) > 0 && !fold(q.Names)(ch.Name) {
@@ -1092,8 +1096,13 @@ func (g *Game) damageSourceCandidatesLocked(qs []PermanentQuery, controller uuid
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			ok := len(qs) == 0
-			for _, q := range qs {
-				ok = ok || q.matchesLocked(g, c)
+			if g.damageSourceIsColorlessLocked(c.EffectiveColors()) {
+				// #6230: a colourless source of damage (Ghostly Flame).
+				ok = matches(g.asDamageSourceLocked(SourceCharacteristics(c), true))
+			} else {
+				for _, q := range qs {
+					ok = ok || q.matchesLocked(g, c)
+				}
 			}
 			add(c.InstanceID, ok && (controller == uuid.Nil || c.Controller == controller))
 		}
@@ -1104,7 +1113,7 @@ func (g *Game) damageSourceCandidatesLocked(qs []PermanentQuery, controller uuid
 			if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind != StackItemSpell {
 				continue
 			}
-			ch := SourceCharacteristics(c)
+			ch := g.asDamageSourceLocked(SourceCharacteristics(c), true)
 			add(c.InstanceID, matches(ch) && (controller == uuid.Nil || ch.Controller == controller))
 		}
 	}

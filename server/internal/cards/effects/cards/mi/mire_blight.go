@@ -24,28 +24,6 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      effects.EnchantCreature(),
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Amount > 0 && source.AttachedTo.Kind == game.TargetCard && source.AttachedTo.ID == ev.Target
-			},
-			Key: "Mire Blight — destroy enchanted creature",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Mire Blight — destroy enchanted creature")
-				epoch := -1
-				if c, ok := g.LookupCardForEffect(ev.Target); ok {
-					epoch = c.ObjectEpoch
-				}
-				item.Params.Object = game.ObjectRef{ID: ev.Target, Epoch: epoch}
-				return item
-			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				c, ok := g.LookupCardForEffect(item.Params.Object.ID)
-				if !ok || c.ObjectEpoch != item.Params.Object.Epoch || !effects.OnBattlefield(g, c.InstanceID) {
-					return nil
-				}
-				return effects.DestroyTarget{Target: c.InstanceID}.Apply(effects.NewContext(g, item))
-			},
-		}},
+		Triggered:    []game.TriggeredAbility{effects.DestroyItWhenAttachedCreatureIsDealtDamage("Mire Blight — destroy enchanted creature")},
 	})
 }

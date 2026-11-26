@@ -405,7 +405,13 @@ export function acrossActions(
     const own = new Set(
       (c.activated_abilities ?? [])
         .filter(
-          (a) => (a.any_player || a.opponents_only || a.owner_only || a.grantor_only) && a.ref,
+          (a) =>
+            (a.any_player ||
+              a.opponents_only ||
+              a.owner_only ||
+              a.grantor_only ||
+              a.defending_player_only) &&
+            a.ref,
         )
         .map((a) => a.ref),
     );
@@ -564,6 +570,8 @@ const SPECIAL_ACTION_NAMES: Readonly<Record<string, string>> = Object.freeze({
   turn_face_up: "turn face up",
   unlock: "unlock a door",
   ignore_effect: "ignore its effect",
+  discard: "discard",
+  end_effect: "end the effect",
 });
 
 /** The generic name of a special action, and of the star pip. */
@@ -794,6 +802,7 @@ const SPECIAL_ACTION_PHRASES: Readonly<Record<string, string>> = Object.freeze({
   turn_face_up: "can be turned face up",
   unlock: "has a door you can unlock",
   ignore_effect: "has an effect you can ignore",
+  end_effect: "has an effect you can end",
 });
 
 /** The phrase for a ready card none of the specific phrases explain. */

@@ -33,7 +33,14 @@ import { guardedWritable } from "./guardedStore";
 
 import type { DockAction, DockRequest } from "./dock";
 import type { RematchPlan } from "./rematch";
-import type { CardView, PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
+import type {
+  CardView,
+  PendingChoiceView,
+  PayStateView,
+  PickOptionView,
+  PlayerView,
+  VoteView,
+} from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
 import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
@@ -128,6 +135,8 @@ export interface ChoiceDockContext {
   rejection?: string | null;
   // ADR 0129 §3: the viewer's energy, for an energy payment's Pay.
   energy?: number;
+  // choose_color with color_multi (#6146): the colours toggled so far.
+  colorPicks?: readonly string[];
   // pay_amount: the stepper's value, and whether the server takes it.
   payAmount?: number;
   payAmountAnswerable?: boolean;
@@ -154,6 +163,8 @@ export interface ChoiceDockHandlers {
   onLoop: (iterations: number) => void;
   // pay_amount (ADR 0129 §3): { amount }.
   onAmount?: (amount: number) => void;
+  // choose_color with color_multi (#6146): send the toggled colours.
+  onColors?: () => void;
 }
 
 // A key the inline prompt answers by itself (ChoicePromptModal's
@@ -294,6 +305,23 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
           hintWarn: short,
         };
       }
+      if (c.pay_state) {
+        // #6189: a payment that names nothing and is not mana.
+        return {
+          title: reason || `${ctx.sourceName} — ${payPhrase(c)}?`,
+          tag: "pay unless",
+          hint: `${payStateHint(c.pay_state)} If you don't, ${ctx.sourceName} does its thing.`,
+          hintWarn: !c.pay_state.payable,
+        };
+      }
+      if (c.pay_random_discard) {
+        // #6187, CR 701.9b: the server picks the cards.
+        return {
+          title: reason || `${ctx.sourceName} — ${payPhrase(c)}?`,
+          tag: "pay unless",
+          hint: `${randomDiscardHint(c.pay_random_discard)}, or don't and let ${ctx.sourceName} do its thing.`,
+        };
+      }
       return {
         title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
         tag: "pay unless",
@@ -354,7 +382,9 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
       };
     case "choose_color": {
       const copy = colorPromptCopy(c.color_purpose);
-      return { title: reason || copy.title, tag: "color", hint: copy.hint };
+      // #6146: "the color or colors of your choice" takes a set.
+      const hint = c.color_multi ? `Pick one or more colors, then Choose. ${copy.hint}` : copy.hint;
+      return { title: reason || copy.title, tag: "color", hint };
     }
     case "option_pick":
       return {
@@ -379,10 +409,14 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         title: reason || "Choose an opponent",
         tag: "opponent",
         hint:
-          "It hasn't entered yet: it enters under the control of the opponent you choose. " +
-          (c.control_purpose === "benefit"
-            ? "Whoever you choose will control it and get what it does."
-            : "Whoever you choose will control it and live with what it does."),
+          // #6251: tribute's opponent decides whether to pay it; nobody
+          // is given the permanent.
+          c.control_purpose === "tribute"
+            ? "It hasn't entered yet: the opponent you choose decides whether to pay its tribute."
+            : "It hasn't entered yet: it enters under the control of the opponent you choose. " +
+              (c.control_purpose === "benefit"
+                ? "Whoever you choose will control it and get what it does."
+                : "Whoever you choose will control it and live with what it does."),
       };
     default:
       return { title: reason || "Choose", tag: "choose" };
@@ -555,6 +589,22 @@ function answersFor(
           onPress: () => h.onOption(i),
         })),
       };
+    case "choose_color":
+      // #6146: "the color or colors of your choice" toggles symbols in
+      // the body, and Choose sends them; never an empty set.
+      if (c.color_multi) {
+        return {
+          primary: {
+            id: "choose",
+            label: L.chooseColors,
+            disabled: (ctx.colorPicks?.length ?? 0) === 0,
+            title: (ctx.colorPicks?.length ?? 0) === 0 ? "Pick at least one color" : undefined,
+            onPress: () => h.onColors?.(),
+          },
+          secondary: [],
+        };
+      }
+      return { primary: null, secondary: [] };
     default:
       // mana_pick, choose_color: the symbols in the body are the answer.
       return { primary: null, secondary: [] };
@@ -873,6 +923,8 @@ export function payPhrase(
     | "pay_cost"
     | "pay_damage"
     | "pay_nothing"
+    | "pay_random_discard"
+    | "pay_state"
     | "pay_cards"
     | "pay_either"
     | "accept_label"
@@ -889,8 +941,45 @@ export function payPhrase(
     return `take ${cost || `${c.pay_damage} damage`}`;
   }
   if (c.pay_nothing) return c.accept_label ? lowerFirst(c.accept_label) : "say yes";
+  if (c.pay_random_discard) return lowerFirst(cost) || randomDiscardWords(c.pay_random_discard);
+  // #6189: the card's own words ("Draw a card", "Exile the top card of
+  // your library"), which pay_cost carries.
+  if (c.pay_state) return lowerFirst(cost) || payStateWords(c.pay_state);
   if (c.pay_cards) return lowerFirst(cost) || "pay the cost";
   return `pay ${cost || "the cost"}${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}`;
+}
+
+// payStateWords is a pay_state payment as a verb phrase when the card
+// gave none (#6189).
+export function payStateWords(s: PayStateView): string {
+  const n = s.count;
+  if (s.action === "draw") return n === 1 ? "draw a card" : `draw ${n} cards`;
+  if (s.action === "exile_library_top") {
+    return n === 1
+      ? "exile the top card of your library"
+      : `exile the top ${n} cards of your library`;
+  }
+  return n === 1 ? "put a counter on this permanent" : `put ${n} counters on this permanent`;
+}
+
+// payStateHint says what a pay_state payment does, or why it cannot be
+// made (#6189, CR 118.3).
+function payStateHint(s: PayStateView): string {
+  const words = payStateWords(s);
+  if (!s.payable) return `You can't ${words}, so you can't pay this.`;
+  return `${words[0].toUpperCase()}${words.slice(1)}, or don't.`;
+}
+
+// randomDiscardHint says who picks a random discard's cards.
+function randomDiscardHint(n: number): string {
+  return n === 1
+    ? "Discard a card at random from your hand (you don't choose which)"
+    : `Discard ${n} cards at random from your hand (you don't choose which)`;
+}
+
+// randomDiscardWords is "discard a card at random" (#6187).
+function randomDiscardWords(n: number): string {
+  return n === 1 ? "discard a card at random" : `discard ${n} cards at random`;
 }
 
 // payButtonLabel is a pay_unless's "Pay" button when the card names no
@@ -925,6 +1014,8 @@ function anyPlayerHowToPay(c: PendingChoiceView, ctx: ChoiceDockContext): string
     return `${ctx.sourceName} deals ${c.pay_damage} damage to you if you take it.`;
   }
   if (c.pay_nothing) return "It costs you nothing.";
+  if (c.pay_random_discard) return `${randomDiscardHint(c.pay_random_discard)}, or don't.`;
+  if (c.pay_state) return payStateHint(c.pay_state);
   return `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't.`;
 }
 

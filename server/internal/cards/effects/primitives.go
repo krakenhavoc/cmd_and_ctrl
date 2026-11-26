@@ -629,6 +629,12 @@ type ScheduleDelayedTrigger struct {
 	// controller's own and the step has not begun yet. Pair with
 	// ControllerTurnOnly.
 	AfterThisTurn bool
+
+	// PayToCancel is "… unless they pay {N} before that step" (#6220):
+	// the player it names may pay the cost any time they have priority
+	// while the trigger waits, and then it never fires. Pair it with
+	// TurnOf for "their next <step>".
+	PayToCancel *game.PayToCancel
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -653,6 +659,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		OnExtraTurn:        s.OnExtraTurn,
 		OnPhaseID:          s.OnPhase,
 		AfterThisTurn:      s.AfterThisTurn,
+		PayToCancel:        s.PayToCancel,
 	}
 	if s.EachThisTurn {
 		d := ctx.Game.UntilEndOfTurnDuration()
@@ -1416,6 +1423,17 @@ type UpkeepPayUnless struct {
 	// Question is the prompt header.
 	Question string
 
+	// LifeCost is life paid WITH a mana Cost as one payment (#6189):
+	// Infernal Darkness' "Cumulative upkeep—Pay {B} and 1 life". Zero
+	// for every other payment.
+	LifeCost int
+
+	// SpendPurpose is what the mana payment is for (#6189):
+	// game.SpendPurposeCumulativeUpkeep on a cumulative upkeep, so
+	// Snowfall's upkeep-only mana may pay it. Zero for every other
+	// upkeep pay-unless.
+	SpendPurpose game.ManaSpendPurpose
+
 	// Else is the "or else" (sacrifice the permanent, lose the game) and
 	// what runs once the payment has been made (echo's "echo cost is
 	// paid" event) as REGISTERED branches (PayUnlessBranches, #4264). The
@@ -1429,11 +1447,13 @@ type UpkeepPayUnless struct {
 
 func (p UpkeepPayUnless) Apply(ctx *Context) error {
 	prompt := game.UpkeepPayUnlessPrompt{
-		Chooser:  p.Chooser,
-		Source:   ctx.Source(),
-		Cost:     p.Cost,
-		Action:   p.Action,
-		Question: p.Question,
+		Chooser:      p.Chooser,
+		Source:       ctx.Source(),
+		Cost:         p.Cost,
+		Action:       p.Action,
+		Question:     p.Question,
+		LifeCost:     p.LifeCost,
+		SpendPurpose: p.SpendPurpose,
 	}
 	if p.Else.Key() != "" {
 		prompt.Then = p.Else

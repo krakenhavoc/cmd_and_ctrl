@@ -203,7 +203,7 @@ func (l *FaceDownListing) characteristic() Characteristic {
 // because the cast out of exile needs it.
 func (k FaceDownKind) IsPermanentState() bool {
 	switch k {
-	case FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked, FaceDownTurned:
+	case FaceDownManifested, FaceDownMorphed, FaceDownDisguised, FaceDownCloaked, FaceDownTurned, FaceDownMasked:
 		return true
 	}
 	return false
@@ -333,6 +333,15 @@ type FaceDownCast struct {
 	// performer all price through SpecialActionManaCostForEffect, so they
 	// agree. A pointer, so FaceDownCast stays comparable.
 	FaceUpCostLess *FaceUpCostReduction
+
+	// FaceUpReveal is a morph cost that is not mana: "Morph—Reveal a
+	// green card in your hand" (Temur Charger, #6249). It is the colour
+	// letter ("W", "U", "B", "R", "G") the revealed card must have, and
+	// empty for every cost that is mana. Paying it is showing the table
+	// one such card from the controller's hand (CR 702.37e, CR 701.20a);
+	// nothing moves (CR 701.20b). FaceUpCost is "" beside it, so no mana
+	// is asked for unless a cost modifier adds some. face_up_reveal.go.
+	FaceUpReveal string
 }
 
 // FaceUpCostReduction is the payload of FaceDownCast.FaceUpCostLess.
@@ -490,13 +499,18 @@ func keywordRoute(kind FaceDownKind) TurnFaceUpRoute {
 // keywordOffer is the offer the card's own morph or disguise cost
 // makes, stamped with its route.
 func keywordOffer(alt *AlternativeCost) SpecialAction {
-	return SpecialAction{
+	sa := SpecialAction{
 		Kind:          SpecialActionTurnFaceUp,
 		Cost:          alt.FaceDown.FaceUpCost,
 		FaceUpCounter: alt.FaceDown.FaceUpCounter,
 		Route:         keywordRoute(alt.FaceDown.Kind),
 		Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
+		RevealColor:   alt.FaceDown.FaceUpReveal,
 	}
+	if sa.RevealColor != "" {
+		sa.Label = turnFaceUpRevealLabel(sa.RevealColor)
+	}
+	return sa
 }
 
 // TurnFaceUpOffers is CR 708.6's answer for ONE face-down permanent:
@@ -554,7 +568,11 @@ func TurnFaceUpOffers(c Card) []SpecialAction {
 			return nil
 		}
 		return []SpecialAction{keywordOffer(alt)}
-	case FaceDownTurned:
+	case FaceDownTurned, FaceDownMasked:
+		// #6219: a masked permanent (Illusionary Mask) is one an effect
+		// put face down too, and only its card's own morph or disguise
+		// turns it up voluntarily.
+		//
 		// CR 708.2a put it here, and CR 708.7 says the rules that did
 		// so "may also allow the permanent's controller to turn it
 		// face up" — Ixidron's and Cyber Conversion's do not, and

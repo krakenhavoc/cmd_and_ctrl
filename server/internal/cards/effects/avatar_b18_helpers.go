@@ -44,18 +44,7 @@ func AvB18ThisVehicleDied(ev game.Event, source *game.Card, _ game.Characteristi
 // while cond holds for the source, read live at declaration. The keyword
 // stays (CR 702.3b is waived, not removed).
 func AvB18CanAttackAsThoughNoDefenderWhile(label string, cond func(g *game.Game, source *game.Card) bool) game.StaticAbility {
-	return game.StaticAbility{
-		Label: label,
-		Layer: game.Layer6Ability,
-		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.IsCreature() && SelfOnly(target, g, source) && cond(g, source)
-		},
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			w := game.DefenderWaiver{}
-			if source != nil {
-				w.Source, w.SourceName = source.InstanceID, source.Name
-			}
-			c.DefenderWaivers = append(c.DefenderWaivers, w)
-		},
-	}
+	return DefenderWaiverStatic(label, func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.IsCreature() && SelfOnly(target, g, source) && cond(g, source)
+	})
 }

@@ -161,12 +161,14 @@
     castLocksXAtZero,
     isModal,
     discardCostOf,
+    discardXCount,
     castAdditionalCost,
     assistOf,
     costBranchesOf,
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
+    kicksOf,
     optionalCostXFloor,
     castTeamworkOffer,
     castBlightOffer,
@@ -194,6 +196,7 @@
     altCostSacrificeClause,
     altCostTapClause,
     applyCastChoices,
+    withCastCreatureType,
     castChoicesBase,
     isLegalCardTarget,
     isLegalPlayerTarget,
@@ -244,6 +247,7 @@
   import {
     autoCounterChoice,
     counterCostNeedsPrompt,
+    additionalCostAsksCounters,
     counterPaymentParams,
     hasCounterCost,
     type CounterChoice,
@@ -255,6 +259,7 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaXPayment,
     manaTapNeedsPicker,
     manaCostBranchPayment,
     manaExilePermanentPayment,
@@ -283,6 +288,12 @@
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
   import { specialActionNeedsX, withX, type SpecialActionXRow } from "../../specialActionX";
+  import {
+    revealOptionCards,
+    specialActionNeedsReveal,
+    withReveal,
+    type SpecialActionRevealRow,
+  } from "../../specialActionReveal";
   import TapCostModal from "./TapCostModal.svelte";
   import DelveCostModal from "./DelveCostModal.svelte";
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
@@ -401,9 +412,36 @@
         xSpecialPrompt = { ...needsX, params, player };
         return;
       }
+      // #6249 (CR 702.37e): a morph cost of "reveal a <colour> card in
+      // your hand" names the card revealed. The only card is taken; two
+      // or more ask.
+      const needsReveal = specialActionNeedsReveal(view, params);
+      if (needsReveal) {
+        const opts = needsReveal.row.reveal_options ?? [];
+        if (opts.length === 1) {
+          sendAction(type, withReveal(params, opts[0]), player);
+          return;
+        }
+        revealSpecialPrompt = { ...needsReveal, params, player };
+        return;
+      }
     }
     sendAction(type, params, player);
   };
+
+  // #6249: the turn-face-up waiting on the card it reveals.
+  let revealSpecialPrompt = $state<
+    (SpecialActionRevealRow & { params: ActionPayload["params"]; player?: string }) | null
+  >(null);
+  const revealSpecialOptions = $derived(
+    revealSpecialPrompt ? revealOptionCards(view, viewerID, revealSpecialPrompt.row) : [],
+  );
+  function confirmSpecialReveal(ids: string[]): void {
+    const p = revealSpecialPrompt;
+    revealSpecialPrompt = null;
+    if (!p || disabled || ids.length !== 1) return;
+    sendAction("special_action", withReveal(p.params, ids[0]), p.player);
+  }
 
   // #5249: the special action waiting on its X, and what it will send.
   let xSpecialPrompt = $state<
@@ -669,6 +707,9 @@
     assistPlayer?: string,
     splices?: string[],
     spliceOpponents?: Record<string, string>,
+    // #6256: the opponent an "have an opponent gain N life" offer gives
+    // the life to, last so the arguments before it keep their places.
+    altCostOpponent?: string,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -681,10 +722,14 @@
     // TOP of whichever that turns out to be. They compose, so neither
     // branch of `key` drops the other.
     let next: CastChoices = key === undefined ? choices : { ...choices, altCost: key };
-    if (optional.length > 0) next = { ...next, optionalCosts: optional };
+    if (optional.length > 0)
+      next = { ...next, optionalCosts: optional, kicks: kicksOf(card, optional) };
     // #1267: the gift's opponent is part of the same announcement; the
     // modal only hands one back when the gift toggle is on.
     if (giftOpponent !== undefined) next = { ...next, giftOpponent };
+    // #6256: the opponent an "have an opponent gain N life" offer gives
+    // the life to, part of the same announcement (CR 601.2b).
+    if (altCostOpponent !== undefined) next = { ...next, altCostOpponent };
     // ADR 0100: the either/or branch is announced in the same step
     // (CR 601.2b); the branch's own picker opens next in the chain.
     if (costBranch !== undefined) next = { ...next, costBranch };
@@ -791,6 +836,10 @@
   // ADR 0100: the additional cost this cast pays, settled when the
   // prompt opens — the chosen either/or branch, or the card's own.
   let discardPromptCost = $state<AdditionalCostView | undefined>(undefined);
+  // #6145: "discard X cards" — the count is the X announced before the
+  // picker opened, and the picker hands back to afterXCost.
+  let discardPromptNeed = $state<number | undefined>(undefined);
+  let discardPromptAfterX = false;
 
   // Everything in the caster's hand except the spell itself — CR
   // 601.2a puts it on the stack before costs are paid, so it can't
@@ -813,6 +862,13 @@
     discardPromptCard = null;
     discardPromptChoices = {};
     if (!card) return;
+    // #6145: a "discard X cards" picker opens after the X prompt, so its
+    // answer goes back to the step after X.
+    if (discardPromptAfterX) {
+      discardPromptAfterX = false;
+      afterXCost(card, { ...choices, discardIDs: ids });
+      return;
+    }
     afterDiscardCost(card, { ...choices, discardIDs: ids });
   }
 
@@ -909,6 +965,9 @@
   } | null>(null);
   // #5406: a behold that chooses its creature type asks the type first,
   // then the reveal sheet asks for that type's creatures.
+  // #6245: the creature type a spell that names one as it is cast
+  // chooses, asked before its targets.
+  let castTypePrompt = $state<{ card: CardView; choices: CastChoices } | null>(null);
   let beholdTypePrompt = $state<{
     card: CardView;
     types: BeholdTypeOption[];
@@ -955,6 +1014,8 @@
     label: string;
     count: number;
     choices: CastChoices;
+    // #6122: "return X …" — the number picked is the x_value.
+    countFromX?: boolean;
   } | null>(null);
   let returnPromptOptionIDs = $state<string[]>([]);
   const returnPromptOptions = $derived.by(() =>
@@ -965,7 +1026,9 @@
     const p = returnPrompt;
     returnPrompt = null;
     if (!p) return;
-    afterSacrificeCost(p.card, { ...p.choices, returnIDs: ids });
+    const next: CastChoices = { ...p.choices, returnIDs: ids };
+    if (p.countFromX) next.xValue = ids.length;
+    afterSacrificeCost(p.card, next);
   }
 
   // #3868: "tap an untapped Vampire you control" as a spell's additional
@@ -1063,6 +1126,13 @@
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
   }
 
+  function confirmCastType(type: string): void {
+    const p = castTypePrompt;
+    castTypePrompt = null;
+    if (!p) return;
+    continueCast(p.card, { ...p.choices, chosenCreatureType: type });
+  }
+
   function confirmBeholdType(type: string): void {
     const p = beholdTypePrompt;
     beholdTypePrompt = null;
@@ -1134,6 +1204,18 @@
     // offers exactly the permanents the clause demands, as the activated
     // return pick is: a modal with one possible answer is worse than none.
     const rt = castReturnCost(card, choices);
+    if (rt && choices.returnIDs === undefined && rt.countFromX) {
+      // #6122: "return X Swamps you control" — how many is the question,
+      // so it asks whenever there is anything to return; with nothing,
+      // X is 0.
+      if (rt.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, returnIDs: [], xValue: 0 });
+        return;
+      }
+      returnPromptOptionIDs = rt.options;
+      returnPrompt = { card, label: rt.label, count: 0, choices, countFromX: true };
+      return;
+    }
     if (rt && choices.returnIDs === undefined) {
       if (rt.options.length <= rt.count) {
         afterSacrificeCost(card, { ...choices, returnIDs: rt.options });
@@ -1409,10 +1491,14 @@
   // counter block — and the payment rides the cast as counter_source_ids
   // / counter_counts / counter_kind(s). Always asked: which creatures
   // shrink is the player's choice even when only one split exists.
+  // #6121: a cast's ADDITIONAL cost that removes counters (Hierophant
+  // Bio-Titan) opens the same picker, marked `additional`; its count is
+  // never the spell's X, and the chain goes on to the other costs.
   let castCounterPrompt = $state<{
     card: CardView;
     offer: AlternativeCostView;
     choices: CastChoices;
+    additional?: boolean;
   } | null>(null);
 
   function confirmCastCounterCost(picks: CounterChoice[]): void {
@@ -1420,6 +1506,10 @@
     castCounterPrompt = null;
     if (!p) return;
     const counter = counterPaymentParams(p.offer, picks);
+    if (p.additional) {
+      afterAltCostPayment(p.card, { ...p.choices, counter });
+      return;
+    }
     // #5679: "Remove X loyalty counters" — the counters removed are the
     // spell's X, so the total is announced with them and the X prompt is
     // skipped (afterCastCosts).
@@ -1480,9 +1570,24 @@
   }
 
   function afterAltCostPayment(card: CardView, choices: CastChoices): void {
+    // #6121: the additional cost's "remove any number of counters" is
+    // asked first, before the card costs, the order the server pays them.
+    const addCounters = card.additional_cost;
+    if (choices.counter === undefined && addCounters && additionalCostAsksCounters(addCounters)) {
+      // The counter block has the offer's wire names; the picker reads only those.
+      castCounterPrompt = {
+        card,
+        offer: addCounters as unknown as AlternativeCostView,
+        choices,
+        additional: true,
+      };
+      return;
+    }
     // ADR 0100: an either/or cost's discard is the chosen branch's.
     if (discardCostOf(card, choices) > 0) {
       discardPromptCost = castAdditionalCost(card, choices);
+      discardPromptNeed = undefined;
+      discardPromptAfterX = false;
       discardPromptChoices = choices;
       discardPromptCard = card;
       return;
@@ -1546,6 +1651,22 @@
   // its picker until X is known, so this step has to come after the X
   // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
+    // #6145: "discard X cards" — the picker's count is the X just
+    // announced. X = 0 discards nothing, so there is nothing to ask.
+    const dx = castAdditionalCost(card, choices);
+    if (dx?.discard_x && choices.discardIDs === undefined) {
+      const need = discardXCount(card, choices);
+      if (need === 0) {
+        afterXCost(card, { ...choices, discardIDs: [] });
+        return;
+      }
+      discardPromptCost = dx;
+      discardPromptNeed = need;
+      discardPromptAfterX = true;
+      discardPromptChoices = choices;
+      discardPromptCard = card;
+      return;
+    }
     // #1948: "exile X cards from your graveyard" — the picker's count is
     // the X just announced. X = 0 names nothing; a graveyard holding
     // exactly X matching cards has nothing to ask.
@@ -2039,6 +2160,19 @@
   // so this falls through to the immediate cast without the client
   // needing to know what "overload" does.
   function continueCast(card: CardView, choices: CastChoices): void {
+    // #6245, CR 601.2c: a spell that names a creature type as it is cast
+    // asks for the type first, and its targets are that type's cards.
+    // With one type on offer it is taken without asking.
+    const castTypes = card.cast_creature_types ?? [];
+    if (castTypes.length > 0 && choices.chosenCreatureType === undefined) {
+      if (castTypes.length === 1) {
+        choices = { ...choices, chosenCreatureType: castTypes[0].type };
+      } else {
+        castTypePrompt = { card, choices };
+        return;
+      }
+    }
+    card = withCastCreatureType(card, choices.chosenCreatureType);
     if (isModal(card)) {
       modePromptChoices = choices;
       // #1655: a ticked kicker can change how many bullets it may take.
@@ -2822,7 +2956,11 @@
       const options = ability.discard_cost_options ?? [];
       // #4896: "with different names" asks even at exactly N options:
       // they may share a name, and the picker says so.
-      if (options.length > ability.discard_cost_n || ability.discard_cost_different_names) {
+      if (
+        options.length > ability.discard_cost_n ||
+        ability.discard_cost_different_names ||
+        ability.discard_cost_same_name
+      ) {
         abilityDiscardPrompt = { card, ability };
         return;
       }
@@ -3193,6 +3331,19 @@
     startManaCardCosts(card, ability);
   }
 
+  // #6125: the X of a mana ability with {X} in its cost, carried on the
+  // side like the discard picks until the one activate_mana_ability goes
+  // out as `x_value`.
+  let manaXPrompt = $state<{ card: CardView; ability: ManaAbilityView } | null>(null);
+  let manaXValue: number | undefined = undefined;
+  function confirmManaX(x: number): void {
+    const p = manaXPrompt;
+    manaXPrompt = null;
+    if (!p) return;
+    manaXValue = x;
+    startManaCardCosts(p.card, p.ability);
+  }
+
   // #5397: the branch of a mana ability's either/or cost, carried on the
   // side like the discard picks until the one activate_mana_ability goes
   // out as `cost_branch`. undefined means the row has no branches.
@@ -3226,6 +3377,49 @@
   // startManaCardCosts is the head of the mana cost chain once any
   // either/or branch is folded in (#5397).
   function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    // #6125: an {X} in the mana ability's own cost (Wizard's Rockets) is
+    // asked first. A "Sacrifice X Goats" clause needs no prompt: the
+    // permanents picked are the X (confirmSacrifice).
+    if (ability.demands_x && !ability.sacrifice_options?.count_from_x && manaXValue === undefined) {
+      manaXPrompt = { card, ability };
+      return;
+    }
+    // #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) first —
+    // how many to show is the question, so it always asks while the hand
+    // holds a matching card, and an empty set is a legal answer.
+    if (ability.reveal_cost_any_number && (ability.reveal_cost_options?.length ?? 0) > 0) {
+      manaRevealPrompt = { card, ability };
+      return;
+    }
+    manaRevealIDs = [];
+    askManaDiscardCost(card, ability);
+  }
+
+  // #6085: the reveal picks, carried on the side like the discard picks
+  // until the one activate_mana_ability goes out as `reveal_ids`.
+  let manaRevealPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaRevealIDs: string[] = [];
+
+  const manaRevealOptions = $derived.by(() => {
+    const p = manaRevealPrompt;
+    if (!p || !viewerID) return [];
+    const ids = new Set(p.ability.reveal_cost_options ?? []);
+    const me = view.seats.find((s) => s.id === viewerID);
+    return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  function confirmManaRevealCost(ids: string[]): void {
+    const p = manaRevealPrompt;
+    manaRevealPrompt = null;
+    if (!p) return;
+    manaRevealIDs = ids;
+    askManaDiscardCost(p.card, p.ability);
+  }
+
+  function askManaDiscardCost(card: CardView, ability: ManaAbilityView): void {
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -3421,11 +3615,16 @@
         ...(manaExileIDs.length > 0 ? { exile_ids: manaExileIDs } : {}),
         // #1600: and the permanents an exile-a-permanent cost names.
         ...manaExilePermanentPayment(manaExilePermanentIDs),
+        // #6085: absent unless Rosheen's reveal named a card.
+        ...(manaRevealIDs.length > 0 ? { reveal_ids: manaRevealIDs } : {}),
         ...counter,
         // #1443: absent unless the picker named a colour.
         ...manaColorParams(manaColors),
         // #5397: absent unless the row's cost is an either/or (forage).
         ...manaCostBranchPayment(manaCostBranch),
+        // #6125: the X — asked for an {X}, or the number a "Sacrifice X"
+        // clause sacrificed. Absent for every other row.
+        ...manaXPayment(ability, manaXValue, sacrificeIDs),
       },
       viewerID ?? undefined,
     );
@@ -3433,6 +3632,8 @@
   }
 
   function resetManaCostPayment(): void {
+    manaXValue = undefined;
+    manaRevealIDs = [];
     manaDiscardIDs = [];
     manaExileIDs = [];
     manaExilePermanentIDs = [];
@@ -4675,6 +4876,7 @@
     min={sacrificeBounds.min}
     eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
     different={sacrificePrompt?.ability.sacrifice_options?.different}
+    all={sacrificesAll(sacrificePrompt?.ability.sacrifice_options)}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -4721,6 +4923,14 @@
   />
   <!-- #5406: the creature type a behold that prints none is paid with. -->
   <BeholdTypeModal
+    card={castTypePrompt?.card ?? null}
+    types={castTypePrompt?.card.cast_creature_types ?? []}
+    count={0}
+    purpose="target"
+    onConfirm={confirmCastType}
+    onCancel={() => (castTypePrompt = null)}
+  />
+  <BeholdTypeModal
     card={beholdTypePrompt?.card ?? null}
     types={beholdTypePrompt?.types ?? []}
     count={beholdTypePrompt?.count ?? 2}
@@ -4759,6 +4969,8 @@
     label={returnPrompt?.label ?? "a permanent you control"}
     options={returnPromptOptions}
     count={returnPrompt?.count ?? 1}
+    min={returnPrompt?.countFromX ? 0 : undefined}
+    countIsX={returnPrompt?.countFromX === true}
     verb="Return"
     castName={returnPrompt?.card.name}
     onConfirm={confirmReturnPermanent}
@@ -4894,7 +5106,7 @@
     card={castCounterPrompt?.card ?? null}
     ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
     board={view.battlefield.cards}
-    payFor={altCostCountersDefineX(castCounterPrompt?.offer)
+    payFor={!castCounterPrompt?.additional && altCostCountersDefineX(castCounterPrompt?.offer)
       ? "cast this spell. The number you remove is X"
       : "cast this spell"}
     onConfirm={confirmCastCounterCost}
@@ -4925,12 +5137,15 @@
   <DiscardCostModal
     card={discardPromptCard}
     options={discardCostOptions}
-    need={discardPromptCost?.discard_cards}
-    label={discardPromptCost?.label}
+    need={discardPromptNeed ?? discardPromptCost?.discard_cards}
+    label={discardPromptNeed !== undefined
+      ? (discardPromptCost?.label ?? "Discard X cards").replace(/\bX\b/, String(discardPromptNeed))
+      : discardPromptCost?.label}
     onConfirm={confirmDiscardCost}
     onCancel={() => {
       discardPromptCard = null;
       discardPromptChoices = {};
+      discardPromptAfterX = false;
     }}
   />
   <!-- #2598: "Reveal X black cards from your hand" (Martyr of Bones),
@@ -4963,6 +5178,7 @@
     label={abilityDiscardPrompt?.ability.discard_cost_label}
     variable={abilityDiscardPrompt?.ability.discard_cost_count_from_x}
     differentNames={abilityDiscardPrompt?.ability.discard_cost_different_names}
+    sameName={abilityDiscardPrompt?.ability.discard_cost_same_name}
     onConfirm={confirmAbilityDiscardCost}
     onCancel={() => {
       abilityDiscardPrompt = null;
@@ -5023,6 +5239,37 @@
       abilityTopIDs = [];
       abilityExileIDs = [];
       abilityDiscardIDs = [];
+    }}
+  />
+  <!-- #6125: X in a mana ability's own cost (Wizard's Rockets' "{X},
+       {T}, Sacrifice this artifact"). The X rides activate_mana_ability
+       as x_value. -->
+  <XCostModal
+    gameID={view.id}
+    card={manaXPrompt?.card ?? null}
+    suggestedMax={suggestedX}
+    costLabel={manaXPrompt?.ability.mana_cost}
+    onConfirm={confirmManaX}
+    onCancel={() => {
+      manaXPrompt = null;
+      resetManaCostPayment();
+    }}
+  />
+  <!-- #6085: "Reveal any number of cards with {X} in their mana cost"
+       (Rosheen, Roaring Prophet). The discard picker with the verb
+       changed and any number, none included; the answer rides
+       reveal_ids. Revealing moves nothing (CR 701.20b). -->
+  <DiscardCostModal
+    card={manaRevealPrompt?.card ?? null}
+    options={manaRevealOptions}
+    label={manaRevealPrompt?.ability.reveal_cost_label}
+    variable={true}
+    verb="Reveal"
+    note="mana ability · CR 605.3b"
+    onConfirm={confirmManaRevealCost}
+    onCancel={() => {
+      manaRevealPrompt = null;
+      manaRevealIDs = [];
     }}
   />
   <!-- #1213: the mana-ability half of the discard picker (Skirge
@@ -5164,7 +5411,7 @@
     options={manaTapOptions}
     count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
     min={manaTapPrompt?.ability.tap_others_options?.min}
-    verb="Tap"
+    verb={manaTapPrompt?.ability.tap_others_untap ? "Untap" : "Tap"}
     onConfirm={confirmManaTapCost}
     onCancel={() => {
       manaTapPrompt = null;
@@ -5244,6 +5491,18 @@
     confirmVerb={L.xPickerTurnFaceUp}
     onConfirm={confirmSpecialX}
     onCancel={() => (xSpecialPrompt = null)}
+  />
+  <!-- #6249: and for a morph cost that is a reveal (CR 702.37e), the
+       one card picker the reveal costs use, asking for one card. -->
+  <DiscardCostModal
+    card={revealSpecialPrompt?.card ?? null}
+    options={revealSpecialOptions}
+    need={1}
+    label={revealSpecialPrompt?.row.label}
+    verb="Reveal"
+    note="morph cost · CR 702.37e"
+    onConfirm={confirmSpecialReveal}
+    onCancel={() => (revealSpecialPrompt = null)}
   />
   <!-- CR 107.4f (#916): how many Phyrexian symbols the CAST pays
        with 2 life each. Between the X picker and the convoke picker,

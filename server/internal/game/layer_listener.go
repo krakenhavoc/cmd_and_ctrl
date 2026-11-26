@@ -171,6 +171,13 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		ev.OldZone != ZoneBattlefield && ev.NewZone != ZoneBattlefield {
 		g.layerVersion.Add(1)
 	}
+	// #6222, CR 113.6b: a spell moving onto or off the stack, while some
+	// catalog card declares a static that functions from the stack
+	// (Torrent of Lava). Gated on the boot-time index, so a catalog with
+	// no such card pays one slice read per event.
+	if (ev.OldZone == ZoneStack) != (ev.NewZone == ZoneStack) && staticZones.hasZone(ZoneStack) {
+		g.layerVersion.Add(1)
+	}
 	// ADR 0100 sub-PR 2, a fifth CONDITIONAL bump in the hand one's
 	// mould: a card LEAVING exile, while something declares
 	// StaticAbility.DependsOnExile. Soulflayer is the card — its

@@ -122,6 +122,10 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		// ADR 0145, meld.
 		"meldInExileLocked": "the carrier's exile slot becomes the melded object under the same instance ID; the other card was lifted out with Remove first",
 		"meldOrderChosen":   "CR 712.21a: swaps two cards' places within one graveyard or library",
+		// #6225: a reorder within the stack of a throwaway clone.
+		"spellWouldDestroyLocked": "moves one spell to the top of a clone's stack (land_destruction.go): the same instance IDs, in a new order within one zone of a game nothing else holds",
+		// #6194: a reorder within one zone.
+		"ReorderGraveyardForEffect": "\"reorder your graveyard as you choose\": the same cards, the same instance IDs, in a new order within one graveyard",
 	}
 	// Other types in the package have a Cards field too. The check is
 	// syntactic, so they are listed here by function, with the type.

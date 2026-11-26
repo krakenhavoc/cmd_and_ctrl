@@ -190,6 +190,15 @@ export function unblockedMixed(frame: DamageAssignmentView, s: DamageShares): bo
   );
 }
 
+// oneCreatureSplit is #6192's refusal (Cunning Giant): an unblocked
+// attacker that may assign its damage to "a creature" puts all of it on
+// ONE creature or all of it on the player, never divided.
+export function oneCreatureSplit(frame: DamageAssignmentView, s: DamageShares): boolean {
+  if (!frame.one_creature || !hasBlockerDamage(s)) return false;
+  const hit = frame.blocker_card_ids.filter((id) => (s.amounts[id] ?? 0) > 0).length;
+  return hit !== 1;
+}
+
 export function canDealDamage(frame: DamageAssignmentView, s: DamageShares): boolean {
   // With no blocker left to divide among, assigning nothing is the
   // other answer (CR 510.1c: a blocked creature with no blocker).
@@ -199,7 +208,8 @@ export function canDealDamage(frame: DamageAssignmentView, s: DamageShares): boo
   return (
     assignedTotal(s) === frame.attacker_power &&
     trampleShort(frame, s).length === 0 &&
-    !unblockedMixed(frame, s)
+    !unblockedMixed(frame, s) &&
+    !oneCreatureSplit(frame, s)
   );
 }
 

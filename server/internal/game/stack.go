@@ -602,6 +602,14 @@ type StackItem struct {
 	// MarkSpellExilesAndReturnsForEffect; never on a copy.
 	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
 
+	// HandInsteadOfGraveyard is Soulfire Grand Master's "put that card into your
+	// hand instead of into your graveyard as it resolves" as a fact about this
+	// stack object (a spent NextSpellPromise.HandInsteadOfGraveyard). Resolution
+	// only, like ExileAndReturn: a countered or fizzled spell goes to the
+	// graveyard. It is one of the resolution exits; never set on a copy.
+	// Additive within the snapshot version.
+	HandInsteadOfGraveyard bool `json:"handInsteadOfGraveyard,omitempty"`
+
 	// ExileAndSuspend, when positive, is Gandalf of the Secret Fire's
 	// "exile that card with three time counters on it instead of putting
 	// it into your graveyard as it resolves. Then if the exiled card
@@ -660,6 +668,15 @@ type StackItem struct {
 	// changed face or lost the grant by the time something tries to
 	// copy it.
 	Uncopyable bool
+
+	// Cycling marks an activated ability item as a CYCLING ability
+	// (CR 702.29a, ActivatedAbilityShape.Cycling), stamped at activation.
+	// A draw made while it resolves knows it was caused by a cycling ability
+	// and which card was cycled (ReplacementEvent.DrawCycled, #6169):
+	// Unpredictable Cyclone's "If a cycling ability of another nonland card
+	// would cause you to draw a card". On the item for Uncopyable's reason:
+	// the cycled card is in the graveyard by then (CR 702.29c).
+	Cycling bool
 
 	// CantBeCountered is the marks that say this one SPELL can't be
 	// countered (ADR 0106 §4 decision 4, #1806): "Target spell can't

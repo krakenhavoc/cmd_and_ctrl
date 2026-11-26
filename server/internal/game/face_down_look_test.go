@@ -204,3 +204,29 @@ func TestALookGrantRefusesAPlayerWhoIsNotSeated(t *testing.T) {
 		}
 	})
 }
+
+// Smoke Teller's one-shot look (S82 OLD batch 350): the looker, and only
+// the looker, becomes a knower of the one face-down creature.
+func TestLookAtFaceDownCreatureForEffectMakesOnlyTheLookerAKnower(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]
+	theirs := pushLookTestFaceDown(t, g, opp.ID, "Sheoldred, the Apocalypse")
+	faceUp := pushLookTestPermanent(g, opp.ID, "Grizzly Bears", "Creature — Bear", "")
+
+	var ok, upOK bool
+	g.WithWriteLock(func() {
+		ok = g.LookAtFaceDownCreatureForEffect(me.ID, theirs)
+		upOK = g.LookAtFaceDownCreatureForEffect(me.ID, faceUp)
+	})
+	if !ok {
+		t.Fatal("the look at a face-down creature was refused")
+	}
+	if upOK {
+		t.Error("a face-up creature is not a face-down creature to look at")
+	}
+	c, _ := g.LookupCardForEffect(theirs)
+	if !c.IsKnownTo(me.ID) || !c.IsKnownTo(opp.ID) || c.IsKnownTo(other.ID) {
+		t.Errorf("knowers: me %v controller %v other %v, want me and the controller only",
+			c.IsKnownTo(me.ID), c.IsKnownTo(opp.ID), c.IsKnownTo(other.ID))
+	}
+}

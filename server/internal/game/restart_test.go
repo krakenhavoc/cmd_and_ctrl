@@ -403,9 +403,10 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"Library": true, "Hand": true, "Graveyard": true, "Command": true, "Emblems": true,
 		"CommanderDamage": true, "LifeHistory": true, "TurnsBegun": true, "UpkeepsBegun": true, "ExtraTurnsBegun": true,
 		"EndStepTurn": true, "LastTurnAttacks": true, "CombatAttacks": true, "LastCombatAttacks": true, "LastTurnCastOrPut": true, "CombatDamagedSinceLastTurn": true, "Eliminated": true, "Removed": true,
-		"LossCause":  true, // #4879: why they left goes with Eliminated.
-		"FinalBoard": true, // #4912: what they had when they left, too.
-		"HandKept":   true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,
+		"LossCause":          true, // #4879: why they left goes with Eliminated.
+		"FinalBoard":         true, // #4912: what they had when they left, too.
+		"DepartedPermanents": true, // #6123: what they controlled when they left, too.
+		"HandKept":           true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,
 		"mulliganBottoming": true, "UndosRemaining": true, "AttemptedEmptyDraw": true,
 		"CommanderCasts": true, "Counters": true, "MaxHandSize": true, "MaxHandSizeAt": true,
 		"LandDropsPerTurn": true, "ManaPool": true, "CastPermissions": true, "Statics": true,
@@ -419,6 +420,8 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		// #4973: a restarted game is a new game, so no spell has been
 		// cast in it yet (First Contact).
 		"FirstSpellCast": true,
+		// #6164: the new game records its own turns' life totals.
+		"LifeAsTurnBegan": true, "LifeAsTurnBeganSeq": true,
 	}
 	typ := reflect.TypeOf(Player{})
 	for i := 0; i < typ.NumField(); i++ {

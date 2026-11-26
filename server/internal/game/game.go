@@ -255,6 +255,12 @@ type Game struct {
 	// existed. Added in S13.
 	StartingSeat int
 
+	// TurnOrderReversed is true while the game's turn order runs
+	// counter-clockwise ("reverse the game's turn order", #6223). The
+	// zero value is the default order (CR 103.1). Read it through
+	// SeatInTurnOrderForEffect; see turn_direction.go.
+	TurnOrderReversed bool
+
 	// StackMeta is the per-stack-item metadata map (S13.1). Keyed by
 	// the item's ID — for spells this equals the underlying Card's
 	// InstanceID (the card itself lives in Game.Stack); for abilities
@@ -369,6 +375,14 @@ type Game struct {
 	// loyalty_limit.go.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool
 
+	// TapForeignLandsThisTurn is the set of PLAYERS who "may tap lands
+	// you don't control for mana" until end of turn (Piracy, #6204): the
+	// player may activate the {T} mana abilities of another player's
+	// lands, and that mana may be spent only to cast spells. Flushed at
+	// the turn boundary with the rest. ADR 0106 §1 amendment 2026-11-25;
+	// tap_foreign_lands.go.
+	TapForeignLandsThisTurn map[uuid.UUID]bool
+
 	// LoyaltyPermanentTwiceThisTurn is the set of PERMANENTS whose
 	// controller "may activate loyalty abilities of [it] twice this turn
 	// rather than only once" (Kaito, Dancing Shadow, #5479): the same
@@ -416,6 +430,13 @@ type Game struct {
 	// so the count and the trigger never disagree. Cleared as a turn
 	// begins, alongside ForetoldThisTurn.
 	DilemmasFacedThisTurn map[uuid.UUID]int
+
+	// PilesOrGuessesThisTurn lists, once each, the spells and abilities
+	// (their stack items) that caused one or more players to guess or to
+	// group cards or permanents into a pile this turn (#6175, CR 700.3;
+	// The Celestial Toymaker). Written by NotePileOrGuessForEffect, which
+	// every pile and guess effect calls; cleared as a turn begins.
+	PilesOrGuessesThisTurn []uuid.UUID
 
 	// LandsPlayedThisTurn counts, per player, the lands that player
 	// has played this turn via CastSpell's land branch. Cleared on
@@ -954,6 +975,14 @@ type Game struct {
 	// snapshot is ever taken mid-sweep. Added in S23.
 	simultaneousExit []Card
 
+	// phasingOut holds the battlefield characteristics of the
+	// permanents phaseOutLocked is announcing as having phased out
+	// (#6201), for the look-back harvest of their own "whenever this
+	// phases out" (CR 603.10b, harvestPhasedOutSelfLocked). Written and
+	// cleared inside that one call, so it is always empty between
+	// mutations, and Clone / RestoreFrom do not carry it.
+	phasingOut map[uuid.UUID]Characteristic
+
 	// stateTriggerHold counts the open sections that the per-event
 	// CR 603.8 state-trigger check skips — combat damage being dealt
 	// and a state-based-action sweep, which the rules see as one event
@@ -1185,6 +1214,12 @@ type Game struct {
 	// carried forward: a table roll after an undo is a fresh roll, not
 	// a replay of one the table already watched. Persisted.
 	tableRollNext uint64
+
+	// simulating marks a throwaway copy that plays a spell's resolution
+	// out to read what it would do (land_destruction.go, #6225). It is
+	// never set on a live game, never cloned and never persisted; the
+	// copy reports no effect error to the server's log or metrics.
+	simulating bool
 	// tableRolls is the ring of the last tableRollRingMax EventTableRoll
 	// events, as last emitted (their current Seq). RestoreFrom does not
 	// restore it; it re-emits every one the restored log no longer
@@ -2058,7 +2093,10 @@ func (g *Game) advanceCursorLocked() {
 	// the cursor has moved; any step of a combat phase can be the last
 	// one this call leaves (a phase an effect ended walks through here
 	// step by step), so every move out of one sweeps.
-	if PhaseOf(g.Turn.Step) == PhaseCombat {
+	//
+	// #6229: and "until the end of your next upkeep" (Halfdane) as the
+	// cursor leaves an upkeep step, for the same reason.
+	if PhaseOf(g.Turn.Step) == PhaseCombat || g.Turn.Step == StepUpkeep {
 		defer g.ClearExpiredScopedStaticsLocked()
 	}
 	// CR 511.3: "as soon as the end of combat step ends, all
@@ -2182,6 +2220,12 @@ type CastTally struct {
 	// spells you've cast this turn". Read through NoncreatureCardTypesCast.
 	// Additive within the snapshot version.
 	NoncreatureCardTypes string `json:"noncreatureCardTypes,omitempty"`
+	// Kicked counts the kicked spells the player cast this turn (CR 702.33a),
+	// read as each spell became cast: Vine Gecko's "the first kicked spell you
+	// cast each turn costs {1} less to cast" prices a spell while Kicked is
+	// still 0 (a cost is determined, CR 601.2f, before the spell is counted
+	// here). Additive within the snapshot version.
+	Kicked int `json:"kicked,omitempty"`
 	// Artifact counts the artifact spells the player cast this turn,
 	// read as each spell became cast, off the spell on the stack
 	// (CR 601.2i), like InstantSorceryColors. Artificer Class's "the
@@ -2245,6 +2289,12 @@ type CastTally struct {
 	// (CR 601.2f) before the spell is counted. Additive within the snapshot
 	// version.
 	DragonSpells int `json:"dragonSpells,omitempty"`
+	// FaceDownCreatureSpells counts the creature spells the player cast face
+	// down this turn (CR 708.4), read as each spell became cast like
+	// DragonSpells: Kadena, Slinking Sorcerer's "the first face-down
+	// creature spell you cast each turn costs {3} less" prices a spell
+	// while this is still 0. Additive within the snapshot version.
+	FaceDownCreatureSpells int `json:"faceDownCreatureSpells,omitempty"`
 	// InstantSorceryVillain counts the spells the player cast this turn that
 	// are an instant, a sorcery or a Villain (Lady Loki, Agent of Chaos's
 	// "your first instant, sorcery, or Villain spell each turn"), read as
@@ -2311,6 +2361,15 @@ type CastTally struct {
 	// EventCast. A copy of a spell is not cast (CR 707.10). Additive within
 	// the snapshot version.
 	FromExile int `json:"fromExile,omitempty"`
+	// InstantSorceryFromGraveyard counts the instant and sorcery spells the
+	// player cast this turn from their graveyard, read like FromExile off
+	// the zone the card was in as the cast was proposed and off the spell as
+	// it is on the stack (CR 601.2i): Sevinne, the Chronoclasm's "your first
+	// instant or sorcery spell from your graveyard each turn" is
+	// InstantSorceryFromGraveyard == 1 once the tally is bumped, which is
+	// before EventCast. A copy is not cast (CR 707.10). Additive within the
+	// snapshot version.
+	InstantSorceryFromGraveyard int `json:"instantSorceryFromGraveyard,omitempty"`
 }
 
 // FromHand is how many of the player's spells this turn were cast from
@@ -2644,6 +2703,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		g.runStepEntryHooksLocked()
 		return
 	}
+	// #6226 (CR 500.11): "skips each instance of the chosen step or
+	// phase this turn" (Fatespinner): a draw step, main phase or combat
+	// phase of that turn never begins (skip_this_turn.go).
+	if g.stepSkippedThisTurnLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// #5838 (CR 500.11, 614.10a): "skips their next combat phase" is
 	// spent by the first combat phase of the player's that would begin
 	// and is not skipped above; the rest of that phase leaves the plan
@@ -2731,6 +2798,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// hoisted it so EventStepBegan is emitted exactly once per step
 	// that begins and the harvester can trust it.)
 	if g.MulligansOpen && (g.Turn.Step == StepUntap || g.Turn.Step == StepUpkeep) {
+		return
+	}
+	// #6144 (CR 614.10a): "you skip your next untap/draw step" is spent
+	// by the first such step of the player's that exists and that the
+	// window above let through; the cursor walks past it as past any
+	// skipped step (CR 500.11), so it never begins (skip_next_step.go).
+	if g.spendNextStepSkipLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
 		return
 	}
 	// ADR 0059 Decision 8: the step has really begun, so it counts —

@@ -218,7 +218,68 @@ const (
 	// artifact, or a legendary creature spell's non-creature copy) is not
 	// stopped. Appended last so every earlier kind keeps its value.
 	ProtectionQualityLegendaryCreatures
+	// ProtectionQualityCardName is "protection from the card named X"
+	// (Runed Halo's "protection from the chosen card name", CR 702.16a):
+	// the source has that name (a split or modal card by either face's
+	// name is reached through the characteristic's own Name). Value is the
+	// name as chosen. Appended last so every earlier kind keeps its value.
+	ProtectionQualityCardName
+	// ProtectionQualityManaValue is "protection from mana value N"
+	// (CR 702.16a, #6149): the source's mana value is exactly N. Value is
+	// N. One of these per value is what "protection from each mana value
+	// among artifacts you control" (Rebbec, Architect of Ascension) grants,
+	// CR 702.16i's shorthand for separate protection abilities.
+	ProtectionQualityManaValue
+	// ProtectionQualityPermanentsWithCounter is "protection from
+	// permanents with <kind> counters on them" (CR 702.16a, #6149,
+	// Geyadrone Dihada): the source is a permanent with at least one
+	// counter of kind Value on it (Characteristic.SourceCounters). A spell
+	// or an ability's source off the battlefield has no counters.
+	ProtectionQualityPermanentsWithCounter
+	// ProtectionQualitySpells is "protection from spells" (CR 702.16a,
+	// #6098, Emrakul, the World Anew): the source is a spell
+	// (Characteristic.SourceIsSpell), whatever its characteristics. An
+	// ability is not a spell, nor is a permanent.
+	ProtectionQualitySpells
+	// ProtectionQualityPermanentsCastThisTurn is "protection from
+	// permanents that were cast this turn" (#6098, Emrakul, the World
+	// Anew): the source is a permanent whose spell was cast this turn
+	// (Characteristic.SourceCastThisTurn). A permanent that was put onto
+	// the battlefield, or was cast an earlier turn, does not match.
+	ProtectionQualityPermanentsCastThisTurn
+	// ProtectionQualityOpponentsCreatures is "protection from creatures
+	// your opponents control" (CR 702.16a, Crypsis, #6253): the source is
+	// a creature (a creature spell too, CR 702.16a's exception to CR
+	// 109.2) whose controller is a player other than the one "your" names
+	// (ProtectionQuality.Holder, bound by the reader as for
+	// ProtectionQualityOpponents). A noncreature source an opponent
+	// controls, and a creature the holder controls, are not stopped.
+	ProtectionQualityOpponentsCreatures
+	// ProtectionQualityNonSubtypeCreatures is "protection from
+	// non-<creature type> creatures" (CR 702.16a, Spare from Evil's
+	// "non-Human creatures", #6253): the source is a creature without
+	// the creature type Value, a changeling having every type
+	// (CR 702.73a). Value is the canonical creature type.
+	ProtectionQualityNonSubtypeCreatures
 )
+
+// protectionOpponentsCreatures is the token of
+// ProtectionQualityOpponentsCreatures, lowercase (#6253).
+const protectionOpponentsCreatures = "creatures your opponents control"
+
+// ProtectionFromOpponentsCreatures is the token for "protection from
+// creatures your opponents control" (Crypsis).
+const ProtectionFromOpponentsCreatures = protectionPrefix + protectionOpponentsCreatures
+
+// ProtectionFromNonSubtypeCreatures is the token for "protection from
+// non-<creature type> creatures" (Spare from Evil: "Human").
+func ProtectionFromNonSubtypeCreatures(creatureType string) string {
+	return protectionPrefix + "non-" + creatureType + " creatures"
+}
+
+// protectionCardNamed heads the token of ProtectionQualityCardName,
+// lowercase: "protection from the card named Lightning Bolt".
+const protectionCardNamed = "the card named "
 
 // protectionCreaturesOfType heads the token of ProtectionQualityCreatureSubtype,
 // lowercase: "protection from creatures of type Vampire".
@@ -282,6 +343,18 @@ func (k ProtectionQualityKind) String() string {
 	case ProtectionQualityCreatureSubtype:
 		// Same wire kind as a creature-type quality: the badge reads Value.
 		return "subtype"
+	case ProtectionQualityManaValue:
+		return "mana_value"
+	case ProtectionQualityPermanentsWithCounter:
+		return "permanents_with_counter"
+	case ProtectionQualitySpells:
+		return "spells"
+	case ProtectionQualityPermanentsCastThisTurn:
+		return "permanents_cast_this_turn"
+	case ProtectionQualityOpponentsCreatures:
+		return "opponents_creatures"
+	case ProtectionQualityNonSubtypeCreatures:
+		return "non_subtype_creatures"
 	}
 	return ""
 }
@@ -531,6 +604,19 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	if lower == protectionEachOfYourOpponents {
 		return ProtectionQuality{Kind: ProtectionQualityOpponents, Printed: printed}, true
 	}
+	// #6253: a card type qualified by its controller, bound like the
+	// opponents quality above.
+	if lower == protectionOpponentsCreatures {
+		return ProtectionQuality{Kind: ProtectionQualityOpponentsCreatures, Printed: printed}, true
+	}
+	// #6253: "non-<creature type> creatures".
+	if rest, ok := strings.CutPrefix(lower, "non-"); ok {
+		if st, ok := strings.CutSuffix(rest, " creatures"); ok {
+			if ct, ok := CanonicalCreatureType(strings.TrimSpace(st)); ok {
+				return ProtectionQuality{Kind: ProtectionQualityNonSubtypeCreatures, Value: ct, Printed: printed}, true
+			}
+		}
+	}
 	// CR 702.16a with a mana value bound. The one grammar shape that
 	// carries a number, so it is matched whole: "mana value N or less".
 	if n, ok := parseManaValueAtMost(lower); ok {
@@ -538,6 +624,17 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	}
 	if n, ok := parseManaValueAtLeast(lower); ok {
 		return ProtectionQuality{Kind: ProtectionQualityManaValueAtLeast, Value: strconv.Itoa(n), Printed: printed}, true
+	}
+	if n, ok := parseManaValueBound(lower, ""); ok {
+		return ProtectionQuality{Kind: ProtectionQualityManaValue, Value: strconv.Itoa(n), Printed: printed}, true
+	}
+	// "permanents with <kind> counters on them" (#6149). The kind is one
+	// word, as every printed counter name the quality could carry is.
+	if rest, ok := strings.CutPrefix(lower, protectionPermanentsWith); ok {
+		if kind, ok := strings.CutSuffix(rest, protectionCountersOnThem); ok && kind != "" && !strings.ContainsAny(kind, " ,") {
+			return ProtectionQuality{Kind: ProtectionQualityPermanentsWithCounter, Value: kind, Printed: printed}, true
+		}
+		return ProtectionQuality{}, false
 	}
 	// Mana value parity, and two qualities of an object that are not a
 	// single characteristic (#4307). Whole phrases, as printed: the grammar
@@ -555,6 +652,10 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
 	case "spells that are one or more colors":
 		return ProtectionQuality{Kind: ProtectionQualityColoredSpells, Printed: printed}, true
+	case "spells":
+		return ProtectionQuality{Kind: ProtectionQualitySpells, Printed: printed}, true
+	case "permanents that were cast this turn":
+		return ProtectionQuality{Kind: ProtectionQualityPermanentsCastThisTurn, Printed: printed}, true
 	case "legendary creatures":
 		return ProtectionQuality{Kind: ProtectionQualityLegendaryCreatures, Printed: printed}, true
 	case protectionColorless:
@@ -569,6 +670,13 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	}
 	if ct, ok := protectionCardTypes[lower]; ok {
 		return ProtectionQuality{Kind: ProtectionQualityCardType, Value: ct, Printed: printed}, true
+	}
+	if strings.HasPrefix(lower, protectionCardNamed) {
+		// The name keeps its printed case; matching ignores it.
+		if name := strings.TrimSpace(printed[len(protectionCardNamed):]); name != "" {
+			return ProtectionQuality{Kind: ProtectionQualityCardName, Value: name, Printed: printed}, true
+		}
+		return ProtectionQuality{}, false
 	}
 	if rest, ok := strings.CutPrefix(lower, protectionCreaturesOfType); ok {
 		if ct, ok := CanonicalCreatureType(strings.TrimSpace(rest)); ok {
@@ -595,6 +703,23 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		}
 	}
 	return ProtectionQuality{}, false
+}
+
+// protectionPermanentsWith and protectionCountersOnThem frame the
+// counter quality, "permanents with <kind> counters on them" (#6149).
+const (
+	protectionPermanentsWith = "permanents with "
+	protectionCountersOnThem = " counters on them"
+)
+
+// ProtectionFromManaValue is the token of "protection from mana value N"
+// (#6149): one of the separate abilities CR 702.16i's "protection from
+// each mana value among …" stands for. "" for a negative N.
+func ProtectionFromManaValue(n int) string {
+	if n < 0 {
+		return ""
+	}
+	return "protection from mana value " + strconv.Itoa(n)
 }
 
 // protectionRingBearers is the printed quality of "protection from
@@ -832,6 +957,23 @@ func ProtectionFromCardType(cardType string) string {
 // it grants nothing.
 const ProtectionFromTheChosenCardType = protectionPrefix + "the chosen card type"
 
+// ProtectionFromCardName is the token for "protection from the card named
+// X" (Runed Halo). Empty for an empty name.
+func ProtectionFromCardName(name string) string {
+	if strings.TrimSpace(name) == "" {
+		return ""
+	}
+	return protectionPrefix + protectionCardNamed + strings.TrimSpace(name)
+}
+
+// ProtectionFromTheChosenCardName is "protection from the chosen card name"
+// as a PLAYER keyword (Runed Halo's "You have protection from the chosen
+// card name"): a placeholder in a Spec's PlayerKeywords that the player walk
+// replaces with ProtectionFromCardName of the granting permanent's chosen
+// name (Card.ChosenName), as ProtectionFromTheChosenCardType does for a card
+// type. Unanswered, it grants nothing.
+const ProtectionFromTheChosenCardName = protectionPrefix + "the chosen card name"
+
 // ProtectionQualities is THE reader: every protection this card has
 // right now, parsed.
 //
@@ -884,7 +1026,7 @@ func bindProtectionQuality(c *Card, q ProtectionQuality) ProtectionQuality {
 		if q.Player == uuid.Nil {
 			q.Player = c.ChosenPlayer
 		}
-	case ProtectionQualityOpponents:
+	case ProtectionQualityOpponents, ProtectionQualityOpponentsCreatures:
 		q.Holder = c.Effective().Controller
 		if q.Holder == uuid.Nil {
 			q.Holder = c.Controller
@@ -899,7 +1041,7 @@ func bindProtectionQuality(c *Card, q ProtectionQuality) ProtectionQuality {
 // it. The chosen-player quality stays unbound, because a player has no
 // as-enters choice to read it from (see PlayerProtectedFromLocked).
 func bindPlayerProtectionQuality(holder uuid.UUID, q ProtectionQuality) ProtectionQuality {
-	if q.Kind == ProtectionQualityOpponents {
+	if q.Kind == ProtectionQualityOpponents || q.Kind == ProtectionQualityOpponentsCreatures {
 		q.Holder = holder
 	}
 	return q
@@ -965,6 +1107,11 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 	case ProtectionQualityManaValueAtLeast:
 		n, err := strconv.Atoi(q.Value)
 		return err == nil && src.SourceManaValueKnown && src.SourceManaValue >= n
+	case ProtectionQualityManaValue:
+		n, err := strconv.Atoi(q.Value)
+		return err == nil && src.SourceManaValueKnown && src.SourceManaValue == n
+	case ProtectionQualityPermanentsWithCounter:
+		return src.SourceIsPermanent && src.SourceCounters[q.Value] > 0
 	case ProtectionQualityManaValueOdd:
 		return src.SourceManaValueKnown && src.SourceManaValue%2 == 1
 	case ProtectionQualityManaValueEven:
@@ -983,8 +1130,17 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) >= 2
 	case ProtectionQualityColoredSpells:
 		return src.SourceIsSpell && len(src.Colors) >= 1
+	case ProtectionQualitySpells:
+		return src.SourceIsSpell
+	case ProtectionQualityPermanentsCastThisTurn:
+		return src.SourceIsPermanent && !src.SourceIsSpell && src.SourceCastThisTurn
 	case ProtectionQualityLegendaryCreatures:
 		return typeListHas(src.Types, "creature") && typeListHas(src.Supertypes, "legendary")
+	case ProtectionQualityOpponentsCreatures:
+		return typeListHas(src.Types, "creature") &&
+			q.Holder != uuid.Nil && src.Controller != uuid.Nil && src.Controller != q.Holder
+	case ProtectionQualityNonSubtypeCreatures:
+		return typeListHas(src.Types, "creature") && !src.AllCreatureTypes && !typeListHas(src.Subtypes, q.Value)
 	case ProtectionQualityColorless:
 		// CR 105.2c. The snapshot's colours are the post-layer ones, so
 		// an artifact an effect made red is not colourless and a
@@ -994,6 +1150,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:
 		return typeListHas(src.Types, q.Value)
+	case ProtectionQualityCardName:
+		return strings.EqualFold(strings.TrimSpace(src.Name), strings.TrimSpace(q.Value))
 	case ProtectionQualityCreatureSubtype:
 		return typeListHas(src.Types, "creature") &&
 			(typeListHas(src.Subtypes, q.Value) || (src.AllCreatureTypes && IsCreatureType(q.Value)))
@@ -1144,4 +1302,9 @@ func stampSourceFacts(ch *Characteristic, c *Card, x int) {
 	// A permanent has a layered characteristic; a spell on the stack, or a
 	// card anywhere else, has none (#4307).
 	ch.SourceIsPermanent = c.effective != nil
+	// #6098: a permanent whose spell was cast this turn.
+	ch.SourceCastThisTurn = c.effective != nil && c.Provenance.CastThisTurn
+	// The counters on the source (#6149). Only a permanent's are read
+	// (ProtectionQualityPermanentsWithCounter asks SourceIsPermanent too).
+	ch.SourceCounters = copyCounterMap(c.Counters)
 }

@@ -33,14 +33,7 @@ func init() {
 			Cost:         ManaCost("{3}{B}{B}{R}{R}"),
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				return ReturnFromGraveyard{
-					Target: item.SourceCardID, Dest: game.ZoneBattlefield, Transformed: true,
-				}.Apply(NewContext(g, item))
-			},
+			Effect:       PutThisFromYourGraveyardOntoTheBattlefieldTransformed,
 		}},
 	})
 }

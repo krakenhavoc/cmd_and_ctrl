@@ -55,7 +55,19 @@ func (g *Game) cantHaveCountersLocked(c *Card) bool {
 	if c == nil || g.Battlefield == nil || !g.Battlefield.Contains(c.InstanceID) {
 		return false
 	}
-	return c.Effective().CantHaveCounters
+	e := c.Effective()
+	return e.CantHaveCounters || e.ExtraRestrictions.Has(ObjectCantHaveCounters)
+}
+
+// cantHaveCounterKindLocked is cantHaveCountersLocked for one kind of counter:
+// the whole prohibition, or the +1/+1-only one (Blightbeetle's "creatures your
+// opponents control can't have +1/+1 counters put on them").
+func (g *Game) cantHaveCounterKindLocked(c *Card, kind string) bool {
+	if g.cantHaveCountersLocked(c) {
+		return true
+	}
+	return kind == CounterPlusOne && c != nil && g.Battlefield != nil &&
+		g.Battlefield.Contains(c.InstanceID) && c.Effective().CantHavePlusOneCounters
 }
 
 // counterPlacementRefusedLocked reports whether `ev` is a counter
@@ -66,11 +78,15 @@ func (g *Game) counterPlacementRefusedLocked(ev *ReplacementEvent) bool {
 		return false
 	}
 	if ev.CounterPlayer != uuid.Nil {
-		// A PLAYER placement: only Melira's "can't get additional poison
-		// counters this turn" refuses one (cant_get_poison.go).
-		return ev.CounterName == CounterPoison && g.playerCantGetPoisonLocked(ev.CounterPlayer)
+		// A PLAYER placement: Melira's "can't get additional poison
+		// counters this turn" refuses poison (cant_get_poison.go), and
+		// "can't get counters" every kind (cant_get_counters.go).
+		if ev.CounterName == CounterPoison && g.playerCantGetPoisonLocked(ev.CounterPlayer) {
+			return true
+		}
+		return g.playerCantGetCountersLocked(ev.CounterPlayer)
 	}
-	return g.cantHaveCountersLocked(findBattlefieldCard(g, ev.CounterTarget))
+	return g.cantHaveCounterKindLocked(findBattlefieldCard(g, ev.CounterTarget), ev.CounterName)
 }
 
 // CantHaveCountersForEffect is cantHaveCountersLocked by instance ID, for

@@ -7,6 +7,7 @@
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5a's "never collapsed" limit now holds on the multi-effect order paths too, see [§5h](#5h-amendment-2026-09-17-a-may-inside-a-chosen-order-is-still-a-question)
 **Amended:** 2026-09-17 · Branch `fix/815-847-replacement-outcomes` — §5d's landed-outcome rule now decides the destruction COUNT as well, see [§5i](#5i-amendment-2026-09-17-destroyed-this-way-counts-what-was-destroyed)
 **Amended:** 2026-09-19 · Branch `feat/1027-1026-discard-continuation-and-springbloom` — §5x's run is shared with the prompted DISCARD, and §5g's "no continuation form" note is closed, see [§5y](#5y-amendment-2026-09-19-a-prompted-discard-is-the-same-run-and-both-verbs-share-one-body)
+**Amended:** 2026-11-25 · #6210 — a mana-production replacement that asks for a colour chooses it at the tap, see the amendment at the end
 **Amended:** 2026-09-22 · Branch `feat/amount-replacements` — §13's deferred `RepEventManaProduced` is answered and the draw event grows a COUNT, see [§5ab](#5ab-amendment-2026-09-22-the-last-two-amount-replacements--mana-produced-and-cards-drawn)
 **Amended:** 2026-09-29 · Branch `fix/shuffle-after-replacement-1735` — a redirected library destination can now be a genuine shuffle, not just a placement, see [§5ah](#5ah-amendment-2026-09-29-a-redirected-library-destination-can-ask-for-a-shuffle)
 **Amended:** 2026-10-01 · Branch `feat/1743-explore-the-vastlands` — §5x's run takes an arbitrary choose_cards leg per seat, and a look-and-take can name two kinds of card at once, see [§5ai](#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look)
@@ -5643,3 +5644,19 @@ CR 701.50a: "To do so, that permanent's controller draws a card, then discards a
 **Tests.** `game/connive_action_test.go` (the tail told the printed count, a replacement's extra draws and count, a null replacement, connive 0, an ordering prompt answered both ways) and `cards/effects/leader_super_genius_test.go` (a creature of yours draws two and counters, a land discard, an opponent's creature and an opponent's Leader, Leader itself, a two-creature chain, two Leaders, connive X, a creature that left, Leader gone, Iron Monger triggering once, a restore at the discard, the beginning-of-combat trigger, Ledger Shredder and Cyclonus).
 
 **Back-out**, restored: dropping `ConniveExtraDraws++` fails the draw-count tests; dropping the `ev.Actor` check fails the opponent's-creature and opponent's-Leader tests; making `ConniveX` skip the window fails the connive X test.
+
+## Amendment 2026-11-25 — a mana-production replacement that asks for a colour (#6210)
+
+Pulse of Llanowar: "If a basic land you control is tapped for mana, it produces mana of a color of your choice instead of any other type." Harvest Mage: "Until end of turn, if you tap a land for mana, it produces one mana of a color of your choice instead of any other type and amount." §5ab made `RepEventProduceMana` the one kind that can never pause, because CR 605.3b gives a mana ability no point inside it where a player could be asked anything. A replacement that asks for a colour looked like it needed exactly that pause.
+
+Owner decision (2026-11-24, on #6210): build it, with the colour chosen **as part of the tap**, not by a paused replacement. CR 106.12b says the replacement "modifies the mana production event while such an ability is resolving and producing mana", so the choice belongs to the tap that produces it. The window still never pauses:
+
+- **The replacement writes a marker.** `game.ManaOfChosenColor` is one entry of `ManaColors` per mana "of a color of your choice". `produceManaLocked` resolves every marker to one colour before anything reaches a pool, so the marker is never in a pool, an event or a snapshot. Pulse keeps the amount, and Harvest Mage makes one mana. `effects.TappedForManaProducesAColorOfYourChoice` is the catalog replacement. The scoped kind `landManaOfChosenColor` (`LandsYouTapProduceOneManaOfAColorOfYourChoiceThisTurnForEffect`) is Harvest Mage's until-end-of-turn record. It is an on-disk identity and data, like Hall of Gemstone's `landManaIsColor`.
+- **A tap by hand** whose production the window would turn into the marker asks the five-colour pick a Birds of Paradise asks (`activateManaAbilityLocked`). The same five colours are published to name up front (`ManaAbilityColorOptions`, `validateUpfrontManaColors`). The picked colour is what the production asks for, and the marker resolves to it. The pick already exists on the wire, in the client and for the bot seat, so no new prompt was needed.
+- **The auto-tapper.** The planner prices the land as a five-colour source (`priceProducedSlotsLocked`), and the executor asks the land for the colour its ledger still needs most (`steerChosenColorLocked`). With Pulse, a Swamp pays {G}.
+
+Several replacements in one window are still applied in gather order (§5ab). Contamination after Pulse makes {B}, and Pulse after Contamination makes the chosen colour. Neither order needs a prompt.
+
+ADR 0150's Rhystic Cave stays out: its question is "unless any player pays {1}", asked of other players. That is not a choice the tapping player can make as part of the tap.
+
+Tests (`internal/cards/effects/tests/m/mana_color_of_choice_test.go`): with the Pulse shape, the auto-tapper pays {G} with a Swamp, a hand tap asks for a colour and makes the one picked, a colour named up front needs no pick, and another player's Swamp still makes {B}. With Harvest Mage's record, a Swamp named red makes one {R}.

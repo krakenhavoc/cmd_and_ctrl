@@ -53,6 +53,24 @@ type AdditionalCost struct {
 	// mandatory cost or an either/or branch that discards.
 	DiscardLand bool
 
+	// DiscardX is "As an additional cost to cast this spell, discard X
+	// cards" (Channeled Force, Firestorm, #6145): the count is the X the
+	// caster announces on CastSpellParams.XValue (CR 107.3a, 601.2b), the
+	// spell's own X, and none of these cards prints {X} in its mana cost.
+	// The same slot "pay X life" (PayLifeX) and "exile X cards"
+	// (ExileCost.CountFromX) ride. DiscardCards is 0 beside it.
+	// DiscardLand or DiscardCreature narrows it ("discard X land cards",
+	// Scorched Earth; "discard X creature cards", Aether Tide). The
+	// discards are recorded on PaidCost.Discarded like any other cost
+	// discard, so "the discarded cards" reads them at resolution (CR
+	// 608.2h). Mandatory slot only; see discard_x_additional_cost.go.
+	DiscardX bool
+
+	// DiscardCreature narrows a discard to creature cards, DiscardLand's
+	// sibling: "discard X creature cards" (Aether Tide, #6145). Read
+	// through DiscardAccepts, as DiscardLand is.
+	DiscardCreature bool
+
 	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
 	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
 	// as a spec matched against the caster's permanents. The caster
@@ -457,6 +475,28 @@ type AdditionalCost struct {
 	// Stoneglider's "exile two cards from your graveyard or pay {1}{W}").
 	ExileCards *ExileCost
 
+	// RemoveCounters is "As an additional cost to cast this spell, you may
+	// remove any number of <kind> counters from among <permanents> you
+	// control" (#6121, Hierophant Bio-Titan's Frenzied Metabolism). The
+	// activated ability's counter component (CounterRemovalCost, #625,
+	// #789), carried by a cast's mandatory slot the way an alternative
+	// cost carries it (#5390): the same option walk, validator and payer,
+	// with the spell being cast as the "source" the walk is asked about.
+	// Register holds it to the among form with a "from" clause, a printed
+	// kind and a variable count with a floor of zero ("you may … any
+	// number" is one reading: removing none is not paying, CR 601.2b).
+	//
+	// The payment rides cast_spell's counter_source_ids / counter_counts
+	// (CastSpellParams.CounterSourceIDs, CounterCounts), the names an
+	// alternative cost's counters ride, so a cast that claims an offer
+	// with its own counter component can't pay this one too: the
+	// announcement is refused. The total is CostQuery.RemovingCounters,
+	// which the spell's own cost modifier reads at CR 601.2f
+	// (effects.CostsLessPerCounterRemoved, "{2} less for each counter
+	// removed this way"), and it is recorded on PaidCost.CountersRemoved.
+	// Nil is every cost before it, additive.
+	RemoveCounters *CounterRemovalCost
+
 	// Waterbend is an optional "you may waterbend {N}" additional cost
 	// (CR 701.67, #3999, Secret of Bloodbending): ManaCost is the {N},
 	// and this is the tap clause that may help pay it (effects.Waterbend),
@@ -542,10 +582,10 @@ func (c *AdditionalCost) MaxPayments() int {
 
 // Empty reports whether the cost demands nothing. Nil-safe.
 func (c *AdditionalCost) Empty() bool {
-	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
+	return c == nil || (c.DiscardCards == 0 && !c.DiscardX && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
 		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty() &&
-		c.ReturnToHand.Empty())
+		c.ReturnToHand.Empty() && c.RemoveCounters == nil)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -556,9 +596,9 @@ func (c *AdditionalCost) Empty() bool {
 // a non-mana component all the same, so it is counted here and a
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
-	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
+	return c != nil && (c.DiscardCards > 0 || c.DiscardX || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
 		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil ||
-		!c.TapOthers.Empty() || !c.ReturnToHand.Empty())
+		!c.TapOthers.Empty() || !c.ReturnToHand.Empty() || c.RemoveCounters != nil)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -976,10 +1016,11 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 	}
 	for _, pay := range plan {
 		cost := pay.cost
-		if di+cost.DiscardCards > len(discardIDs) {
+		nDiscard := cost.DiscardCount(xValue)
+		if di+nDiscard > len(discardIDs) {
 			return ErrInvalidParam
 		}
-		for _, id := range discardIDs[di : di+cost.DiscardCards] {
+		for _, id := range discardIDs[di : di+nDiscard] {
 			if id == castID || discarded[id] {
 				return ErrInvalidParam
 			}
@@ -987,7 +1028,7 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 			if !p.Hand.Contains(id) {
 				return ErrCardNotFound
 			}
-			if cost.DiscardLand {
+			if cost.DiscardFiltered() {
 				for _, hc := range p.Hand.Cards {
 					if hc.InstanceID == id && !cost.DiscardAccepts(hc) {
 						return ErrInvalidParam
@@ -995,7 +1036,7 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 				}
 			}
 		}
-		di += cost.DiscardCards
+		di += nDiscard
 		if cost.Sacrifice == nil {
 			continue
 		}
@@ -1100,14 +1141,27 @@ func CastEnergyOwed(alt *AlternativeCost, mandatory *AdditionalCost, optional []
 // unparseable printed cost does (#289): there is no price for the
 // player to have paid. Register refuses the same string at boot, so
 // reaching this branch means a card was built around the catalog.
-func AdditionalCostMana(cost ParsedCost, mandatory *AdditionalCost, optional []AdditionalCost, chosen []int) (ParsedCost, error) {
-	for _, pay := range castCostPayments(mandatory, optional, chosen) {
+//
+// `priced` is #6206's component prices: entry k, when it is there, is
+// what payment k charges after the cost modifiers aimed at THAT
+// component ("Buyback costs cost {2} less", Memory Crystal), so the
+// component joins the total at the price its own CR 601.2f pass left it
+// (component_cost_modifier.go). The zero value is every board without
+// such a modifier, where every payment joins at its printed mana.
+func AdditionalCostMana(cost ParsedCost, mandatory *AdditionalCost, optional []AdditionalCost, chosen []int, priced PricedComponents) (ParsedCost, error) {
+	for i, pay := range castCostPayments(mandatory, optional, chosen) {
 		if pay.cost.ManaCost == "" {
 			continue
 		}
 		add, err := ParseCost(pay.cost.ManaCost)
 		if err != nil {
 			return cost, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, pay.cost.Label, err)
+		}
+		// #6206: what a modifier aimed at this component left of it. The
+		// printed string is still parsed first, so an unparseable cost is
+		// refused whether or not anything reprices it.
+		if repriced, ok := priced.at(i); ok {
+			add = repriced
 		}
 		cost.Generic += add.Generic
 		cost.Required = append(cost.Required, add.Required...)
@@ -1181,9 +1235,22 @@ func (g *Game) AnyAdditionalCostBranchPayableLocked(playerID uuid.UUID, card Car
 
 // DiscardAccepts reports whether `c`, a card in the caster's hand, may
 // pay this cost's discard: any card, or a land card when the clause
-// says so (DiscardLand). The one reader of the clause's filter.
+// says so (DiscardLand), or a creature card (DiscardCreature, #6145).
+// The one reader of the clause's filter.
 func (c *AdditionalCost) DiscardAccepts(card Card) bool {
-	return c == nil || !c.DiscardLand || card.IsLand()
+	if c == nil {
+		return true
+	}
+	if c.DiscardLand && !card.IsLand() {
+		return false
+	}
+	return !c.DiscardCreature || card.IsCreature()
+}
+
+// DiscardFiltered reports whether the discard takes only some cards
+// (DiscardLand, DiscardCreature). Nil-safe.
+func (c *AdditionalCost) DiscardFiltered() bool {
+	return c != nil && (c.DiscardLand || c.DiscardCreature)
 }
 
 // AdditionalDiscardOptionsForEffect lists the cards in `playerID`'s hand

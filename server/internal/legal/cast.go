@@ -26,6 +26,11 @@ type castParams struct {
 	// Daze's Island, escape's N other cards from the graveyard.
 	// Exactly CardPaymentCount entries, or none.
 	AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+
+	// AltCostOpponent is the opponent an alternative cost's "have an
+	// opponent gain N life" gives the life to (#6256, Invigorate),
+	// omitted for every offer that names none.
+	AltCostOpponent string `json:"alt_cost_opponent,omitempty"`
 	// CounterSourceIDs / CounterCounts / CounterKind / CounterKinds pay
 	// the claimed offer's "remove N counters from among creatures you
 	// control" (#5390) — CastSpellParams' fields of the same names, in
@@ -66,6 +71,9 @@ type castParams struct {
 	// BeholdType is the creature type a behold that prints none chooses
 	// (#5406) — CastSpellParams.BeholdType.
 	BeholdType string `json:"behold_type,omitempty"`
+	// ChosenCreatureType is the creature type a spell names as it is
+	// cast (#6245) — CastSpellParams.ChosenCreatureType.
+	ChosenCreatureType string `json:"chosen_creature_type,omitempty"`
 	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
 	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
@@ -436,6 +444,19 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 // prices with different consequences, exactly as a kicked and an
 // unkicked cast are (ADR 0073 §9).
 func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.ZoneKind, perm *game.CastPermission, offer *game.AlternativeCost) {
+	// #6245, CR 601.2c: a spell that names a creature type as it is cast
+	// is walked once per type a creature on the battlefield has, with the
+	// type stamped on the copy as CastSpell stamps it, so every target
+	// clause of the chosen type sees it. A type no creature has would only
+	// ever find no targets.
+	if game.ChoosesCreatureTypeAsCast(card) && card.NamedTribe == "" {
+		for _, t := range e.g.CastCreatureTypeCandidatesForEffect() {
+			typed := card
+			typed.NamedTribe = t
+			e.castMovesForCard(typed, from, kind, perm, offer)
+		}
+		return
+	}
 	// CR 708.4, ADR 0082 decision 2: a cast that claims a face-down
 	// offer announces a 2/2 CREATURE SPELL with no name and no text,
 	// and the engine stamps that onto its own copy of the card before
@@ -543,13 +564,34 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 						// #3961: and a "tap any number of untapped
 						// creatures" cost is one per count offered.
 						for _, tapAny := range e.tapAnyPayments(card) {
-							e.castMovesPayingOptional(card, from, perm, offer, flashIf, chosen, to, branch, extra, handExile, tapAny)
+							// #6256: an offer whose price is "have an
+							// opponent gain N life" (Invigorate) is one
+							// announcement per opponent who could be
+							// given it — which opponent is part of
+							// paying the cost, as a gift's recipient is.
+							for _, gainer := range altCostOpponents(e.g, e.seat, offer) {
+								e.castMovesPayingOptional(card, from, perm, offer, flashIf, chosen, to, gainer, branch, extra, handExile, tapAny)
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+}
+
+// altCostOpponents is the opponent half of one alternative-cost offer:
+// [uuid.Nil] when the offer gives no opponent life, and one entry per
+// opponent who could be given it when it does (#6256,
+// game.SpliceOpponentsLocked — the list the view shows and the announce
+// validator judges the claim against). Nothing at all when the offer
+// names one and no opponent can gain life: such a cast is refused (CR
+// 614.17b), so it is never offered.
+func altCostOpponents(g *game.Game, seat uuid.UUID, offer *game.AlternativeCost) []uuid.UUID {
+	if offer == nil || offer.OpponentGainsLife <= 0 {
+		return []uuid.UUID{uuid.Nil}
+	}
+	return g.SpliceOpponentsLocked(seat)
 }
 
 // giftWire is the wire form of a gift recipient: omitted for
@@ -772,7 +814,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, flashIf *game.FlashIf, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, flashIf *game.FlashIf, chosen []int, giftTo, altOpponent uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -856,6 +898,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		AlternativeCost: offerKey(offer),
 		OptionalCosts:   chosen,
 		GiftOpponent:    giftTo,
+		// #6256: the opponent an "have an opponent gain N life" offer
+		// gives the life to, the half of its claim the engine requires.
+		AltCostOpponent: altOpponent,
 		// ADR 0100 §2: the branch's mana joins the price here, in the
 		// one pricer, so Lightning Axe's "pay {5}" move is priced at
 		// {5}{R} exactly as CastSpell charges it.
@@ -940,7 +985,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// targets too, so each set is solved against the life it leaves the
 	// seat -- the same rule, and the same reason, as a mana price that
 	// reads targets.
-	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect()
+	// #6157: a permission whose surcharge reads the targets prices per set
+	// too (game.TargetSurchargeFor).
+	// #6206: and a spell that charges ITSELF life for each target
+	// (Phyrexian Purge) prices by the targets for the same reason.
+	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect() ||
+		(perm != nil && perm.CostMoreUnlessTargetsYourCreature > 0) ||
+		e.g.CastLifePerTargetForEffect(card) > 0
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
 	// whole of its X, and the mana cost it prints has no {X} slot at
@@ -950,6 +1001,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// announces — the one ChosenAdditionalCost hands CastSpell's plan.
 	addCost, err := game.ChosenAdditionalCost(game.AdditionalCostFor(game.CatalogKey(card)), branch)
 	if err != nil {
+		return
+	}
+	// #6205: with every sacrifice the board imposes (Drought) folded
+	// in, as CastSpell folds it; a cost the fold can't join is no cast.
+	addCost, foldOK := g.ImposedSacrificeCastCostForEffect(e.seat, card, addCost)
+	if !foldOK {
 		return
 	}
 	// #810: the one X rule. A spell whose whole effect is X (Fireball,
@@ -970,6 +1027,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
+	}
+	if dx := e.discardXCeiling(card.InstanceID, addCost); dx != noXCeiling {
+		// #6145: and "discard X cards" — X is what the hand can pay.
+		xLifeCeiling = dx
+	}
+	if rx := e.returnXCeiling(card.InstanceID, addCost); rx != noXCeiling {
+		// #6122: and "return X Swamps you control" — X is what the board
+		// can pay.
+		xLifeCeiling = rx
 	}
 	if ex := e.exileXCeiling(card.InstanceID, addCost); ex != noXCeiling {
 		// #1948: and "exile X cards from your graveyard" — X is what the
@@ -996,6 +1062,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			xLifeCeiling = c
 		}
 	}
+	// #6125: "Choose X" (Doomsday Confluence) — the mode count is the X,
+	// so a move announces X = 1 with one mode: the smallest count that
+	// does anything, and one the seat can pay for or it is not offered.
+	chooseX := false
+	if ms := game.ModeSpecFor(game.CatalogKey(card)); ms != nil && ms.CountIsX {
+		chooseX = true
+		xFloor = 1
+		xLifeCeiling = 1
+	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
 	// together never claim more than the seat has (CR 119.4). A "pay X
@@ -1013,6 +1088,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// (castCostBranches): an optional payment that would leave the seat
 	// at 0 life is never offered, because the next state-based check
 	// would kill it (CR 704.5a) for a kicker or a buyback.
+	// #6151: a commander tax paid in life (CR 903.8, Liesa) is owed by
+	// every move from the command zone, under the same policy: never at
+	// the cost of the seat's last life.
+	if owed := e.g.CommanderTaxLifeForEffect(e.seat, card, from); owed > 0 {
+		lifeReserved += owed
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
+			return
+		}
+	}
 	if owed := optionalLife(optional, chosen); owed > 0 {
 		lifeReserved += owed
 		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, lifeReserved) || e.p.Life <= lifeReserved {
@@ -1047,11 +1131,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #1655: under THIS announcement's optional costs — a kicked
 		// Inscription of Ruin may take every bullet, an unkicked one
 		// exactly one, and each is its own move.
-		modeSets = e.legalModeSets(castSrc, modeSpec, game.ModeCountQuery{
+		q := game.ModeCountQuery{
 			Chooser:       e.seat,
 			OracleID:      game.CatalogKey(card),
 			OptionalCosts: chosen,
-		}, game.ModeAbility{})
+		}
+		if chooseX {
+			q.X = 1
+		}
+		modeSets = e.legalModeSets(castSrc, modeSpec, q, game.ModeAbility{})
 		if extra >= 0 {
 			kept := modeSets[:0:0]
 			for _, ms := range modeSets {
@@ -1078,6 +1166,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// a mandatory one would. The wire lists are flat and the engine
 	// walks them in the same order.
 	discards, sacrifice, discardLand, ok := costPaymentDemands(addCost, optional, chosen)
+	// #6145: a "discard X cards" clause beside a fixed discard (an
+	// optional cost's, escalate's) would need the two pools walked in the
+	// engine's order. No printed card has both, so it is not enumerated.
+	if addCost != nil && addCost.DiscardX && (discards > 0 || (modeSpec != nil && extra > 0 && modeSpec.Escalate.DiscardCards > 0)) {
+		return
+	}
 	// #5457: a land-only discard clause beside another discard (a second
 	// clause, escalate's) needs two pools walked in the engine's order.
 	// No printed card has both, so it is not enumerated.
@@ -1124,6 +1218,15 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 		altCostSets = [][]uuid.UUID{pay}
+	} else if offer.CardCountFromX() {
+		// #6122: "Exile X cards from your graveyard" (Summons of Saruman's
+		// flashback) — the cards ARE the X announcement, so each payment
+		// carries its own X: the cheapest X cards, X from the floor up to
+		// a small ceiling.
+		altCostSets, altXs = e.exileXAltPayments(e.cheapestFuelFirst(g.AltCostCandidatesLocked(e.seat, card.InstanceID, offer)), xFloor)
+		if len(altCostSets) == 0 {
+			return
+		}
 	} else if want := offer.CardPaymentCount(); want > 0 {
 		// #1013: the candidates come back in ZONE order, which is an
 		// arbitrary answer to "which three cards does this Uro eat".
@@ -1349,7 +1452,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, conspireIDs, blightIDs, revealIDs, beholdType, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, altOpponent, teamIDs, conspireIDs, blightIDs, revealIDs, beholdType, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1408,6 +1511,7 @@ modeLoop:
 				AltTappedPower:        altPower,
 				AltBlitz:              offer != nil && offer.Blitz,
 				AltFlashback:          offer != nil && offer.Key == "flashback",
+				AltDash:               offer != nil && offer.Dash,
 				GrantReduction:        grantLess,
 				GrantIncrease:         grantMore,
 				GrantIncreaseMana:     grantMoreMana,
@@ -1537,8 +1641,9 @@ modeLoop:
 					AltTappedPower:        altPower,
 					AltBlitz:              offer != nil && offer.Blitz,
 					AltFlashback:          offer != nil && offer.Key == "flashback",
+					AltDash:               offer != nil && offer.Dash,
 					GrantReduction:        grantLess,
-					GrantIncrease:         grantMore,
+					GrantIncrease:         grantMore + e.g.TargetSurchargeFor(perm, e.seat, targets),
 					GrantIncreaseMana:     grantMoreMana,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
@@ -1623,8 +1728,9 @@ modeLoop:
 							AltTappedPower:        altPower,
 							AltBlitz:              offer != nil && offer.Blitz,
 							AltFlashback:          offer != nil && offer.Key == "flashback",
+							AltDash:               offer != nil && offer.Dash,
 							GrantReduction:        grantLess,
-							GrantIncrease:         grantMore,
+							GrantIncrease:         grantMore + e.g.TargetSurchargeFor(perm, e.seat, targets),
 							GrantIncreaseMana:     grantMoreMana,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
@@ -1696,7 +1802,7 @@ modeLoop:
 					// the graveyard cards an "exile X cards" cost names
 					// (#1948), which number exactly the announced X.
 					var xv *MoveValue
-					exileX := addCost != nil && addCost.ExileCards != nil && addCost.ExileCards.CountFromX
+					exileX := addCost != nil && ((addCost.ExileCards != nil && addCost.ExileCards.CountFromX) || addCost.DiscardX)
 					if (modeCost.XSlots > 0 || (addCost != nil && (addCost.PayLifeX || addCost.BlightX))) &&
 						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 && !exileX {
 						xv = openX(xFloor, payX)
@@ -1879,6 +1985,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
+	altOpponent uuid.UUID,
 	teamIDs, conspireIDs, blightIDs, revealIDs []uuid.UUID,
 	beholdType string,
 	exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
@@ -1894,6 +2001,17 @@ func (e *enumerator) castMoveEmitter(
 	ownAnswers := game.CardPurposeOfPtr(&card).Answers
 	permType := e.permType
 	exilePool := exileCardIDs
+	var discardXPool []uuid.UUID
+	if paying != nil && paying.DiscardX {
+		discardXPool = g.AdditionalDiscardOptionsForEffect(e.seat, card.InstanceID, paying)
+	}
+	// #6122: "return X …" — the permanents a move at X returns, in the
+	// payment order the view ships.
+	var returnXPool []uuid.UUID
+	if paying != nil && game.ReturnToHandCountFromX(paying.ReturnToHand) {
+		returnXPool = g.SacrificePaymentOrderForEffect(
+			g.ReturnToHandOptionsForEffect(e.seat, card.InstanceID, paying.ReturnToHand), card.InstanceID)
+	}
 	// #5390: the offer's counter removal, ONE payment by the activation's
 	// own rule (counterPaymentChoices: drain the creatures holding the
 	// most first), from the walk the engine validates against. An offer
@@ -1907,6 +2025,10 @@ func (e *enumerator) castMoveEmitter(
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
+		// #6122: and a "return X …" cost names exactly X permanents.
+		returnIDs := append(append([]uuid.UUID(nil), returnIDs...), returnPermanentsForX(paying, returnXPool, setX)...)
+		// #6145: a "discard X cards" cost names exactly the announced X.
+		discards = append(discards, discardCardsForX(paying, discardXPool, setX)...)
 		// #5240: or the cards a collect evidence X sized by these targets
 		// exiles. The target loop has already dropped a set the graveyard
 		// cannot pay for.
@@ -2026,7 +2148,7 @@ func (e *enumerator) castMoveEmitter(
 			// cast always carries a Cost.
 			// #5390: and the counters the offer removes, priced against
 			// the creatures they come off as an activation's are.
-			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen), 0), phyLife),
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying)+optionalLife(optional, chosen)+g.CommanderTaxLifeForEffect(e.seat, card, from), 0), phyLife),
 				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
@@ -2042,36 +2164,38 @@ func (e *enumerator) castMoveEmitter(
 			IdleHint:   idle,
 			Value:      xv,
 			Params: mustJSON(castParams{
-				InstanceID:        card.InstanceID.String(),
-				FromZone:          from,
-				AlternativeCost:   offerKey(offer),
-				AltCostIDs:        idStrings(altPaid),
-				CounterSourceIDs:  counters.wireIDs(),
-				CounterCounts:     counters.wireCounts(),
-				CounterKind:       counters.wireKind(),
-				CounterKinds:      counters.wireKinds(),
-				PhyrexianLife:     phyLife,
-				Targets:           wireTargets(targets),
-				Modes:             modes,
-				XValue:            setX,
-				DiscardIDs:        idStrings(discards),
-				SacrificeIDs:      idStrings(sacs),
-				OptionalCosts:     chosen,
-				CostBranch:        branch,
-				TeamworkIDs:       idStrings(teamIDs),
-				ConspireIDs:       idStrings(conspireIDs),
-				BlightIDs:         idStrings(blightIDs),
-				RevealIDs:         idStrings(revealIDs),
-				BeholdType:        beholdType,
-				ExilePermanentIDs: idStrings(exileIDs),
-				ReturnIDs:         idStrings(returnIDs),
-				ExileFromHandIDs:  idStrings(handExile),
-				ExileIDs:          idStrings(exileCardIDs),
-				DelveIDs:          idStrings(delve),
-				Distribution:      distributionWire(dist),
-				GiftOpponent:      giftWire(giftTo),
-				Strict:            true,
-				AutoTap:           true,
+				InstanceID:         card.InstanceID.String(),
+				FromZone:           from,
+				AlternativeCost:    offerKey(offer),
+				AltCostIDs:         idStrings(altPaid),
+				CounterSourceIDs:   counters.wireIDs(),
+				CounterCounts:      counters.wireCounts(),
+				CounterKind:        counters.wireKind(),
+				CounterKinds:       counters.wireKinds(),
+				PhyrexianLife:      phyLife,
+				Targets:            wireTargets(targets),
+				Modes:              modes,
+				XValue:             setX,
+				DiscardIDs:         idStrings(discards),
+				SacrificeIDs:       idStrings(sacs),
+				OptionalCosts:      chosen,
+				CostBranch:         branch,
+				TeamworkIDs:        idStrings(teamIDs),
+				ConspireIDs:        idStrings(conspireIDs),
+				BlightIDs:          idStrings(blightIDs),
+				RevealIDs:          idStrings(revealIDs),
+				BeholdType:         beholdType,
+				ChosenCreatureType: castCreatureTypeWire(card),
+				ExilePermanentIDs:  idStrings(exileIDs),
+				ReturnIDs:          idStrings(returnIDs),
+				ExileFromHandIDs:   idStrings(handExile),
+				ExileIDs:           idStrings(exileCardIDs),
+				DelveIDs:           idStrings(delve),
+				Distribution:       distributionWire(dist),
+				GiftOpponent:       giftWire(giftTo),
+				AltCostOpponent:    giftWire(altOpponent),
+				Strict:             true,
+				AutoTap:            true,
 				// ADR 0034: `card` has already had SetFace applied by
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,
@@ -2687,7 +2811,15 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 		}
 		out = next
 	}
-	return out
+	// #6236, CR 601.2c: an announcement an opponent's Flagbearer rule
+	// refuses is no move (Coalition Flag, Standard Bearer).
+	kept := out[:0:0]
+	for _, ts := range out {
+		if e.g.FlagbearerTargetsAllowedForEffect(src, steps, ts) {
+			kept = append(kept, ts)
+		}
+	}
+	return kept
 }
 
 // stepsCountedByX lists the indexes of the announcement's steps whose

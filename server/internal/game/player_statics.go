@@ -541,6 +541,9 @@ func derivedPlayerToken(c *Card, tok string) string {
 	if tok == ProtectionFromTheChosenCardType {
 		return ProtectionFromCardType(c.ChosenOption)
 	}
+	if tok == ProtectionFromTheChosenCardName {
+		return ProtectionFromCardName(c.ChosenName)
+	}
 	return tok
 }
 

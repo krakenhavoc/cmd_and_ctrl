@@ -179,6 +179,10 @@ type DiscardPrompt struct {
 	// "discards half the cards in their hand"). N is ignored. Plain data,
 	// so a run over several seats gives each its own count.
 	HalfHand bool
+	// HalfHandUp is HalfHand rounded UP (Fraying Omnipotence's "discards
+	// half the cards in their hand ... Round up each time"). N is ignored.
+	// Plain data, like HalfHand.
+	HalfHandUp bool
 	// ThirdHandUp makes the count a third of the cards in the discarding
 	// player's hand, rounded up, read as that player is asked (Pox's
 	// "discards a third of the cards in their hand"). N is ignored. Plain
@@ -311,6 +315,10 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 		// "half the cards in their hand, rounded down" (Pox Plague), read as
 		// this seat is asked, so a run asks each seat for its own count.
 		n = player.Hand.Size() / 2
+	}
+	if p.HalfHandUp {
+		// "half the cards in their hand, round up" (Fraying Omnipotence).
+		n = (player.Hand.Size() + 1) / 2
 	}
 	if p.ThirdHandUp {
 		// "a third of the cards in their hand, round up" (Pox).
@@ -2470,6 +2478,28 @@ type SearchLibrarySpec struct {
 	// with ToTop is not supported.
 	AlsoGraveyard bool
 
+	// BothZones makes an AlsoGraveyard search "search your library AND
+	// graveyard" (#6156, Ecological Appreciation): both zones are named, so
+	// both are searched and no zone question is asked. The library is
+	// always searched (CR 701.23a), so EventSearchLibrary fires and an
+	// Opposition Agent sees it whatever is taken, and a take wholly out of
+	// the graveyard is still a library search. Ignored without
+	// AlsoGraveyard.
+	BothZones bool
+
+	// HoldFound is "search ... and reveal them" where the found cards stay
+	// where they were found until the rest of the effect sends them
+	// somewhere (#6156: Ecological Appreciation's "an opponent chooses two
+	// of those cards", Verdant Mastery's split between battlefields and
+	// hand). With Dest ZoneLibrary and ToTop unset, the found cards (in the
+	// library, or with AlsoGraveyard in the graveyard) are revealed, are
+	// not moved, and are handed to ThenTail as TailOutcome.IDs in the order
+	// taken; without it that "leave it where it is" search hands ThenTail
+	// nothing. CR 701.20a: a card revealed by an effect stays revealed for
+	// as long as the parts of the effect it is relevant to take. Ignored
+	// for any other Dest.
+	HoldFound bool
+
 	// AlsoGraveyardAndHand is "search <that player's> graveyard, hand,
 	// and library" (#3988, CR 701.23; Kotose, the Silent Spider, and the
 	// Surgical Extraction family): the library owner's graveyard and hand
@@ -2586,7 +2616,14 @@ func (spec SearchLibrarySpec) searchesHand() bool {
 // and/or library" (AlsoHand). "Graveyard, hand, and library" names all
 // three, so it asks nothing.
 func (spec SearchLibrarySpec) asksZones() bool {
-	return !spec.AlsoGraveyardAndHand && (spec.AlsoGraveyard || spec.AlsoHand)
+	return !spec.AlsoGraveyardAndHand && !spec.searchesLibraryAndGraveyard() && (spec.AlsoGraveyard || spec.AlsoHand)
+}
+
+// searchesLibraryAndGraveyard reports "search your library and graveyard"
+// (BothZones, #6156): both zones named, none asked, the library always
+// searched.
+func (spec SearchLibrarySpec) searchesLibraryAndGraveyard() bool {
+	return spec.BothZones && spec.AlsoGraveyard && !spec.AlsoHand
 }
 
 // otherZoneName is the zone an and/or search offers beside the library,
@@ -2610,6 +2647,11 @@ func (spec SearchLibrarySpec) otherZoneName() string {
 func (spec SearchLibrarySpec) initialZones() searchZones {
 	if spec.asksZones() {
 		return searchZonesAsking
+	}
+	if spec.searchesLibraryAndGraveyard() {
+		// #6156: both zones are named, so the library is searched, as if
+		// it had been chosen.
+		return searchZonesLibrary
 	}
 	return searchZonesUnasked
 }
@@ -2772,8 +2814,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	barred := g.TurnTally.LibrarySearchesBarred
 	if barred && !spec.searchesGraveyard() && !spec.searchesHand() {
 		if spec.Shuffle {
-			p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-			clearKnownInZoneLocked(p.Library)
+			g.shuffleLibraryLocked(p, ShuffleByEffect)
 		}
 		return g.runSearchThenLocked(spec, nil)
 	}
@@ -2870,7 +2911,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		spec.Limit = len(matches)
 	}
 	if !spec.asksZones() && spec.floorZones(libMatches, len(gyMatches)+len(handMatches)) == len(matches) &&
-		len(matches) <= spec.Limit && spec.setAllows(matched) {
+		len(matches) <= spec.Limit && spec.setAllows(matched) &&
+		// #6216: a library holding a card its owner may cast while
+		// searching it is always asked, so the search is open for the
+		// cast (search_cast.go).
+		!(spec.libraryOwnerID() == spec.Player && g.libraryHoldsSearchCastLocked(spec.Player, p)) {
 		// No decision to make — the rules force the searcher to take
 		// every match (CR 701.23d: an unconditional "a card" against a
 		// library of exactly that many). A search for a stated quality
@@ -3002,6 +3047,15 @@ func (g *Game) markSearchCandidatesKnownLocked(searcher uuid.UUID, p *Player, ma
 	for _, id := range matches {
 		known[id] = true
 	}
+	// #6216: and the cards of their own library they may cast while
+	// searching it (Panglacial Wurm), which the prompt offers too.
+	if p.ID == searcher {
+		for _, c := range g.searchableLibraryCards(searcher, p.Library.Cards) {
+			if castsWhileSearchingLibrary(c) {
+				known[c.InstanceID] = true
+			}
+		}
+	}
 	for i := range p.Library.Cards {
 		if known[p.Library.Cards[i].InstanceID] {
 			p.Library.Cards[i].AddKnower(searcher)
@@ -3082,7 +3136,7 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		// wholly out of the graveyard, or nothing, is a graveyard-only
 		// search, and a take wholly out of the hand is a hand-only one.
 		// Any library card taken is a library search.
-		fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand
+		fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand && !spec.searchesLibraryAndGraveyard()
 		spec.libraryUntouched = fromGraveyard || (spec.AlsoHand && len(ids) > 0)
 		for _, id := range ids {
 			if !(fromGraveyard && p.Graveyard.Contains(id)) && !(spec.AlsoHand && p.Hand.Contains(id)) {
@@ -3090,6 +3144,11 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 				break
 			}
 		}
+	}
+	if spec.searchesLibraryAndGraveyard() && g.TurnTally.LibrarySearchesBarred {
+		// #6156: "library and graveyard" while libraries can't be
+		// searched: only the graveyard was looked through.
+		spec.libraryUntouched = true
 	}
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
@@ -3104,7 +3163,9 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		if spec.Reveal {
 			g.revealLibraryCardsLocked(spec, p, ids)
 		}
-		if spec.ToTop {
+		if spec.ToTop || spec.HoldFound {
+			// #6156: HoldFound leaves the found cards where they were
+			// and names them to the rest of the effect.
 			return g.finishSearchLocked(spec, p, ids)
 		}
 		return g.finishSearchLocked(spec, p, nil)
@@ -3383,11 +3444,10 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		Amount: len(found),
 	})
 	if spec.Shuffle {
-		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
 		// The shuffle is what un-knows the library again: whatever
 		// the searcher saw while looking, they no longer know where
-		// any of it is.
-		clearKnownInZoneLocked(p.Library)
+		// any of it is. #6215: and it is announced.
+		g.shuffleLibraryLocked(p, ShuffleByEffect)
 	}
 	// "... then shuffle and put that card on top." AFTER the shuffle,
 	// which is the whole clause — the tutored card is a known
@@ -3787,8 +3847,7 @@ func (g *Game) ShuffleLibraryForEffect(playerID uuid.UUID) error {
 	if p == nil || p.Library == nil {
 		return nil
 	}
-	p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-	clearKnownInZoneLocked(p.Library)
+	g.shuffleLibraryLocked(p, ShuffleByEffect)
 	// #1335: a plain shuffle is always the player's own library.
 	g.EmitEvent(Event{Kind: EventSearchLibrary, Actor: playerID, Target: playerID, Label: "shuffle"})
 	return nil
@@ -3925,11 +3984,40 @@ func (g *Game) ReturnFromExileWithCountersKeyedForEffect(cardID, controller uuid
 	return err
 }
 
-// returnFromExileToBattlefieldLocked is the body of both exile-return
-// doors.
+// ReturnFromExileFaceDownForEffect is "put [the cards exiled with this]
+// onto the battlefield FACE DOWN under your control. They're 2/2 Cyberman
+// artifact creatures." — Death in Heaven's chapter III (#6092). It is
+// ReturnFromGraveyardFaceDownForEffect's exile twin: the CR 614 entry
+// pipeline with the face-down state riding the entry EVENT, so the one
+// finisher lands a CR 708.2 object whose controller is its only knower,
+// and no ETB trigger or "as enters" hook of the card fires (CR 708.2a).
+// The card is a new object (CR 400.7), as every exile return is.
+//
+// The kind is FaceDownTurned (an effect put it here, CR 708.7). `listed`
+// is the body the effect lists (CR 708.2); nil is the default nameless
+// 2/2. `controller` uuid.Nil is "under its owner's control". Returns the
+// entering permanent's NEW ID, uuid.Nil when nothing entered or the entry
+// paused, and ErrCardNotFound when the card is not in exile any more.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileFaceDownForEffect(cardID, controller uuid.UUID, tapped bool, listed *FaceDownListing) (uuid.UUID, error) {
+	return g.returnFromExileEntryLocked(cardID, controller, tapped, nil, FaceDownTurned, listed, entryThen{})
+}
+
+// returnFromExileToBattlefieldLocked is the body of the face-up
+// exile-return doors.
 //
 // Caller must hold g.mu.
 func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then entryThen) (uuid.UUID, error) {
+	return g.returnFromExileEntryLocked(cardID, controller, tapped, counters, FaceDownNone, nil, then)
+}
+
+// returnFromExileEntryLocked is the body of every exile-to-battlefield
+// return, with the face-down state the entry lands in (FaceDownNone for
+// every face-up return).
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromExileEntryLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, faceDown FaceDownKind, listed *FaceDownListing, then entryThen) (uuid.UUID, error) {
 	// CR 712.21c (ADR 0145): a return that finds the card a melded
 	// permanent left exile as finds both its cards, and returns each.
 	// The other card goes first and on its own; the card the effect
@@ -3991,7 +4079,11 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 		NewZone:            ZoneBattlefield,
 		EntersTapped:       tapped,
 		EntersWithCounters: copyCounterMap(counters),
-		entryResumable:     true,
+		// #6092: a face-down return rides the event the way a morph's
+		// entry and a graveyard face-down return do.
+		FaceDown:       faceDown,
+		FaceDownListed: listed,
+		entryResumable: true,
 		// CR 400.7: the returning permanent is a NEW OBJECT. The
 		// finisher mints the ID and strips the old object's
 		// battlefield state, on the inline path and the resumed one

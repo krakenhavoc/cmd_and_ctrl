@@ -55,7 +55,7 @@ func jmpB7InniazOrder(g *game.Game, controller uuid.UUID) (players, rights []uui
 		return nil, nil
 	}
 	for k := 0; k < n; k++ {
-		p := g.Seats[(at+k)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(at, k)]
 		if p == nil || p.Eliminated {
 			continue
 		}

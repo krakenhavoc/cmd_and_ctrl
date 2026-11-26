@@ -23,12 +23,7 @@ func init() {
 		Targets:      effects.TargetCreature("target creature"),
 		Purpose:      game.Purpose{Answers: game.AnswerRestrict},
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			id, ok := effects.B16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			mods := append([]game.Mod{game.LoseAllAbilitiesMod()}, game.SetBasePTMods(0, 1)...)
-			return effects.UntilEndOfTurn(ctx, id, nil, "Ovinize — loses all abilities, base power and toughness 0/1", mods...)
+			return effects.LosesAbilitiesAndBasePTUntilEOT(ctx, "Ovinize", 0, 1)
 		},
 	})
 }

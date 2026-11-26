@@ -510,6 +510,15 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaValueFromSource {
 			out.ManaValueFromSource = true
 		}
+		// #6270 (Back from the Brink): and "pay its mana cost" off the
+		// exiled card; dropped, the copy would be free.
+		if c.ManaFromExiledCard {
+			out.ManaFromExiledCard = true
+		}
+		// Soul Foundry: and "X is the mana value of the exiled card".
+		if c.ManaValueOfExiledWith {
+			out.ManaValueOfExiledWith = true
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {
@@ -929,6 +938,25 @@ func DiscardNDifferentNames(n int, label string, match ...func(game.Card) bool) 
 	return game.AbilityCost{DiscardCards: dc}
 }
 
+// DiscardNWithTheSameName is "Discard N cards with the same name" —
+// Sphinx of the Chimes' "Discard two nonland cards with the same name:
+// Draw four cards." (#6264):
+//
+//	DiscardNWithTheSameName(2, "two nonland cards with the same name", func(c game.Card) bool { return !c.IsLand() })
+//
+// The set rule is the engine's (game.DiscardCost.SameName, CR 201.2a), so
+// the activation refuses two cards with different names, the enumerator
+// pays N cards sharing a name, and the client's picker greys a card that
+// shares no name with those already picked. Register allows it on an
+// activated ability's fixed count of two or more only.
+func DiscardNWithTheSameName(n int, label string, match ...func(game.Card) bool) game.AbilityCost {
+	dc := &game.DiscardCost{N: n, Label: label, SameName: true}
+	if len(match) > 0 {
+		dc.Match = match[0]
+	}
+	return game.AbilityCost{DiscardCards: dc}
+}
+
 // DiscardX is "Discard X cards" as a cost (#2527, ADR 0113's
 // 2026-10-07 amendment) — Gix, Yawgmoth Praetor's
 //
@@ -1140,6 +1168,23 @@ func ExileASpellYouControl() game.AbilityCost {
 // (game.ExileCost).
 func ExileFromGraveyard(n int, label string, match func(game.Card) bool) game.AbilityCost {
 	return game.AbilityCost{ExileCards: ExileCardsFromGraveyard(n, label, match)}
+}
+
+// PutFromGraveyardOnLibraryBottom is "Put N <kind> cards from your
+// graveyard on the bottom of your library" as a CR 602 activated
+// ability's cost (#6121): Battlefield Scrounger's threshold ability is
+//
+//	PutFromGraveyardOnLibraryBottom(3, "three cards", nil)
+//
+// The activator names the cards at announce (CR 602.2b), on `exile_ids`
+// like every graveyard pick, in the order they go to the bottom (CR
+// 401.4). It is the graveyard exile's pick with a different destination
+// (game.ExileCost.ToLibraryBottom): nothing is exiled, and a graveyard
+// smaller than N can't pay it (CR 118.3).
+func PutFromGraveyardOnLibraryBottom(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	ec := ExileCardsFromGraveyard(n, label, match)
+	ec.ToLibraryBottom = true
+	return game.AbilityCost{ExileCards: ec}
 }
 
 // ExileAnyNumberFromGraveyardWithSymbols is "Exile any number of <kind>

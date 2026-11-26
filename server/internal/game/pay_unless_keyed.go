@@ -148,6 +148,12 @@ type PayUnlessAnswer struct {
 	// Number is the number the prompt carried (PendingChoice.PickNumber):
 	// the X a MayPayX settled before it asked whether to pay (#4289).
 	Number int
+	// ManaSpent is the mana a paid mana payment spent, handed to the
+	// pay branch (#6188: Balduvian Fallen counts the {B} and {R} its
+	// cumulative upkeep took). Empty for a decline and for a payment
+	// that is not mana. Not carried on the prompt: it exists only once
+	// the payment has been made.
+	ManaSpent []ManaToken
 }
 
 // PayUnlessFunc is a registered branch. It runs with g.mu held, may
@@ -297,6 +303,12 @@ type PayUnlessKeyedPrompt struct {
 	Guards uuid.UUID
 	// LifeCost is mandatory life paid with the cost in one payment.
 	LifeCost int
+
+	// SpendPurpose is the ManaSpendPurpose the mana payment is made
+	// under (#6189): SpendPurposeCumulativeUpkeep for a cumulative
+	// upkeep, so mana restricted to one may pay it. The zero value is
+	// every other pay-unless, which restricted mana cannot pay (#352).
+	SpendPurpose ManaSpendPurpose
 	// Asked is the asking stack item as data (NewAskedItem), handed to the
 	// branches as PayUnlessAnswer.Item. Nil when they read none.
 	Asked *AskedItem
@@ -392,6 +404,7 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		Reason:          p.Question,
 		PayCost:         p.Cost,
 		LifeCost:        p.LifeCost,
+		PaySpendPurpose: p.SpendPurpose,
 		OwedInStep:      owed,
 		GuardsStackItem: p.Guards,
 		PayActionClause: copyPayAction(p.Action),
@@ -476,6 +489,12 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 	}
 	if known && e.pay != nil {
 		f.onPay = keyedPayUnlessBranch(c.PickThen, r, true, cause)
+		// #6188: the same branch handed what a mana payment spent.
+		f.onPaySpent = func(spent []ManaToken) func(g *Game) error {
+			rs := r
+			rs.ManaSpent = append([]ManaToken(nil), spent...)
+			return keyedPayUnlessBranch(c.PickThen, rs, true, cause)
+		}
 	}
 	return f
 }

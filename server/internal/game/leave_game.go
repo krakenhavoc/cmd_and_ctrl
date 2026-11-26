@@ -159,7 +159,7 @@ func (g *Game) handOnPlanarControllerLocked(leaving uuid.UUID) {
 		return
 	}
 	for k := 1; k < n; k++ {
-		if p := g.Seats[(from+k)%n]; p != nil && !p.Eliminated {
+		if p := g.Seats[g.SeatInTurnOrderForEffect(from, k)]; p != nil && !p.Eliminated {
 			g.setPlanarControllerLocked(p.ID)
 			return
 		}
@@ -307,7 +307,7 @@ func (g *Game) exileStillControlledLocked(playerID uuid.UUID) {
 		}
 	}
 	for _, id := range stuck {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, false, exileLink{}, exileCounterStamp{}, leaveMark{cause: LeaveCauseOther}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "leaving the game: exile of a still-controlled permanent failed: " + err.Error(),
@@ -351,7 +351,7 @@ func (g *Game) exileGhostControlledLocked() int {
 		ghosts = append(ghosts, c.InstanceID)
 	}
 	for _, id := range ghosts {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, false, exileLink{}, exileCounterStamp{}, leaveMark{cause: LeaveCauseOther}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "CR 800.4c: exile of a permanent left to a departed controller failed: " + err.Error(),
@@ -1082,7 +1082,7 @@ func (g *Game) choiceInheritorLocked(c *PendingChoice, controller uuid.UUID) uui
 	}
 	fallback := uuid.Nil
 	for offset := 1; offset <= n; offset++ {
-		p := g.Seats[(seat+offset)%n]
+		p := g.Seats[g.SeatInTurnOrderForEffect(seat, offset)]
 		if p == nil || p.Eliminated || p.ID == c.Chooser {
 			continue
 		}

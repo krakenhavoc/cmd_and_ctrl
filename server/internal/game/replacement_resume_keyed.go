@@ -446,6 +446,7 @@ var replacementEventFields = map[string]replacementEventField{
 	// A draw.
 	"DrawPlayer":  repFieldCarried,
 	"DrawCount":   repFieldCarried,
+	"DrawCycled":  repFieldCarried,
 	"drawPending": repFieldCarried,
 	// The synthetic whole-instruction event (draw_instruction.go) is asked
 	// read-only and never pauses, so no frame holds it: if one ever did,
@@ -475,6 +476,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"PutOnLibraryBottom":        repFieldCarried,
 	"ExiledWith":                repFieldCarried,
 	"ExileCounter":              repFieldCarried,
+	"ExileCounterCount":         repFieldCarried,
 	"Destruction":               repFieldCarried,
 	"CantBeRegenerated":         repFieldCarried,
 	"StateBasedDestruction":     repFieldCarried,
@@ -482,6 +484,8 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
+	"TributeOpponent":           repFieldCarried,
+	"EntersTributePaid":         repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
 	"EntersWithHasteTillEOT":    repFieldCarried,
 	"lookAhead":                 repFieldCache,
@@ -497,6 +501,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"auraHostFixed":             repFieldCarried,
 	"auraHostSettled":           repFieldCarried,
 	"auraHostCreaturesOnly":     repFieldCarried,
+	"auraHostYouControlOnly":    repFieldCarried,
 	"entersAsAura":              repFieldCarried,
 	"entersAs":                  repFieldCarried,
 	"exchangeTextWith":          repFieldCarried,
@@ -794,6 +799,7 @@ type replacementEventSnapshot struct {
 
 	DrawPlayer     *uuid.UUID            `json:"drawPlayer,omitempty"`
 	DrawCount      int                   `json:"drawCount,omitempty"`
+	DrawCycled     *uuid.UUID            `json:"drawCycled,omitempty"`
 	DrawPending    []pendingDrawSnapshot `json:"drawPending,omitempty"`
 	DrawInstead    *insteadRunSnapshot   `json:"drawInstead,omitempty"`
 	DrawTail       int                   `json:"drawTail,omitempty"`
@@ -812,6 +818,7 @@ type replacementEventSnapshot struct {
 	PutOnLibraryBottom        bool                `json:"putOnLibraryBottom,omitempty"`
 	ExiledWith                *PermissionCardRef  `json:"exiledWith,omitempty"`
 	ExileCounter              string              `json:"exileCounter,omitempty"`
+	ExileCounterCount         int                 `json:"exileCounterCount,omitempty"`
 	Destruction               bool                `json:"destruction,omitempty"`
 	CantBeRegenerated         bool                `json:"cantBeRegenerated,omitempty"`
 	StateBasedDestruction     bool                `json:"stateBasedDestruction,omitempty"`
@@ -819,6 +826,8 @@ type replacementEventSnapshot struct {
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
+	TributeOpponent           *uuid.UUID          `json:"tributeOpponent,omitempty"`
+	EntersTributePaid         bool                `json:"entersTributePaid,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
 	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
@@ -833,6 +842,7 @@ type replacementEventSnapshot struct {
 	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
 	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
 	AuraHostCreaturesOnly     bool                `json:"auraHostCreaturesOnly,omitempty"`
+	AuraHostYouControlOnly    bool                `json:"auraHostYouControlOnly,omitempty"`
 	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
 	EntersAs                  *EntersAs           `json:"entersAs,omitempty"`
 	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
@@ -1278,6 +1288,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		MustSettleNow:             ev.mustSettleNow,
 		DrawPlayer:                uuidPtrOrNil(ev.DrawPlayer),
 		DrawCount:                 ev.DrawCount,
+		DrawCycled:                uuidPtrOrNil(ev.DrawCycled),
 		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source, 0),
 		DrawTail:                  ev.drawTail,
 		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source, ev.keywordInstead.n),
@@ -1292,6 +1303,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		PutOnLibraryBottom:        ev.PutOnLibraryBottom,
 		ExiledWith:                permissionRefPtr(ev.ExiledWith),
 		ExileCounter:              ev.ExileCounter,
+		ExileCounterCount:         ev.ExileCounterCount,
 		Destruction:               ev.Destruction,
 		CantBeRegenerated:         ev.CantBeRegenerated,
 		StateBasedDestruction:     ev.StateBasedDestruction,
@@ -1299,6 +1311,8 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
+		TributeOpponent:           uuidPtrOrNil(ev.TributeOpponent),
+		EntersTributePaid:         ev.EntersTributePaid,
 		EntersWithHaste:           ev.EntersWithHaste,
 		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
 		EntryRefused:              ev.entryRefused,
@@ -1311,6 +1325,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		AuraHostFixed:             ev.auraHostFixed,
 		AuraHostSettled:           ev.auraHostSettled,
 		AuraHostCreaturesOnly:     ev.auraHostCreaturesOnly,
+		AuraHostYouControlOnly:    ev.auraHostYouControlOnly,
 		EntersAsAura:              ev.entersAsAura,
 		EntersAs:                  copyEntersAs(ev.entersAs),
 		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
@@ -1462,6 +1477,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		mustSettleNow:             s.MustSettleNow,
 		DrawPlayer:                uuidOrNil(s.DrawPlayer),
 		DrawCount:                 s.DrawCount,
+		DrawCycled:                uuidOrNil(s.DrawCycled),
 		drawTail:                  s.DrawTail,
 		KeywordAction:             s.KeywordAction,
 		KeywordActionCount:        s.KeywordActionCount,
@@ -1474,6 +1490,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		PutOnLibraryBottom:        s.PutOnLibraryBottom,
 		ExiledWith:                permissionRefValue(s.ExiledWith),
 		ExileCounter:              s.ExileCounter,
+		ExileCounterCount:         s.ExileCounterCount,
 		Destruction:               s.Destruction,
 		CantBeRegenerated:         s.CantBeRegenerated,
 		StateBasedDestruction:     s.StateBasedDestruction,
@@ -1481,6 +1498,8 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
+		TributeOpponent:           uuidOrNil(s.TributeOpponent),
+		EntersTributePaid:         s.EntersTributePaid,
 		EntersWithHaste:           s.EntersWithHaste,
 		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
 		entryRefused:              s.EntryRefused,
@@ -1493,6 +1512,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		auraHostFixed:             s.AuraHostFixed,
 		auraHostSettled:           s.AuraHostSettled,
 		auraHostCreaturesOnly:     s.AuraHostCreaturesOnly,
+		auraHostYouControlOnly:    s.AuraHostYouControlOnly,
 		entersAsAura:              s.EntersAsAura,
 		entersAs:                  copyEntersAs(s.EntersAs),
 		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),

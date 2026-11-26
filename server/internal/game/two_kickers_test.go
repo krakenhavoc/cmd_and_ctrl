@@ -61,7 +61,7 @@ func TestTwoKickersEachAddTheirOwnMana(t *testing.T) {
 		{[]int{1}, 4, 2},
 		{[]int{0, 1}, 4, 3},
 	} {
-		got, err := AdditionalCostMana(base, nil, twoKickers(), tc.claim)
+		got, err := AdditionalCostMana(base, nil, twoKickers(), tc.claim, nil)
 		if err != nil {
 			t.Fatalf("AdditionalCostMana(%v): %v", tc.claim, err)
 		}

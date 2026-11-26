@@ -64,7 +64,28 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 		// before the payment is named. Every slot asks its mana_pick.
 		return nil
 	}
+	if TapOthersUntaps(ab.TapOthers) {
+		// #6208: WHICH colours the slot offers is decided by which
+		// permanent the activator untaps — Benthic Explorers' "one mana
+		// of any type that land could produce" is {U} off an Island and
+		// {R} off a Mountain. A list published before the payment is
+		// named would be one candidate's, and the client would pick a
+		// colour the land it chose cannot make. The slot asks its
+		// mana_pick instead.
+		return nil
+	}
+	if ab.DemandsX() {
+		// #6125: how many slots there are is the X the activation
+		// announces (Wizard's Rockets), so, as for the tap-any-number
+		// form, no list is published and every slot asks its mana_pick
+		// unless the colours are named with the X.
+		return nil
+	}
 	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
+	if err == nil {
+		// #6210: "mana of a color of your choice instead" offers five.
+		slots = g.widenChosenColorSlotsLocked(playerID, cardID, slots, ab.TapCost)
+	}
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return nil
 	}
@@ -138,7 +159,11 @@ func ManaAbilityAddsDifferentColors(g *Game, playerID, cardID uuid.UUID, ab Mana
 // before the Vessel taps.
 //
 // Caller must hold g.mu.
-func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbilityShape, colors []string) error {
+//
+// #6125: `x` is the X the activation announces. An X ability's slots are
+// counted at that X (Wizard's Rockets at X = 3 picks three colours), not
+// at the "could produce" stand-in.
+func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbilityShape, colors []string, x int) error {
 	if len(colors) == 0 {
 		return nil
 	}
@@ -146,7 +171,15 @@ func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbil
 		// No list is published for it (ManaAbilityColorOptions).
 		return ErrIllegalManaColor
 	}
-	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
+	payment := g.maxManaPaymentLocked(playerID, cardID, &ab)
+	if ab.DemandsX() {
+		payment.XValue = x
+	}
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, payment)
+	if err == nil {
+		// #6210: "mana of a color of your choice instead" offers five.
+		slots = g.widenChosenColorSlotsLocked(playerID, cardID, slots, ab.TapCost)
+	}
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return ErrIllegalManaColor
 	}

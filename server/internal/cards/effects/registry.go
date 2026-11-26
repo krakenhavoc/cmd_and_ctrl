@@ -38,6 +38,8 @@ func Register(spec Spec) {
 	CheckSpecPurposes(spec)
 	// ADR 0208 §5: a sticker sheet's ability stickers.
 	registerStickerSheet(spec)
+	// #6150: a target count set by the kicks.
+	checkCountFromKicks(spec)
 	if spec.Modes != nil {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))
@@ -60,6 +62,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
 		}
 		CheckUpToCastX(spec.Name, "a spell's Modes", spec.Modes, nil)
+		checkChooseX(spec.Name, spec.Modes, true)
 		checkUpToCount(spec.Name, "a spell's Modes", spec.Modes, nil)
 		checkPawprints(spec.Name, "a spell's Modes", spec.Modes, true)
 		// #5771: "An opponent chooses one".
@@ -125,6 +128,7 @@ func Register(spec Spec) {
 			CheckRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
 			CheckUpToCastX(spec.Name, "an activated ability's Modes", a.Modes, nil)
+			checkChooseX(spec.Name, a.Modes, false)
 			checkUpToCount(spec.Name, "an activated ability's Modes", a.Modes, nil)
 			checkPawprints(spec.Name, "an activated ability's Modes", a.Modes, false)
 			if a.Modes.AtRandom {
@@ -172,6 +176,7 @@ func Register(spec Spec) {
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
 			checkAtRandom(spec.Name, t.Modes)
 			CheckUpToCastX(spec.Name, "a trigger's Modes", t.Modes, &t)
+			checkChooseX(spec.Name, t.Modes, false)
 			checkUpToCount(spec.Name, "a trigger's Modes", t.Modes, &t)
 			checkPawprints(spec.Name, "a trigger's Modes", t.Modes, false)
 			for i, o := range t.Modes.Options {
@@ -238,6 +243,7 @@ func Register(spec Spec) {
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostReturnCount(spec.Name, ac)
 		CheckAltCostXBound(spec, ac)
+		checkAltCostExileX(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkAltCostRemoveCounters(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
@@ -269,6 +275,14 @@ func Register(spec Spec) {
 			if _, err := game.ParseCost(ac.FaceDown.FaceUpCost); err != nil {
 				panic(fmt.Sprintf("effects.Register: %q offers %q with an unparseable face-up cost %q: %v",
 					spec.Name, ac.Key, ac.FaceDown.FaceUpCost, err))
+			}
+		}
+		// #6249: a reveal morph cost names one colour, and is the
+		// whole cost: "Morph—Reveal a green card in your hand".
+		if r := ac.FaceDown.FaceUpReveal; r != "" {
+			if !strings.Contains("WUBRG", r) || len(r) != 1 || ac.FaceDown.FaceUpCost != "" {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with a face-up reveal %q: want one colour letter and no mana beside it",
+					spec.Name, ac.Key, r))
 			}
 		}
 		// A face-down cast has no targets, no modes and no
@@ -331,6 +345,7 @@ func Register(spec Spec) {
 	checkTeamworkBlight(spec)
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
+	checkAdditionalCounterCost(spec)
 	// #5669: the untap form is an activated ability's alone.
 	checkUntapOthersCost(spec)
 	checkCostOpensFlash(spec)
@@ -472,6 +487,9 @@ func Register(spec Spec) {
 		}
 	}
 	CheckSpellSpendOnly(spec)
+	// #6227: "You can't spend mana to cast this spell" needs something
+	// that is not mana to pay with.
+	CheckCantSpendMana(spec)
 	// ADR 0073 §7: a cast condition with no printed clause produces a
 	// refusal the client cannot explain, and a clause with no
 	// condition refuses nothing while claiming to. Same for a
@@ -495,6 +513,9 @@ func Register(spec Spec) {
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
 	// #3860: a target tax names what it charges, whom and for what.
 	checkTargetTaxes(spec.Name, spec.TargetTaxes)
+	// #6206: the spell's own per-target life surcharge, the same guard
+	// one slot over.
+	checkLifePerTarget(spec.Name, spec.LifePerTarget)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
@@ -550,6 +571,14 @@ func Register(spec Spec) {
 	// every cast of a card that declared any other shape, so say so at
 	// boot instead.
 	for i, m := range spec.SelfCostModifiers {
+		// #6206: a modifier aimed at one component of a cost ("Buyback
+		// costs cost {2} less") prices OTHER spells' costs from the
+		// battlefield, and the component pass never shows it a self
+		// modifier (activeCostModifiersLocked), so in this slot it would
+		// be dead text. It belongs in Spec.CostModifiers.
+		if m.PricesOptionalCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d (%q) prices the %q cost component — declare it in Spec.CostModifiers", spec.Name, i, m.Label, m.PricesOptionalCost))
+		}
 		if m.Kind == game.CostFloor {
 			panic(fmt.Sprintf("effects.Register: %q self cost modifier %d is a CostFloor — a spell's own cost modifier increases or reduces", spec.Name, i))
 		}
@@ -562,6 +591,23 @@ func Register(spec Spec) {
 	for i, m := range spec.CostModifiers {
 		if m.Kind == game.CostZeroAlternative && (!m.Activations || m.Amount != nil) {
 			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) is a CostZeroAlternative without Activations or with an Amount — build it with PayZeroRatherThanThePowerUpCost", spec.Name, i, m.Label))
+		}
+	}
+	// #6206: a cost change aimed at one component of a cost is an
+	// increase or a reduction of that component's mana. A CostFloor or a
+	// zero alternative on a component is a shape no card prints and the
+	// pass has no meaning for, and the component pass prices casts, so a
+	// component modifier that also claimed activations or special
+	// actions would be gathered by nothing.
+	for i, m := range spec.CostModifiers {
+		if m.PricesOptionalCost == "" {
+			continue
+		}
+		if m.Kind != game.CostIncrease && m.Kind != game.CostReduction {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) prices the %q cost component and is neither an increase nor a reduction", spec.Name, i, m.Label, m.PricesOptionalCost))
+		}
+		if m.Activations || m.SpecialActions {
+			panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) prices the %q cost component of a CAST, so it cannot also price activations or special actions", spec.Name, i, m.Label, m.PricesOptionalCost))
 		}
 	}
 	for _, mods := range [][]game.CostModifier{spec.CostModifiers, spec.SelfCostModifiers} {
@@ -719,7 +765,7 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d sets a negative MinX %d", spec.Name, i, ab.Cost.MinX))
 		}
 		checkCounterCost(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.RemoveCounters, ab.Cost.AddCounter)
-		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, AbilityCostPaysBesideSacrifice(ab.Cost))
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
 		checkExileTotalManaValueX(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
@@ -746,6 +792,11 @@ func Register(spec Spec) {
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
+		if ab.Cost.ManaFromExiledCard && (ab.Cost.ExileCards == nil || ab.Cost.ExileCards.N != 1 || ab.Cost.ExileCards.AnyNumber ||
+			ab.Cost.ExileCards.CountFromX || ab.Cost.ExileCards.CountOpponents || ab.Cost.ExileCards.Processes() || ab.Cost.ExileCards.ExilesSpell()) {
+			// #6270: "and pay its mana cost" reads the ONE card exiled.
+			panic(fmt.Sprintf("effects.Register: %q ability %d pays the mana cost of an exiled card without a one-card exile clause (#6270)", spec.Name, i))
+		}
 		CheckAbilityCostModifiers(spec.Name, i, ab)
 		// #4566: an either/or part of the cost (checkOrCost).
 		checkOrCost(spec.Name, i, ab.Cost)
@@ -876,10 +927,11 @@ func Register(spec Spec) {
 		CheckSpendOnlyClause(spec.Name, i, ab.Cost)
 	}
 	for i, ma := range spec.ManaAbilities {
-		// #1213: `false` — a mana ability has no stack item and no
-		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
-		// has nothing to read its count from.
-		CheckSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
+		// #6125: a mana ability announces X with its activation (CR 107.3a,
+		// 602.2b via 605.3a) — "Sacrifice X Goats" (Springjack Pasture)
+		// reads its count from ManaAbilityParams.XValue.
+		CheckSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, true, false)
+		checkManaAbilityX(spec.Name, i, ma)
 		RefuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
 		checkManaTapOthersClause(spec.Name, i, ma)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
@@ -887,6 +939,7 @@ func Register(spec Spec) {
 		// every one of them a boot-time refusal rather than a
 		// mysteriously-dead card.
 		checkManaAbilityZones(spec.Name, i, ma)
+		checkManaRevealClause(spec.Name, i, ma)
 		// #1864: an any-player mana ability's limits.
 		CheckAnyPlayerManaAbility(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two
@@ -900,7 +953,7 @@ func Register(spec Spec) {
 		// #4896: the mana payer solves its discard as the cheapest N,
 		// with no set rule, and no printed mana ability says "with
 		// different names".
-		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) {
+		if game.DiscardCostDifferentNames(ma.Cost.DiscardCards) || game.DiscardCostSameName(ma.Cost.DiscardCards) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards cards with different names — only an activated ability's cost can",
 				spec.Name, i))
 		}
@@ -961,6 +1014,10 @@ func Register(spec Spec) {
 	}
 	checkVariableSacrificePlan(spec)
 	CheckSacrificeAllCost(spec)
+	// #6208: the three activation-cost variants — a shared-colour reveal,
+	// an ability's sacrifice-all clause, and the untap form turned over to
+	// an opponent's board.
+	CheckActivationCostVariants(spec)
 	avB30cCheckSacrificeHalfCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
@@ -1270,6 +1327,9 @@ func CheckIgnorableEffect(spec Spec) {
 	for _, r := range spec.LandPlayRestrictions {
 		marked = marked || r.Ignorable
 	}
+	// #6247: "Players can't search libraries" is the ignorable effect
+	// itself (Leonin Arbiter); searchCantLocked asks the ignore record.
+	marked = marked || spec.PlayersCantSearchLibraries
 	ig := spec.IgnorableEffect
 	if ig == nil {
 		if marked {
@@ -1279,6 +1339,11 @@ func CheckIgnorableEffect(spec Spec) {
 	}
 	if ig.Label == "" || ig.Applies == nil {
 		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect without its Label or Applies", spec.Name))
+	}
+	if ig.ManaCost != "" {
+		if _, err := game.ParseCost(ig.ManaCost); err != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect with an unparseable ManaCost %q: %v", spec.Name, ig.ManaCost, err))
+		}
 	}
 	if !marked {
 		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect but no restriction is Ignorable, so ignoring it would switch nothing off", spec.Name))
@@ -1430,7 +1495,12 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 // card as something it does not print:
 //
 //   - a floor below one outside a cast: a cost that can be paid with
-//     nothing is free (#1213's guard, which stays for abilities).
+//     nothing is free (#1213's guard, which stays for abilities) —
+//     unless the ability pays something else beside it (#6121,
+//     AbilityCostPaysBesideSacrifice): Baba Lysaga's "{T}, Sacrifice up
+//     to three permanents" and Sword of the Ages' "{T}, Sacrifice this
+//     artifact and any number of creatures you control" print a floor
+//     of zero, and the {T} is what keeps them from being free.
 //   - a ceiling below the floor.
 //   - CountFromX where there is no X to announce — `allowX` is false
 //     for a mana ability, which has no stack item to carry one
@@ -1461,7 +1531,7 @@ func CheckSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 	case game.SacrificeCostVariable(spec) && !spec.CountFromX && !anyNumber && !allowOpen:
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents, but that variable count has no shape here — a cast's additional cost prints only \"sacrifice X\" (SacrificeXCost) or \"any number\" (SacrificeAnyNumberCost), ADR 0100 §3",
 			card, where, spec.Min, spec.Max))
-	case !spec.CountFromX && !anyNumber && spec.Min < 1:
+	case !spec.CountFromX && !anyNumber && spec.Min < 1 && !(allowZero && spec.Max >= 1):
 		panic(fmt.Sprintf("effects.Register: %q %s sacrifices %d to %d permanents — a sacrifice cost pays at least one, so its floor is at least one (SacrificeN, SacrificeOneOrMore)",
 			card, where, spec.Min, spec.Max))
 	case !spec.CountFromX && spec.Max != 0 && spec.Max < spec.Min:
@@ -1600,7 +1670,7 @@ func checkAltCostReturnCount(card string, ac game.AlternativeCost) {
 func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	where := fmt.Sprintf("alternative cost %q", ac.Key)
 	for _, s := range []*game.TargetSpec{ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
-		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX) {
+		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX) {
 			panic(fmt.Sprintf("effects.Register: %q %s bounds a component by X that does not read the bound — only a hand pitch (ExileFromHand) does", spec.Name, where))
 		}
 	}
@@ -1608,7 +1678,7 @@ func CheckAltCostXBound(spec Spec, ac game.AlternativeCost) {
 	if s == nil {
 		return
 	}
-	if s.ManaValueAtMostX || s.PowerAtMostX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
+	if s.ManaValueAtMostX || s.PowerAtMostX || s.PowerEqualsX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
 		panic(fmt.Sprintf("effects.Register: %q %s bounds its pitch by a statistic other than \"mana value X\" — no printed pitch does", spec.Name, where))
 	}
 	if !s.ManaValueEqualsX {
@@ -2087,7 +2157,7 @@ func CheckFlatClauses(name string, spec *game.TargetSpec) {
 		// nothing without one.
 		c := spec.Clause(i)
 		stats := 0
-		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX} {
+		for _, set := range []bool{c.ManaValueAtMostX || c.ManaValueEqualsX, c.PowerAtMostX || c.PowerEqualsX, c.ToughnessAtMostX} {
 			if set {
 				stats++
 			}
@@ -2129,7 +2199,7 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 		// (Rampaging Yao Guai) counts none by X. A count of exactly X has no
 		// printed card.
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total of X on a clause counted exactly X — build it as Orcus, Prince of Undeath's (up to X) or leave the count open", name, i))
-	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.ToughnessAtMostX:
+	case (c.CountFromX && !r.MaxIsX) || c.ManaValueAtMostX || c.ManaValueEqualsX || c.PowerAtMostX || c.PowerEqualsX || c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d has a total rule and an X — no printed card has both yet", name, i))
 	}
 }
@@ -2142,6 +2212,9 @@ func checkTotalRule(name string, i int, c *game.TargetClause) {
 // card has one, and the walk that asks the opponent judges one clause
 // alone.
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
+	if c.ChosenByFirstTargetsController && (!c.ChosenByOpponent || i == 0) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen by the first target's controller but is not a later opponent's-choice clause — build it with OfTheFirstTargetsController after a clause of the controller's own (#6171)", name, i))
+	}
 	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
 	}
@@ -2170,7 +2243,7 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	switch {
 	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
-	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
+	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.PowerEqualsX, c.ToughnessAtMostX:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))
 	case c.Min < 1:
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice of \"up to\" targets — no printed card is", name, i))
@@ -2254,7 +2327,7 @@ func checkNoDivideX(name, owner string, spec *game.TargetSpec) {
 func checkNoXBound(name, owner string, spec *game.TargetSpec, xAvailable, countersAvailable bool) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.ToughnessAtMostX {
+		if !c.ManaValueAtMostX && !c.ManaValueEqualsX && !c.PowerAtMostX && !c.PowerEqualsX && !c.ToughnessAtMostX {
 			continue
 		}
 		if c.BoundByCountersRemoved {
@@ -2768,7 +2841,7 @@ func CheckPlayerKeywords(spec Spec) {
 // placeholder, or a protection or hexproof-from token the closed
 // grammar parses.
 func playerKeywordHonoured(kw string) bool {
-	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType {
+	if kw == game.KeywordHexproof || kw == game.KeywordShroud || kw == game.ProtectionFromTheChosenCardType || kw == game.ProtectionFromTheChosenCardName {
 		return true
 	}
 	if _, ok := game.ParseProtectionQuality(kw); ok {
@@ -2900,6 +2973,19 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
 	}
+	if ec.ToLibraryBottom && (!strings.HasPrefix(where, "ability ") || ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber ||
+		ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.TopOnly || ec.LinkToSource || ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0) {
+		// #6121: "Put N cards from your graveyard on the bottom of your
+		// library" is a CR 602 ability's printed count from the graveyard.
+		panic(fmt.Sprintf("effects.Register: %q %s puts cards on the bottom of a library — a CR 602 ability's printed count from the graveyard only (#6121)",
+			name, where))
+	}
+	if ec.TopOnly && (ec.Zone() != game.ZoneGraveyard || ec.N <= 0 || ec.AnyNumber || ec.CountFromX || ec.CountOpponents || ec.CountIsX || ec.Processes()) {
+		// #6194: "the top <kind> card of your graveyard" is a graveyard
+		// clause with a printed count, nothing else.
+		panic(fmt.Sprintf("effects.Register: %q %s exiles the top cards of a pile that is not the graveyard, or without a printed count (#6194)",
+			name, where))
+	}
 	if ec.ManaValueFromTargets {
 		// #5240: a floor read off a cast's targets exists on a spell's
 		// mandatory slot only (checkCastExileCardsClause).
@@ -2947,6 +3033,14 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		// #5193: or collect evidence N, a floor on the total mana value
 		// (CR 701.59a), from the graveyard only. One floor, never both.
 		symbols := ec.SymbolTotal != nil
+		// S82 old b333: or a floor on the number of cards, "one or more"
+		// (Corpseweft), which stands alone.
+		if ec.MinCards > 0 && !symbols && ec.ManaValueAtLeast == 0 {
+			if ec.Zone() != game.ZoneGraveyard || ec.Match == nil {
+				panic(fmt.Sprintf("effects.Register: %q %s names a card-count floor outside a graveyard clause with a match", name, where))
+			}
+			return
+		}
 		if symbols == (ec.ManaValueAtLeast > 0) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no floor, or with two — "+
 				"a clause with no floor would be free (a symbol total, or collect evidence's mana value)", name, where))
@@ -3017,6 +3111,12 @@ func CheckAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		}
 		if m.SpecialActions {
 			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))
+		}
+		// #6206: an optional ADDITIONAL cost belongs to a cast (CR
+		// 601.2b), so the component pass never prices an activation, and
+		// an ability's own clause prices that ability's cost.
+		if m.PricesOptionalCost != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s prices the %q cost component — an optional additional cost belongs to a cast", name, where, m.PricesOptionalCost))
 		}
 		if m.ActiveWhen != (game.Designation{}) {
 			panic(fmt.Sprintf("effects.Register: %q %s declares a designation gate — gate the ability (ActivatedAbility.ActiveWhen) instead", name, where))

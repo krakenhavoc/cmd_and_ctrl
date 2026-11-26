@@ -248,6 +248,12 @@ type PermissionFilter struct {
 	// historic (an artifact or legendary land) qualifies as a play.
 	HistoricOnly bool `json:"historicOnly,omitempty"`
 
+	// HasCyclingOnly is "spells that have a cycling ability" (Abandoned
+	// Sarcophagus, CR 702.29): the card's own activated rows, as the engine
+	// reads them, include a cycling one (typecycling counts, CR 702.29e).
+	// Additive within the snapshot version (#522).
+	HasCyclingOnly bool `json:"hasCyclingOnly,omitempty"`
+
 	// LegendaryOnly is Peter Parker // Amazing Spider-Man's "each
 	// LEGENDARY spell you cast that's one or more colors": the card must
 	// have the legendary supertype (CR 205.4), read from its effective
@@ -571,6 +577,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.HistoricOnly && !c.IsArtifact() && !c.IsLegendary() && !c.HasSubtype("Saga") {
 		return false
 	}
+	if f.HasCyclingOnly && !cardHasCyclingAbility(c) {
+		return false
+	}
 	if f.LegendaryOnly && !c.IsLegendary() {
 		return false
 	}
@@ -759,6 +768,14 @@ type CastPermission struct {
 	// exception it would be.
 	TopOfLibraryOnly bool `json:"topOfLibraryOnly,omitempty"`
 
+	// TopOfGraveyardOnly restricts a ZoneGraveyard permission to the card
+	// currently on top of its owner's graveyard (#6194, CR 404.2: the pile
+	// keeps its order): Bösium Strip's "you may cast instant and sorcery
+	// spells from the top of your graveyard". A card below the top, even
+	// one the filter accepts, is not opened. Graveyards are public, so
+	// there is no visibility half as there is for a library. Additive.
+	TopOfGraveyardOnly bool `json:"topOfGraveyardOnly,omitempty"`
+
 	// SeesLibraryTop is CR 401.5's other half, carried by the grant
 	// rather than by a permanent: "you may LOOK at the top card of
 	// their library any time" (Xanathar, Guild Kingpin), which is
@@ -858,6 +875,15 @@ type CastPermission struct {
 	// which is every permission written before it. Additive within a
 	// snapshot version.
 	CostMoreMana string `json:"costMoreMana,omitempty"`
+
+	// CostMoreUnlessTargetsYourCreature is "If that spell doesn't target a
+	// creature you control, it costs {N} more to cast this way" (Mavinda,
+	// Students' Advocate, #6157): CostMore read with the announced targets
+	// (CR 601.2c before 601.2f), N added unless one of them is a creature
+	// the caster controls (TargetSurchargeFor). Zero is no surcharge, which
+	// is every permission written before it. Additive within a snapshot
+	// version.
+	CostMoreUnlessTargetsYourCreature int `json:"costMoreUnlessTargetsYourCreature,omitempty"`
 
 	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
 	// exiled card ... by waterbending {X} rather than paying its mana
@@ -1063,6 +1089,15 @@ type CastPermission struct {
 	// admits that mana (widenFromColors), and other mana pays as printed.
 	// Ignored when AnyColor or AnyType is set.
 	AnyColorFrom string `json:"anyColorFrom,omitempty"`
+
+	// AnyColorFromSnow narrows the clause by the mana's SOURCE: "you may
+	// spend mana from snow sources as though it were mana of any color to
+	// cast those spells" (Draugr Necromancer, #6161, CR 609.4b). Each
+	// coloured symbol then also takes any mana a snow source produced
+	// (ColorRequirement.SnowAny); other mana pays as printed, and a {C} or
+	// an {S} is left alone. Ignored when AnyColor or AnyType is set.
+	// Additive.
+	AnyColorFromSnow bool `json:"anyColorFromSnow,omitempty"`
 
 	// --- the window ------------------------------------------------
 
@@ -1801,6 +1836,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 			FromPermission: true,
 		}
 	}
+	if p.AltCostKey == AltCostKeyGrantedFaceDownFree {
+		// #6219: Illusionary Mask's free face-down cast (illusionary_mask.go).
+		return grantedFaceDownFreeOffer(p)
+	}
 	if p.AltCostKey == AltCostKeyGrantedSneak {
 		// #4680: the granted sneak's price and riders (sneak.go).
 		return grantedSneakOffer(p, card)
@@ -2082,7 +2121,7 @@ func (g *Game) GrantCastPermissionOverCardForEffect(cardID uuid.UUID, perm CastP
 	if perm.Zone != z.Kind {
 		return false
 	}
-	if perm.Zone == ZoneHand && perm.AltCostKey == "" && perm.Cost != "" {
+	if (perm.Zone == ZoneHand || perm.Zone == ZoneCommand) && perm.AltCostKey == "" && perm.Cost != "" {
 		// A hand permission applies only to a cast that claims the
 		// offer under its key (ForClaim), so a keyless one prices
 		// nothing and the cast pays the printed cost (#3234: Kari
@@ -2589,7 +2628,12 @@ func (g *Game) consumeBudgetGroupLocked(p *Player, group uuid.UUID) {
 // the next one when it fails.
 func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind, accept func(*CastPermission) bool) *CastPermission {
 	if zone == ZoneCommand {
-		return nil
+		// #6242: only a stored grant over the caster's own commander
+		// opens a command-zone cast through a permission ("you may cast
+		// your commander from the command zone without paying its mana
+		// cost", free_cast_command.go). The ordinary command-zone cast
+		// needs none (CR 903.8).
+		return g.storedCommandPermissionLocked(playerID, card, accept)
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -2868,6 +2912,14 @@ func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermissio
 //
 // Caller must hold g.mu.
 func (g *Game) permissionPositionOKLocked(holder uuid.UUID, perm *CastPermission, card Card) bool {
+	if perm.TopOfGraveyardOnly {
+		// #6194: the top of the graveyard the card is in (CR 404.2).
+		owner := g.playerByIDLocked(card.Owner)
+		if owner == nil || owner.Graveyard == nil || len(owner.Graveyard.Cards) == 0 ||
+			owner.Graveyard.Cards[len(owner.Graveyard.Cards)-1].InstanceID != card.InstanceID {
+			return false
+		}
+	}
 	if !perm.TopOfLibraryOnly {
 		return true
 	}
@@ -3660,6 +3712,8 @@ func spendAsThoughAny(grant *CastPermission, cost ParsedCost) ParsedCost {
 		return asAnyColorCost(cost)
 	case grant.AnyColorFrom != "":
 		return widenFromColors(cost, []string{grant.AnyColorFrom})
+	case grant.AnyColorFromSnow:
+		return widenSnowAny(cost)
 	}
 	return cost
 }
@@ -3685,7 +3739,11 @@ func requiresColorless(req ColorRequirement) bool {
 // the price and the announce path ask it with, so all three judge the
 // cast under the same permission. Caller must hold g.mu.
 func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
-	if from == ZoneHand || from == ZoneCommand {
+	// #6231: a copy of a card in a hand exists only because an offer made
+	// it there (CR 707.12, CardCopyOffer.InHand), and is cast through that
+	// offer's permission, so its reduction is read; a real hand card's
+	// ordinary cast claims no permission.
+	if (from == ZoneHand && !card.CardCopy) || from == ZoneCommand {
 		return 0
 	}
 	// #4509: `card` is the face being cast; a permission that does not
@@ -3715,10 +3773,11 @@ func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind,
 		return 0
 	}
 	grant := g.permissionForSpellLocked(g.CastPermissionForFaceLocked(playerID, card, from, params.AlternativeCost, params.Face), card)
-	if grant == nil || grant.CostMore <= 0 {
+	if grant == nil {
 		return 0
 	}
-	return grant.CostMore
+	// #6157: and the surcharge that reads this announcement's targets.
+	return max(grant.CostMore, 0) + g.TargetSurchargeFor(grant, playerID, params.Targets)
 }
 
 // CreatureCountersLabel is the clause of a "removing N counters from among
@@ -3750,6 +3809,17 @@ func CreatureCounterRemovalCost(n int) *CounterRemovalCost {
 func cardHasAnyTypeOf(c Card, types string) bool {
 	for _, t := range strings.Fields(types) {
 		if c.HasCardType(t) {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasCyclingAbility reports whether any activated row the card offers is a
+// cycling one (CR 702.29a, typecycling CR 702.29e).
+func cardHasCyclingAbility(c Card) bool {
+	for _, ab := range ActivatedAbilitiesForCard(c) {
+		if ab.Cycling {
 			return true
 		}
 	}

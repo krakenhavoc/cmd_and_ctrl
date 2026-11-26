@@ -80,13 +80,13 @@ var activatedRowScopes = map[string]rowScope{
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.
-	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "GrantorOnly": rowPublic, "Activator": rowPublic, "Purpose": rowPublic,
+	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "GrantorOnly": rowPublic, "Activator": rowPublic, "DefendingPlayerOnly": rowPublic, "Purpose": rowPublic,
 	// #2449: the printed equip keyword (CR 702.6).
 	"Equip": rowPublic, "Reconfigure": rowPublic, "UntapSelf": rowPublic,
 	// The printed discard clause: the count in "Discard two cards"
 	// and the clause's words. Public — the issue's own line. #4896:
 	// "with different names" is printed text too.
-	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic, "DiscardCostDifferentNames": rowPublic,
+	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic, "DiscardCostDifferentNames": rowPublic, "DiscardCostSameName": rowPublic,
 	"SacrificeLabel": rowPublic, "ReturnLabel": rowPublic, "TapOthersLabel": rowPublic,
 	// Verdicts over public state: whose turn it is, the stack, the
 	// battlefield, the ability's own activation record.
@@ -127,6 +127,8 @@ var activatedRowScopes = map[string]rowScope{
 	// #1297's exile-N-cards clause: its printed count and words, and
 	// the pile it names.
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	// #6121: where the graveyard pick goes, a printed fact of the clause.
+	"ExileCostToLibraryBottom": rowPublic,
 	// #4455's any-number form (Baron Helmut Zemo): the printed flag and
 	// the printed symbol floor.
 	"ExileCostAnyNumber": rowPublic, "ExileCostSymbolColor": rowPublic, "ExileCostSymbolMin": rowPublic,
@@ -165,6 +167,9 @@ var manaRowScopes = map[string]rowScope{
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,
+	// #6208: the untap form of the same clause (Benthic Explorers) — the
+	// printed cost, and options read off the battlefield.
+	"TapOthersUntap": rowPublic,
 	// #1600: Food Chain's exile clause, read off the battlefield.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
 	"ChargedManaCost": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic,
@@ -178,6 +183,8 @@ var manaRowScopes = map[string]rowScope{
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	"ExileCostAnyNumber": rowPublic, "ExileCostManaValueMin": rowPublic,
+	// #6125: X in a mana ability's cost is the printed cost.
+	"DemandsX":     rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,
 	"CounterCostLabel": rowPublic, "CounterCostAmong": rowPublic,
 	"CounterCostVariable": rowPublic, "CounterCostMax": rowPublic,
@@ -186,6 +193,10 @@ var manaRowScopes = map[string]rowScope{
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
 	"ExileCostOptions":   rowHiddenUnlessGraveyard,
+	// #6085: Rosheen's "Reveal any number of …" — the clause is public,
+	// the matching hand cards are not.
+	"RevealCostAnyNumber": rowPublic, "RevealCostLabel": rowPublic,
+	"RevealCostOptions": rowHiddenZone,
 	// #5397: forage on a mana ability — the branches stay on the public
 	// row (a graveyard and a Food are public); publicCostBranches clears
 	// a discard branch's hand cards should one ever ship.

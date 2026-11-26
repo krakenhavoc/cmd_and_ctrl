@@ -305,6 +305,67 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 109 (#5511).
 	"Discontinuity": "ends the turn: it exiles the stack and wears off effects, but sweeps no permanents",
 	"Turn to Slag":  "5 damage to one creature and a destroy of the Equipment attached to it: one target's gear, not a board",
+
+	// S82 OLD batch 110 (#5511).
+	"Idol of Endurance": "exiles only the controller's own small creature cards from their graveyard, no permanents: not a board wipe",
+
+	// S82 OLD batch 152 (#5517).
+	"Ghastly Conscription": "exiles creature cards from one graveyard and manifests them: it sweeps no permanents, it puts creatures onto the battlefield",
+
+	// S82 OLD batch 157 (#5518).
+	"Thought Distortion": "exiles noncreature, nonland cards from one opponent's hand and graveyard, no permanents: not a board wipe",
+
+	// S82 seam #6098.
+	"Emrakul, the World Anew": "its leaves-the-battlefield drawback sacrifices only its controller's own creatures: not a board wipe",
+
+	// S82 OLD batch 180 (#5521).
+	"Plague Wight": "-1/-1 until end of turn on the creatures blocking it, only when it becomes blocked: a combat trick, not a board wipe",
+
+	// S82 OLD batch 181 (#5521).
+	"Ethereal Absolution": "a standing -1/-1 on the opponents' creatures and an exile-from-graveyard ability: it wears small creatures down but destroys nothing itself",
+
+	// S82 OLD batch 192 (#5525).
+	"Mnemonic Betrayal": "exiles the cards in the opponents' graveyards, not permanents: no board is touched",
+
+	// S82 OLD batch 214 (#5530).
+	"Corrosive Ooze": "destroys only the Equipment attached to the one creature it blocked or was blocked by, at end of combat: a combat trick against one creature, not a board wipe",
+
+	// S82 OLD batch 231 (#5532).
+	"Sentinel Totem": "exiles every graveyard, which holds cards and no permanents: a graveyard hate effect, not a board wipe",
+
+	// S82 OLD batch 240 (#5534).
+	"Crook of Condemnation": "its second ability exiles the cards in every graveyard: it touches no permanent",
+
+	// S82 OLD batch 273 (#5540).
+	"Public Execution": "destroys one target creature; the -2/-0 on the player's other creatures is a combat trick that destroys nothing",
+
+	// S82 OLD batch 281 (#5542).
+	"Sengir Autocrat": "exiles only Serf tokens when it leaves the battlefield, the three it made and any others: a token cleanup of its own side effect, not a board wipe",
+
+	// S82 OLD batch 296 (#5545).
+	"Inverter of Truth": "exiles the cards of its controller's own library, face down, and shuffles their graveyard in: it touches no permanent, so there is no board to wipe",
+
+	// S82 OLD batch 304 (#5546).
+	"Necromancer's Covenant": "exiles the creature cards in one graveyard, which holds cards and no permanents, and makes a Zombie for each: graveyard hate, not a board wipe",
+
+	// S82 OLD batch 310 (#5547).
+	"Roilmage's Trick": "a one-turn -X/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
+
+	// S82 OLD batch 312 (#5547).
+	"Dampening Pulse": "a standing -1/-0 on the opponents' creatures that destroys nothing: it weakens their attacks, not a board wipe",
+
+	// S82 OLD batches 336 (#5552).
+	"Arcbond":         "the damage it deals each other creature and player is whatever the chosen creature is later dealt this turn: no fixed amount a sweep can declare, and none at all if it is never damaged",
+	"Shockmaw Dragon": "its combat-damage trigger deals 1 damage to the creatures of the one player it hit: a conditional ping at a single player's board, not a wipe",
+
+	// S82 OLD batch 344 (#5554).
+	"Blinding Spray": "a one-turn -4/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
+
+	// S82 OLD batch 359 (#5556).
+	"Blastfire Bolt": "its \"destroy all Equipment attached to that creature\" reaches only the Equipment on the one creature it targets, not a board",
+
+	// S82 OLD batch 378 (#5559).
+	"Skyreaping": "damages only the creatures with flying, for an amount that is your devotion to green as it resolves: a partial sweep with no fixed amount a sweep can declare",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

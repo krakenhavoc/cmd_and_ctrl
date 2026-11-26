@@ -248,6 +248,8 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// Aura (returned_aura.go) belongs to the object that returned. The
 	// card in its new zone is the card it prints.
 	c.ReturnedAura = false
+	c.AuraFormEndBy = uuid.Nil
+	c.AuraFormEndCost = ""
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.
@@ -262,6 +264,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	keepCounters := countersRemainOn(c.OracleID) && dst != nil &&
 		dst.Kind != ZoneHand && dst.Kind != ZoneLibrary
 	savedCounters := c.Counters
+	// #6245, CR 400.7: a creature type named as a spell was cast is the
+	// spell's, and the card that leaves the stack is a new object.
+	if src.Kind == ZoneStack {
+		c.NamedTribe = ""
+	}
 	// Cards leaving the battlefield lose their tapped state and
 	// battlefield-only position by convention; rules-level effects can
 	// re-tap if needed, and positions are re-stamped on re-entry.
@@ -351,7 +358,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.LinkedPermanent = ObjectRef{}
 		c.ChosenCard = ObjectRef{}
 		c.Notes = nil
+		c.PlayerNotes = nil
 		c.Devoured = 0
+		c.TributePaid = false
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
 		// licence to read it back ends with that permanent. A Phlage
@@ -455,6 +464,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.PhaseInLockedBy = uuid.Nil
 		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 		c.PhaseInBarredWhileTapped = false
+		c.PhaseInBarredThroughPlayer, c.PhaseInBarredThroughTurn = uuid.Nil, 0
 		c.PhasedOutIndirect = false
 		c.TapOnPhaseIn = false
 	}

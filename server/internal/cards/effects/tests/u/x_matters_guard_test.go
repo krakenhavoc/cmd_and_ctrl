@@ -101,6 +101,10 @@ var xMattersAllowlist = map[string]string{
 	"molder.go Molder":                                            "at X=0 it still destroys an artifact or enchantment with mana value 0 (a Treasure or Food token): the X picks the target, it is not a quantity that can be zero (#5596)",
 	"reidane_god_of_the_worthy.go Reidane, God of the Worthy":     "not an X card: its cost tax reads the spell's mana value with {X} counted at the chosen value (SpellManaValueAtLeast), which is a property of the opposing spell, never of Reidane",
 	"kianne_dean_of_substance.go Imbraham, Dean of Theory":        "at X=0 nothing is exiled but the ability still offers the pick of a card you own in exile with a study counter on it, a real play (Soothsaying-style X reads only the exile count)",
+
+	"sanguine_sacrament.go Sanguine Sacrament": "at X=0 it gains no life but still puts itself on the bottom of its owner's library instead of the graveyard, a real play: the fixed rider happens whatever X is",
+
+	"displacement_wave.go Displacement Wave": "at X=0 it still returns every nonland permanent with mana value 0 (a token, a free artifact), a real play: the X picks which permanents go back, it is not a quantity",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

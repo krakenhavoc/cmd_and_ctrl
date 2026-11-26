@@ -187,6 +187,12 @@ type SpecialAction struct {
 	// amendment 2026-09-24). The cost query reads it, so a cost
 	// modifier sees where the action is taken from.
 	Zone ZoneKind
+
+	// RevealColor is a turn_face_up offer whose cost is "reveal a
+	// <colour> card in your hand" (#6249, FaceDownCast.FaceUpReveal):
+	// the colour letter the revealed card must have. Empty on every
+	// other offer. The card is named on SpecialActionParams.RevealID.
+	RevealColor string
 }
 
 // CatalogSpecialActions is the catalog hook the effects package wires
@@ -232,6 +238,11 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	// ADR 0103: the unlock offers are derived from the card too — a
 	// face-up Room with a locked door (CR 709.5e).
 	out = append(out, UnlockOffers(c)...)
+	// #5781: a licid's "you may pay to end this effect" (CR 116.2c),
+	// derived from its Aura form (licid.go).
+	if eo := EndEffectOffer(c); eo != nil {
+		out = append(out, *eo)
+	}
 	return append(out, SpecialActionsFor(CatalogKey(c))...)
 }
 
@@ -256,6 +267,9 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 	}
 	if kind == SpecialActionCompanion {
 		return CompanionOffer(c)
+	}
+	if kind == SpecialActionEndEffect {
+		return EndEffectOffer(c)
 	}
 	if kind == SpecialActionUnlock {
 		if offers := UnlockOffers(c); len(offers) > 0 {
@@ -289,9 +303,9 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 // The empty zone is a kind the engine does not carry out.
 func specialActionZone(kind SpecialActionKind) ZoneKind {
 	switch kind {
-	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot:
+	case SpecialActionForetell, SpecialActionSuspend, SpecialActionPlot, SpecialActionDiscard:
 		return ZoneHand
-	case SpecialActionTurnFaceUp, SpecialActionUnlock:
+	case SpecialActionTurnFaceUp, SpecialActionUnlock, SpecialActionEndEffect:
 		return ZoneBattlefield
 	case SpecialActionCompanion:
 		return ZoneOutside
@@ -348,6 +362,11 @@ type SpecialActionParams struct {
 	// has an {X}. Only turn_face_up takes one; it is refused on every
 	// other kind, none of which prints an {X} the engine pays.
 	XValue int
+
+	// RevealID is the card in the actor's hand a turn_face_up whose
+	// cost is "reveal a <colour> card in your hand" reveals (#6249,
+	// CR 702.37e). Required for that offer, refused on every other.
+	RevealID uuid.UUID
 }
 
 // SpecialActionTimingOKLocked is the per-kind timing table, and the
@@ -450,6 +469,11 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// is neither), and nothing here asks them.
 		return g.SorcerySpeedOpenLocked(playerID)
 
+	case SpecialActionPayToCancel:
+		// #6220: "before that step" — any time they have priority while
+		// the trigger waits, on any turn, with anything on the stack.
+		return true
+
 	case SpecialActionIgnoreEffect:
 		// CR 116.2d: "any time they have priority". No turn restriction,
 		// no empty-stack requirement, and LEGAL UNDER SPLIT SECOND for
@@ -480,6 +504,19 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// game" is not a window: the card has left Player.Companion,
 		// so there is nothing left to offer (companion.go).
 		return g.SorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionDiscard:
+		// CR 116.2e: "any time you could cast an instant" (Circling
+		// Vultures) — with priority, on any turn, with anything on the
+		// stack, but not under split second, where no instant can be
+		// cast (CR 702.61a). See discard_special_action.go.
+		return !g.SplitSecondActive && g.holdsPriorityLocked(playerID)
+
+	case SpecialActionEndEffect:
+		// CR 116.2c: "any time they have priority" — on any turn, with
+		// anything on the stack, and under split second too (CR
+		// 702.61b stops casts and activations only). See licid.go.
+		return g.holdsPriorityLocked(playerID)
 	}
 	return false
 }
@@ -527,11 +564,20 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if kind == SpecialActionIgnoreEffect {
 		return g.performIgnoreEffectLocked(p, cardID, params)
 	}
+	// #6220: "unless they pay {N} before that step" is paid on a waiting
+	// delayed trigger, named by its ID, not on a card.
+	if kind == SpecialActionPayToCancel {
+		return g.performPayToCancelLocked(p, cardID, params)
+	}
 	// CR 901.9 (ADR 0216 §4): the planar die is taken on no card.
 	if kind == SpecialActionPlanarDie {
 		return g.performPlanarDieLocked(p, cardID, params)
 	}
 	if params.SacrificeID != uuid.Nil {
+		return ErrInvalidParam
+	}
+	// #6249: a reveal is named only for turn_face_up.
+	if params.RevealID != uuid.Nil && kind != SpecialActionTurnFaceUp {
 		return ErrInvalidParam
 	}
 	// WHERE the card is, is the kind's business (specialActionZone).
@@ -567,6 +613,13 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// client is confused about which action it is taking.
 	if params.XValue != 0 && !SpecialActionDemandsX(*sa) {
 		return ErrInvalidParam
+	}
+	// #6249, CR 702.37e: a morph cost of "reveal a <colour> card in
+	// your hand" is paid with the card the actor names, and only with a
+	// matching card in their hand; a reveal named for an offer whose
+	// cost is not one is refused, as an X is.
+	if err := g.checkFaceUpRevealLocked(p, *sa, params.RevealID); err != nil {
+		return err
 	}
 	taken := *sa
 	taken.X = params.XValue
@@ -623,10 +676,13 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 			Strict:  params.Strict,
 			AutoTap: params.AutoTap,
 			XValue:  taken.X,
-		}, specialActionSpendContext(kind), nil); err != nil {
+		}, specialActionSpendContextFor(taken, card), nil); err != nil {
 			return err
 		}
 	}
+	// #6249: the reveal is the rest of the cost, paid with the mana
+	// (CR 702.37e: pay that cost, then turn the permanent face up).
+	g.payFaceUpRevealLocked(p, cardID, taken, params.RevealID)
 	if err := perform(g, p, cardID, taken); err != nil {
 		return err
 	}
@@ -668,6 +724,10 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).companionLocked
 	case SpecialActionRevealAgenda:
 		return (*Game).revealAgendaLocked
+	case SpecialActionDiscard:
+		return (*Game).discardSpecialActionLocked
+	case SpecialActionEndEffect:
+		return (*Game).endEffectLocked
 	}
 	return nil
 }
@@ -706,6 +766,15 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 			// is told the card is not there rather than that it is
 			// not theirs — a face-down permanent's identity is not
 			// theirs to probe.
+			//
+			// #5781: a licid's effect is ended by the player the effect
+			// names ("you", CR 109.5), whoever controls the licid now.
+			if kind == SpecialActionEndEffect {
+				if c.AuraFormEndBy != p.ID {
+					return Card{}, "", ErrCardNotFound
+				}
+				return c, zone, nil
+			}
 			if c.Controller != p.ID {
 				return Card{}, "", ErrCardNotFound
 			}
@@ -774,6 +843,27 @@ func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 // the engine pays it with.
 func SpecialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 	return specialActionSpendContext(kind)
+}
+
+// specialActionSpendContextFor is specialActionSpendContext for the offer
+// actually being taken on `card`: a turn face up also names the route it is
+// taken under and why the permanent is face down, which Qarsi Deceiver's
+// mana reads (ManaRestrictTurnFaceUpMorphOrManifest). Every other kind is
+// the plain context.
+func specialActionSpendContextFor(sa SpecialAction, card Card) ManaSpendContext {
+	ctx := specialActionSpendContext(sa.Kind)
+	if sa.Kind == SpecialActionTurnFaceUp {
+		ctx.TurnFaceUpRoute = sa.Route
+		ctx.TurnFaceUpKind = card.FaceDownKind
+	}
+	return ctx
+}
+
+// SpecialActionSpendContextFor is specialActionSpendContextFor for the
+// legal-move enumerator, which prices an offer with the same context the
+// engine pays it with.
+func SpecialActionSpendContextFor(sa SpecialAction, card Card) ManaSpendContext {
+	return specialActionSpendContextFor(sa, card)
 }
 
 // unlockLocked is the unlock performer (CR 709.5e): the cost is paid,

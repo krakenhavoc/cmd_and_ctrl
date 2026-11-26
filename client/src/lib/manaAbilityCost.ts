@@ -21,6 +21,11 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
     !!ability.exile_cost_n ||
     // Collect evidence N (Cryptex) asks which graveyard cards.
     !!ability.exile_cost_any_number ||
+    // #6125: an {X} in the row's cost asks for X.
+    !!ability.demands_x ||
+    // #6085: Rosheen's "Reveal any number of …" asks which cards to show,
+    // when the hand holds any.
+    (ability.reveal_cost_options?.length ?? 0) > 0 ||
     // #1600: Food Chain's "Exile a creature you control".
     !!ability.exile_permanent_options ||
     // #5397: an either/or cost (forage) asks which way to pay.
@@ -66,4 +71,17 @@ export function manaExilePermanentPayment(ids: string[]): { exile_permanent_ids?
 // branches, so every other mana ability's payload is unchanged.
 export function manaCostBranchPayment(k: number | undefined): { cost_branch?: number } {
   return k === undefined ? {} : { cost_branch: k };
+}
+
+// manaXPayment is the `x_value` a mana activation sends (#6125): for a
+// "Sacrifice X …" clause the number of permanents sacrificed, for an {X}
+// in the cost the X the player named, and nothing for a row with no X.
+export function manaXPayment(
+  ability: ManaAbilityView,
+  named: number | undefined,
+  sacrificeIDs: string[] | undefined,
+): { x_value?: number } {
+  if (!ability.demands_x) return {};
+  if (ability.sacrifice_options?.count_from_x) return { x_value: sacrificeIDs?.length ?? 0 };
+  return named !== undefined && named > 0 ? { x_value: named } : {};
 }

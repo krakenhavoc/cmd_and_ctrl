@@ -120,6 +120,14 @@ type CastCounts struct {
 	// shortfall the one-click path asserted (PaidCost.PaperMana).
 	ManaSpent int
 
+	// Spent is the readable view of what was spent to cast the spell
+	// (PaidCost.Spent), for an entry clause that reads WHICH mana paid for
+	// it rather than how much: adamant's "if at least three red mana was
+	// spent to cast this spell, this creature enters with a +1/+1 counter"
+	// (Embereth Paladin, CR 207.2c). The zero view for every entry that was
+	// not a resolving spell and for a CR 707.10 copy, which paid nothing.
+	Spent ManaSpent
+
 	// Delved is CR 607.2q's "cards exiled with it" for a spell with
 	// delve (ADR 0100 sub-PR 2): the cards delve exiled to pay for the
 	// spell (PaidCost.Delved) that are still in exile as those objects
@@ -151,6 +159,18 @@ type CastCounts struct {
 	// counters for each creature that convoked it". Zero for a spell not
 	// convoked, a CR 707.10 copy and every entry that was not a spell.
 	Convoked int
+
+	// Beheld is how many times the spell's behold additional cost was paid
+	// (BeholdKey, PaidCost.OptionalCosts): Scaleguard Sentinels' "if you
+	// revealed a Dragon card". Zero for a spell with no such cost, one that
+	// declined it, and every entry that was not a resolving spell.
+	Beheld int
+
+	// CastValues are the facts recorded as the spell was announced (CastTimeValues,
+	// StackItem.CastValues): "controlled a Dragon as you cast this spell" is one
+	// of them. Nil for a spell that recorded none and for every entry that was
+	// not a resolving spell. Read-only.
+	CastValues map[string]int
 }
 
 // KickedWith is CR 702.33f's "if it was kicked with its [cost]
@@ -244,9 +264,12 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 		KickersPaid: kickersPaidFor(CatalogKey(card), item.Paid.OptionalCosts),
 		ColorsSpent: item.Paid.ColorsSpentCount(),
 		ManaSpent:   item.Paid.ManaSpentCount(),
+		Spent:       item.Paid.Spent(),
 		CastFrom:    item.CastFromZone,
 		EntryRoll:   sumInts(item.EntryRolls),
 		Convoked:    len(item.Paid.Convoked),
+		Beheld:      OptionalCostTimesPaid(card, item.Paid.OptionalCosts, BeholdKey),
+		CastValues:  item.CastValues,
 	}
 }
 

@@ -1022,8 +1022,14 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	// ADR 0166: while Word of Command makes this player play a card,
 	// only their lands' mana abilities may be activated.
 	landsOnly := g.LandManaOnlyLocked(controller)
+	// #6204: under a Piracy permission another player's land is a source
+	// too, for a CAST only (its mana may be spent only to cast spells),
+	// never for the costed pass, and never while Word of Command limits
+	// the player to their own lands.
+	piracy := !costed && !landsOnly && wish.restrictedSpend() != nil && g.MayTapForeignLandsLocked(controller)
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller != controller {
+		foreign := c.Controller != controller
+		if foreign && (!piracy || !c.IsLand()) {
 			continue
 		}
 		if landsOnly && !c.IsLand() {
@@ -1060,6 +1066,11 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		}
 		for _, cand := range cands {
 			picked := &cand.ab
+			// #6204: of another player's land, only the {T} rows the
+			// permission reaches (MayActivateManaLocked's own test).
+			if foreign && !g.MayActivateManaLocked(controller, c, ZoneBattlefield, *picked) {
+				continue
+			}
 			// ADR 0135 §4 (owner decision 3): a permanent named to a
 			// sacrifice cost on this cast may still tap for mana (CR
 			// 601.2g before 601.2h), but no ability that sacrifices it
@@ -1087,7 +1098,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			}
 			// #3275: nor is one that can't be sacrificed, for an ability
 			// that sacrifices it (the executor's validator refuses it).
-			if picked.SacrificeCost && g.permanentCantBeSacrificedLocked(&c) {
+			if picked.SacrificeCost && g.sacrificeCostBarredLocked(&c) {
 				continue
 			}
 			// #540: CR 302.6. A mana creature that entered this turn
@@ -1162,7 +1173,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				RiderRank: wish.riderRank(picked.SpendRiders),
 				// #3874: restricted output the cast's spend context
 				// admitted (the picker refuses it in every other).
-				Restricted: manaAbilityRestricted(*picked),
+				Restricted: manaAbilityRestricted(*picked) || foreign,
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.
@@ -1832,6 +1843,11 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.SacrificeOther != nil {
 		return false
 	}
+	// #6205: nor a row the board makes cost a sacrifice (Drought on a
+	// filter land): the permanents are the player's choice.
+	if folded, _ := g.ImposedSacrificeManaAbilityForEffect(asker, source, a); folded.SacrificeOther != nil {
+		return false
+	}
 	// ADR 0130 §4 (owner decision 3): an exert is a cost the PLAYER
 	// chooses, so the planner never pays one on its own — not as a last
 	// resort, not at all. Arena of Glory's "{R}, {T}, Exert this land"
@@ -1863,7 +1879,7 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.Rider != nil && !a.riderDeclared() {
 		return false
 	}
-	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
+	if a.LifeCost > 0 && !g.CanPayLifeForManaAbilityLocked(g.playerByIDLocked(asker), a.LifeCost) {
 		return false
 	}
 	// ADR 0129 §5: an energy cost is plannable when the player has the
@@ -1916,6 +1932,16 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	// #1283: the exile-a-card clause, on the discard's ground one
 	// verb over — Cadaverous Bloom asks which card leaves the hand.
 	if a.ExileCards != nil {
+		return false
+	}
+	// #6125: an X to announce (Wizard's Rockets, Springjack Pasture) —
+	// how much to pay is the player's decision.
+	if a.DemandsX() {
+		return false
+	}
+	// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) asks
+	// which cards to show, and keeping them hidden is the player's call.
+	if a.RevealCards != nil {
 		return false
 	}
 	// #1600: and the exile-a-permanent clause one zone over — Food
@@ -2030,7 +2056,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.ManaCost != "" {
 		return false
 	}
-	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
+	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.RevealCards != nil || a.ExileSelf {
 		return false
 	}
 	if !a.ExilePermanents.Empty() || a.Branched() {
@@ -2152,7 +2178,7 @@ func (g *Game) autoManaExileAccepts(asker uuid.UUID, source Card, a ManaAbilityS
 	if a.AddCounter != nil || a.RemoveCounters != nil {
 		return false
 	}
-	if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
+	if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || a.RevealCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
 		return false
 	}
 	return true

@@ -359,6 +359,26 @@ type DelayedTrigger struct {
 	// land's controller; they are the same player for every printed
 	// card, and the pool is who the extra mana lands with.
 	ManaTapControllerOnly bool
+
+	// CopiesSpell is the spell an epic trigger copies at each of its
+	// controller's upkeeps (CR 702.50a, #6141, epic.go): the card and its
+	// stack item as they resolved, as snapshot records. Nil on every other
+	// trigger. Plain data, never mutated once scheduled.
+	CopiesSpell *EpicSpell
+
+	// WhileExiled is CR 603.4's intervening "if that card is exiled" on
+	// a step-conditioned trigger (Ertai's Meddling, #6221;
+	// delayed_recast.go): the trigger triggers only while this object
+	// (instance AND CR 400.7 epoch) is in exile, and once it is not it is
+	// a new object the trigger can never name again, so the trigger is
+	// dropped. Zero for every other trigger.
+	WhileExiled ObjectRef
+	// PayToCancel is "… unless they pay {N} before that step" (#6220):
+	// the named player may pay the cost any time they have priority
+	// while the trigger waits (the pay_to_cancel special action,
+	// pay_to_cancel.go), and paying removes it. Nil for every other
+	// trigger. Data, carried in the snapshot.
+	PayToCancel *PayToCancel
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -516,6 +536,12 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 			dropped = true
 			continue
 		}
+		if dt.WhileExiled.ID != uuid.Nil && !g.objectInExileLocked(dt.WhileExiled) {
+			// #6221, CR 603.4 / 400.7: "if that card is exiled" can
+			// never be true again.
+			dropped = true
+			continue
+		}
 		if dt.At == step && g.Turn.Seq >= dt.NotBeforeSeq && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) &&
@@ -615,6 +641,9 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		ManaAdds:           dt.ManaAdds,
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
+		CopiesSpell:           cloneEpicSpell(dt.CopiesSpell),
+		WhileExiled:           dt.WhileExiled,
+		PayToCancel:           clonePayToCancel(dt.PayToCancel),
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration

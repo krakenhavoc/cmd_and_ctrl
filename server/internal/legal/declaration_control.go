@@ -125,6 +125,11 @@ func (e *enumerator) attackTargetsMoves() {
 	if price.IsFree() {
 		return
 	}
+	// #6190: a confirmation that owes permanents is not offered, for the
+	// reason the declaration itself is not (CR 508.1d).
+	if len(price.NonMana) > 0 {
+		return
+	}
 	total := g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, price.Total, 0)
 	autoTap, phyLife, ok := e.attackTaxPayment(total)
 	if !ok || !g.CanPayLifeLocked(e.p, price.Life+phyLife*game.PhyrexianLifePerSymbol) {

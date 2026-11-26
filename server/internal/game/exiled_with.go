@@ -211,20 +211,31 @@ func restoreExiledWithAbility(r *AbilityRef) AbilityRef {
 	return *r
 }
 
-// stampExileCounterLocked puts one `kind` counter on the card that has
+// exileCounterStamp is a move's declared exile counters: `n` counters of `kind`
+// (ReplacementEvent.ExileCounter and ExileCounterCount), carried down to the
+// landing function. The zero value declares none.
+type exileCounterStamp struct {
+	kind string
+	n    int
+}
+
+// stampExileCounterLocked puts `n` (at least one) `kind` counters on the card that has
 // just landed in `dst`, when `dst` is exile and the move declared one
 // (ReplacementEvent.ExileCounter). A no-op for every other destination,
 // for an empty kind, and for a card that is not in `dst`.
-func stampExileCounterLocked(dst *Zone, cardID uuid.UUID, kind string) {
+func stampExileCounterLocked(dst *Zone, cardID uuid.UUID, kind string, n int) {
 	if dst == nil || dst.Kind != ZoneExile || kind == "" {
 		return
+	}
+	if n < 1 {
+		n = 1
 	}
 	for i := range dst.Cards {
 		if dst.Cards[i].InstanceID == cardID {
 			if dst.Cards[i].Counters == nil {
 				dst.Cards[i].Counters = map[string]int{}
 			}
-			dst.Cards[i].Counters[kind]++
+			dst.Cards[i].Counters[kind] += n
 			return
 		}
 	}
@@ -251,4 +262,18 @@ func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef, a
 			return
 		}
 	}
+}
+
+// exiledWithManaValueLocked is the mana value (CR 202.3) of the card
+// exiled with the permanent `source` (#6240, AbilityCost.
+// ManaValueOfExiledWith): the most recently exiled one when there are
+// several, zero when there is none.
+//
+// Caller must hold g.mu.
+func (g *Game) exiledWithManaValueLocked(source Card) int {
+	linked := g.ExiledWithForEffect(PermissionCardRef{ID: source.InstanceID, Epoch: source.ObjectEpoch})
+	if len(linked) == 0 {
+		return 0
+	}
+	return linked[len(linked)-1].ManaValue()
 }

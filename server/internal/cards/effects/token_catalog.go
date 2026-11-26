@@ -265,6 +265,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	PrintedS82GapB118GwaihirBird,
 	// Wake the Dragon's Dragon (S82 GAP batch 120, #5948).
 	PrintedS82GapB120Dragon,
+	// Vraska the Unseen's Assassin (S82 OLD batch 153, #5517).
+	PrintedOldB153Assassin,
 
 	// Mole Man, Moloid Master's Moloid (#4455).
 	printedMshB6MoloidToken,
@@ -281,6 +283,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Ashiok, Wicked Manipulator's Nightmare (Standard batch 53, #4452).
 	printedStd53NightmareToken,
 
+	// Ashiok, Nightmare Muse's Nightmare (S82 OLD batch 137, #5514).
+	printedOldB137NightmareToken,
+
 	// Scriv, the Obligator's Contract: a white Aura token (#4834).
 	printedContractToken,
 
@@ -293,6 +298,12 @@ var TokenTemplates = []tokenTemplateBuilder{
 
 	// Pursued Whale's Pirate (S82 GAP batch 222, #5948).
 	printedS82GapB222PursuedPirateToken,
+
+	// Magic 2015 (S82 OLD batch 356, #5556): Brood Keeper's Dragon, Goblin
+	// Kaboomist's Land Mine and Kalonian Twingrove's Treefolk Warrior.
+	PrintedOldB356Dragon,
+	PrintedOldB356LandMine,
+	PrintedOldB356Treefolk,
 
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
@@ -413,6 +424,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Synapse Necromage's Fungus: can't block (The Lost Caverns of
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
+	// Hold the Perimeter's Goblin: can't block (Conspiracy: Take the Crown, S82 OLD b267, #5540).
+	printedS82OldB267GoblinToken,
 	// Streets of New Capenna's Fish: 1/1 blue, can't be blocked (S82 SNC b07, #5491).
 	printedS82SncB07FishToken,
 	// The Raven Man's Bird: flying, can't block (Dominaria United, #5487).
@@ -423,6 +436,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedGapB154BananaToken,
 	// Svella, Ice Shaper's Icy Manalith: a colorless snow artifact (Kaldheim, S82 OLD batch 071, #5505).
 	printedOldB071IcyManalithToken,
+	// Tezzeret the Schemer's Etherium Cell (Aether Revolt, S82 OLD batch 254, #5536).
+	printedS82OldB254EtheriumCellToken,
 
 	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
 	// Nettling Nuisance's Pirate that can't block.
@@ -597,6 +612,15 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedS82OldB077RockToken,
 	// Relic Robber's Goblin Construct (Zendikar Rising, S82 OLD batch 097, #5508).
 	printedS82OldB097GoblinConstructToken,
+
+	// Mesmerizing Benthid's Illusion: freezes the creature it blocks (S82 OLD b181).
+	printedOldB181IllusionToken,
+	// S82 OLD batch 207: Rite of Belzenlok's 6/6 Demon.
+	printedOldB207BelzenlokDemonToken,
+	// S82 OLD batch 228: Jace, Cunning Castaway's Illusion (sacrificed when targeted by a spell).
+	printedOldB228IllusionToken,
+	// S82 OLD batch 276: Make Mischief's Devil.
+	printedS82OldB276DevilToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

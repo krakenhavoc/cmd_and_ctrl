@@ -299,10 +299,18 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// #5396: deliberately NOT in redactedCardKeys: it is read off
 		// the card's abilities, which an unknown card does not show.
 		CantBlockAlone: true,
-		GoadedBy:       "goader",
-		Goaders:        []string{"goader"},
-		MustAttack:     true,
-		MustBlock:      true,
+		// #6190: the clause is the card's own text, so redaction clears
+		// it (redactCardForViewer) and it is not in redactedCardKeys.
+		AttackCost: []CombatCostDemandView{
+			{Kind: "sacrifice", Clause: "a land", Source: "Exalted Dragon", Count: 1, Candidates: []string{"land"}},
+		},
+		BlockCost: []CombatCostDemandView{
+			{Kind: "tap", Clause: "an untapped creature you control", Source: "Hollow Warrior", Count: 1, Candidates: []string{"creature"}},
+		},
+		GoadedBy:   "goader",
+		Goaders:    []string{"goader"},
+		MustAttack: true,
+		MustBlock:  true,
 		// #3898: deliberately NOT in redactedCardKeys. The sentence
 		// names both creatures, and the server never stamps either on
 		// a face-down permanent.
@@ -411,9 +419,12 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 // redaction table has to see both filled.
 func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 	return CastSurfaceView{
-		TargetMode:   "creature",
-		LegalTargets: lt,
-		Clauses:      []LegalTargetsView{*lt, *lt},
+		TargetMode: "creature",
+		// #6245: the types offered for a spell that names one as it is
+		// cast, each with that type's legal cards.
+		CastCreatureTypes: []BeholdTypeOption{{Type: "Elf", Cards: []string{"c"}}},
+		LegalTargets:      lt,
+		Clauses:           []LegalTargetsView{*lt, *lt},
 		// #1172: the nested blocks carry every field of their own too,
 		// so the nested half of the allowlist guard below is checking
 		// a strip rather than a struct that was empty anyway.
@@ -426,6 +437,10 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
 			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, Energy: 1, PayLabel: "a blue card", CastsFace: 1,
+			// #6256: "have an opponent gain N life" and who could be
+			// given it — never set beside the prices above on a real
+			// offer, but the redaction table has to see them filled.
+			OpponentGainsLife: 3, OpponentOptions: []string{"p2"},
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
 			// ADR 0135 §3: an awaken offer's two clauses.
 			Clauses: []LegalTargetsView{*lt, *lt},
@@ -887,8 +902,10 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// #1055: the three that answer "what may YOU announce".
 	"CastableHere": surfacePrivate,
 	"ClosesOnPass": surfacePrivate,
-	"LegalTargets": surfacePrivate,
-	"Clauses":      surfacePrivate,
+	// #6245: per-viewer legal targets, grouped by creature type.
+	"CastCreatureTypes": surfacePrivate,
+	"LegalTargets":      surfacePrivate,
+	"Clauses":           surfacePrivate,
 	// #1389: what the asking seat would be charged. A cost modifier
 	// may be scoped to one player, so it is theirs alone.
 	"CastPrices": surfacePrivate,
@@ -998,6 +1015,11 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	"Life":     surfacePublicPile,
 	"Energy":   surfacePublicPile,
 	"PayLabel": surfacePublicPile,
+	// #6256: the amount "have an opponent gain N life" charges is
+	// printed; who could be given it is the table, which is public
+	// too (every seat sees who is still in the game).
+	"OpponentGainsLife": surfacePublicPile,
+	"OpponentOptions":   surfacePublicPile,
 	// ADR 0152 §5: which printed face the offer casts is printed.
 	"CastsFace": surfacePublicPile,
 	// ADR 0135 §2: whether the price discards its cards is printed.

@@ -30,6 +30,9 @@ type specialActionParams struct {
 	// largest the seat can pay, and the move's Value says every X from
 	// 0 up to it is payable too.
 	XValue int `json:"x_value,omitempty"`
+	// RevealID is the hand card a reveal morph cost shows (#6249,
+	// CR 702.37e). The enumerator names the first that can pay it.
+	RevealID string `json:"reveal_id,omitempty"`
 }
 
 // specialActionMoves enumerates the CR 116.2 special actions the seat
@@ -56,6 +59,7 @@ func (e *enumerator) specialActionMoves() {
 	}
 	e.outsidePlayMove()
 	e.ignoreEffectMoves()
+	e.payToCancelMoves()
 	e.planarDieMove()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
@@ -94,6 +98,12 @@ func (e *enumerator) specialActionMoves() {
 			card := g.Battlefield.Cards[i]
 			// ADR 0103: and a face-up Room offers an unlock per
 			// locked door (CR 709.5e).
+			// #5781: a licid in its Aura form offers end_effect to the
+			// player its effect names, whoever controls it (CR 116.2c).
+			if card.ReturnedAura && card.AuraFormEndBy == e.seat {
+				e.specialActionMovesForCard(card, game.ZoneBattlefield)
+				continue
+			}
 			if !(card.FaceDownIsPermanent() || game.HasSharedTypeLine(card)) || card.Controller != e.seat {
 				continue
 			}
@@ -141,7 +151,7 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			if err != nil {
 				continue
 			}
-			best, ok := e.affordableXFrom(cost, game.SpecialActionSpendContext(sa.Kind), 0)
+			best, ok := e.affordableXFrom(cost, game.SpecialActionSpendContextFor(sa, card), 0)
 			if !ok {
 				continue
 			}
@@ -177,6 +187,11 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		}
 		if xv != nil {
 			label += fmt.Sprintf(" for X=%d", x)
+		}
+		// #6249: a reveal morph cost names a card to show; the offer is
+		// made only while one exists, so the first is always there.
+		if opts := g.FaceUpRevealOptionsForEffect(e.seat, sa); len(opts) > 0 {
+			params.RevealID = opts[0].String()
 		}
 		// #1391: an offer a grant opened in another zone names its
 		// price, because the card may offer the same kind twice
@@ -218,6 +233,30 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 func (e *enumerator) ignoreEffectMoves() {
 	for _, offer := range e.g.IgnoreEffectOffersLocked(e.seat) {
 		if !e.enter(scope{source: offer.Source}) {
+			continue
+		}
+		if offer.ManaCost != "" {
+			// #6247: paid in mana (Leonin Arbiter's {2}). Offered only
+			// when the seat can pay it, in the special-action spend
+			// context the engine charges with, strict and auto-tapped
+			// like every other special action with mana (#544).
+			cost, err := game.ParseCost(offer.ManaCost)
+			if err != nil || !e.canPay(cost, 0, game.SpecialActionSpendContext(game.SpecialActionIgnoreEffect)) {
+				continue
+			}
+			e.add(Move{
+				Type:   TypeSpecialAction,
+				Player: e.seat,
+				Kind:   KindSpecialAction,
+				Label:  offer.Label,
+				Source: offer.Source,
+				Params: mustJSON(specialActionParams{
+					CardID:  offer.Source.String(),
+					Kind:    string(game.SpecialActionIgnoreEffect),
+					Strict:  true,
+					AutoTap: true,
+				}),
+			})
 			continue
 		}
 		e.add(Move{
@@ -298,4 +337,35 @@ func turnFaceUpOffers(offers []game.SpecialAction) int {
 		}
 	}
 	return n
+}
+
+// payToCancelMoves offers each "… unless they pay {N} before that step"
+// payment waiting on the seat (#6220, game/pay_to_cancel.go) that it can
+// afford, priced with the zero spend context the engine pays it with. Any
+// time the seat has priority, split second or not: paying is neither a
+// cast nor an activation.
+func (e *enumerator) payToCancelMoves() {
+	g := e.g
+	for _, o := range g.PayToCancelOffersLocked(e.seat) {
+		cost, ok := g.PayToCancelCostForEffect(e.seat, o.ID)
+		if !ok || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+			continue
+		}
+		label := "Pay " + o.Cost
+		if o.Label != "" {
+			label += ": " + o.Label
+		}
+		e.add(Move{
+			Type:   TypeSpecialAction,
+			Player: e.seat,
+			Kind:   KindSpecialAction,
+			Label:  label,
+			Params: mustJSON(specialActionParams{
+				CardID:  o.ID.String(),
+				Kind:    string(game.SpecialActionPayToCancel),
+				Strict:  true,
+				AutoTap: true,
+			}),
+		})
+	}
 }

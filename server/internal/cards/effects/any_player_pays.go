@@ -42,6 +42,9 @@ type AnyPlayerPays struct {
 	// Opponents is "any opponent may" (Innocent Traveler, Distant
 	// Memories): the controller is not asked.
 	Opponents bool
+	// Only is "target opponent may" (Risk Factor): the offer goes to this one
+	// player, and the controller is not asked unless it is them.
+	Only uuid.UUID
 	// GuardsSource holds the source spell on the stack while the offer
 	// is open: a cast trigger whose "if a player does" counters the
 	// spell (Dash Hopes, Brain Gorgers).
@@ -119,6 +122,24 @@ func ExileFromGraveyardPayment(n int) UpkeepPayment {
 		words = "Exile " + NumberWord(n) + " cards from your graveyard"
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: n}, Words: words}
+}
+
+// GraveyardToLibraryBottomPayment is "Put N cards from a single graveyard
+// on the bottom of their owner's library" as a payment (#6121, Jötun
+// Grunt's cumulative upkeep): `group` cards from any one graveyard, `n`
+// cards in all. A cumulative upkeep multiplies n and keeps the group
+// (CR 702.24a: each age counter's choice of graveyard is its own), so two
+// age counters may take two cards from one graveyard and two from
+// another. The cards go to the bottom in the order named.
+func GraveyardToLibraryBottomPayment(n, group int) UpkeepPayment {
+	words := "Put a card from a graveyard on the bottom of its owner's library"
+	if n != 1 {
+		words = "Put " + NumberWord(n) + " cards from graveyards on the bottom of their owners' libraries"
+		if group == n {
+			words = "Put " + NumberWord(n) + " cards from a single graveyard on the bottom of their owner's library"
+		}
+	}
+	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionGraveyardToLibraryBottom, Count: n, GroupSize: group}, Words: words}
 }
 
 // EitherPayment is "<a> or <b>" as one payment (ADR 0187 §5): Worms of
@@ -205,6 +226,7 @@ func (a AnyPlayerPays) Apply(ctx *Context) error {
 		Action:       action,
 		Question:     a.Question,
 		Opponents:    a.Opponents,
+		Only:         a.Only,
 		Guards:       guards,
 		AcceptLabel:  a.AcceptLabel,
 		DeclineLabel: a.DeclineLabel,

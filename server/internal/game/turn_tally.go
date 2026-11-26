@@ -41,6 +41,10 @@ import (
 // PlayerTurnTally is what one player has done, or had done to them,
 // this turn.
 type PlayerTurnTally struct {
+	// TappedLandForMana is whether this player tapped a land for mana
+	// this turn (CR 106.12: activated a mana ability of a land with {T}
+	// in its cost; #6217, Desolation). Additive.
+	TappedLandForMana bool `json:"tappedLandForMana,omitempty"`
 	// LifeGained is the sum of positive life changes.
 	LifeGained int `json:"lifeGained,omitempty"`
 	// LifeLost is the sum of negative life changes plus the life that
@@ -305,6 +309,21 @@ type EnteredFlierRecord struct {
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
 type TurnTally struct {
+	// LastSpellCast is the spell most recently cast this turn, by anyone
+	// (#6217, Mana Maze's "spells that share a color with the spell most
+	// recently cast this turn"): its colours as it was cast. Nil before
+	// the turn's first spell. Additive.
+	LastSpellCast *LastSpellCastRecord `json:"lastSpellCast,omitempty"`
+	// SpellNames are the names of the spells cast this turn, by caster, in
+	// cast order, each as the spell had it on the stack (#6217, Grim
+	// Reminder's "each opponent who cast a spell this turn with the same
+	// name as that card"). See turn_records.go. Additive.
+	SpellNames []CastNameRecord `json:"spellNames,omitempty"`
+	// TappedToPay records each permanent tapped to pay a cost of an
+	// activated ability this turn, with the ability's source (#6217,
+	// Vodalian War Machine's "destroy all Merfolk tapped this turn to pay
+	// for its abilities"). Additive.
+	TappedToPay []TappedToPayRecord `json:"tappedToPay,omitempty"`
 	// Players holds each player's tally; a player with nothing
 	// counted has no entry. Read through Game.TurnTallyFor.
 	Players map[uuid.UUID]PlayerTurnTally `json:"players,omitempty"`
@@ -706,6 +725,22 @@ type TurnTally struct {
 	// creatures that attacked this turn" (Relentless Assault), "attacks
 	// for the first time each turn" (Aurelia, the Warleader).
 	Attacks []AttackRecord `json:"attacks,omitempty"`
+	// CombatBlocks is every pair "this creature blocked that attacker"
+	// made this turn (#6193): by the block declaration, by a creature put
+	// onto the battlefield blocking, or by an effect (BlockAttackersForEffect),
+	// each under the combat phase it was made in. "Creatures it was
+	// blocking that hadn't become blocked by another creature this combat
+	// become unblocked" (Balduvian Warlord) reads it after the other
+	// blocker has left combat, which the live blocking fields cannot say.
+	// Additive: an older snapshot reads none.
+	CombatBlocks []CombatBlockRecord `json:"combatBlocks,omitempty"`
+	// CouldAttack is every creature OBJECT that could have been declared
+	// as an attacker in a declare attackers step this turn (#6211, CR
+	// 508.1a, 508.1c): Season of the Witch's "except for creatures that
+	// couldn't attack". Written as each attack declaration passes its
+	// checkpoint (recordCouldAttackLocked); one entry per object, in
+	// order. Additive: an older snapshot reads none.
+	CouldAttack []ObjectRef `json:"couldAttack,omitempty"`
 	// BecameTapped counts, per OBJECT, how many times each permanent
 	// became tapped this turn (#4576, CR 701.26a): Captain America,
 	// Living Legend's "if it's the first time that creature has become
@@ -723,6 +758,14 @@ type TurnTally struct {
 	// omitted when empty, flushed with the rest of the tally when the
 	// turn begins.
 	BecameTapped map[string]int `json:"becameTapped,omitempty"`
+	// Blocked counts, per OBJECT, how many attackers each creature was
+	// declared to block this turn (Gideon's Triumph's "a creature that
+	// attacked or blocked this turn"): one per EventBlock, keyed by
+	// ObjectTallyKey(id, epoch, "blocked"), so a creature that left and came
+	// back is a new object (CR 400.7). Read through BlockedThisTurn.
+	// Additive within the snapshot schema: omitted when empty, flushed with
+	// the rest of the tally when the turn begins.
+	Blocked map[string]int `json:"blocked,omitempty"`
 	// CountersPut counts, per OBJECT, how many times counters were put on
 	// each permanent this turn (Stalwart Successor's "if it's the first
 	// time counters have been put on that creature this turn"): one per
@@ -829,6 +872,46 @@ type AttackRecord struct {
 	AllTypes   bool      `json:"allTypes,omitempty"`
 }
 
+// DeclaredAsAttackerThisCombat reports whether the OBJECT `c` is now
+// was declared as an attacker during the combat phase in progress
+// (#6190): Hollow Warrior's "not declared as an attacking ... creature
+// this combat", which stays true for a creature since removed from
+// combat, because the declaration is history (CR 508.1).
+//
+// Caller must hold g.mu.
+func (g *Game) DeclaredAsAttackerThisCombat(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, a := range g.TurnTally.Attacks {
+		if a.Attacker == c.InstanceID && a.Epoch == c.ObjectEpoch && a.PhaseID == g.Turn.PhaseID {
+			return true
+		}
+	}
+	return false
+}
+
+// DeclaredAsBlockerThisCombat is DeclaredAsAttackerThisCombat's block
+// half (#6190), off the per-pair block record the turn already keeps
+// (TurnTally.CombatBlocks, #6193): the blocks this object made in the
+// combat phase in progress, however they were made — the declaration, a
+// creature put onto the battlefield blocking, or an effect. It stays
+// true for a creature since removed from combat, because the record is
+// history.
+//
+// Caller must hold g.mu.
+func (g *Game) DeclaredAsBlockerThisCombat(c *Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, b := range g.TurnTally.CombatBlocks {
+		if b.Blocker.ID == c.InstanceID && b.Blocker.Epoch == c.ObjectEpoch && b.PhaseID == g.Turn.PhaseID {
+			return true
+		}
+	}
+	return false
+}
+
 // AttackedYouOrYourPlaneswalkerThisTurn reports whether `player`
 // attacked `you`, or a planeswalker `you` controlled as the attack was
 // declared, this turn: Sandswirl Wanderglyph's "each opponent who
@@ -905,6 +988,34 @@ func (g *Game) noteBecameTappedLocked(cardID uuid.UUID) {
 	maps.Copy(next, g.TurnTally.BecameTapped)
 	next[key]++
 	g.TurnTally.BecameTapped = next
+}
+
+// noteBlockedLocked counts one block declared by the object `cardID` names.
+// A fresh map every time, as noteBecameTappedLocked does.
+//
+// Caller must hold g.mu.
+func (g *Game) noteBlockedLocked(cardID uuid.UUID) {
+	if cardID == uuid.Nil {
+		return
+	}
+	key := g.objectTallyKeyLocked(cardID, "blocked")
+	next := make(map[string]int, len(g.TurnTally.Blocked)+1)
+	maps.Copy(next, g.TurnTally.Blocked)
+	next[key]++
+	g.TurnTally.Blocked = next
+}
+
+// BlockedThisTurn reports whether the object `cardID` names was declared as
+// a blocker this turn: "creatures that blocked this turn". It reads the
+// object as it is now, so a creature that left and came back is a new
+// object that has blocked nothing (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) BlockedThisTurn(cardID uuid.UUID) bool {
+	if cardID == uuid.Nil || len(g.TurnTally.Blocked) == 0 {
+		return false
+	}
+	return g.TurnTally.Blocked[g.objectTallyKeyLocked(cardID, "blocked")] > 0
 }
 
 // noteCountersPutLocked counts one placement of counters on the object
@@ -2191,6 +2302,12 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
+	if t.LastSpellCast != nil {
+		last := LastSpellCastRecord{Colors: append([]string(nil), t.LastSpellCast.Colors...)}
+		out.LastSpellCast = &last
+	}
+	out.TappedToPay = append([]TappedToPayRecord(nil), t.TappedToPay...)
+	out.SpellNames = append([]CastNameRecord(nil), t.SpellNames...)
 	out.PrevNoncombatVictims = append([]uuid.UUID(nil), t.PrevNoncombatVictims...)
 	out.PrevLifeLosers = append([]uuid.UUID(nil), t.PrevLifeLosers...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
@@ -2204,6 +2321,12 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.DiedNames = copyStringIntMap(t.DiedNames)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
+	if len(t.CombatBlocks) > 0 {
+		out.CombatBlocks = append([]CombatBlockRecord(nil), t.CombatBlocks...)
+	}
+	if len(t.CouldAttack) > 0 {
+		out.CouldAttack = append([]ObjectRef(nil), t.CouldAttack...)
+	}
 	if len(t.LoreCounterPut) > 0 {
 		out.LoreCounterPut = append([]PermissionCardRef(nil), t.LoreCounterPut...)
 	}
@@ -2241,6 +2364,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
 	out.ReplacementsApplied = copyStringIntMap(t.ReplacementsApplied)
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
+	out.Blocked = copyStringIntMap(t.Blocked)
 	out.CountersPut = copyStringIntMap(t.CountersPut)
 	out.PlusOneCountersPut = copyStringIntMap(t.PlusOneCountersPut)
 	if len(t.Attacks) > 0 {
@@ -2491,6 +2615,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// The CardID guard is not defensive: EventBlock shares this
 		// arm, and a hand-written EventCast in a test may carry only
 		// an Actor.
+		if ev.Kind == EventBlock {
+			g.noteBlockedLocked(ev.CardID)
+		}
 		if ev.Kind == EventCast && ev.CardID != uuid.Nil {
 			g.TurnTally.Casts = append(g.TurnTally.Casts, ev.CardID)
 		}

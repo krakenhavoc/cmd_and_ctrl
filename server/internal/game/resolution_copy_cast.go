@@ -95,8 +95,8 @@ const PendingChoiceResolutionCast PendingChoiceKind = "resolution_cast"
 // copies, the copies CopyCardsAndOfferCastsForEffect has just made and
 // offered. Nothing is queued outside a resolution, where the offer's
 // permissions alone are the window. Caller must hold g.mu.
-func (g *Game) queueResolutionCastLocked(offer CardCopyOffer, copies []uuid.UUID) uuid.UUID {
-	return g.queueResolutionCastOfferLocked(resolutionCastOffer{
+func (g *Game) queueResolutionCastLocked(offer CardCopyOffer, copies []uuid.UUID) {
+	g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:    offer.Player,
 		Source:     offer.Source,
 		Reason:     offer.SourceName,
@@ -274,7 +274,7 @@ func (g *Game) stampResolutionCastPermissionLocked(chooser uuid.UUID, perm CastP
 	if perm.Player == uuid.Nil {
 		perm.Player = chooser
 	}
-	if perm.Zone == ZoneHand && perm.AltCostKey == "" && perm.Cost != "" {
+	if (perm.Zone == ZoneHand || perm.Zone == ZoneCommand) && perm.AltCostKey == "" && perm.Cost != "" {
 		perm.AltCostKey = AltCostKeyGrantedCost
 	}
 	g.GrantCastPermissionToCardsForEffect(perm, cards)
@@ -340,12 +340,26 @@ func (g *Game) runResolutionCastThenLocked(key string, chooser, source uuid.UUID
 // permission's claim (ResolutionCastClaimLocked). Caller must hold g.mu.
 func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneKind, bool) {
 	z := g.findCardZoneLocked(id)
-	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard && z.Kind != ZoneLibrary && z.Kind != ZoneHand) {
-		return Card{}, "", false
-	}
-	c, ok := g.cardInZoneLocked(z, id)
-	if !ok {
-		return Card{}, "", false
+	var c Card
+	var kind ZoneKind
+	if z == nil {
+		// #6155: a copy of a card created outside the game (CR 707.13),
+		// in the chooser's own container, which the card index does not
+		// cover.
+		out, ok := g.outsideCardCopyCandidateLocked(chooser, id)
+		if !ok {
+			return Card{}, "", false
+		}
+		c, kind = out, ZoneOutside
+	} else {
+		if z.Kind != ZoneExile && z.Kind != ZoneGraveyard && z.Kind != ZoneLibrary && z.Kind != ZoneHand && z.Kind != ZoneCommand {
+			return Card{}, "", false
+		}
+		in, ok := g.cardInZoneLocked(z, id)
+		if !ok {
+			return Card{}, "", false
+		}
+		c, kind = in, z.Kind
 	}
 	p := g.playerByIDLocked(chooser)
 	if p == nil {
@@ -353,7 +367,7 @@ func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneK
 	}
 	for i := range p.CastPermissions {
 		if p.CastPermissions[i].Scope == ScopeCards && p.CastPermissions[i].NamesCard(c) {
-			return c, z.Kind, true
+			return c, kind, true
 		}
 	}
 	return Card{}, "", false
@@ -388,13 +402,13 @@ func (g *Game) resolutionCastOffersASpellLocked(chooser uuid.UUID, c Card) bool 
 // whatever it claims. Caller must hold g.mu.
 func (g *Game) ResolutionCastClaimLocked(chooser, id uuid.UUID) (string, bool) {
 	c, zone, ok := g.ResolutionCastCandidateLocked(chooser, id)
-	if !ok || zone != ZoneHand {
+	if !ok || (zone != ZoneHand && zone != ZoneCommand) {
 		return "", false
 	}
 	p := g.playerByIDLocked(chooser)
 	for i := range p.CastPermissions {
 		perm := &p.CastPermissions[i]
-		if perm.Scope == ScopeCards && perm.Zone == ZoneHand && perm.NamesCard(c) && perm.AltCostKey != "" {
+		if perm.Scope == ScopeCards && perm.Zone == zone && perm.NamesCard(c) && perm.AltCostKey != "" {
 			return perm.AltCostKey, true
 		}
 	}

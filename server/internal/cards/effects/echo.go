@@ -51,6 +51,14 @@ type UpkeepPayment struct {
 	// Flips is the number of coins a "flip a coin" payment flips once it
 	// is paid (FlipCoinsPayment, #4063). Zero for every other payment.
 	Flips int
+	// Life is life paid WITH Mana as one payment (#6189): Infernal
+	// Darkness' "Cumulative upkeep—Pay {B} and 1 life". Zero for every
+	// other payment.
+	Life int
+	// Noun and Plural name a card-pick payment's permanents in the
+	// prompt when the payment carries them itself (#6189: the payments
+	// whose words `times` rebuilds). Empty for every other payment.
+	Noun, Plural string
 }
 
 // prompt is the payment's Cost string and Action for UpkeepPayUnless.
@@ -117,7 +125,11 @@ func (p UpkeepPayment) times(n int, noun, plural string) UpkeepPayment {
 		return FlipCoinsPayment(p.Flips * n)
 	}
 	if p.Action == nil {
-		return UpkeepPayment{Mana: strings.Repeat(p.Mana, n)}
+		// #6189: a mana cost repeats its symbols — a hybrid one
+		// ("{W/U}") repeats as a hybrid, which is CR 702.24a's "each
+		// choice is made separately for each age counter" — and life
+		// paid beside it multiplies.
+		return UpkeepPayment{Mana: strings.Repeat(p.Mana, n), Life: p.Life * n}
 	}
 	count := p.Action.Count * n
 	switch p.Action.Kind {
@@ -125,6 +137,25 @@ func (p UpkeepPayment) times(n int, noun, plural string) UpkeepPayment {
 		return DiscardPayment(count)
 	case game.PayActionLife:
 		return LifePayment(count)
+	case game.PayActionCounterOnOpponentCreature:
+		// #6189, CR 702.24a: one choice per age counter, so one
+		// creature may be named more than once.
+		return CounterOnOpponentCreaturePayment(count, p.Action.CounterKind, p.Noun, p.Plural, p.Action.Of)
+	case game.PayActionCountersOnSource:
+		return CountersOnThisPayment(count, p.Action.CounterKind, p.Action.OnSource)
+	case game.PayActionOpponentGainsLife:
+		return OpponentGainsLifePayment(count, p.Action.Amount)
+	case game.PayActionOpponentCreatesToken:
+		return OpponentCreatesTokenPayment(count, p.Action.TokenKey, p.Noun)
+	case game.PayActionGainControlOfLand:
+		return GainControlOfLandPayment(count, p.Noun, p.Plural, p.Action.Of)
+	case game.PayActionDraw:
+		return DrawPayment(count)
+	case game.PayActionExileLibraryTop:
+		return ExileLibraryTopPayment(count)
+	case game.PayActionGraveyardToLibraryBottom:
+		// #6121: the group stays the printed one; only the total grows.
+		return GraveyardToLibraryBottomPayment(count, p.Action.GroupSize)
 	}
 	return SacrificePayment(count, noun, plural, p.Action.Of)
 }

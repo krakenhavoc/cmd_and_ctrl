@@ -317,7 +317,7 @@ PRs 1, 2 and 4 are small and touch nothing in combat or priority, so they can go
 - Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm). Both shipped in the 2026-10-16 amendments below (#1864, #1865).
 - A ScopedEffect mod kind that grants "can't attack its owner" (Elrond), and "can't be sacrificed" (Alexios).
 - Savage Summoning's other two one-use promises ("can be cast as though it had flash" and "enters with an additional +1/+1 counter"). It waits on the `cant-be-countered-grant` row.
-- "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer.
+- "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer. Shipped in the 2026-11-25 amendment below (#6263).
 - Costs from a single graveyard (Night Soil, Jötun Grunt).
 
 ---
@@ -441,6 +441,20 @@ The 2026-10-07 amendment left Martyrdom for the one thing it lacked: a granted r
 - **The redirection** needs nothing new. `effects.RedirectDamage{Protect: ShieldClause(0), Amount: 1, To: RedirectToThis}` protects the clause's target (a creature, planeswalker or player, `targetCreaturePlaneswalkerOrPlayer`) and deals the damage to the creature that has the ability: the reverse of Personal Incarnation's direction, in the same primitive.
 
 Cards: Martyrdom (Full).
+
+---
+
+## Amendment (2026-11-25): "Only the player this creature is attacking may activate this ability" (#6170)
+
+Capricopian names a fifth activator: the player the creature is attacking. It rides the same predicate with nothing stored.
+
+- **`ActivatedAbility.DefendingPlayerOnly`**, mirrored on `game.ActivatedAbilityShape`. `game.MayActivate` answers `source.AttackingTarget == player` (and never the controller) for such a row. `Card.AttackingTarget` names a seat only while the creature attacks a player, so a creature that is not attacking, or attacks a planeswalker or a battle, or attacks nothing after its target left combat (CR 506.4c), has no activator. A reselection (CR 508.7) moves the activator with the attack, and the row closes when combat ends. `ReachesAcross` includes it, so the activation path's and the enumerator's fast negative lets the attacked seat reach the permanent.
+- **Registration** counts it with the other named activators (at most one per row) and refuses it beside `{T}`, loyalty, crew, saddle, sacrifice-this, exert, a non-battlefield zone or a `Purpose`, as for opponents-only.
+- **Wire**: `defending_player_only` on `activated_abilities[i]`, additive. The per-seat copy is filed as for the other named activators. The client's `rowOpenToViewer` opens the row to the viewer whose seat is the card's `attacking_target` with an `attacking_target_kind` of player; every other viewer, the controller included, sees it greyed or not at all. Whether it is live is still the digest's answer.
+- **Bots**: the enumerator offers the row to exactly the seat `MayActivate` names. A defending-player row declares no `Purpose`, so the heuristic never reaches across to activate it, which is weaker than printed.
+- **"Reselect which player"**: `game.ReselectAttackPrompt.PlayersOnly` narrows the CR 508.7 prompt's options to players as it is built. Nothing about it is stored on the prompt.
+
+Cards: Capricopian (Full).
 
 ---
 
@@ -597,3 +611,28 @@ V.A.T.S. prints "Choose any number of target creatures with equal toughness". It
 Snapshot impact: none. The key is a new value of an existing enum, appended after `TargetShareOwner` and never renumbered.
 
 Cards: V.A.T.S. (Full).
+
+## Amendment 2026-11-25: can't be countered by spells of a colour (#6263)
+
+Autumn's Veil prints "Spells you control can't be countered by blue or black spells this turn". The turn grant (§4 decision 2) gains `CounterShieldGrant.ByColors`, the colours as a string ("UB"), so the grant stays comparable and its value copy is a deep copy. The gate reads the counterer from the resolving slot (`resolving_item.go`): the grant applies only when the item resolving is a spell that has one of those colours, read as the stack held it. A colourless or red spell and any ability (Mystic Snake's trigger is not a spell) still counter. With nothing resolving, the grant does not answer "can't be countered", so the stack chip never claims a blanket shield. The Veil's second clause, "creatures you control can't be the targets of blue or black spells this turn", is a ScopedEffect over `ScopeYourCreatures` with the new `ModCantBeTargetedBySpellsOfColors` mod (`cantBeTargetedBySpellsOfColors`, an on-disk identity). `canBeTargetedBy` reads it for spells only.
+
+Snapshot impact: additive under v9 (`seats[].statics[].cantBeCountered.byColors`; the mod kind is a new string value).
+
+Cards: Autumn's Veil is built by its OLD batch (b452).
+
+---
+
+## Amendment (2026-11-25): "You may tap lands you don't control for mana" (#6204)
+
+Piracy: "Until end of turn, you may tap lands you don't control for mana. Spend this mana only to cast spells." CR 602.2 lets only an object's controller activate its abilities "unless the object specifically says otherwise"; here an effect says otherwise, for a player rather than for a row, so this is not the `AnyPlayer` bit. The owner decided (2026-11-24) to build it, with the auto-tapper and the client tap affordance reaching another seat's lands.
+
+- **The state.** `Game.TapForeignLandsThisTurn`, a set of players, written by `AllowTapForeignLandsThisTurnForEffect(player)` and flushed at the turn boundary with the other "this turn" sets. Snapshot: additive (`tapForeignLandsThisTurn`). Data, no func field, so the closure census is unchanged.
+- **Which rows.** "Tap … for mana" is activating a mana ability with `{T}` in its cost (CR 106.12), so a land's `{T}` rows and nothing else; a row that also sacrifices the land is refused (CR 701.21a: you can sacrifice only what you control). Lands only, read live, so a land that changes hands this turn is covered. A row the card already opens to any player keeps its own, unrestricted, answer.
+- **The gate.** `Game.MayActivateManaLocked(player, source, zone, ab)` is `MayActivateMana` widened by the permission, and `MayReachManaAcrossLocked` is the fast negative. `ActivateManaAbility`, the enumerator's `manaMoves` and the view ask them, so the bot and the client are offered what the engine accepts (#544). Word of Command's "only from lands that player controls" refuses another player's land.
+- **What the activator does.** As for an any-player row: the activator pays and gets the mana (CR 106.4), and controls the ability (CR 113.8), so a painland's "deals 1 damage to you" hits the activator.
+- **"Spend this mana only to cast spells."** `restrictionsFor`, the one reader every mint uses (the click, a colour pick, the auto-tapper's executor), adds `ManaRestrictCast` to mana a player makes with a land they don't control under the permission. Tags are ANDed, so a land's own restriction stays.
+- **The auto-tapper.** For a cast only (the payment whose spend context the restriction admits), another player's land under the permission is a candidate, marked restricted so the restricted-first ranking applies; never for an activation, the costed pass or a prompt's payment. The executor re-asks the permission and the row before it taps.
+- **The view and the client.** The holder's per-seat copy of the land (the `abilityOffers` carrier) marks its `{T}` rows `any_player`, which the client reads as "this viewer may activate it", with the `purpose:cast` tag on the row. The existing any-player click and popover then tap it as the viewer. No wire field is added.
+- **Bots.** No new prompt. A bot's casts go through the auto-tapper, which now plans the lands; the heuristic never takes a bare mana move.
+
+Cards: Piracy (OLD b701, built by its batch on `AllowTapForeignLandsThisTurnForEffect`).

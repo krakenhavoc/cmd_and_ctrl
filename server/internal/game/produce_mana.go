@@ -141,6 +141,8 @@ func (g *Game) produceManaLocked(
 		return nil
 	}
 	produced := g.replaceProducedManaLocked(p.ID, source, colors, fromTap)
+	// #6210: "mana of a color of your choice instead" — the tap's colour.
+	produced = resolveChosenManaColors(colors, produced, pending)
 	// #1547: one production, one Production id on every rider it mints —
 	// "when THAT mana is spent" is one activation's mana, however many
 	// tokens a CR 106.12b doubler turned it into.
@@ -411,6 +413,23 @@ func (g *Game) priceProducedSlotsLocked(
 		amounts := make(map[string]int, len(slot.Options))
 		var recolor map[string]string
 		differs := false
+		// #6210: a land the window makes "mana of a color of your
+		// choice" is a five-colour source, the colour picked at the tap.
+		if len(slot.Options) > 0 {
+			first := slot.Options[0]
+			if n, ok := g.producesChosenColorLocked(playerID, cardID, repeatColor(first, slot.AmountFor(first)), fromTap); ok {
+				changed = true
+				entry := ProducedManaEntry{Options: append([]string(nil), AllColors...)}
+				if n > 1 {
+					entry.Amounts = make(map[string]int, len(AllColors))
+					for _, c := range AllColors {
+						entry.Amounts[c] = n
+					}
+				}
+				out = append(out, entry)
+				continue
+			}
+		}
 		for _, color := range slot.Options {
 			base := slot.AmountFor(color)
 			made := g.producedManaPreviewLocked(playerID, cardID, repeatColor(color, base), fromTap)

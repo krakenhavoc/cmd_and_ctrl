@@ -372,6 +372,19 @@ type Card struct {
 	// together (setBlockingSet, clearBlocking).
 	AlsoBlocking []uuid.UUID
 
+	// MarkedBySource is the per-SOURCE split of DamageMarked (#6209):
+	// how much damage each source has marked on this creature right now,
+	// in the order it was marked. Read by Ogre Enforcer's "can't be
+	// destroyed by lethal damage unless lethal damage dealt by a single
+	// source is marked on it"; see single_source_lethal.go for how it is
+	// maintained and why the turn's damage tally is the wrong record for
+	// that question. Cleared with DamageMarked, and never totalling more
+	// than it. Only meaningful on the battlefield. Additive in the
+	// snapshot: a file written before it restores an empty split, which
+	// reads as "nobody has marked lethal damage on its own" — weaker,
+	// never stronger.
+	MarkedBySource []SourceMark
+
 	// Goads is every player who has goaded this creature and whose goad
 	// has not ended, one entry per goader, oldest goad first (#1598,
 	// CR 701.15c). Nil means "not goaded". Each goaded creature attacks
@@ -440,6 +453,15 @@ type Card struct {
 	PhaseInBarredBy    uuid.UUID
 	PhaseInBarredEpoch int
 	PhaseInBarredFor   uuid.UUID
+	// PhaseInBarredThroughPlayer and PhaseInBarredThroughTurn are "Until the
+	// end of your next turn, they can't phase in" (Teferi, Timeless Voyager's
+	// -8): the player whose turn ends the bar and that player's TurnsBegun
+	// count for the turn it ends with. The permanent stays out while the
+	// player has begun fewer turns than that, and through that turn itself;
+	// once it is over the bar is gone and the permanent is back on the
+	// ordinary clock (CR 502.1). uuid.Nil is "no such effect". Additive.
+	PhaseInBarredThroughPlayer uuid.UUID
+	PhaseInBarredThroughTurn   int
 	// PhaseInBarredWhileTapped lives in the bool block at the end of
 	// Card, for alignment.
 
@@ -871,7 +893,9 @@ type Card struct {
 	// SOURCE'S CONTROLLER rather than any characteristic of it — the
 	// one quality in the grammar that does. Read it with
 	// ChosenPlayerOf; written by ResolveOptionPick through the
-	// as-enters prompt in choose_player.go and by nothing else.
+	// as-enters prompt in choose_player.go, and by an entry overwrite that
+	// names a player as the permanent lands (EntersAs.ChosenPlayer,
+	// Takklemaggot's "that player", #6235).
 	// Added for #980; see ADR 0072 §7.
 	ChosenPlayer uuid.UUID
 
@@ -1057,6 +1081,19 @@ type Card struct {
 	// read with Game.NotesForEffect (notes.go).
 	Notes []string
 
+	// PlayerNotes are words this object's abilities have recorded for a
+	// PLAYER (#6097): Archangel of Strife's "each player chooses war or
+	// peace" (a choice per player, read by its statics), Diseased Vermin's
+	// "target opponent previously dealt damage by it" (a mark per damaged
+	// player). Notes' lifecycle: per INSTANCE, carried by the snapshot and
+	// by clone, cleared when this permanent leaves the battlefield
+	// (CR 400.7), NOT a copiable value (CR 707.2), always replaced and never
+	// changed in place (clone shares the backing array). Written by
+	// Game.AddPlayerNoteForEffect / SetPlayerNoteForEffect and read with
+	// Card.PlayerNoted, Card.PlayersNoted or Game.PlayerNotesForEffect
+	// (player_notes.go).
+	PlayerNotes []PlayerNote
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.
@@ -1064,6 +1101,8 @@ type Card struct {
 	// the snapshot, cleared when the permanent leaves the battlefield
 	// (CR 400.7). Not a copiable value (CR 707.2). Read with DevouredBy.
 	Devoured int
+
+	// TributePaid (#6251) is in the bool block at the end of Card.
 
 	// ModesChosen is "choose one that hasn't been chosen" with no
 	// duration (ADR 0097, #1749 — Silent Hallcreeper, Demonic Pact):
@@ -1202,6 +1241,14 @@ type Card struct {
 	// has overwritten the printed fields nothing else remembers what
 	// the Clone had copied.
 	DurationCopyBase *PrintedValues
+
+	// FullTextBase is the permanent's printed values UNDER a full-text
+	// overlay (CR 612.6, Volrath's Shapeshifter; #6233, full_text.go):
+	// its own values, or its copies'. nil while no full-text effect
+	// applies. Put back by the materialiser before every pass and by
+	// the CR 400.7 battlefield-leave path; carried by the snapshot and
+	// deep-copied by clone.go for DurationCopyBase's reason.
+	FullTextBase *PrintedValues
 
 	// FaceDownListed is the CR 708.2 body an effect LISTED for this
 	// face-down object — Cyber Conversion's "It's a 2/2 Cyberman
@@ -1773,6 +1820,11 @@ type Card struct {
 	// Added in S18 sub-PR 3.
 	MarkedLethalByDeathtouch bool
 
+	// MarkedBySource, the per-source split of DamageMarked (#6209), is a
+	// slice and lives above with AlsoBlocking rather than here in the
+	// bool block, where it would leave alignment padding
+	// (TestCardHasNoInteriorPadding).
+
 	// VariableToughness records that the printed toughness is not a
 	// number the engine can use — "*", "1+*", "?", or missing from a
 	// creature's record altogether — so Toughness is the importer's 0
@@ -2210,6 +2262,17 @@ type Card struct {
 	// lookup, ended by the same zone change.
 	ReturnedAura bool
 
+	// AuraFormEndBy and AuraFormEndCost are a licid's "You may pay {X} to
+	// end this effect" (#5781, licid.go, ADR 0154 amendment 2026-11-25):
+	// the player who may end the effect that made this permanent an Aura
+	// (the controller of the ability that created it, CR 109.5) and the
+	// cost, in brace notation. Set with ReturnedAura by
+	// BecomeLicidAuraForEffect; both cleared when the effect ends
+	// (SpecialActionEndEffect) and at both CR 400.7 sites. Not copiable
+	// (CR 707.2). Carried by clone and the snapshot.
+	AuraFormEndBy   uuid.UUID
+	AuraFormEndCost string
+
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a
 	// battlefield host is judged by it (#3159; documented beside
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
@@ -2232,6 +2295,14 @@ type Card struct {
 	// PhaseInBarredFor is unused. The rest is the same bar: a prohibition,
 	// cleared for good once it stops holding (CR 611.2b).
 	PhaseInBarredWhileTapped bool
+
+	// TributePaid records that the opponent chosen for this permanent's
+	// tribute put the +1/+1 counters on it as it entered (CR 702.104a);
+	// "if tribute wasn't paid" (CR 702.104b) is its negation. Stamped at
+	// entry from ReplacementEvent.EntersTributePaid. Per instance,
+	// carried by the snapshot, cleared when the permanent leaves the
+	// battlefield (CR 400.7). Not a copiable value (CR 707.2).
+	TributePaid bool
 
 	// stackColored says stackColors is the spell's colour (#6088,
 	// spell_colors.go; documented beside stackColors, kept here for

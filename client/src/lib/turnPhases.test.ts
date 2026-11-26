@@ -78,6 +78,17 @@ describe("nextTurnLine", () => {
   it("names the seat after a skip", () => {
     expect(nextTurnLine({ active_seat: 0, next_seat: 2 }, seats)).toBe("Next: Cy (skips Bob)");
   });
+  it("walks the other way round while the turn order is reversed", () => {
+    // Reversed from Cy (seat 2): Bob (seat 1) owes a skip, so Alice is next.
+    expect(nextTurnLine({ active_seat: 2, next_seat: 0, turn_order_reversed: true }, seats)).toBe(
+      "Next: Alice (turn order reversed; skips Bob)",
+    );
+    // Reversed from Alice: Cy is next with nobody skipped, and the line
+    // still says the order is reversed.
+    expect(nextTurnLine({ active_seat: 0, next_seat: 2, turn_order_reversed: true }, seats)).toBe(
+      "Next: Cy (turn order reversed)",
+    );
+  });
   it("has no line in the plain case", () => {
     expect(nextTurnLine({ active_seat: 1, next_seat: 2 }, seats)).toBeNull();
     expect(nextTurnLine({ active_seat: 0 }, seats)).toBeNull();

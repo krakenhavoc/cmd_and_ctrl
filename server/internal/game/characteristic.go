@@ -73,6 +73,17 @@ type Characteristic struct {
 	// client's badge; nothing but the projection reads it.
 	AllCreatureTypes bool
 
+	// AllNonlegendaryCreatureNames records that this object has "all
+	// names of nonlegendary creature cards in addition to its name"
+	// (Spy Kit, #6257): a LAYER 3 name fact (CR 612, the layer a name is
+	// changed in), kept as a flag for the reason AllCreatureTypes is —
+	// thousands of names would not fit in Name. Name stays its own name.
+	// The name readers (CardNameMatches, PermanentHasName, the legend
+	// rule) ask it through HasAllNonlegendaryCreatureNames and the
+	// card-database hook NonlegendaryCreatureCardName (all_names.go). A
+	// later name SET clears it (CR 612.8: "loses any names it had").
+	AllNonlegendaryCreatureNames bool
+
 	// SourceManaValue, SourceManaValueKnown and SourceRingBearer are
 	// facts about a protection SOURCE (CR 702.16a), not characteristics
 	// a layer computes: the source's mana value (CR 202.3) and whether
@@ -92,6 +103,19 @@ type Characteristic struct {
 	// a copy of one) rather than an ability or a permanent: "protection from
 	// spells that are one or more colors" reads it (Emrakul, the Aeons Torn).
 	SourceIsSpell bool
+	// SourceCastThisTurn says the source is a permanent whose spell was
+	// cast this turn (CastProvenance.CastThisTurn, PermanentInfo.
+	// CastThisTurn for a departed one): "protection from permanents that
+	// were cast this turn" reads it (Emrakul, the World Anew, #6098).
+	// Written only by the source-snapshot builders, like the facts above.
+	SourceCastThisTurn bool `json:"-"`
+	// SourceCounters are the counters on a permanent source (#6149):
+	// "protection from permanents with corruption counters on them" reads
+	// it. Written only by the source-snapshot builders, like the facts
+	// above, and never serialized: a source snapshot is built when a
+	// protection check is made and never stored, and a departed permanent's
+	// record keeps its counters in PermanentInfo.Counters.
+	SourceCounters map[string]int `json:"-"`
 
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless
@@ -128,6 +152,17 @@ type Characteristic struct {
 	// abilities without changing types sets this too, from its Apply. A
 	// layer-6 grant still survives it. Additive, S82 GAP batch 192 (#5948).
 	IntrinsicLandManaRemoved bool `json:",omitempty"`
+
+	// ManaAbilitiesKept records that the ability removal that applied to
+	// this object keeps its mana abilities (#6246): Blood Sun's "All
+	// lands lose all abilities except mana abilities" (CR 613.1f, CR
+	// 605.1a). AbilitiesRemoved is set as for any removal, so every other
+	// own ability is gone; the declared mana rows answer as before
+	// (untaxedManaAbilityRows), and a layer-6 grant that adds only mana
+	// abilities survives the removal. A later removal that keeps nothing
+	// clears it, and one that keeps mana never restores what an earlier
+	// one took (removeAbilitiesLocked). Additive.
+	ManaAbilitiesKept bool `json:",omitempty"`
 
 	// RemovedOwnAbilities are the individual catalog rows of this
 	// object's OWN definition that a layer-6 effect switched off, one
@@ -321,6 +356,17 @@ type Characteristic struct {
 	// only ever appended to.
 	DefenderWaivers []DefenderWaiver `json:",omitempty"`
 
+	// TargetingBars are this permanent's "can't be the target of <spells
+	// or abilities with a quality>" statics (#6196, source_targeting_bar.go):
+	// Bartel Runeaxe's Aura spells, Raiding Party's white spells and
+	// abilities from white sources, Artifact Ward's abilities from
+	// artifact sources, Anti-Magic Aura's spells, Lurker's spells until
+	// it attacked or blocked. Written by ordinary layer-6 statics — the
+	// permanent's own, or an Aura's over the creature it enchants — and
+	// only ever appended to. Plain data, so a last-known record carries
+	// them.
+	TargetingBars []SourceTargetingBar `json:",omitempty"`
+
 	// CantBeAttacked is "this permanent can't be attacked" (The
 	// Aetherspark, while it is attached to a creature): the target-keyed
 	// twin of AttackTargetRestrictions. Written by an ordinary layer
@@ -347,12 +393,38 @@ type Characteristic struct {
 	// proliferate choice asks cantHaveCountersLocked (cant_have_counters.go).
 	CantHaveCounters bool `json:",omitempty"`
 
+	// ColorlessDamageSourceColors is a world rule the permanent carries
+	// on itself (#6230): "Black and/or red permanents and spells are
+	// colorless sources of damage" (Ghostly Flame) is "BR". A permanent
+	// or spell with any of these colours is a colourless source of
+	// damage while any permanent on the battlefield has it
+	// (damage_source_colorless.go): protection from a colour and every
+	// prevention or source filter that reads a damage source's colour see
+	// no colour (CR 105.2c). The object's own colours do not change.
+	// Colour letters, WUBRG; empty is no rule.
+	ColorlessDamageSourceColors string `json:",omitempty"`
+
+	// CantHavePlusOneCounters is "can't have +1/+1 counters put on it"
+	// (Blightbeetle's opposing creatures): CantHaveCounters narrowed to the
+	// +1/+1 kind. Written by an ordinary layer-6 static of the restricting
+	// permanent; the placement doors ask cantHaveCounterKindLocked.
+	CantHavePlusOneCounters bool `json:",omitempty"`
+
 	// CantBeBeamedUp is "can't be beamed up" (Marooned's enchanted
 	// permanent): it can't be returned to pay a beam me up cost. Written
 	// by an ordinary layer-6 static of the restricting permanent, so this
 	// permanent losing its abilities does not lift it; BeamMeUpReturnSpec
 	// reads it (beam_me_up.go).
 	CantBeBeamedUp bool `json:",omitempty"`
+
+	// FlagbearerTargetRule is "while an opponent is choosing targets as
+	// part of casting a spell they control or activating an ability they
+	// control, that player must choose at least one Flagbearer on the
+	// battlefield if able" (Coalition Flag, Standard Bearer; #6236, CR
+	// 601.2c). Written by a layer-6 self static, so it goes with the
+	// permanent's abilities, and read by checkFlagbearerTargetsLocked.
+	// flagbearer.go.
+	FlagbearerTargetRule bool `json:",omitempty"`
 
 	// CantTransform is "this permanent can't transform" (CR 101.2):
 	// Immerwolf's "Non-Human Werewolves you control can't transform"
@@ -381,6 +453,17 @@ type Characteristic struct {
 	// a layer-6 self static writes it and foldPowerFloorLocked reads it
 	// once every layer has run (CR 613.11). power_floor.go.
 	AttackBlockNeedsOtherPower int `json:",omitempty"`
+
+	// PowerGatedGoads are "creatures your opponents control with power
+	// less than ~'s power are goaded" (Baeloth Barrityl, Entertainer,
+	// #6098): one entry per such static that reaches this creature,
+	// written in layer 6 by the static and turned into goad's CR 701.15b
+	// requirements by foldPowerGatedGoadsLocked once every layer has run.
+	// The comparison is between two FINISHED powers, which no layer-6
+	// effect can see, and CR 613.11 applies an effect that says a
+	// creature must attack after every other continuous effect, so the
+	// fold is the rules' own order. power_gated_goad.go.
+	PowerGatedGoads []PowerGatedGoad `json:",omitempty"`
 
 	// CantAttackWithoutAnyOf is "creatures without flying or islandwalk
 	// can't attack" (Stormtide Leviathan; Moat's shape): the keyword tokens
@@ -487,6 +570,15 @@ type Characteristic struct {
 	// creature's abilities. The combat damage pass reads it through
 	// Card.assignsAsThoughUnblocked.
 	AssignsAsThoughUnblocked bool `json:",omitempty"`
+
+	// LethalByPower is "lethal damage dealt to <this creature> is determined
+	// by its power rather than its toughness" (Zilortha, Strength Incarnate,
+	// IKO): CR 120.6 and 704.5g compare the damage marked on it (and the
+	// damage assigned to it, CR 702.19b) with its power, not its toughness.
+	// A fact about how lethal damage is judged, not a number a layer
+	// computes, so it is only ever set by a layer 6 static that says so.
+	// Read through Card.LethalDamageThreshold. Additive within the schema.
+	LethalByPower bool `json:",omitempty"`
 
 	// CostPower is how much this creature counts for when it is tapped
 	// to pay a crew or saddle cost (ADR 0186 Decision 4, #2705): "this
@@ -641,8 +733,10 @@ func (c Characteristic) clone() Characteristic {
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
 	out.BorrowedAbilities = append([]BorrowedAbility(nil), c.BorrowedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
+	out.PowerGatedGoads = append([]PowerGatedGoad(nil), c.PowerGatedGoads...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.DefenderWaivers = append([]DefenderWaiver(nil), c.DefenderWaivers...)
+	out.TargetingBars = append([]SourceTargetingBar(nil), c.TargetingBars...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	out.CantHave = append([]string(nil), c.CantHave...)
 	out.CostPower = append([]CostPowerRule(nil), c.CostPower...)

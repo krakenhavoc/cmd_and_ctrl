@@ -260,7 +260,8 @@ func (g *Game) SkipStepOfExtraTurnForEffect(ref int, step Step, source uuid.UUID
 // is sound or is another kind with neither field set.
 func skipExtraTurnStepModProblem(m Mod) string {
 	if m.Kind != ModSkipExtraTurnStep {
-		if m.Step != "" || m.ExtraTurn != 0 {
+		// ModSkipNextStep (#6144) names a step too, and no turn.
+		if (m.Step != "" && m.Kind != ModSkipNextStep) || m.ExtraTurn != 0 {
 			return fmt.Sprintf("a step or extra-turn ref on a %s mod", m.Kind)
 		}
 		return ""

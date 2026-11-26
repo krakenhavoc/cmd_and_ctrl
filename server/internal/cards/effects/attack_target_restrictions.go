@@ -65,6 +65,15 @@ func CantAttackUnlessDefendingPlayerControls(queries ...game.PermanentQuery) gam
 	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderMustControl: queries})
 }
 
+// CantAttackIfDefendingPlayerControls is "This creature can't attack if
+// defending player controls <a permanent>" (Mogg Jailer's "an untapped
+// creature with power 2 or less", #6197, CR 508.1c): the opposite of
+// CantAttackUnlessDefendingPlayerControls, asked of each target's
+// defending player (CR 508.5) at declaration.
+func CantAttackIfDefendingPlayerControls(queries ...game.PermanentQuery) game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{DefenderMustNotControl: queries})
+}
+
 // CantAttackUnlessDefendingPlayerIsPoisoned is "This creature can't
 // attack unless defending player is poisoned" (Chained Throatseeker,
 // #1879): one or more poison counters (CR 122.1f), asked of each
@@ -222,8 +231,10 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 				// "Unless defending player controls an Island" names
 				// its land type in the source's text (CR 612.2).
 				r.DefenderMustControl = game.PermanentQueriesThroughTextOf(r.DefenderMustControl, source)
+				r.DefenderMustNotControl = game.PermanentQueriesThroughTextOf(r.DefenderMustNotControl, source)
 				r.ControllerMustControlMore = game.PermanentQueriesThroughTextOf(r.ControllerMustControlMore, source)
 				r.ControllerMustControl = game.PermanentQueriesThroughTextOf(r.ControllerMustControl, source)
+				r.ControllerMustControlAnother = game.PermanentQueriesThroughTextOf(r.ControllerMustControlAnother, source)
 			}
 			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
 		},

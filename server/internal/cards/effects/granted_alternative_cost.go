@@ -379,13 +379,21 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		webSlinging := o.ReturnToHand != nil && o.Sacrifice == nil && !o.ReducedBySacrificedManaValue &&
 			o.ExileFromHand == nil && o.DiscardFromHand == nil &&
 			o.ExileFromGraveyard == nil && o.TapOthers == nil && o.Behold == nil
+		// Dream Halls (#6214): a discard of one card that shares a
+		// colour with the spell, and nothing else.
+		sharedColorDiscard := o.DiscardFromHand != nil && o.DiscardSharesColorWithSpell &&
+			o.Sacrifice == nil && !o.ReducedBySacrificedManaValue && o.ExileFromHand == nil &&
+			o.ReturnToHand == nil && o.ExileFromGraveyard == nil && o.TapOthers == nil && o.Behold == nil
+		if o.DiscardSharesColorWithSpell && !sharedColorDiscard {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q narrows a discard to the spell's colours but is not a plain one-card discard", name, o.Key))
+		}
 		// Conspiracy Unraveler: collect evidence N as the whole price, and
 		// nothing else (checkGrantedCollectEvidence holds its shape).
 		evidence := o.CollectsEvidence()
 		if evidence {
 			checkGrantedCollectEvidence(name, o)
 		}
-		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging && !evidence) || (o.Condition != nil && o.Key != GrantedAltCostFreerunning) || o.Targets != nil || o.ClearsTargets ||
+		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging && !evidence && !sharedColorDiscard) || (o.Condition != nil && o.Key != GrantedAltCostFreerunning) || o.Targets != nil || o.ClearsTargets ||
 			(o.SacrificeOnEntry && o.Key != GrantedAltCostEvoke) || o.FromZone != "" || o.ExileOnLeavingStack || (o.WarpExile && o.Key != game.GrantedAltCostWarp) || o.Dash || (o.Blitz != (o.Key == GrantedAltCostBlitz)) || o.Sneak ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || (o.RequiresGrant && o.Key != GrantedAltCostMiracle) || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))

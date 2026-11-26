@@ -500,6 +500,13 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 	}
 	// CR 202.3e: a spell on the stack counts its announced X.
 	ch := SourceCharacteristicsX(&c, g.announcedXOnStackLocked(c.InstanceID))
+	// A source on the battlefield is a permanent even when the copy read
+	// above carries no layered cache (#6149): "protection from permanents
+	// with corruption counters on them" and "from noncreature permanents"
+	// read it.
+	if ch != nil && findCardOnBattlefield(g, sourceID) >= 0 {
+		ch.SourceIsPermanent = true
+	}
 	if ch != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
 		if item := g.StackMeta[c.InstanceID]; item != nil && item.Kind == StackItemSpell {
 			ch.SourceIsSpell = true
@@ -571,6 +578,10 @@ func (g *Game) damageThroughReplacementsLocked(ev *ReplacementEvent) (paused boo
 	if ev == nil {
 		return false, nil
 	}
+	// #6219: Illusionary Mask's "would deal damage, be dealt damage —
+	// instead it's turned face up and deals damage, is dealt damage"
+	// (illusionary_mask.go), before anything reads the event.
+	g.unmaskForDamageLocked(ev)
 	g.prepareDamageEventLocked(ev)
 	// ADR 0108 §7: an event of an instance whose charged shield may have
 	// to be divided waits for the rest of the instance and the division
@@ -614,6 +625,11 @@ func (g *Game) prepareDamageEventLocked(ev *ReplacementEvent) {
 	// pipeline sees. CR 702.16e's built-in reads it there.
 	if ev.SourceLKI == nil && ev.damageTail != nil {
 		ev.SourceLKI = ev.damageTail.sourceLKI
+	}
+	// #6230: a black or red permanent or spell under Ghostly Flame is a
+	// colourless source of damage. Idempotent: the rewrite has no colour.
+	if ev.SourceLKI != nil {
+		ev.SourceLKI = g.asDamageSourceLocked(ev.SourceLKI, g.damageSourceIsPermanentOrSpellLocked(ev.DamageSource, ev.SourceLKI))
 	}
 	// ADR 0107 §5: the source's own "can't be prevented" static is
 	// last-known information too, read as the event is opened.
@@ -750,9 +766,18 @@ func (g *Game) applyManualDamageMarkLocked(ev *ReplacementEvent) (int, error) {
 		if g.Battlefield.Cards[i].InstanceID != ev.DamageTarget {
 			continue
 		}
-		g.Battlefield.Cards[i].DamageMarked += ev.DamageAmount
-		if g.Battlefield.Cards[i].DamageMarked < 0 {
-			g.Battlefield.Cards[i].DamageMarked = 0
+		c := &g.Battlefield.Cards[i]
+		c.DamageMarked += ev.DamageAmount
+		// #6209: the per-source split follows the mark, in both
+		// directions — the sandbox's negative delta takes a mark back.
+		if ev.DamageAmount > 0 {
+			c.noteMarkedDamageSource(ev.DamageSource, ev.DamageAmount)
+		} else {
+			c.releaseMarkedDamage(-ev.DamageAmount)
+		}
+		if c.DamageMarked < 0 {
+			c.DamageMarked = 0
+			clearMarkedDamageSources(c)
 		}
 		if ev.DamageAmount > 0 {
 			g.EmitEvent(Event{
@@ -954,7 +979,7 @@ func (g *Game) applyResolvedDamageToPermanentLocked(ev *ReplacementEvent, t *dam
 	// ADR 0108 §10: a battlefield static can make the damage dealt as
 	// though its source had wither (Everlasting Torment), read as it
 	// lands (damage_as_though.go).
-	ok, minusOne, excess := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
+	ok, minusOne, excess := g.applyDamageToPermanentLocked(ev.DamageTarget, ev.DamageSource, ev.DamageAmount, t, g.damageResultAsThoughLocked(ev, t), ev.DamageInstance)
 	if !ok {
 		return 0, ErrCardNotFound
 	}

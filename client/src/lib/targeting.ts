@@ -113,6 +113,10 @@ export interface CastChoices {
   // payment for a multikicker. Undefined and [] are the same thing
   // to the server: decline them all.
   optionalCosts?: number[];
+  // #6150: how many of those payments are a kicker or multikicker —
+  // CR 702.33d's "the number of times it was kicked", which sizes a
+  // `count_from_kicks` clause. Set with optionalCosts by kicksOf.
+  kicks?: number;
   // ADR 0202 (CR 702.47a): the cards in the caster's hand revealed to
   // splice onto this spell — `card_id`s from the card's `splice_offers`,
   // in the order their text happens (the order they were ticked). Each
@@ -123,6 +127,12 @@ export interface CastChoices {
   // when `optionalCosts` claims the gift offer; the server rejects it
   // on a cast that does not.
   giftOpponent?: string;
+  // #6256 (CR 118.9): the opponent an alternative cost's "have an
+  // opponent gain N life" gives the life to — a player ID from the
+  // claimed offer's `opponent_options`. Set exactly when `altCost`
+  // claims such an offer; the server rejects it on a cast that does
+  // not.
+  altCostOpponent?: string;
   // ADR 0150 §5 (CR 702.132a): the player asked to help pay the generic
   // mana of a spell with assist — a player ID from the card's
   // `assist.players`. Undefined casts it alone.
@@ -179,6 +189,10 @@ export interface CastChoices {
   // before `revealIDs`, which are then that type's cards; rides cast_spell
   // as `behold_type`.
   beholdType?: string;
+  // #6245: the creature type a spell that names one as it is cast chose
+  // (`cast_creature_types`). Chosen before the targets, which are then
+  // that type's cards; rides cast_spell as `chosen_creature_type`.
+  chosenCreatureType?: string;
   // CR 107.4f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
@@ -304,6 +318,10 @@ export function applyCastChoices(
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
+  // #6256: omitted unless the claimed offer gives an opponent life — a
+  // stray one is an error server-side, as a stray gift recipient is.
+  if (choices.altCostOpponent !== undefined && choices.altCostOpponent !== "")
+    params.alt_cost_opponent = choices.altCostOpponent;
   // ADR 0150 §5: omitted unless somebody was asked — the server refuses
   // it on a spell without assist.
   if (choices.assistPlayer !== undefined && choices.assistPlayer !== "")
@@ -327,6 +345,8 @@ export function applyCastChoices(
     params.reveal_ids = choices.revealIDs;
   if (choices.beholdType !== undefined && choices.beholdType !== "")
     params.behold_type = choices.beholdType;
+  if (choices.chosenCreatureType !== undefined && choices.chosenCreatureType !== "")
+    params.chosen_creature_type = choices.chosenCreatureType;
   if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
     params.exile_permanent_ids = choices.exilePermanentIDs;
   if (choices.returnIDs !== undefined && choices.returnIDs.length > 0)
@@ -910,12 +930,13 @@ export function withinX(lt: LegalTargetsView, choices?: CastChoices): string[] {
   const cards = lt.cards ?? [];
   let values: Record<string, number> | undefined;
   if (lt.mana_value_at_most_x || lt.mana_value_equals_x) values = lt.mana_values;
-  else if (lt.power_at_most_x) values = lt.powers;
+  else if (lt.power_at_most_x || lt.power_equals_x) values = lt.powers;
   else if (lt.toughness_at_most_x) values = lt.toughnesses;
   else return cards;
   const x = lt.x_from_counters_removed ? (choices?.countersRemoved ?? 0) : (choices?.xValue ?? 0);
   const vals = values ?? {};
-  const exact = lt.mana_value_equals_x === true;
+  // #6122: "with power X" (Ent-Draught Basin) is exact too.
+  const exact = lt.mana_value_equals_x === true || lt.power_equals_x === true;
   return cards.filter((id) => vals[id] !== undefined && (exact ? vals[id] === x : vals[id] <= x));
 }
 
@@ -1075,6 +1096,11 @@ function countOf(
     // "Up to X": the announced X is a ceiling and zero picks is legal.
     return { min: lt.up_to_x ? 0 : x, max: x };
   }
+  if (lt.count_from_kicks) {
+    // #6150: one target plus one for each time the spell is kicked.
+    const n = 1 + (choices?.kicks ?? 0);
+    return { min: n, max: n };
+  }
   return { min: lt.min ?? 1, max: lt.max ?? 1 };
 }
 
@@ -1188,6 +1214,14 @@ export function isModal(card: CardView): boolean {
 // the chosen branch's (castAdditionalCost).
 export function discardCostOf(card: CardView, choices?: CastChoices): number {
   return castAdditionalCost(card, choices)?.discard_cards ?? 0;
+}
+
+// discardXCount is how many cards a "discard X cards" additional cost
+// (#6145, Channeled Force) takes for this cast: the announced X, or 0 for
+// every other cost. Its picker opens after the X prompt, not before it.
+export function discardXCount(card: CardView, choices?: CastChoices): number {
+  if (!castAdditionalCost(card, choices)?.discard_x) return 0;
+  return Math.max(choices?.xValue ?? 0, 0);
 }
 
 // costBranchesOf returns the branches of a card's either/or additional
@@ -1418,12 +1452,38 @@ export function optionalCostSelection(counts: Map<number, number>): number[] {
   return out;
 }
 
+// kicksOf counts the kicker and multikicker payments in an optional-cost
+// selection (#6150): each index names one payment of the offer at that
+// position, and an offer keyed "kicker" or "multikicker" is a kick
+// (CR 702.33d).
+export function kicksOf(card: CardView, selection: number[]): number {
+  const offers = optionalCostsOf(card);
+  let n = 0;
+  for (const i of selection) {
+    const key = offers.find((o) => o.index === i)?.key;
+    if (key === "kicker" || key === "multikicker") n++;
+  }
+  return n;
+}
+
 // optionalCostOpponentOptions returns the players a gift offer may be
 // promised to, or undefined when the offer is not a gift (#1267). An
 // empty array means the offer cannot be taken right now — nobody left
 // to promise it to.
 export function optionalCostOpponentOptions(offer: OptionalCostView): string[] | undefined {
   if (!offer.chooses_opponent) return undefined;
+  return offer.opponent_options ?? [];
+}
+
+// altCostOpponentOptions returns the opponents an alternative cost's
+// "have an opponent gain N life" may give the life to, or undefined when
+// the offer charges no such thing (#6256). An empty array means the
+// offer cannot be taken right now: nobody left who can gain the life
+// (CR 614.17b).
+export function altCostOpponentOptions(
+  offer: AlternativeCostView | undefined,
+): string[] | undefined {
+  if (!offer || (offer.opponent_gains_life ?? 0) <= 0) return undefined;
   return offer.opponent_options ?? [];
 }
 
@@ -1488,6 +1548,11 @@ export function castTargetOverride(
 // may take any number of bullets and an unkicked one exactly one.
 export function modesUnderChoices(card: CardView, choices: CastChoices | undefined): CardView {
   const modes = card.modes;
+  // #6125: "Choose X" (Doomsday Confluence) — exactly the X just announced.
+  if (modes?.count_is_x) {
+    const x = Math.max(choices?.xValue ?? 0, 0);
+    return { ...card, modes: { ...modes, min: x, max: x } };
+  }
   const paid = modes?.if_optional_paid;
   if (!modes || !paid || (choices?.optionalCosts?.length ?? 0) === 0) return card;
   return { ...card, modes: { ...modes, min: paid.min, max: paid.max } };
@@ -1677,6 +1742,10 @@ export interface ClaimedExilePermanentCost {
   label: string;
   count: number;
   options: string[];
+  // #6122: "return X Swamps you control" (Infernal Harvest) — any number
+  // of the options, none included, and the number picked is the cast's
+  // x_value. `count` is 0 then.
+  countFromX?: boolean;
 }
 
 // castExilePermanentCost is the exile-a-permanent cost a cast pays, if
@@ -1716,6 +1785,14 @@ function claimedPermanentCost(
   label: string | undefined,
 ): ClaimedExilePermanentCost | undefined {
   if (!opts) return undefined;
+  if (opts.count_from_x) {
+    return {
+      label: label ?? "permanents you control",
+      count: 0,
+      options: opts.cards ?? [],
+      countFromX: true,
+    };
+  }
   return {
     label: label ?? "a permanent you control",
     count: opts.min ?? 1,
@@ -1853,8 +1930,22 @@ export function castHandExileCost(
 // "Remove X loyalty counters from among planeswalkers you control"),
 // which the server ships as a counter block with `counter_cost_variable`:
 // the counters picked are the X.
+//
+// #6122: so does "Exile X cards from your graveyard" (Summons of
+// Saruman's flashback), shipped as `pay_options.count_from_x`: the
+// number of cards picked is the X.
 export function altCostPayDefinesX(offer: AlternativeCostView | undefined): boolean {
-  return offer?.pay_options?.mana_value_equals_x === true || altCostCountersDefineX(offer);
+  return (
+    offer?.pay_options?.mana_value_equals_x === true ||
+    altCostPayCountIsX(offer) ||
+    altCostCountersDefineX(offer)
+  );
+}
+
+// altCostPayCountIsX reports an offer whose card count is the spell's X
+// (#6122): any number of the options, none included.
+export function altCostPayCountIsX(offer: AlternativeCostView | undefined): boolean {
+  return offer?.pay_options?.count_from_x === true;
 }
 
 // altCostCountersDefineX reports an offer whose counter removal is the
@@ -1880,6 +1971,8 @@ export function altCostPayX(
   offer: AlternativeCostView | undefined,
   picked: string[],
 ): number | undefined {
+  // #6122: "Exile X cards" — the number picked is the X.
+  if (altCostPayCountIsX(offer)) return picked.length;
   if (offer?.pay_options?.mana_value_equals_x !== true || picked.length !== 1) return undefined;
   return offer.pay_options.mana_values?.[picked[0]];
 }
@@ -2167,6 +2260,11 @@ export function xCeilingFor(card: CardView, altCost: string | undefined): number
   // #1948: "exile X cards from your graveyard" — X is what the graveyard
   // pays, the same number the server refuses above.
   const ac = card.additional_cost;
+  // #6145: "discard X cards" — X is what the hand pays.
+  if (ac?.discard_x) {
+    const discardMax = ac.discard_x_max ?? 0;
+    return ceiling === undefined ? discardMax : Math.min(ceiling, discardMax);
+  }
   if (ac?.exile_cost_x) {
     const exileMax = ac.exile_cost_x_max ?? 0;
     return ceiling === undefined ? exileMax : Math.min(ceiling, exileMax);
@@ -2721,4 +2819,14 @@ export function isTargetingGraveyard(mode: TargetingMode): boolean {
 // already leaves out a face-down card the viewer has not seen, decides.
 export function isTargetingExile(mode: TargetingMode): boolean {
   return mode === "card_in_exile";
+}
+
+// #6245: the card as its targets stand once a creature type is chosen for
+// a spell that names one as it is cast: its clause's legal cards narrowed
+// to that type's (`cast_creature_types`). Any other card, or a type the
+// server did not offer, comes back unchanged.
+export function withCastCreatureType(card: CardView, type: string | undefined): CardView {
+  const opt = card.cast_creature_types?.find((t) => t.type === type);
+  if (!opt || !card.legal_targets) return card;
+  return { ...card, legal_targets: { ...card.legal_targets, cards: [...opt.cards] } };
 }

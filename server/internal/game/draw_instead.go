@@ -239,6 +239,7 @@ func (g *Game) drawOneLocked(playerID uuid.UUID, tail int, then DrawThen) (pause
 	ev := &ReplacementEvent{
 		Kind: RepEventDraw, Actor: playerID, DrawPlayer: playerID,
 		DrawCount: 1, drawTail: tail, drawThen: then,
+		DrawCycled: g.resolvingCyclingCardLocked(playerID),
 	}
 	return g.drawEventLocked(ev)
 }
@@ -298,6 +299,7 @@ func (g *Game) finishDrawTailLocked(ev *ReplacementEvent) error {
 			ID:   ReplacementEventID(g.nextReplacementEventID.Add(1)),
 			Kind: RepEventDraw, Actor: ev.Actor, DrawPlayer: p.player, DrawCount: p.count,
 			drawPending: ev.drawPending[1:], drawTail: ev.drawTail, drawThen: ev.drawThen,
+			DrawCycled: ev.DrawCycled,
 		}
 		if g.replacementsAppliedThisEvent == nil {
 			g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
@@ -505,4 +507,19 @@ func allGraveyardOptions(applicable []activeReplacement) bool {
 		}
 	}
 	return len(applicable) > 0
+}
+
+// resolvingCyclingCardLocked is the card whose cycling ability is resolving
+// when `drawer` is that ability's controller (#6169): a draw made now is
+// "caused by a cycling ability" (CR 702.29a), the draw Unpredictable Cyclone
+// replaces. uuid.Nil when nothing is resolving, a spell is, the ability is
+// not a cycling ability, or another player draws.
+//
+// Caller must hold g.mu.
+func (g *Game) resolvingCyclingCardLocked(drawer uuid.UUID) uuid.UUID {
+	r := g.resolving
+	if r == nil || r.hasCard || r.item == nil || !r.item.Cycling || r.item.Controller != drawer {
+		return uuid.Nil
+	}
+	return r.item.SourceCardID
 }

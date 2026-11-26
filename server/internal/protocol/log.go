@@ -3409,6 +3409,12 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 				return fmt.Sprintf("The game is a draw: %s's loop repeats with no way to stop (CR 732.4)", cardName)
 			}
 			return "The game is a draw: a loop repeats with no way to stop (CR 732.4)"
+		case game.OutcomeCauseDrawEffect:
+			// #6198, CR 104.4c: an effect stated that the game is a draw.
+			if cardName != "" {
+				return fmt.Sprintf("The game is a draw (%s)", cardName)
+			}
+			return "The game is a draw"
 		case game.OutcomeCauseEffect:
 			if cardName != "" {
 				return fmt.Sprintf("%s won the game (%s)", actor, cardName)
@@ -3422,7 +3428,13 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 	case LogReveal:
 		return renderRevealText(*e, actor)
 	case LogChooseColor:
-		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
+		color := game.ColorName(e.Choice)
+		if len(e.Choice) > 1 {
+			// #6146: "the color or colors of your choice" logs its set
+			// ("WU" → "white and blue").
+			color = game.ColorSetName(e.Choice)
+		}
+		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(color, "a color"), card)
 	case LogChooseType:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "a creature type"), card)
 	case LogChooseName:

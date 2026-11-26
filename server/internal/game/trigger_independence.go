@@ -118,6 +118,10 @@ const (
 	// control this turn (Sulu, Space Swashbuckler). The turn's entry
 	// tally only rises.
 	FootprintCondEquipmentOrSpacecraftEntered FootprintCond = "equipment_or_spacecraft_entered"
+	// FootprintCondPlaneswalkerEntered: a planeswalker entered the
+	// battlefield under the item's controller's control this turn (Oath of
+	// Liliana). The turn's entry tally only rises.
+	FootprintCondPlaneswalkerEntered FootprintCond = "planeswalker_entered"
 	// FootprintCondPermanentReturned: a permanent was put into the item's
 	// controller's hand from the battlefield this turn (Miles O'Brien,
 	// Transporter Ops). The turn's tally only rises.
@@ -846,6 +850,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.TurnTally.CreaturesDied > 0
 	case FootprintCondEquipmentOrSpacecraftEntered:
 		return g.EnteredWithSubtypeThisTurn(you, "Equipment") > 0 || g.EnteredWithSubtypeThisTurn(you, "Spacecraft") > 0
+	case FootprintCondPlaneswalkerEntered:
+		return g.EnteredWithCardTypeThisTurn(you, "planeswalker") > 0
 	case FootprintCondPermanentReturned:
 		return tally.PermanentsReturnedToHand > 0
 	case FootprintCondCelebration:
@@ -1489,7 +1495,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
 	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBlockSubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
-	ModCantBeBlockedByMoreThan: true,
+	ModCantBeBlockedByMoreThan: true, ModAssignsAsThoughUnblocked: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects
@@ -1775,32 +1781,35 @@ const (
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	// HiddenAgenda (ADR 0227) is read once, as a conspiracy goes into the command zone.
-	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert, "HiddenAgenda": defFieldInert,
+	// StartingPlayer (Power Play) is read once, as the deal begins.
+	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert, "HiddenAgenda": defFieldInert, "StartingPlayer": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
 	"OptionalCosts": defFieldInert, "AlternativeCosts": defFieldInert,
-	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
+	"TapCost": defFieldInert, "Delve": defFieldInert, "CantSpendMana": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "FirstSpellHasAssist": defFieldInert, "AsYouCascadePutALand": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert, "PowerUpExtras": defFieldInert,
-	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
-	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert,
+	"AttackTaxes": defFieldInert, "BlockTaxes": defFieldInert, "EquipCostAlternatives": defFieldInert, "CyclingCostAlternatives": defFieldInert, "TargetTaxes": defFieldInert, "ImposedSacrifices": defFieldInert, "LifePerTarget": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
+	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert, "CastWhileSearchingLibrary": defFieldInert, "CastsOnlyFromGraveyard": defFieldInert, "CantSpendManaToCast": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert, "ForetellOnAnyTurn": defFieldInert, "UntapCounterRemovals": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
-	"UntapOptOuts": defFieldInert, "DrawStep": defFieldInert,
+	"UntapOptOuts": defFieldInert, "UntapTypeChoices": defFieldInert, "TurnSkipOffers": defFieldInert, "DrawStep": defFieldInert,
 	"CastCondition": defFieldInert, "CastConditionLabel": defFieldInert,
 	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert, "IgnorableEffect": defFieldInert,
 	"TurnFaceUpRestrictions": defFieldInert,
 	"EntryRestrictions":      defFieldInert,
 	"ActivationRestrictions": defFieldInert, "ActivationTimings": defFieldInert,
 	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert, "CantBeCopied": defFieldInert,
-	"FlashWithCleanupSacrifice": defFieldInert, "FlashIf": defFieldInert, "CastTimeValues": defFieldInert,
+	"FlashWithCleanupSacrifice": defFieldInert, "FlashIf": defFieldInert, "CastTimeValues": defFieldInert, "ChoosesCreatureTypeAsCast": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
-	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert, "ActivateAsThoughHasteOthers": defFieldInert,
+	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "YouAssignAttackersDamage": defFieldInert, "UnblockedAssignsToACreature": defFieldInert, "ActivateAsThoughHaste": defFieldInert, "ActivateAsThoughHasteOthers": defFieldInert,
+	// #6233: the permanent's whole text follows its controller's graveyard, which an item can write.
+	"FullTextOfTopGraveyardCreature": defFieldOwnRules,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,
@@ -1815,6 +1824,8 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// S82 older sets (#5462): Stranglehold stops an opponent's library
 	// searches while its permanent is there.
 	"OpponentsCantSearchLibraries": defFieldOwnRules,
+	// #6247: Leonin Arbiter's, the same rule for every player.
+	"PlayersCantSearchLibraries": defFieldOwnRules,
 	// S82 older sets (#5462): Invasion Plans hands the block declaration
 	// to the attacking player while its permanent is there.
 	"AttackingPlayerChoosesBlocks": defFieldOwnRules,
@@ -1827,12 +1838,12 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AttachOnlyTo": defFieldOwnRules,
 	"LifeForMana":  defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantedReplacements": defFieldInert, // a grant bundle's own slot: merged into the composite's Replacements (copy_grants.go)
-	"GrantText":           defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
+	"GrantText":           defFieldInert, "MergedComponent": defFieldInert, "MadnessLife": defFieldInert, "LoyaltyCostAdd": defFieldInert, "CommanderTaxInLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert, "ChoosesCommanderColor": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "LibraryTopVisibleWhen": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "LibraryTopVisibleWhen": defFieldInert, "HandsRevealed": defFieldInert, "RevealsChosenPlayersDraws": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 
@@ -1846,7 +1857,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
-	"DealtDamageCantBeRegenerated": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
+	"DealtDamageCantBeRegenerated": defFieldRules, "SingleSourceLethalOnly": defFieldRules, "PlayerLifeFloorOne": defFieldRules, "PlayerLifeFloorOneIfCreature": defFieldRules,
 	"GameActionReplacements": defFieldRules,
 }
 

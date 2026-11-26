@@ -322,16 +322,27 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// pricer. Its cases are in scoped_cost_tax_test.go here and in
 		// cards/effects.
 		ModSpellsCostMoreForOpponents: true,
+		// #5514: noncreature-only twin; cases in scoped_cost_tax_test.go.
+		ModNoncreatureSpellsCostMoreForOpponents: true,
 		// #6093: the timed reduction, read by the cast pricer too. Its
 		// cases are in scoped_cost_reduction_test.go here and in
 		// cards/effects.
 		ModSpellsCostLessForPlayer: true, ModExiledSpellsCostLessForPlayer: true,
+		// S82 batch 206: Cheering Fanatic's named reduction; cases in
+		// scoped_cost_reduction_test.go and cards/effects.
+		ModNamedSpellsCostLess: true,
 		// #3860: read by targeting, like the waiver. Its cases are in
 		// targeting_bar_test.go.
 		ModCantBeTargetedByOpponents: true,
 		// #5718: Peace Talks' table-wide bar, read by targeting too. Its
 		// cases are in targeting_bar_table_test.go.
 		ModCantBeTargetedBySpellsOrActivated: true,
+		// #6263: Autumn's Veil's colour bar, read by targeting too. Its
+		// cases are in cant_be_countered_by_color_test.go.
+		ModCantBeTargetedBySpellsOfColors: true,
+		// S82 old b333: Display of Dominance's opponents-only variant, same
+		// reader; its cases are in cant_be_countered_by_color_test.go.
+		ModCantBeTargetedByOpponentSpellsOfColors: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
@@ -392,6 +403,15 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3275: a rules gate read by every sacrifice route. Its cases
 		// are in cant_be_sacrificed_test.go.
 		ModCantBeSacrificed: true,
+		// #6201: a rules gate read by every phase-out. Its cases are in
+		// phasing_extras_test.go.
+		ModCantPhaseOut: true,
+		// #6239: a one-shot rules gate read by the adapt. Its cases are
+		// in the effects package's adapt test.
+		ModAdaptIgnoresCounters: true,
+		// #6200: Camouflage's rules gate, read by the declare-blockers
+		// step. Its cases are in blocks_by_piles_test.go.
+		ModBlocksByPiles: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
@@ -401,6 +421,24 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6093: Cone of Cold's timed enters-tapped replacement. Its
 		// cases are in scoped_enters_tapped_test.go.
 		ModCreaturesEnterTappedForOpponents: true,
+		// Mistcaller's timed exile-uncast replacement. Its cases are in
+		// scoped_exile_uncast_test.go.
+		ModExileUncastCreatures: true,
+		// Hallowed Moonlight's timed exile-uncast replacement, tokens included.
+		// Its cases are in scoped_exile_uncast_tokens_test.go.
+		ModExileUncastCreaturesAndTokens: true,
+		// #6260: Gather Specimens' entry-controller replacement. Its cases
+		// are in scoped_enters_under_control_test.go.
+		ModCreaturesEnterUnderYourControl: true,
+		// #6160: Mystic Reflection's one-shot entry copy. Its cases are in
+		// scoped_enter_as_copies_test.go.
+		ModNextEntersAsCopies: true,
+		// #6147: its "this turn" sibling over any permanents. Its cases
+		// are in scoped_permanents_enter_tapped_test.go.
+		ModPermanentsEnterTapped: true,
+		// #5521: Combine Guildmage's replacement. Its cases are in
+		// scoped_creatures_enter_with_counter_test.go.
+		ModCreaturesEnterWithPlusOneCounter: true,
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
@@ -442,12 +480,17 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModVoteChooser: true,
 		// #2562: cases above.
 		ModSetName: true, ModSetTypes: true, ModAddSupertypes: true,
+		// #6199: cases in remove_supertypes_test.go.
+		ModRemoveSupertypes: true,
 		// #2144: case above.
 		ModSetCreatureTypes: true,
 		// #4072: case above and in lose_subtypes_test.go.
 		ModLoseSubtypes: true,
 		// #4691: case above and in lose_all_creature_types_test.go.
 		ModLoseAllCreatureTypes: true,
+		// "assign combat damage as though it weren't blocked" for a
+		// duration: assigns_as_unblocked_mod_test.go.
+		ModAssignsAsThoughUnblocked: true,
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,
@@ -468,12 +511,30 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5838 (Blinding Angel): a player's next combat phase skipped.
 		// Its cases are in skip_next_combat_phase_test.go.
 		ModSkipNextCombatPhase: true,
+		// #6144 (Avizoa, Ivory Gargoyle): a player's next untap or draw
+		// step skipped. Its cases are in skip_next_step_test.go.
+		ModSkipNextStep: true,
+		// #6218 (Undiscovered Paradise): a permanent returned to hand in
+		// a player's next untap step. Its cases are in
+		// untap_type_choice_test.go.
+		ModReturnAtNextUntap: true,
+		// #6226 (Fatespinner): a step or phase skipped this turn. Its
+		// cases are in skip_this_turn_test.go.
+		ModSkipThisTurn: true,
+		// #6244 (Stunning Reversal): the next loss this turn replaced.
+		// Its cases are in next_loss_replacement_test.go.
+		ModNextLossInstead: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,
+		// #6210: Harvest Mage's chosen colour; cases in
+		// cards/effects/tests/m/mana_color_of_choice_test.go.
+		ModLandManaOfChosenColor: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,
+		// #6241: cases in cant_get_counters_test.go.
+		ModPlayerCantGetCounters: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

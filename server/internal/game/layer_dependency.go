@@ -528,7 +528,9 @@ func (g *Game) installTrialLocked(eff ContinuousEffect, idxs []int) func() {
 func applyRaw(eff ContinuousEffect, c *Characteristic, target *Card, g *Game) {
 	if eff.RemovesAbilities() {
 		c.Abilities = nil
-		c.GrantedAbilities = nil
+		keepsMana := effectKeepsManaAbilities(eff)
+		c.ManaAbilitiesKept = keepsMana && (!c.AbilitiesRemoved || c.ManaAbilitiesKept)
+		c.GrantedAbilities = keptGrantsUnderRemoval(c.GrantedAbilities, keepsMana)
 		c.BorrowedAbilities = nil
 		c.AbilitiesRemoved = true
 	}
@@ -582,6 +584,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.Toughness == b.Toughness &&
 		a.Name == b.Name &&
 		a.AllCreatureTypes == b.AllCreatureTypes &&
+		a.AllNonlegendaryCreatureNames == b.AllNonlegendaryCreatureNames &&
 		a.AbilitiesRemoved == b.AbilitiesRemoved &&
 		a.IntrinsicLandManaRemoved == b.IntrinsicLandManaRemoved &&
 		slices.Equal(a.RemovedOwnAbilities, b.RemovedOwnAbilities) &&
@@ -590,19 +593,23 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.ExtraRestrictions == b.ExtraRestrictions &&
 		a.ManaAbilityLifeTax == b.ManaAbilityLifeTax &&
 		a.CantHaveCounters == b.CantHaveCounters &&
+		a.CantHavePlusOneCounters == b.CantHavePlusOneCounters &&
 		a.CantBeBeamedUp == b.CantBeBeamedUp &&
+		a.FlagbearerTargetRule == b.FlagbearerTargetRule &&
 		a.AdditionalBlocks == b.AdditionalBlocks &&
 		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		a.DamageByToughness == b.DamageByToughness &&
 		a.DamageByToughnessAlways == b.DamageByToughnessAlways &&
 		a.DamageAsPositivePower == b.DamageAsPositivePower &&
 		a.AssignsAsThoughUnblocked == b.AssignsAsThoughUnblocked &&
+		a.LethalByPower == b.LethalByPower &&
 		slices.Equal(a.CostPower, b.CostPower) &&
 		a.CantBeAttacked == b.CantBeAttacked &&
 		a.CantBeSacrificed == b.CantBeSacrificed &&
 		a.CantTransform == b.CantTransform &&
 		a.AttackBlockPowerFloor == b.AttackBlockPowerFloor &&
 		a.AttackBlockNeedsOtherPower == b.AttackBlockNeedsOtherPower &&
+		slices.Equal(a.PowerGatedGoads, b.PowerGatedGoads) &&
 		sameStringSlice(a.CantAttackWithoutAnyOf, b.CantAttackWithoutAnyOf) &&
 		slices.Equal(a.AttackHasteFor, b.AttackHasteFor) &&
 		sameStringSlice(a.Types, b.Types) &&

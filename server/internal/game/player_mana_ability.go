@@ -139,7 +139,7 @@ func (g *Game) PlayerManaAbilitiesLocked(playerID uuid.UUID) []PlayerManaAbility
 			Label:    s.Label,
 			LifeCost: s.ManaAbility.LifeCost,
 			Produced: s.ManaAbility.Produced,
-			Payable:  g.CanPayLifeLocked(p, s.ManaAbility.LifeCost) && !g.LandManaOnlyLocked(playerID) && !g.playerActivationBanned(playerID),
+			Payable:  g.CanPayLifeForManaAbilityLocked(p, s.ManaAbility.LifeCost) && !g.LandManaOnlyLocked(playerID) && !g.playerActivationBanned(playerID),
 		})
 	}
 	return out
@@ -201,7 +201,7 @@ func (g *Game) activatePlayerManaAbilityLocked(playerID, source uuid.UUID) error
 	if colors == nil {
 		return ErrInvalidParam
 	}
-	if !g.CanPayLifeLocked(p, ab.LifeCost) {
+	if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) {
 		// CR 119.4: you can't pay more life than you have.
 		return fmt.Errorf("%w: %s cannot pay %d life (CR 119.4)", ErrInvalidParam, p.Name, ab.LifeCost)
 	}

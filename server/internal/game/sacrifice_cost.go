@@ -115,6 +115,7 @@ func SacrificeCountFromX(spec *TargetSpec) bool {
 // The three shapes, and the whole of the variable-count design:
 //
 //	fixed        Min == Max == N        lo = hi = N
+//	range        0 <= Min < Max         lo = Min, hi = Max (#6121, "up to three")
 //	one or more  Min >= 1, Max == 0     lo = Min, hi = 0   (open)
 //	any number   Min == Max == 0        lo = 0,   hi = 0   (open, ADR 0100)
 //	X            CountFromX             lo = hi = x
@@ -146,6 +147,19 @@ func SacrificeCostBounds(spec *TargetSpec, x int) (lo, hi int) {
 	if spec.Max < 1 && spec.Min >= 1 {
 		// "One or more": a floor the card prints and no ceiling.
 		return spec.Min, 0
+	}
+	if spec.Max >= 1 && spec.Min < spec.Max {
+		// A printed range (#6121): "Sacrifice up to three permanents"
+		// (Baba Lysaga, Night Witch) is a floor of zero and a ceiling of
+		// three, and "one or two" a floor of one. CR 602.2b through
+		// 601.2b: the activator announces how many within the range.
+		// Before #6121 a range read as its ceiling, which no card
+		// declared.
+		lo := spec.Min
+		if lo < 0 {
+			lo = 0
+		}
+		return lo, spec.Max
 	}
 	return n, n
 }
@@ -359,6 +373,13 @@ type SacrificeKind struct {
 	// this kind. With the one-to-one matching, "an Island card and
 	// another card" is any two cards of which one is an Island card.
 	Any bool
+	// Head is one permanent of the object's OWN sacrifice clause, in a
+	// clause an imposed sacrifice was folded into (#6205,
+	// imposed_sacrifice.go): "a creature" for Bone Splinters under
+	// Drought. It is answered by the folded clause's predicate
+	// (costClauseHeadMatchLocked), never by Matches, which reads it as
+	// no kind at all.
+	Head bool
 }
 
 // Matches reports whether c is of this kind. A subtype is a word of the
@@ -367,6 +388,9 @@ type SacrificeKind struct {
 // permanent whose text now says "Island" is an Island. A copy lent
 // nothing reads the printed word.
 func (k SacrificeKind) Matches(c Card) bool {
+	if k.Head {
+		return false
+	}
 	if k.Any {
 		return true
 	}
@@ -399,12 +423,19 @@ func SacrificeSetKinds(spec *TargetSpec) []SacrificeKind {
 // fits nothing. The kinds' words are read through `text`, the clause's
 // source's (costTextLocked, #3984); nil reads the printed words. Caller
 // must hold g.mu.
-func (g *Game) costSetFitsLocked(entries []SacrificeKind, zone ZoneKind, ids []uuid.UUID, text *TextWords) [][]bool {
+//
+// A Head entry (#6205) is answered by `spec`'s own predicate through
+// costClauseHeadMatchLocked.
+func (g *Game) costSetFitsLocked(spec *TargetSpec, entries []SacrificeKind, zone ZoneKind, ids []uuid.UUID, text *TextWords) [][]bool {
 	fits := make([][]bool, len(entries))
 	for i := range entries {
 		fits[i] = make([]bool, len(ids))
 		for j, id := range ids {
 			if c, ok := g.costSetCardLocked(zone, id); ok {
+				if entries[i].Head {
+					fits[i][j] = zone == ZoneBattlefield && g.costClauseHeadMatchLocked(spec, c)
+					continue
+				}
 				fits[i][j] = entries[i].Matches(lendCostText(text, c))
 			}
 		}
@@ -494,7 +525,7 @@ func (g *Game) costSetSatisfiedLocked(spec *TargetSpec, zone ZoneKind, picks []u
 	for i := range order {
 		order[i] = i
 	}
-	return assignSacrificeSet(g.costSetFitsLocked(entries, zone, picks, text), order) != nil
+	return assignSacrificeSet(g.costSetFitsLocked(spec, entries, zone, picks, text), order) != nil
 }
 
 // SacrificeSetSatisfiedForEffect is sacrificeSetSatisfiedLocked for a
@@ -540,7 +571,7 @@ func (g *Game) costSetPaymentLocked(spec *TargetSpec, zone ZoneKind, candidates 
 	if len(entries) == 0 {
 		return nil
 	}
-	fits := g.costSetFitsLocked(entries, zone, candidates, text)
+	fits := g.costSetFitsLocked(spec, entries, zone, candidates, text)
 	versatility := make([]int, len(candidates))
 	for j := range candidates {
 		for i := range entries {
@@ -590,7 +621,7 @@ func (g *Game) costSetGroupsLocked(spec *TargetSpec, zone ZoneKind, candidates [
 	if len(entries) == 0 {
 		return nil
 	}
-	fits := g.costSetFitsLocked(entries, zone, candidates, text)
+	fits := g.costSetFitsLocked(spec, entries, zone, candidates, text)
 	out := make([]SacrificeSetGroup, len(entries))
 	for i := range entries {
 		out[i].Label = entries[i].Label

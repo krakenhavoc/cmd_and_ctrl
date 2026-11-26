@@ -343,6 +343,9 @@ type GameSnapshot struct {
 	Settings          TableSettings `json:"settings"`
 	StartingSeat      int           `json:"startingSeat"`
 	SplitSecondActive bool          `json:"splitSecondActive"`
+	// TurnOrderReversed is Game.TurnOrderReversed (#6223). omitempty:
+	// absent is the default order, so no schema bump.
+	TurnOrderReversed bool `json:"turnOrderReversed,omitempty"`
 
 	// Outcome is the result of an ended game (ADR 0057 Decision 5):
 	// nil while active and for a table ended by End(). omitempty, so
@@ -434,6 +437,11 @@ type GameSnapshot struct {
 	// dilemmas faced this turn.
 	DilemmasFacedThisTurn map[uuid.UUID]int `json:"dilemmasFacedThisTurn,omitempty"`
 
+	// PilesOrGuessesThisTurn is Game.PilesOrGuessesThisTurn (#6175).
+	// Additive within the version: a file written before it restores
+	// with no pile or guess effect this turn.
+	PilesOrGuessesThisTurn []uuid.UUID `json:"pilesOrGuessesThisTurn,omitempty"`
+
 	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
@@ -449,6 +457,11 @@ type GameSnapshot struct {
 	// 2026-11-12): the players whose planeswalkers may activate loyalty
 	// abilities twice this turn. Additive.
 	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
+
+	// TapForeignLandsThisTurn is Game's (#6204, ADR 0106 §1 amendment
+	// 2026-11-25): the players who may tap lands they don't control for
+	// mana this turn. Additive.
+	TapForeignLandsThisTurn map[uuid.UUID]bool `json:"tapForeignLandsThisTurn,omitempty"`
 
 	// LoyaltyPermanentTwiceThisTurn is Game's (#5479): the permanents
 	// whose loyalty abilities may be activated twice this turn. Additive.
@@ -905,6 +918,12 @@ type playerSnapshot struct {
 	// v9: a file written before it restores with 0, which reads as "has
 	// begun no extra turn this game".
 	ExtraTurnsBegun int `json:"extraTurnsBegun,omitempty"`
+	// LifeAsTurnBegan and LifeAsTurnBeganSeq are Player's (#6164): the
+	// life total as the turn began and the turn it was taken on. Additive
+	// within v9: a file written before them restores with seq 0, which
+	// matches no turn, and the reader falls back to the current life.
+	LifeAsTurnBegan    int `json:"lifeAsTurnBegan,omitempty"`
+	LifeAsTurnBeganSeq int `json:"lifeAsTurnBeganSeq,omitempty"`
 	// UpkeepsBegun is Player.UpkeepsBegun (ADR 0108 §5): the upkeep
 	// counter echo's "since the beginning of your last upkeep" is
 	// measured in. Absent from every earlier file, which restores as
@@ -945,6 +964,10 @@ type playerSnapshot struct {
 	// zones as they left, plain data. Additive within v9: a file written
 	// before it restores an eliminated player with no final board.
 	FinalBoard *FinalBoard `json:"finalBoard,omitempty"`
+	// DepartedPermanents is Player.DepartedPermanents (#6123): what an
+	// eliminated player controlled as they left, plain data. Additive
+	// within the version: a file written before it restores with none.
+	DepartedPermanents []departedPermanentSnapshot `json:"departedPermanents,omitempty"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -1100,7 +1123,10 @@ type cardSnapshot struct {
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
 	DurationCopyBase *PrintedValues `json:"durationCopyBase,omitempty"`
-	NeedsEffect      bool           `json:"needsEffect"`
+	// FullTextBase is Card.FullTextBase (#6233): the printed values
+	// under a full-text overlay. Additive; absent means none applies.
+	FullTextBase *PrintedValues `json:"fullTextBase,omitempty"`
+	NeedsEffect  bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
 	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
@@ -1235,12 +1261,19 @@ type cardSnapshot struct {
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
-	SuspendGranted           bool      `json:"suspendGranted,omitempty"`
-	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
-	AttachedAt               int64     `json:"attachedAt,omitempty"`
+	SuspendGranted           bool `json:"suspendGranted,omitempty"`
+	MarkedLethalByDeathtouch bool `json:"markedLethalByDeathtouch"`
+	// MarkedBySource is Card.MarkedBySource (#6209): the per-source split
+	// of the marked damage, for "lethal damage dealt by a single source".
+	// Additive — a file written before it restores an empty split, which
+	// reads as "no single source has marked lethal damage", so a creature
+	// with the clause survives a check it might have been destroyed by.
+	// Weaker, never stronger.
+	MarkedBySource  []SourceMark `json:"markedBySource,omitempty"`
+	LostLastCounter bool         `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown  bool         `json:"printedPTKnown,omitempty"`
+	AttachedTo      TargetRef    `json:"attachedTo,omitempty"`
+	AttachedAt      int64        `json:"attachedAt,omitempty"`
 	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
 	// CR 400.7 epoch of the host at the attach. Additive within v8 and
 	// absent at zero. A file written before #3159 has it only for an
@@ -1333,9 +1366,17 @@ type cardSnapshot struct {
 	// nothing can re-derive them. Old snapshots have no key and read
 	// "nothing noted".
 	Notes []string `json:"notes,omitempty"`
+	// PlayerNotes are the words this permanent's abilities recorded for
+	// players (#6097): Archangel of Strife's war or peace, Diseased
+	// Vermin's damaged players. Carried for Notes' reason. Old snapshots
+	// have no key and read "nothing recorded".
+	PlayerNotes []PlayerNote `json:"playerNotes,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
+	// TributePaid is CR 702.104a's paid tribute (#6251). Old snapshots
+	// have no key and read "not paid", which only a tribute card reads.
+	TributePaid bool `json:"tributePaid,omitempty"`
 	// ModesChosen is ADR 0097's "hasn't been chosen" memory with no
 	// duration. Carried for ChosenPlayer's reason: a player made the
 	// choices and nothing can re-derive them, so a restore that lost
@@ -1450,6 +1491,13 @@ type cardSnapshot struct {
 	// version: an older binary ignores the key and a file without it
 	// restores every card as printed.
 	ReturnedAura bool `json:"returnedAura,omitempty"`
+	// AuraFormEndBy and AuraFormEndCost are a licid's "you may pay {X} to
+	// end this effect" (licid.go, #5781), carried for ReturnedAura's
+	// reason: a restore that dropped them would leave the licid an Aura
+	// nobody can ever end. Additive: a file without them restores no
+	// offer, which is every card before this change.
+	AuraFormEndBy   *uuid.UUID `json:"auraFormEndBy,omitempty"`
+	AuraFormEndCost string     `json:"auraFormEndCost,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -1573,6 +1621,10 @@ type cardSnapshot struct {
 	PhaseInBarredBy    uuid.UUID `json:"phaseInBarredBy,omitempty"`
 	PhaseInBarredEpoch int       `json:"phaseInBarredEpoch,omitempty"`
 	PhaseInBarredFor   uuid.UUID `json:"phaseInBarredFor,omitempty"`
+	// Teferi, Timeless Voyager's "until the end of your next turn, they can't
+	// phase in". Additive; absent on every card no such effect names.
+	PhaseInBarredThroughPlayer uuid.UUID `json:"phaseInBarredThroughPlayer,omitempty"`
+	PhaseInBarredThroughTurn   int       `json:"phaseInBarredThroughTurn,omitempty"`
 	// #6095: The Pandorica's "for as long as ~ remains tapped" form of
 	// the bar. Additive; absent on every card no such effect names.
 	PhaseInBarredWhileTapped bool `json:"phaseInBarredWhileTapped,omitempty"`
@@ -1889,6 +1941,7 @@ type stackItemSnapshot struct {
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
+	Cycling       bool         `json:"cycling,omitempty"`    // #6169
 	// ExileWithCounter (#3213) is Goliath Daydreamer's mark. Carried: a
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
@@ -1900,6 +1953,10 @@ type stackItemSnapshot struct {
 	// spell and return it to its controller's hand at the beginning of the
 	// next end step. Carried for the reason ExileWithCounter is.
 	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
+	// HandInsteadOfGraveyard is Soulfire Grand Master's mark: the resolving
+	// spell goes to its owner's hand instead of its graveyard. Carried for the
+	// reason ExileAndReturn is.
+	HandInsteadOfGraveyard bool `json:"handInsteadOfGraveyard,omitempty"`
 	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
 	// resolving spell with this many time counters and give it suspend.
 	// Carried for the reason ExileWithCounter is.
@@ -2058,6 +2115,20 @@ type delayedTriggerSnapshot struct {
 	// player's tap (stronger than printed for the caster's opponents, so
 	// a stale snapshot is the only way to see it).
 	ManaTapControllerOnly bool `json:"manaTapControllerOnly,omitempty"`
+
+	// #6141, CR 702.50a: the spell an epic trigger copies. Additive: an
+	// older binary drops the key, but the record names the "epic/copy"
+	// body, which that binary lacks, so it refuses the file
+	// (ErrUnknownEffectKey) rather than firing a copy of nothing.
+	CopiesSpell *EpicSpell `json:"copiesSpell,omitempty"`
+	// #6221, CR 603.4: "if that card is exiled" (delayed_recast.go).
+	// Additive: an older binary drops the key, but the record names the
+	// "meddling/delay" body, which that binary lacks, so it refuses the
+	// file rather than firing without the gate.
+	WhileExiled *ObjectRef `json:"whileExiled,omitempty"`
+	// PayToCancel is #6220's "unless they pay {N} before that step".
+	// Additive.
+	PayToCancel *PayToCancel `json:"payToCancel,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -2079,6 +2150,7 @@ type pendingChoiceSnapshot struct {
 	CoinWins             int                    `json:"coinWins,omitempty"`
 	ColorOptions         []string               `json:"colorOptions,omitempty"`
 	ColorPurpose         ColorPurpose           `json:"colorPurpose,omitempty"`
+	ColorMulti           bool                   `json:"colorMulti,omitempty"`
 	ControlPurpose       ControlPurpose         `json:"controlPurpose,omitempty"`
 	ManaRestrictions     []string               `json:"manaRestrictions,omitempty"`
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
@@ -2150,6 +2222,8 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	// #6271: each candidate's EachOf filters, as bits. Additive.
+	PickSlots []int `json:"pickSlots,omitempty"`
 	// #4256: the word a keyed outside-the-game collection pick's filter
 	// is handed (its key rides pickThen). Additive within the version.
 	PickMatchArg string `json:"pickMatchArg,omitempty"`
@@ -2210,6 +2284,12 @@ type pendingChoiceSnapshot struct {
 	// non-mana payment, plain data. A pointer so a mana prompt writes
 	// nothing; additive within the version.
 	PayActionClause *PayAction `json:"payActionClause,omitempty"`
+	// PaySpendPurpose is PendingChoice's (#6189): the mana spend purpose
+	// a pay-unless pays under, "cumulative_upkeep" on a cumulative
+	// upkeep's prompt and empty on every other. Additive within the
+	// version; a file without it restores the zero purpose, which is
+	// what every pay-unless but a cumulative upkeep's has.
+	PaySpendPurpose ManaSpendPurpose `json:"paySpendPurpose,omitempty"`
 	// PayTap is PendingChoice's (#4264): a keyed pay-unless's waterbend
 	// clause as its kind and extra cost. Additive within the version.
 	PayTap *PayTapSpec `json:"payTap,omitempty"`
@@ -2713,6 +2793,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		Settings:              g.Settings,
 		StartingSeat:          g.StartingSeat,
 		SplitSecondActive:     g.SplitSecondActive,
+		TurnOrderReversed:     g.TurnOrderReversed,
 		Outcome:               cloneGameOutcome(g.Outcome),
 		EventSeq:              g.eventSeq,
 		EventBatch:            g.eventBatch,
@@ -2794,12 +2875,14 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
+	s.TapForeignLandsThisTurn = copyBoolMap(g.TapForeignLandsThisTurn)
 	s.LoyaltyPermanentTwiceThisTurn = copyBoolMap(g.LoyaltyPermanentTwiceThisTurn)
 	s.LoyaltyPermanentExtraThisTurn = copyIntMap(g.LoyaltyPermanentExtraThisTurn)
 	s.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(g.LoyaltyPermanentExtraUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
+	s.PilesOrGuessesThisTurn = copyUUIDs(g.PilesOrGuessesThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
@@ -3206,159 +3289,167 @@ func intrinsicAbilitiesLost(c Card) bool {
 func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 	variableToughness := c.VariableToughness
 	out := cardSnapshot{
-		InstanceID:               c.InstanceID,
-		Name:                     c.Name,
-		ScryfallID:               c.ScryfallID,
-		TokenArtOnly:             c.TokenArtOnly,
-		OracleID:                 c.OracleID,
-		TokenKey:                 c.TokenKey,
-		TypeLine:                 c.TypeLine,
-		Power:                    c.Power,
-		Toughness:                c.Toughness,
-		VariableToughness:        &variableToughness,
-		ManaCost:                 c.ManaCost,
-		ProducedMana:             copyStrings(c.ProducedMana),
-		Colors:                   copyStrings(c.Colors),
-		ColorIdentity:            copyStrings(c.ColorIdentity),
-		StartingLoyalty:          c.StartingLoyalty,
-		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
-		Keywords:                 copyStrings(c.Keywords),
-		GrantedAbilities:         copyStrings(c.GrantedAbilities),
-		ColorCDADropped:          c.ColorCDADropped,
-		Layout:                   c.Layout,
-		Faces:                    copyFaces(c.Faces),
-		ActiveFace:               c.ActiveFace,
-		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
-		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
-		NeedsEffect:              c.NeedsEffect,
-		PrintsManaAbility:        c.PrintsManaAbility,
-		PrintsTapAbility:         c.PrintsTapAbility,
-		ManaAbilityText:          c.ManaAbilityText,
-		NoAbilitiesText:          c.NoAbilitiesText,
-		WarpText:                 c.WarpText,
-		FlashbackText:            c.FlashbackText,
-		Owner:                    c.Owner,
-		Controller:               c.Controller,
-		Tapped:                   c.Tapped,
-		Flipped:                  c.Flipped,
-		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
-		BattleX:                  c.BattleX,
-		BattleY:                  c.BattleY,
-		Counters:                 copyStringIntMap(c.Counters),
-		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
-		IsCommander:              c.IsCommander,
-		CommanderColor:           c.CommanderColor,
-		IsCompanion:              c.IsCompanion,
-		IsSideboard:              c.IsSideboard,
-		AstrotoriumBack:          c.AstrotoriumBack,
-		AttractionLights:         append([]int(nil), c.AttractionLights...),
-		Stickers:                 append([]PlacedSticker(nil), c.Stickers...),
-		CommanderReturnDue:       c.CommanderReturnDue,
-		AttackingTarget:          c.AttackingTarget,
-		ExertOnAttack:            c.ExertOnAttack,
-		EnlistOnAttack:           uuidPtrOrNil(c.EnlistOnAttack),
-		BlockingTarget:           c.BlockingTarget,
-		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
-		GoadedBy:                 c.LatestGoader(),
-		Goads:                    snapshotGoads(c.Goads),
-		DamageMarked:             c.DamageMarked,
-		RegenerationShields:      c.RegenerationShields,
-		FaceDown:                 c.FaceDown,
-		FaceDownKind:             c.FaceDownKind,
-		FaceDownListed:           c.FaceDownListed.clone(),
-		FaceTurnedAt:             c.FaceTurnedAt,
-		KnownBy:                  copyBoolMap(c.KnownBy),
-		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
-		EntryOrdinal:             c.EntryOrdinal,
-		ObjectEpoch:              c.ObjectEpoch,
-		TurnOvers:                c.TurnOvers,
-		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
-		SummonedThisTurn:         c.SummonedThisTurn,
-		PutInGraveyardFrom:       c.PutInGraveyardFrom,
-		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
-		Surveilled:               c.Surveilled,
-		Milled:                   c.Milled,
-		SuspendGranted:           c.SuspendGranted,
-		HauntedID:                uuidPtrOrNil(c.HauntedID),
-		HauntedEpoch:             c.HauntedEpoch,
-		HauntingEpoch:            c.HauntingEpoch,
-		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
-		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
-		LostLastCounter:          c.LostLastCounter,
-		PrintedPTKnown:           c.PrintedPTKnown,
-		AttachedTo:               c.AttachedTo,
-		AttachedAt:               c.AttachedAt,
-		AttachedEpoch:            c.AttachedEpoch,
-		AttachedPinned:           c.AttachedPinned,
-		BaseController:           c.BaseController,
-		NamedTribe:               c.NamedTribe,
-		Provenance:               c.Provenance.Clone(),
-		CraftedWith:              cloneObjectRefs(c.CraftedWith),
-		Meld:                     c.Meld.clone(),
-		MeldSplitFrom:            objectRefPtr(c.MeldSplitFrom),
-		ChosenColor:              c.ChosenColor,
-		ChosenPlayer:             c.ChosenPlayer,
-		ChosenSecondPlayer:       c.ChosenSecondPlayer,
-		ChosenName:               c.ChosenName,
-		ChosenSecondName:         c.ChosenSecondName,
-		ChosenOption:             c.ChosenOption,
-		SecretChoice:             c.SecretChoice,
-		SecretChoiceBy:           c.SecretChoiceBy,
-		ChosenNumber:             c.ChosenNumber,
-		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
-		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
-		ChosenCard:               objectRefPtr(c.ChosenCard),
-		Notes:                    append([]string(nil), c.Notes...),
-		Devoured:                 c.Devoured,
-		ModesChosen:              copyModesChosen(c.ModesChosen),
-		ClassLevel:               c.ClassLevel,
-		Solved:                   c.Solved,
-		Harnessed:                c.Harnessed,
-		Monstrous:                c.Monstrous,
-		Renowned:                 c.Renowned,
-		DealtCombatDamage:        c.DealtCombatDamage,
-		DealtDamage:              c.DealtDamage,
-		Bestowed:                 c.Bestowed,
-		EnchantSwapped:           c.EnchantSwapped,
-		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
-		ReturnedAura:             c.ReturnedAura,
-		Saddled:                  c.Saddled,
-		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
-		Suspected:                c.Suspected,
-		SuspectedAt:              c.SuspectedAt,
-		PairedWith:               c.PairedWith,
-		LostKeywords:             append([]string(nil), c.LostKeywords...),
-		PerpetualKeywords:        append([]string(nil), c.PerpetualKeywords...),
-		Conjured:                 c.Conjured,
-		RingBearer:               c.RingBearer,
-		RingTemptations:          c.RingTemptations,
-		Unlocked:                 c.Unlocked,
-		Fused:                    c.Fused,
-		Prepared:                 c.Prepared,
-		PrepareCopy:              c.PrepareCopy,
-		CardCopy:                 c.CardCopy,
-		PreparedBy:               c.PreparedBy,
-		HiddenBy:                 c.HiddenBy,
-		ExiledWith:               c.ExiledWith,
-		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
-		ExiledWithTurn:           c.ExiledWithTurn,
-		ExiledByAbilityOf:        uuidPtrOrNil(c.ExiledByAbilityOf),
-		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
-		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
-		EncodedAt:                c.EncodedAt,
-		PhasedOutBy:              c.PhasedOutBy,
-		PhaseInLockedBy:          c.PhaseInLockedBy,
-		PhaseInBarredBy:          c.PhaseInBarredBy,
-		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
-		PhaseInBarredFor:         c.PhaseInBarredFor,
-		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
-		PhasedOutIndirect:        c.PhasedOutIndirect,
-		TapOnPhaseIn:             c.TapOnPhaseIn,
-		StartingDefense:          c.StartingDefense,
-		ProtectorPlayerID:        c.ProtectorPlayerID,
-		ManaAbilityCount:         len(c.ManaAbilities),
-		ActivatedAbilityCount:    len(c.ActivatedAbilities),
-		AbilitiesLostOnRestore:   c.AbilitiesLostOnRestore,
+		InstanceID:                 c.InstanceID,
+		Name:                       c.Name,
+		ScryfallID:                 c.ScryfallID,
+		TokenArtOnly:               c.TokenArtOnly,
+		OracleID:                   c.OracleID,
+		TokenKey:                   c.TokenKey,
+		TypeLine:                   c.TypeLine,
+		Power:                      c.Power,
+		Toughness:                  c.Toughness,
+		VariableToughness:          &variableToughness,
+		ManaCost:                   c.ManaCost,
+		ProducedMana:               copyStrings(c.ProducedMana),
+		Colors:                     copyStrings(c.Colors),
+		ColorIdentity:              copyStrings(c.ColorIdentity),
+		StartingLoyalty:            c.StartingLoyalty,
+		StartingLoyaltyKnown:       c.StartingLoyaltyKnown,
+		Keywords:                   copyStrings(c.Keywords),
+		GrantedAbilities:           copyStrings(c.GrantedAbilities),
+		ColorCDADropped:            c.ColorCDADropped,
+		Layout:                     c.Layout,
+		Faces:                      copyFaces(c.Faces),
+		ActiveFace:                 c.ActiveFace,
+		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
+		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
+		NeedsEffect:                c.NeedsEffect,
+		PrintsManaAbility:          c.PrintsManaAbility,
+		PrintsTapAbility:           c.PrintsTapAbility,
+		ManaAbilityText:            c.ManaAbilityText,
+		NoAbilitiesText:            c.NoAbilitiesText,
+		WarpText:                   c.WarpText,
+		FlashbackText:              c.FlashbackText,
+		Owner:                      c.Owner,
+		Controller:                 c.Controller,
+		Tapped:                     c.Tapped,
+		Flipped:                    c.Flipped,
+		NextUntapSkips:             snapshotUntapSkips(c.NextUntapSkips),
+		BattleX:                    c.BattleX,
+		BattleY:                    c.BattleY,
+		Counters:                   copyStringIntMap(c.Counters),
+		CounterStampedAt:           copyStringInt64Map(c.CounterStampedAt),
+		IsCommander:                c.IsCommander,
+		CommanderColor:             c.CommanderColor,
+		IsCompanion:                c.IsCompanion,
+		IsSideboard:                c.IsSideboard,
+		AstrotoriumBack:            c.AstrotoriumBack,
+		AttractionLights:           append([]int(nil), c.AttractionLights...),
+		Stickers:                   append([]PlacedSticker(nil), c.Stickers...),
+		CommanderReturnDue:         c.CommanderReturnDue,
+		AttackingTarget:            c.AttackingTarget,
+		ExertOnAttack:              c.ExertOnAttack,
+		EnlistOnAttack:             uuidPtrOrNil(c.EnlistOnAttack),
+		BlockingTarget:             c.BlockingTarget,
+		AlsoBlocking:               copyUUIDSlice(c.AlsoBlocking),
+		GoadedBy:                   c.LatestGoader(),
+		Goads:                      snapshotGoads(c.Goads),
+		DamageMarked:               c.DamageMarked,
+		RegenerationShields:        c.RegenerationShields,
+		FaceDown:                   c.FaceDown,
+		FaceDownKind:               c.FaceDownKind,
+		FaceDownListed:             c.FaceDownListed.clone(),
+		FaceTurnedAt:               c.FaceTurnedAt,
+		KnownBy:                    copyBoolMap(c.KnownBy),
+		EnteredBattlefieldAt:       c.EnteredBattlefieldAt,
+		EntryOrdinal:               c.EntryOrdinal,
+		ObjectEpoch:                c.ObjectEpoch,
+		TurnOvers:                  c.TurnOvers,
+		ControlledSinceUpkeep:      c.ControlledSinceUpkeep,
+		SummonedThisTurn:           c.SummonedThisTurn,
+		PutInGraveyardFrom:         c.PutInGraveyardFrom,
+		PutInGraveyardThisTurn:     c.PutInGraveyardThisTurn,
+		Surveilled:                 c.Surveilled,
+		Milled:                     c.Milled,
+		SuspendGranted:             c.SuspendGranted,
+		HauntedID:                  uuidPtrOrNil(c.HauntedID),
+		HauntedEpoch:               c.HauntedEpoch,
+		HauntingEpoch:              c.HauntingEpoch,
+		ExileGrants:                exileGrantsToSnapshot(c.ExileGrants),
+		MarkedLethalByDeathtouch:   c.MarkedLethalByDeathtouch,
+		MarkedBySource:             append([]SourceMark(nil), c.MarkedBySource...),
+		LostLastCounter:            c.LostLastCounter,
+		PrintedPTKnown:             c.PrintedPTKnown,
+		AttachedTo:                 c.AttachedTo,
+		AttachedAt:                 c.AttachedAt,
+		AttachedEpoch:              c.AttachedEpoch,
+		AttachedPinned:             c.AttachedPinned,
+		BaseController:             c.BaseController,
+		NamedTribe:                 c.NamedTribe,
+		Provenance:                 c.Provenance.Clone(),
+		CraftedWith:                cloneObjectRefs(c.CraftedWith),
+		Meld:                       c.Meld.clone(),
+		MeldSplitFrom:              objectRefPtr(c.MeldSplitFrom),
+		ChosenColor:                c.ChosenColor,
+		ChosenPlayer:               c.ChosenPlayer,
+		ChosenSecondPlayer:         c.ChosenSecondPlayer,
+		ChosenName:                 c.ChosenName,
+		ChosenSecondName:           c.ChosenSecondName,
+		ChosenOption:               c.ChosenOption,
+		SecretChoice:               c.SecretChoice,
+		SecretChoiceBy:             c.SecretChoiceBy,
+		ChosenNumber:               c.ChosenNumber,
+		ChosenPermanent:            objectRefPtr(c.ChosenPermanent),
+		LinkedPermanent:            objectRefPtr(c.LinkedPermanent),
+		ChosenCard:                 objectRefPtr(c.ChosenCard),
+		Notes:                      append([]string(nil), c.Notes...),
+		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
+		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
+		ModesChosen:                copyModesChosen(c.ModesChosen),
+		ClassLevel:                 c.ClassLevel,
+		Solved:                     c.Solved,
+		Harnessed:                  c.Harnessed,
+		Monstrous:                  c.Monstrous,
+		Renowned:                   c.Renowned,
+		DealtCombatDamage:          c.DealtCombatDamage,
+		DealtDamage:                c.DealtDamage,
+		Bestowed:                   c.Bestowed,
+		EnchantSwapped:             c.EnchantSwapped,
+		EnchantReturned:            snapshotObjectRefPtr(c.EnchantReturned),
+		ReturnedAura:               c.ReturnedAura,
+		AuraFormEndBy:              uuidPtrOrNil(c.AuraFormEndBy),
+		AuraFormEndCost:            c.AuraFormEndCost,
+		Saddled:                    c.Saddled,
+		SaddledBy:                  append([]ObjectRef(nil), c.SaddledBy...),
+		Suspected:                  c.Suspected,
+		SuspectedAt:                c.SuspectedAt,
+		PairedWith:                 c.PairedWith,
+		LostKeywords:               append([]string(nil), c.LostKeywords...),
+		PerpetualKeywords:          append([]string(nil), c.PerpetualKeywords...),
+		Conjured:                   c.Conjured,
+		RingBearer:                 c.RingBearer,
+		RingTemptations:            c.RingTemptations,
+		Unlocked:                   c.Unlocked,
+		Fused:                      c.Fused,
+		Prepared:                   c.Prepared,
+		PrepareCopy:                c.PrepareCopy,
+		CardCopy:                   c.CardCopy,
+		PreparedBy:                 c.PreparedBy,
+		HiddenBy:                   c.HiddenBy,
+		ExiledWith:                 c.ExiledWith,
+		ExiledWithAbility:          snapshotExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:             c.ExiledWithTurn,
+		ExiledByAbilityOf:          uuidPtrOrNil(c.ExiledByAbilityOf),
+		EncodedOn:                  snapshotEncodedOn(c.EncodedOn),
+		CreatedWith:                snapshotEncodedOn(c.CreatedWith),
+		EncodedAt:                  c.EncodedAt,
+		PhasedOutBy:                c.PhasedOutBy,
+		PhaseInLockedBy:            c.PhaseInLockedBy,
+		PhaseInBarredBy:            c.PhaseInBarredBy,
+		PhaseInBarredEpoch:         c.PhaseInBarredEpoch,
+		PhaseInBarredFor:           c.PhaseInBarredFor,
+		PhaseInBarredThroughPlayer: c.PhaseInBarredThroughPlayer,
+		PhaseInBarredThroughTurn:   c.PhaseInBarredThroughTurn,
+		PhaseInBarredWhileTapped:   c.PhaseInBarredWhileTapped,
+		PhasedOutIndirect:          c.PhasedOutIndirect,
+		TapOnPhaseIn:               c.TapOnPhaseIn,
+		StartingDefense:            c.StartingDefense,
+		ProtectorPlayerID:          c.ProtectorPlayerID,
+		ManaAbilityCount:           len(c.ManaAbilities),
+		ActivatedAbilityCount:      len(c.ActivatedAbilities),
+		AbilitiesLostOnRestore:     c.AbilitiesLostOnRestore,
 	}
 	// #522: measure the catalog entry this card resolves to, so the
 	// binary that restores the file can tell whether it still has it.
@@ -3405,6 +3496,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		CommanderDamage:            copyIntMap(p.CommanderDamage),
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -3415,6 +3508,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  string(p.LossCause),
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         snapshotDepartedPermanents(p.DepartedPermanents, cen),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,
@@ -3517,6 +3611,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -3527,6 +3622,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
 		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		HandInsteadOfGraveyard:   s.HandInsteadOfGraveyard,
 		Commutes:                 s.Commutes,
 		Paid:                     clonePaidCost(s.Paid),
 		HasEffect:                s.Effect != nil,
@@ -3666,6 +3762,9 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ManaAdds:           d.ManaAdds,
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
+		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.stamped(),
+		PayToCancel:           clonePayToCancel(d.PayToCancel),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -3711,6 +3810,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		CoinWins:              c.CoinWins,
 		ColorOptions:          copyStrings(c.ColorOptions),
 		ColorPurpose:          c.ColorPurpose,
+		ColorMulti:            c.ColorMulti,
 		ControlPurpose:        c.ControlPurpose,
 		ManaRestrictions:      copyStrings(c.ManaRestrictions),
 		ManaRiders:            copyManaRiders(c.ManaRiders),
@@ -3760,6 +3860,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
@@ -3790,6 +3891,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
+		PaySpendPurpose:       c.PaySpendPurpose,
 		Asked:                 copyAskedItem(c.Asked),
 		PayTap:                copyPayTapSpec(c.PayTap),
 		PayAmount:             copyPayAmountPrompt(c.PayAmount),
@@ -4020,6 +4122,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.StartingSeat = s.StartingSeat
 	g.SplitSecondActive = s.SplitSecondActive
+	g.TurnOrderReversed = s.TurnOrderReversed
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.TurnChangePending = s.TurnChangePending
@@ -4177,12 +4280,14 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
+	g.TapForeignLandsThisTurn = copyBoolMap(s.TapForeignLandsThisTurn)
 	g.LoyaltyPermanentTwiceThisTurn = copyBoolMap(s.LoyaltyPermanentTwiceThisTurn)
 	g.LoyaltyPermanentExtraThisTurn = copyIntMap(s.LoyaltyPermanentExtraThisTurn)
 	g.LoyaltyPermanentExtraUsedThisTurn = copyIntMap(s.LoyaltyPermanentExtraUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
+	g.PilesOrGuessesThisTurn = copyUUIDs(s.PilesOrGuessesThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
 	if prePlan && len(g.TurnTally.StepsBegun) == 0 && len(g.TurnTally.PhasesBegun) == 0 {
 		g.derivePrePlanOrdinalsLocked()
@@ -4395,155 +4500,163 @@ func restoreZone(z *zoneSnapshot, fallback ZoneKind) *Zone {
 
 func restoreCard(c *cardSnapshot) Card {
 	out := Card{
-		InstanceID:               c.InstanceID,
-		Name:                     c.Name,
-		ScryfallID:               c.ScryfallID,
-		TokenArtOnly:             c.TokenArtOnly,
-		OracleID:                 c.OracleID,
-		TokenKey:                 c.TokenKey,
-		TypeLine:                 c.TypeLine,
-		Power:                    c.Power,
-		Toughness:                c.Toughness,
-		ManaCost:                 c.ManaCost,
-		ProducedMana:             copyStrings(c.ProducedMana),
-		Colors:                   copyStrings(c.Colors),
-		ColorIdentity:            copyStrings(c.ColorIdentity),
-		StartingLoyalty:          c.StartingLoyalty,
-		StartingLoyaltyKnown:     c.StartingLoyaltyKnown,
-		Keywords:                 copyStrings(c.Keywords),
-		GrantedAbilities:         copyStrings(c.GrantedAbilities),
-		ColorCDADropped:          c.ColorCDADropped,
-		Layout:                   c.Layout,
-		Faces:                    copyFaces(c.Faces),
-		ActiveFace:               c.ActiveFace,
-		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
-		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
-		NeedsEffect:              c.NeedsEffect,
-		PrintsManaAbility:        c.PrintsManaAbility,
-		PrintsTapAbility:         c.PrintsTapAbility,
-		ManaAbilityText:          c.ManaAbilityText,
-		NoAbilitiesText:          c.NoAbilitiesText,
-		WarpText:                 c.WarpText,
-		FlashbackText:            c.FlashbackText,
-		Owner:                    c.Owner,
-		Controller:               c.Controller,
-		Tapped:                   c.Tapped,
-		Flipped:                  c.Flipped,
-		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
-		BattleX:                  c.BattleX,
-		BattleY:                  c.BattleY,
-		Counters:                 copyStringIntMap(c.Counters),
-		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
-		IsCommander:              c.IsCommander,
-		CommanderColor:           c.CommanderColor,
-		IsCompanion:              c.IsCompanion,
-		IsSideboard:              c.IsSideboard,
-		AstrotoriumBack:          c.AstrotoriumBack,
-		AttractionLights:         append([]int(nil), c.AttractionLights...),
-		Stickers:                 append([]PlacedSticker(nil), c.Stickers...),
-		CommanderReturnDue:       c.CommanderReturnDue,
-		AttackingTarget:          c.AttackingTarget,
-		ExertOnAttack:            c.ExertOnAttack,
-		EnlistOnAttack:           uuidOrNil(c.EnlistOnAttack),
-		BlockingTarget:           c.BlockingTarget,
-		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
-		Goads:                    restoreGoads(c.Goads, c.GoadedBy),
-		DamageMarked:             c.DamageMarked,
-		RegenerationShields:      c.RegenerationShields,
-		FaceDown:                 c.FaceDown,
-		FaceDownKind:             c.FaceDownKind,
-		FaceDownListed:           c.FaceDownListed.clone(),
-		FaceTurnedAt:             c.FaceTurnedAt,
-		KnownBy:                  copyBoolMap(c.KnownBy),
-		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
-		EntryOrdinal:             c.EntryOrdinal,
-		ObjectEpoch:              c.ObjectEpoch,
-		TurnOvers:                c.TurnOvers,
-		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
-		SummonedThisTurn:         c.SummonedThisTurn,
-		PutInGraveyardFrom:       c.PutInGraveyardFrom,
-		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
-		Surveilled:               c.Surveilled,
-		Milled:                   c.Milled,
-		SuspendGranted:           c.SuspendGranted,
-		HauntedID:                uuidOrNil(c.HauntedID),
-		HauntedEpoch:             c.HauntedEpoch,
-		HauntingEpoch:            c.HauntingEpoch,
-		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
-		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
-		LostLastCounter:          c.LostLastCounter,
-		PrintedPTKnown:           c.PrintedPTKnown,
-		AttachedTo:               c.AttachedTo,
-		AttachedAt:               c.AttachedAt,
-		AttachedEpoch:            c.AttachedEpoch,
-		AttachedPinned:           c.AttachedPinned,
-		BaseController:           c.BaseController,
-		NamedTribe:               c.NamedTribe,
-		Provenance:               c.Provenance.Clone(),
-		CraftedWith:              cloneObjectRefs(c.CraftedWith),
-		Meld:                     c.Meld.clone(),
-		MeldSplitFrom:            objectRefValue(c.MeldSplitFrom),
-		ChosenColor:              c.ChosenColor,
-		ChosenPlayer:             c.ChosenPlayer,
-		ChosenSecondPlayer:       c.ChosenSecondPlayer,
-		ChosenName:               c.ChosenName,
-		ChosenSecondName:         c.ChosenSecondName,
-		ChosenOption:             c.ChosenOption,
-		SecretChoice:             c.SecretChoice,
-		SecretChoiceBy:           c.SecretChoiceBy,
-		ChosenNumber:             c.ChosenNumber,
-		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
-		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
-		ChosenCard:               objectRefValue(c.ChosenCard),
-		Notes:                    append([]string(nil), c.Notes...),
-		Devoured:                 c.Devoured,
-		ModesChosen:              copyModesChosen(c.ModesChosen),
-		ClassLevel:               c.ClassLevel,
-		Solved:                   c.Solved,
-		Harnessed:                c.Harnessed,
-		Monstrous:                c.Monstrous,
-		Renowned:                 c.Renowned,
-		DealtCombatDamage:        c.DealtCombatDamage,
-		DealtDamage:              c.DealtDamage,
-		Bestowed:                 c.Bestowed,
-		EnchantSwapped:           c.EnchantSwapped,
-		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
-		ReturnedAura:             c.ReturnedAura,
-		Saddled:                  c.Saddled,
-		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
-		Suspected:                c.Suspected,
-		SuspectedAt:              c.SuspectedAt,
-		PairedWith:               c.PairedWith,
-		LostKeywords:             append([]string(nil), c.LostKeywords...),
-		PerpetualKeywords:        append([]string(nil), c.PerpetualKeywords...),
-		Conjured:                 c.Conjured,
-		RingBearer:               c.RingBearer,
-		RingTemptations:          c.RingTemptations,
-		Unlocked:                 c.Unlocked,
-		Fused:                    c.Fused,
-		Prepared:                 c.Prepared,
-		PrepareCopy:              c.PrepareCopy,
-		CardCopy:                 c.CardCopy,
-		PreparedBy:               c.PreparedBy,
-		HiddenBy:                 c.HiddenBy,
-		ExiledWith:               c.ExiledWith,
-		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
-		ExiledWithTurn:           c.ExiledWithTurn,
-		ExiledByAbilityOf:        uuidOrNil(c.ExiledByAbilityOf),
-		EncodedOn:                restoreEncodedOn(c.EncodedOn),
-		CreatedWith:              restoreEncodedOn(c.CreatedWith),
-		EncodedAt:                c.EncodedAt,
-		PhasedOutBy:              c.PhasedOutBy,
-		PhaseInLockedBy:          c.PhaseInLockedBy,
-		PhaseInBarredBy:          c.PhaseInBarredBy,
-		PhaseInBarredEpoch:       c.PhaseInBarredEpoch,
-		PhaseInBarredFor:         c.PhaseInBarredFor,
-		PhaseInBarredWhileTapped: c.PhaseInBarredWhileTapped,
-		PhasedOutIndirect:        c.PhasedOutIndirect,
-		TapOnPhaseIn:             c.TapOnPhaseIn,
-		StartingDefense:          c.StartingDefense,
-		ProtectorPlayerID:        c.ProtectorPlayerID,
-		AbilitiesLostOnRestore:   c.AbilitiesLostOnRestore,
+		InstanceID:                 c.InstanceID,
+		Name:                       c.Name,
+		ScryfallID:                 c.ScryfallID,
+		TokenArtOnly:               c.TokenArtOnly,
+		OracleID:                   c.OracleID,
+		TokenKey:                   c.TokenKey,
+		TypeLine:                   c.TypeLine,
+		Power:                      c.Power,
+		Toughness:                  c.Toughness,
+		ManaCost:                   c.ManaCost,
+		ProducedMana:               copyStrings(c.ProducedMana),
+		Colors:                     copyStrings(c.Colors),
+		ColorIdentity:              copyStrings(c.ColorIdentity),
+		StartingLoyalty:            c.StartingLoyalty,
+		StartingLoyaltyKnown:       c.StartingLoyaltyKnown,
+		Keywords:                   copyStrings(c.Keywords),
+		GrantedAbilities:           copyStrings(c.GrantedAbilities),
+		ColorCDADropped:            c.ColorCDADropped,
+		Layout:                     c.Layout,
+		Faces:                      copyFaces(c.Faces),
+		ActiveFace:                 c.ActiveFace,
+		PrintedSelf:                copyPrintedValues(c.PrintedSelf),
+		DurationCopyBase:           copyPrintedValues(c.DurationCopyBase),
+		FullTextBase:               copyPrintedValues(c.FullTextBase),
+		NeedsEffect:                c.NeedsEffect,
+		PrintsManaAbility:          c.PrintsManaAbility,
+		PrintsTapAbility:           c.PrintsTapAbility,
+		ManaAbilityText:            c.ManaAbilityText,
+		NoAbilitiesText:            c.NoAbilitiesText,
+		WarpText:                   c.WarpText,
+		FlashbackText:              c.FlashbackText,
+		Owner:                      c.Owner,
+		Controller:                 c.Controller,
+		Tapped:                     c.Tapped,
+		Flipped:                    c.Flipped,
+		NextUntapSkips:             restoreUntapSkips(c.NextUntapSkips),
+		BattleX:                    c.BattleX,
+		BattleY:                    c.BattleY,
+		Counters:                   copyStringIntMap(c.Counters),
+		CounterStampedAt:           copyStringInt64Map(c.CounterStampedAt),
+		IsCommander:                c.IsCommander,
+		CommanderColor:             c.CommanderColor,
+		IsCompanion:                c.IsCompanion,
+		IsSideboard:                c.IsSideboard,
+		AstrotoriumBack:            c.AstrotoriumBack,
+		AttractionLights:           append([]int(nil), c.AttractionLights...),
+		Stickers:                   append([]PlacedSticker(nil), c.Stickers...),
+		CommanderReturnDue:         c.CommanderReturnDue,
+		AttackingTarget:            c.AttackingTarget,
+		ExertOnAttack:              c.ExertOnAttack,
+		EnlistOnAttack:             uuidOrNil(c.EnlistOnAttack),
+		BlockingTarget:             c.BlockingTarget,
+		AlsoBlocking:               copyUUIDSlice(c.AlsoBlocking),
+		Goads:                      restoreGoads(c.Goads, c.GoadedBy),
+		DamageMarked:               c.DamageMarked,
+		RegenerationShields:        c.RegenerationShields,
+		FaceDown:                   c.FaceDown,
+		FaceDownKind:               c.FaceDownKind,
+		FaceDownListed:             c.FaceDownListed.clone(),
+		FaceTurnedAt:               c.FaceTurnedAt,
+		KnownBy:                    copyBoolMap(c.KnownBy),
+		EnteredBattlefieldAt:       c.EnteredBattlefieldAt,
+		EntryOrdinal:               c.EntryOrdinal,
+		ObjectEpoch:                c.ObjectEpoch,
+		TurnOvers:                  c.TurnOvers,
+		ControlledSinceUpkeep:      c.ControlledSinceUpkeep,
+		SummonedThisTurn:           c.SummonedThisTurn,
+		PutInGraveyardFrom:         c.PutInGraveyardFrom,
+		PutInGraveyardThisTurn:     c.PutInGraveyardThisTurn,
+		Surveilled:                 c.Surveilled,
+		Milled:                     c.Milled,
+		SuspendGranted:             c.SuspendGranted,
+		HauntedID:                  uuidOrNil(c.HauntedID),
+		HauntedEpoch:               c.HauntedEpoch,
+		HauntingEpoch:              c.HauntingEpoch,
+		ExileGrants:                exileGrantsFromSnapshot(c.ExileGrants),
+		MarkedLethalByDeathtouch:   c.MarkedLethalByDeathtouch,
+		MarkedBySource:             append([]SourceMark(nil), c.MarkedBySource...),
+		LostLastCounter:            c.LostLastCounter,
+		PrintedPTKnown:             c.PrintedPTKnown,
+		AttachedTo:                 c.AttachedTo,
+		AttachedAt:                 c.AttachedAt,
+		AttachedEpoch:              c.AttachedEpoch,
+		AttachedPinned:             c.AttachedPinned,
+		BaseController:             c.BaseController,
+		NamedTribe:                 c.NamedTribe,
+		Provenance:                 c.Provenance.Clone(),
+		CraftedWith:                cloneObjectRefs(c.CraftedWith),
+		Meld:                       c.Meld.clone(),
+		MeldSplitFrom:              objectRefValue(c.MeldSplitFrom),
+		ChosenColor:                c.ChosenColor,
+		ChosenPlayer:               c.ChosenPlayer,
+		ChosenSecondPlayer:         c.ChosenSecondPlayer,
+		ChosenName:                 c.ChosenName,
+		ChosenSecondName:           c.ChosenSecondName,
+		ChosenOption:               c.ChosenOption,
+		SecretChoice:               c.SecretChoice,
+		SecretChoiceBy:             c.SecretChoiceBy,
+		ChosenNumber:               c.ChosenNumber,
+		ChosenPermanent:            objectRefValue(c.ChosenPermanent),
+		LinkedPermanent:            objectRefValue(c.LinkedPermanent),
+		ChosenCard:                 objectRefValue(c.ChosenCard),
+		Notes:                      append([]string(nil), c.Notes...),
+		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
+		Devoured:                   c.Devoured,
+		TributePaid:                c.TributePaid,
+		ModesChosen:                copyModesChosen(c.ModesChosen),
+		ClassLevel:                 c.ClassLevel,
+		Solved:                     c.Solved,
+		Harnessed:                  c.Harnessed,
+		Monstrous:                  c.Monstrous,
+		Renowned:                   c.Renowned,
+		DealtCombatDamage:          c.DealtCombatDamage,
+		DealtDamage:                c.DealtDamage,
+		Bestowed:                   c.Bestowed,
+		EnchantSwapped:             c.EnchantSwapped,
+		EnchantReturned:            restoreObjectRefPtr(c.EnchantReturned),
+		ReturnedAura:               c.ReturnedAura,
+		AuraFormEndBy:              uuidOrNil(c.AuraFormEndBy),
+		AuraFormEndCost:            c.AuraFormEndCost,
+		Saddled:                    c.Saddled,
+		SaddledBy:                  append([]ObjectRef(nil), c.SaddledBy...),
+		Suspected:                  c.Suspected,
+		SuspectedAt:                c.SuspectedAt,
+		PairedWith:                 c.PairedWith,
+		LostKeywords:               append([]string(nil), c.LostKeywords...),
+		PerpetualKeywords:          append([]string(nil), c.PerpetualKeywords...),
+		Conjured:                   c.Conjured,
+		RingBearer:                 c.RingBearer,
+		RingTemptations:            c.RingTemptations,
+		Unlocked:                   c.Unlocked,
+		Fused:                      c.Fused,
+		Prepared:                   c.Prepared,
+		PrepareCopy:                c.PrepareCopy,
+		CardCopy:                   c.CardCopy,
+		PreparedBy:                 c.PreparedBy,
+		HiddenBy:                   c.HiddenBy,
+		ExiledWith:                 c.ExiledWith,
+		ExiledWithAbility:          restoreExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:             c.ExiledWithTurn,
+		ExiledByAbilityOf:          uuidOrNil(c.ExiledByAbilityOf),
+		EncodedOn:                  restoreEncodedOn(c.EncodedOn),
+		CreatedWith:                restoreEncodedOn(c.CreatedWith),
+		EncodedAt:                  c.EncodedAt,
+		PhasedOutBy:                c.PhasedOutBy,
+		PhaseInLockedBy:            c.PhaseInLockedBy,
+		PhaseInBarredBy:            c.PhaseInBarredBy,
+		PhaseInBarredEpoch:         c.PhaseInBarredEpoch,
+		PhaseInBarredFor:           c.PhaseInBarredFor,
+		PhaseInBarredThroughPlayer: c.PhaseInBarredThroughPlayer,
+		PhaseInBarredThroughTurn:   c.PhaseInBarredThroughTurn,
+		PhaseInBarredWhileTapped:   c.PhaseInBarredWhileTapped,
+		PhasedOutIndirect:          c.PhasedOutIndirect,
+		TapOnPhaseIn:               c.TapOnPhaseIn,
+		StartingDefense:            c.StartingDefense,
+		ProtectorPlayerID:          c.ProtectorPlayerID,
+		AbilitiesLostOnRestore:     c.AbilitiesLostOnRestore,
 	}
 	// #522: the parity check. A card this binary's catalog hands back
 	// fewer abilities for than the file recorded is restored anyway
@@ -4624,6 +4737,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		HasSideboard:               p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:                 p.TurnsBegun,
 		ExtraTurnsBegun:            p.ExtraTurnsBegun,
+		LifeAsTurnBegan:            p.LifeAsTurnBegan,
+		LifeAsTurnBeganSeq:         p.LifeAsTurnBeganSeq,
 		UpkeepsBegun:               p.UpkeepsBegun,
 		EndStepTurn:                p.EndStepTurn,
 		LastTurnAttacks:            append([]AttackRecord(nil), p.LastTurnAttacks...),
@@ -4634,6 +4749,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Eliminated:                 p.Eliminated,
 		LossCause:                  LossCause(p.LossCause),
 		FinalBoard:                 cloneFinalBoard(p.FinalBoard),
+		DepartedPermanents:         restoreDepartedPermanents(p.DepartedPermanents),
 		Removed:                    p.Removed,
 		HandKept:                   p.HandKept,
 		MulliganDecided:            p.MulliganDecided,
@@ -4751,6 +4867,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SplitSecond:      s.SplitSecond,
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
+		Cycling:          s.Cycling,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
 		ExileAndReturn:   s.ExileAndReturn,
@@ -4761,6 +4878,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
 		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		HandInsteadOfGraveyard:   s.HandInsteadOfGraveyard,
 		Commutes:                 s.Commutes,
 		Paid:                     clonePaidCost(s.Paid),
 		Body:                     s.Body,
@@ -4845,6 +4963,9 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ManaAdds:         d.ManaAdds,
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
+		CopiesSpell:           cloneEpicSpell(d.CopiesSpell),
+		WhileExiled:           d.WhileExiled.value(),
+		PayToCancel:           clonePayToCancel(d.PayToCancel),
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -4874,6 +4995,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CoinWins:              c.CoinWins,
 		ColorOptions:          copyStrings(c.ColorOptions),
 		ColorPurpose:          c.ColorPurpose,
+		ColorMulti:            c.ColorMulti,
 		ControlPurpose:        c.ControlPurpose,
 		ManaRestrictions:      copyStrings(c.ManaRestrictions),
 		ManaRiders:            copyManaRiders(c.ManaRiders),
@@ -4923,6 +5045,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickMatchArg:          c.PickMatchArg,
 		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
+		PickSlots:             copyInts(c.PickSlots),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
@@ -4953,6 +5076,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
+		PaySpendPurpose:       c.PaySpendPurpose,
 		Asked:                 copyAskedItem(c.Asked),
 		PayTap:                copyPayTapSpec(c.PayTap),
 		PayAmount:             copyPayAmountPrompt(c.PayAmount),
@@ -5070,6 +5194,7 @@ func copyCharacteristic(in *Characteristic) *Characteristic {
 	out.Supertypes = copyStrings(in.Supertypes)
 	out.Colors = copyStrings(in.Colors)
 	out.Abilities = copyStrings(in.Abilities)
+	out.SourceCounters = copyCounterMap(in.SourceCounters)
 	if len(in.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]GrantedAbility(nil), in.GrantedAbilities...)
 	}

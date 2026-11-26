@@ -365,6 +365,15 @@ const (
 	// (counterPlacementRefusedLocked). Scope ScopeGame with Player set to
 	// the one player. Reads Player.
 	ModCantGetPoisonCounters ModKind = "cantGetPoisonCounters"
+	// ModPlayerCantGetCounters is "<player> can't get counters" for a
+	// duration (Suncleanser's "That player can't get counters for as long
+	// as this creature remains on the battlefield", #6241; CR 122.1, CR
+	// 101.2): every kind of counter, poison, energy, experience, rad and
+	// tickets alike, refused at the counter door
+	// (counterPlacementRefusedLocked) before any replacement sees it.
+	// Scope ScopeGame; Player is the one player, zero every player. Reads
+	// Player. An on-disk identity.
+	ModPlayerCantGetCounters ModKind = "playerCantGetCounters"
 	// ModCantPlayLands is "<player> can't play lands this turn" (ADR
 	// 0109 §4, #1895; CR 101.2, CR 305.1): Turf Wound's, Solfatara's,
 	// Pardic Miner's and Moonhold's "target player …". Scope ScopeGame
@@ -618,6 +627,20 @@ const (
 	// ability still targets, and nothing about the objects changes. The
 	// targeting choke point reads it (targeting_bar_table.go).
 	ModCantBeTargetedBySpellsOrActivated ModKind = "cantBeTargetedBySpellsOrActivated"
+	// ModCantBeTargetedBySpellsOfColors is "<affected> can't be the
+	// targets of <colour> spells [this turn]" (Autumn's Veil's "creatures
+	// you control can't be the targets of blue or black spells this
+	// turn", #6263). Mod.Colors names the colours (uppercase WUBRG). It
+	// refuses a SPELL that has one of them, whoever controls it, and no
+	// ability. Not hexproof and not protection. The targeting choke point
+	// reads it (targeting_bar_colors.go).
+	ModCantBeTargetedBySpellsOfColors ModKind = "cantBeTargetedBySpellsOfColors"
+	// ModCantBeTargetedByOpponentSpellsOfColors is the same bar narrowed to
+	// spells the effect controller's opponents control (Display of
+	// Dominance's "permanents you control can't be the targets of blue or
+	// black spells your opponents control this turn"). Same parameters and
+	// reader; a spell its controller casts is not refused.
+	ModCantBeTargetedByOpponentSpellsOfColors ModKind = "cantBeTargetedByOpponentSpellsOfColors"
 )
 
 // ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
@@ -726,6 +749,15 @@ const (
 	// A creature whose cost the engine cannot read is in neither set.
 	ScopeCreaturesOddManaValue  AffectedScope = "creaturesOddManaValue"
 	ScopeCreaturesEvenManaValue AffectedScope = "creaturesEvenManaValue"
+	// ScopeCreaturesPowerThreeOrLess is "creatures with power 3 or less",
+	// every player's, read live (S82 OLD, Temur Charm's "creatures with
+	// power 3 or less can't block this turn"). "Can't block" changes no
+	// characteristic, so CR 611.2c does not lock the set: a creature that
+	// arrives later, or whose power falls or rises, is judged as blockers
+	// are declared (CR 509.1b). Power is a layer-7 result, so, like
+	// ScopeCreaturesWithoutFlying, a record with this scope carries only
+	// mods read after the layer pass is finished (scopeReadsLayerResult).
+	ScopeCreaturesPowerThreeOrLess AffectedScope = "creaturesPowerThreeOrLess"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -735,7 +767,8 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesExceptObjects:
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects,
+		ScopeCreaturesMatching, ScopeOpponentsCreaturesMatching:
 		return true
 	}
 	return false
@@ -748,7 +781,9 @@ func KnownAffectedScope(s AffectedScope) bool {
 // half-way through the pass (#1650).
 func scopeReadsLayerResult(scope AffectedScope) bool {
 	return scope == ScopeCreaturesWithoutFlying || scope == ScopeCreaturesThatArentLands ||
-		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue
+		scope == ScopeCreaturesOddManaValue || scope == ScopeCreaturesEvenManaValue ||
+		scopeMatchesQueries(scope) ||
+		scope == ScopeCreaturesPowerThreeOrLess
 }
 
 // panicOnLayerModUnderLayerScope refuses, at registration, a layer mod on
@@ -813,8 +848,9 @@ type Mod struct {
 	// mutated in place (see ScopedEffect's contract).
 	Amount int `json:"amount,omitempty"`
 	// Step and ExtraTurn are ModSkipExtraTurnStep's (ADR 0188 Decision
-	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Refused
-	// on every other kind (skipExtraTurnStepModProblem).
+	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Step is
+	// also ModSkipNextStep's (#6144). Refused on every other kind
+	// (skipExtraTurnStepModProblem).
 	Step      Step `json:"step,omitempty"`
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
@@ -885,8 +921,21 @@ type Mod struct {
 	// to the rest of its instance and to nothing else. Both are written. A
 	// record from before SpentInstance existed has SpentBatch alone and
 	// reads as it did, applying for the rest of that batch.
-	SourceZone    ZoneKind         `json:"sourceZone,omitempty"`
-	Queries       []PermanentQuery `json:"queries,omitempty"`
+	SourceZone ZoneKind         `json:"sourceZone,omitempty"`
+	Queries    []PermanentQuery `json:"queries,omitempty"`
+	// Match is the FILTER of a query-filtered scope (#6237,
+	// scope_matching.go): "creatures with defender", "creatures with
+	// power less than or equal to that number". Any of them matching
+	// puts a creature in the record's affected set, read live at every
+	// layer pass against effective characteristics.
+	//
+	// A field of its own rather than Queries, which is
+	// ModPreventNextFromSource's CR 615.9 recheck and is policed as a
+	// damage-source field: two different questions, two fields, and the
+	// guard that keeps a damage field off any other kind keeps working.
+	// Read only on an addRestrictions mod under a query-filtered scope
+	// (matchingScopeProblem).
+	Match         []PermanentQuery `json:"match,omitempty"`
 	SpentBatch    uint64           `json:"spentBatch,omitempty"`
 	SpentInstance DamageInstance   `json:"spentInstance,omitempty"`
 	// Half is ModPreventNextFromSource's "prevent half that damage,
@@ -1235,6 +1284,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// #1997: Hall of Gemstone's "lands tapped for mana produce mana of
 	// the chosen color instead" (land_mana_color.go).
 	ModLandManaIsColor: {reader: readerReplacement},
+	// #6210: Harvest Mage's "one mana of a color of your choice instead".
+	ModLandManaOfChosenColor: {reader: readerReplacement},
 	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// Don't Blink: creatures entering from exile are shuffled into their
@@ -1243,6 +1294,19 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6093: Cone of Cold's "until your next turn, creatures your
 	// opponents control enter tapped" (scoped_enters_tapped.go).
 	ModCreaturesEnterTappedForOpponents: {reader: readerReplacement},
+	// #6260: Gather Specimens' "if a creature would enter the battlefield
+	// under an opponent's control this turn, it enters under your control
+	// instead" (scoped_enters_under_control.go).
+	ModCreaturesEnterUnderYourControl: {reader: readerReplacement},
+	// #6160: Mystic Reflection's "the next time one or more creatures or
+	// planeswalkers enter this turn, they enter as copies".
+	ModNextEntersAsCopies: {reader: readerReplacement},
+	// #6147: Due Respect's and Nahiri's Lithoforming's "<permanents>
+	// enter tapped this turn" (scoped_permanents_enter_tapped.go).
+	ModPermanentsEnterTapped: {reader: readerReplacement},
+	// #5521: Combine Guildmage's "each creature you control enters with an
+	// additional +1/+1 counter this turn" (scoped_creatures_enter_with_counter.go).
+	ModCreaturesEnterWithPlusOneCounter: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.
 	ModPreventNextFromSource: {reader: readerReplacement},
 	// ADR 0108 §7 (#1904): a shield against a source that is not one-use.
@@ -1252,6 +1316,10 @@ var modKinds = map[ModKind]modKindSpec{
 	ModPreventNextCombatFromSource: {reader: readerReplacement},
 	// ADR 0108 §1 (#1886): exile instead if it would die this turn.
 	ModExileIfWouldDie: {reader: readerReplacement},
+	// Mistcaller: nontoken creatures that weren't cast are exiled as they enter.
+	ModExileUncastCreatures: {reader: readerReplacement},
+	// Hallowed Moonlight: creatures and creature tokens that weren't cast are exiled as they enter.
+	ModExileUncastCreaturesAndTokens: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
 	ModMultiplyDamage: {reader: readerReplacement},
 	// #4468: damage increased by N this turn (add_damage.go).
@@ -1277,6 +1345,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantGainLife:           {reader: readerRule},
 	ModCantLoseLife:           {reader: readerRule},
 	ModCantGetPoisonCounters:  {reader: readerRule},
+	ModPlayerCantGetCounters:  {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
 	// #4571: the power-up ban, read by the activation gate.
@@ -1304,6 +1373,15 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.
 	ModCantBeSacrificed: {reader: readerRule},
+	// #6201: "can't phase out", read by phaseOutSetLocked
+	// (phasing_extras.go).
+	ModCantPhaseOut: {reader: readerRule},
+	// #6239: "adapts as though it had no +1/+1 counters", read by the
+	// adapt (adapt_ignores_counters.go).
+	ModAdaptIgnoresCounters: {reader: readerRule},
+	// #6200: Camouflage's "instead of declaring blockers", read by the
+	// declare-blockers step and the block verbs (blocks_by_piles.go).
+	ModBlocksByPiles: {reader: readerRule},
 	// #5251: Lumbering Laundry's look at face-down creatures, read by
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
@@ -1329,13 +1407,21 @@ var modKinds = map[ModKind]modKindSpec{
 	// #5718: Peace Talks' table-wide bar on spells and activated
 	// abilities.
 	ModCantBeTargetedBySpellsOrActivated: {reader: readerTargeting},
+	// #6263: Autumn's Veil's bar on blue and black spells.
+	ModCantBeTargetedBySpellsOfColors: {reader: readerTargeting},
+	// Display of Dominance's opponents-only variant of the same bar.
+	ModCantBeTargetedByOpponentSpellsOfColors: {reader: readerTargeting},
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},
+	// #5514: Elspeth Conquers Death's chapter II, the same increase for
+	// noncreature spells only (scoped_cost_tax.go).
+	ModNoncreatureSpellsCostMoreForOpponents: {reader: readerRule},
 	// #6093: Commander Liara Portyr's and Will Kenrith's timed reduction
 	// (scoped_cost_reduction.go).
 	ModSpellsCostLessForPlayer:       {reader: readerRule},
 	ModExiledSpellsCostLessForPlayer: {reader: readerRule},
+	ModNamedSpellsCostLess:           {reader: readerRule},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
@@ -1351,12 +1437,17 @@ var modKinds = map[ModKind]modKindSpec{
 	// Origin of Spider-Man's "becomes a legendary … in addition to its
 	// other types" (become_named.go).
 	ModAddSupertypes: {layer: Layer4Type},
+	// #6199: "is no longer snow".
+	ModRemoveSupertypes: {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #4072: "isn't a Human" (lose_subtypes.go).
 	ModLoseSubtypes: {layer: Layer4Type},
 	// #4691: "loses all creature types" (lose_all_creature_types.go).
 	ModLoseAllCreatureTypes: {layer: Layer4Type},
+	// "You may have this creature assign its combat damage as though it
+	// weren't blocked" granted for a duration (assigns_as_unblocked_mod.go).
+	ModAssignsAsThoughUnblocked: {layer: Layer6Ability},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
 	// #5869: its life-priced sibling (Sivitri, Dragon Master).
@@ -1372,6 +1463,17 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipCombatPhases: {reader: readerRule},
 	// #5838: "skips their next combat phase" (Blinding Angel).
 	ModSkipNextCombatPhase: {reader: readerRule},
+	// #6144: "you skip your next untap/draw step" (Avizoa, Ivory Gargoyle).
+	ModSkipNextStep: {reader: readerRule},
+	// #6218: "during your next untap step, as you untap your
+	// permanents, return this land" (Undiscovered Paradise).
+	ModReturnAtNextUntap: {reader: readerRule},
+	// #6226: "skips each <draw step | main phase | combat phase> this
+	// turn" (Fatespinner).
+	ModSkipThisTurn: {reader: readerRule},
+	// #6244: "the next time you would lose the game this turn, instead
+	// …" (Stunning Reversal).
+	ModNextLossInstead: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1617,10 +1719,14 @@ func blockRequirementModProblem(m Mod) string {
 		// here (attackPermanentModProblem checks it).
 		// #6087: a creaturesExceptObjects restriction names the spared
 		// creatures here (exceptObjectsScopeProblem checks it).
+		// #6160: Mystic Reflection names the creature to copy and the
+		// entry that spent it (nextEntersAsCopiesModProblem checks it).
+		// #6218: a returnAtNextUntap record names its permanent here
+		// (returnAtNextUntapModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
-			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject &&
-			m.Kind != ModAddRestrictions {
+			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject && m.Kind != ModCantBeBlockedExceptBy &&
+			m.Kind != ModAddRestrictions && m.Kind != ModNextEntersAsCopies && m.Kind != ModReturnAtNextUntap {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1796,6 +1902,12 @@ func (g *Game) registerScopedEffectLocked(sourceID uuid.UUID, affected []Affecte
 	if len(affected) == 0 || len(mods) == 0 {
 		return false
 	}
+	// #6203: "other players can't gain control of" (Guardian Beast). A
+	// control change the bar forbids does nothing, whichever card asked
+	// for it.
+	if g.controlChangeBarredLocked(affected, mods) {
+		return false
+	}
 	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil, mods, d, label, ts)
 }
 
@@ -1956,6 +2068,18 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := skipNextCombatPhaseModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := skipNextStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := returnAtNextUntapModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipThisTurnModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := nextLossInsteadModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := attackPermanentModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -1970,6 +2094,11 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	if problem := exceptObjectsScopeProblem(scope, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
+	// #6237: a query-filtered record carries one addRestrictions mod per
+	// filter, each with at least one query (scope_matching.go).
+	if problem := matchingScopeProblem(scope, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	// ADR 0109 Shared machinery 2: a duration restore would refuse is a
@@ -2014,6 +2143,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
+		m.Match = clonePermanentQueries(m.Match)
 		m.SourceFilter = cloneSourceFilters(m.SourceFilter)
 		m.RecipientFilter = cloneRecipientFilters(m.RecipientFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
@@ -2296,6 +2426,10 @@ func scopePredicate(scope AffectedScope, controller uuid.UUID) func(*Card, *Game
 		return func(target *Card, _ *Game, _ *Card) bool {
 			return target != nil && target.IsCreature() && !target.IsLand()
 		}
+	case ScopeCreaturesPowerThreeOrLess:
+		return func(target *Card, _ *Game, _ *Card) bool {
+			return target != nil && target.IsCreature() && target.CurrentPower() <= 3
+		}
 	case ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue:
 		wantOdd := scope == ScopeCreaturesOddManaValue
 		return func(target *Card, g *Game, _ *Card) bool {
@@ -2362,9 +2496,14 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 			continue
 		}
 		applies := scopePredicate(e.Scope, e.Controller)
-		if e.Scope == ScopeCreaturesExceptObjects {
+		switch {
+		case e.Scope == ScopeCreaturesExceptObjects:
 			// #6087: the spared objects ride the record's mods.
 			applies = exceptObjectsPredicate(e.Mods)
+		case scopeMatchesQueries(e.Scope):
+			// #6237: the filter rides the record's mods, as the spared
+			// objects do (scope_matching.go).
+			applies = matchingQueriesPredicate(e.Mods, e.Scope, e.Controller)
 		}
 		for j := range g.Battlefield.Cards {
 			target := &g.Battlefield.Cards[j]
@@ -2435,6 +2574,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.addSupertypes(supertypes)
 		}
+	case ModRemoveSupertypes:
+		supertypes := m.Supertypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.RemoveSupertypes(supertypes)
+		}
 	case ModLoseSubtypes:
 		subtypes := m.Subtypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
@@ -2443,6 +2587,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModLoseAllCreatureTypes:
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.loseAllCreatureTypes()
+		}
+	case ModAssignsAsThoughUnblocked:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.AssignsAsThoughUnblocked = true
 		}
 	case ModSetCreatureTypes:
 		subtypes := m.Subtypes
@@ -2453,6 +2601,8 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		name := m.Text
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Name = name
+			// CR 612.8: "loses any names it had" (#6257).
+			ch.AllNonlegendaryCreatureNames = false
 		}
 	case ModSetBasicLandTypes:
 		// The engine has already emptied the abilities (removes: true,
@@ -2495,11 +2645,22 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return removeKeywordPrefixesApply(copyStrings(m.Keywords))
 	case ModRemoveKeywords:
 		keywords := m.Keywords
+		// CR 702.22b (#6142): a permanent that loses banding loses every
+		// "bands with other" ability as well.
+		losesBanding := false
+		for _, kw := range keywords {
+			if strings.EqualFold(kw, KeywordBanding) {
+				losesBanding = true
+			}
+		}
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			kept := make([]string, 0, len(ch.Abilities))
 			for _, a := range ch.Abilities {
-				drop := false
+				drop := losesBanding && strings.HasPrefix(strings.ToLower(a), KeywordBandsWithOtherPrefix)
 				for _, kw := range keywords {
+					if drop {
+						break
+					}
 					if strings.EqualFold(a, kw) {
 						drop = true
 						break

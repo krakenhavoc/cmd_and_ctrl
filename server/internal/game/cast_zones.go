@@ -93,6 +93,25 @@ var CatalogCastableZonesIf func(oracleID string) []ConditionalCastZone
 // Spec.CastsOnlyFromGraveyard (Haakon, Stromgald Scourge). Nil is false.
 var CatalogCastsOnlyFromGraveyard func(key string) bool
 
+// CatalogCantSpendManaToCast is the catalog hook for
+// Spec.CantSpendManaToCast (Hogaak, Arisen Necropolis). Nil is false.
+var CatalogCantSpendManaToCast func(key string) bool
+
+// cantSpendManaToCastLocked is the card's own text, "You can't
+// spend mana to cast this spell." The cost that is left once convoke, delve
+// and the other non-mana payments have taken their share must be empty, or
+// the cast is refused with ErrCantSpendMana. An X in the cost is settled at
+// its announced value first.
+func cantSpendManaToCastLocked(card Card, cost ParsedCost, x int) error {
+	if CatalogCantSpendManaToCast == nil || !CatalogCantSpendManaToCast(CatalogKey(card)) {
+		return nil
+	}
+	if cost.SettleX(x).Empty() {
+		return nil
+	}
+	return ErrCantSpendMana
+}
+
 // cardOpensZoneLocked is THE predicate for "does this card's own text
 // let its owner cast it from `zone` right now": an unconditional
 // CastableZones declaration, or a CastableZonesIf entry whose condition
@@ -119,6 +138,11 @@ func (g *Game) cardOpensZoneLocked(card Card, key string, zone ZoneKind) bool {
 	// so it has no text to open exile with (ADR 0066, 2026-11-05).
 	if zone == ZoneExile && card.FaceDown {
 		return false
+	}
+	// #6216: "While you're searching your library, you may cast this card
+	// from your library" (Panglacial Wurm, search_cast.go).
+	if zone == ZoneLibrary && g.searchCastOpenLocked(card.Owner, card) {
+		return true
 	}
 	if CardCastableFromZone(key, zone) {
 		return true
