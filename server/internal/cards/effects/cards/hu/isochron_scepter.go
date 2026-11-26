@@ -49,7 +49,7 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive | game.AnswerPump |
 				game.AnswerPrevent | game.AnswerRemove | game.AnswerSacOutlet | game.AnswerRestrict |
 				game.AnswerGraveyard | game.AnswerCombatGrant | game.AnswerAnimate | game.AnswerMakesBlocker},
-			Effect: isochronCopyAndCast,
+			Effect: effects.CopyExiledWithAndCast,
 		}},
 	})
 }
@@ -100,20 +100,3 @@ var isochronImprintPick = effects.AskedPick("choose-cards/isochron-scepter-impri
 	}
 	return ctx.Game.ExileLinkedForEffect(ref, r.Picked[0])
 })
-
-// isochronCopyAndCast copies the card this Scepter object imprinted and
-// offers the free cast.
-func isochronCopyAndCast(g *game.Game, item *game.StackItem) error {
-	ref, ok := g.SourceObjectForEffect(item)
-	if !ok {
-		return nil
-	}
-	var cards []uuid.UUID
-	for _, c := range g.ExiledWithForEffect(game.PermissionCardRef(ref)) {
-		cards = append(cards, c.InstanceID)
-	}
-	if len(cards) == 0 {
-		return nil
-	}
-	return effects.CopyAndCast{Cards: cards, Free: true}.Apply(effects.NewContext(g, item))
-}

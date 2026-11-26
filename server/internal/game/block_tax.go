@@ -458,6 +458,7 @@ func (g *Game) priceBlockPlansLocked(plans []blockPlan) BlockTaxPrice {
 				}
 			}
 		}
+		g.priceBlockTaxesThisTurnLocked(&out, &b, blk)
 	}
 	out.Cost = b.String()
 	if out.Cost != "" {

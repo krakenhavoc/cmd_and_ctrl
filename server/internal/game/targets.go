@@ -3,6 +3,7 @@ package game
 import (
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -664,6 +665,15 @@ type TargetSpec struct {
 	// source, or none chosen, the clause admits nothing. Build one with
 	// effects.OfTheChosenType.
 	OfSourcesChosenType bool
+
+	// SameNameAsExiledWithSource is "target spell with the same name as a
+	// card exiled with this creature" (Mindreaver, CR 607.2a): the
+	// candidate must share its name with a card in exile whose
+	// Card.ExiledWith names the clause's source object. DATA, for the
+	// reason ExiledWithSource is: CardOK never sees the source. A walk
+	// with no source object, or a source with nothing exiled with it,
+	// admits nothing. Build one with effects.SameNameAsCardExiledWithThis.
+	SameNameAsExiledWithSource bool
 
 	// ControlledByThatPlayer is "that opponent controls" / "that player
 	// controls" on a TRIGGERED ability's clause: the candidate must be
@@ -2210,6 +2220,31 @@ func (s *TargetSpec) exiledWithAdmits(src TargetSource, c Card) bool {
 	return ok && ref.ID != uuid.Nil && c.ExiledWith == ref
 }
 
+// sameNameAsExiledWithAdmits is SameNameAsExiledWithSource's gate: true
+// without the flag, and with it only a candidate whose name is the name
+// of a card in exile linked to the source object (CR 607.2a). The link
+// outlives the source (a creature sacrificed as the cost still has its
+// exiled cards), so the object reference alone is read.
+//
+// Caller must hold g.mu.
+func (s *TargetSpec) sameNameAsExiledWithAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.SameNameAsExiledWithSource {
+		return true
+	}
+	ref, ok := src.ObjectRef()
+	if !ok || ref.ID == uuid.Nil || g == nil || g.Exile == nil {
+		return false
+	}
+	name := c.Effective().Name
+	for i := range g.Exile.Cards {
+		e := &g.Exile.Cards[i]
+		if e.ExiledWith == ref && strings.EqualFold(e.Name, name) {
+			return true
+		}
+	}
+	return false
+}
+
 // chosenTypeAdmits is OfSourcesChosenType's gate: true without the
 // flag, and with it only a candidate that has the creature type chosen
 // for the source (changeling included, CR 702.73a). A walk with no
@@ -2490,7 +2525,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
