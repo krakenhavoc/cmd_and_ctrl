@@ -1928,6 +1928,7 @@ coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
+coinflip coin-flip/creepy-doll-destroy
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-kaboomist
 coinflip coin-flip/goblin-psychopath
@@ -4474,6 +4475,7 @@ tail heirloom-mirror/transform
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
 tail herald-of-amity/after-exile
+tail heretics-punishment/damage-by-greatest-mana-value
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
