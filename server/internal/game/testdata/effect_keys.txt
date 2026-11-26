@@ -1609,6 +1609,7 @@ choose choose-cards/s82-old-b314-blight-herder
 choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b321-erebos-titan-return
 choose choose-cards/s82-old-b322-jace-flip
+choose choose-cards/s82-old-b343-wrens-run-packmaster-champion
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
