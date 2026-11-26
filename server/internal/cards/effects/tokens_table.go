@@ -755,4 +755,8 @@ var TokenTable = map[string]game.Card{
 	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
 
 	"5/5 colorless Legendary Goblin Golem artifact named Tuktuk the Returned": {Name: "Tuktuk the Returned", TypeLine: "Token Legendary Artifact Creature — Goblin Golem", Power: 5, Toughness: 5},
+
+	// S82 OLD batch 375 (#5559): the Inspired creatures' tokens.
+	"2/2 blue Bird enchantment creature with flying": {Name: "Bird", TypeLine: "Token Enchantment Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"2/2 black Zombie enchantment creature":          {Name: "Zombie", TypeLine: "Token Enchantment Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }

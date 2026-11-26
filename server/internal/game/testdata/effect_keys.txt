@@ -2028,6 +2028,7 @@ confirm confirm/altar-of-the-wretched-sacrifice
 confirm confirm/amareth-the-lustrous-take
 confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
+confirm confirm/arbiter-of-the-ideal-put
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
 confirm confirm/arcane-endeavor-result
@@ -2856,6 +2857,7 @@ payunless evereth-viceroy-of-plunder/paid
 payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/adrianas-valor-indestructible
+payunless pay-unless/aerie-worshippers-bird
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/agrus-kos-copy-ability
@@ -2975,6 +2977,7 @@ payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezio-auditore-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/faith-of-the-devoted-drain
+payunless pay-unless/felhide-spiritbinder-copy
 payunless pay-unless/filigree-racer-jump-start
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -2982,6 +2985,7 @@ payunless pay-unless/flameshadow-conjuring-copy
 payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/flay-discard
 payunless pay-unless/forage-only
+payunless pay-unless/forlorn-pseudamma-zombie
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
@@ -3573,6 +3577,7 @@ run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/shrapnel-slinger-sacrifice
 run prompt-run/sidequest-play-blitzball-attach
 run prompt-run/single-combat-sacrifice
+run prompt-run/siren-of-the-silent-song-mill
 run prompt-run/skull-storm-half-life
 run prompt-run/skullslither-worm-counters
 run prompt-run/skyfisher-spider-sacrifice
@@ -4283,6 +4288,7 @@ tail faerie-impostor/after-bounce
 tail fang-rokus-companion/spirit
 tail fecund-greenshell/land-declined-into-hand
 tail feldon-of-the-third-path/haste-and-sacrifice-copy
+tail felhide-spiritbinder/haste-and-exile-copy
 tail fell-gravship/after-mill
 tail fetch-quest/after-mill
 tail fevered-suspicion/after-mill
