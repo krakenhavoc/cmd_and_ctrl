@@ -299,6 +299,12 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Pursued Whale's Pirate (S82 GAP batch 222, #5948).
 	printedS82GapB222PursuedPirateToken,
 
+	// Magic 2015 (S82 OLD batch 356, #5556): Brood Keeper's Dragon, Goblin
+	// Kaboomist's Land Mine and Kalonian Twingrove's Treefolk Warrior.
+	PrintedOldB356Dragon,
+	PrintedOldB356LandMine,
+	PrintedOldB356Treefolk,
+
 	// #1945: the Role tokens.
 	printedMonsterRoleToken,
 	printedCursedRoleToken,
