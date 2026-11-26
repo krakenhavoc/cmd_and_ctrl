@@ -766,4 +766,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 375 (#5559): Forlorn Pseudamma's token (Aerie Worshippers uses b370's Bird row).
 	"2/2 black Zombie enchantment creature": {Name: "Zombie", TypeLine: "Token Enchantment Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+	// S82 OLD batch 427 (#5567): Thunderheads' Weird (the printed token's Weird face).
+	"3/3 blue Weird with defender and flying": {Name: "Weird", TypeLine: "Token Creature — Weird", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"defender", "flying"}},
 }
