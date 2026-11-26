@@ -3349,6 +3349,7 @@ run prompt-run/altar-of-the-wretched-payout
 run prompt-run/ambrosia-whiteheart-return
 run prompt-run/angelic-aberration-sacrifice
 run prompt-run/annihilator-sacrifice
+run prompt-run/archdemon-of-greed-cant-sacrifice
 run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/arid-archway-return-land
@@ -4091,6 +4092,7 @@ tail dawnhand-eulogist/after-mill
 tail daxos-of-meletis/gain-life
 tail deathgorge-scavenger/exiled-card-riders
 tail deathrender/attach-to-it
+tail deaths-caress/gain-life
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demilich/copy-exiled
