@@ -5684,6 +5684,7 @@ tail then/viewpoint-synchronization-second
 tail then/viewpoint-synchronization-third
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
+tail then/void-stalker-shuffle
 tail then/volcanic-offering-damage
 tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
