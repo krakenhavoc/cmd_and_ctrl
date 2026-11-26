@@ -2453,6 +2453,7 @@ drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
+drawinstead sages-of-the-anima
 drawinstead scion-of-halaster
 drawinstead underrealm-lich
 drawinstead unpredictable-cyclone
@@ -5114,6 +5115,8 @@ tail sacrificed-one/prompt-run/ziatora-the-incinerator-sacrifice
 tail sacrificed-one/shire-shirriff/exile
 tail sacrificed-one/the-city-on-the-edge-of-forever/gain-five
 tail sacrificed-one/wanderwine-prophets/extra-turn
+tail sages-of-the-anima/done
+tail sages-of-the-anima/taken
 tail saheeli-filigree-master/after-scry
 tail saheeli-filigree-master/thopter-haste
 tail saheeli-rai/ping-each-opponent
