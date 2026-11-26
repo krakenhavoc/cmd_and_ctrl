@@ -1596,6 +1596,8 @@ choose choose-cards/s82-old-b292-brain-in-a-jar-cast
 choose choose-cards/s82-old-b311-fertile-thicket
 choose choose-cards/s82-old-b313-munda-reveal-allies
 choose choose-cards/s82-old-b313-ruin-processor
+choose choose-cards/s82-old-b314-blight-herder
+choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -3504,6 +3506,7 @@ run prompt-run/s82-old-b167-the-elderspell-loyalty
 run prompt-run/s82-old-b198-fraying-omnipotence-sacrifice
 run prompt-run/s82-old-b243-riches-take
 run prompt-run/s82-old-b244-cruel-reality-lose
+run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -5406,6 +5409,8 @@ tail then/s82-old-b280-diminishing-returns-shuffle-next
 tail then/s82-old-b281-void-discard
 tail then/s82-old-b313-munda-top
 tail then/s82-old-b313-ruin-processor-life
+tail then/s82-old-b314-blight-herder-scions
+tail then/s82-old-b314-pathway-arrows-tap
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
