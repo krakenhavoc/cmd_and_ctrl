@@ -2982,6 +2982,7 @@ payunless pay-unless/flameshadow-conjuring-copy
 payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/flay-discard
 payunless pay-unless/forage-only
+payunless pay-unless/foster-reveal-until-creature
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
