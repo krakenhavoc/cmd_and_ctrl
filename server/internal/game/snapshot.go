@@ -2219,6 +2219,7 @@ type pendingChoiceSnapshot struct {
 	// pickThen is also a keyed option_pick's continuation (#2854).
 	PickDestination   PickDestination `json:"pickDestination,omitempty"`
 	PickOptional      bool            `json:"pickOptional,omitempty"`
+	PickUpTo          bool            `json:"pickUpTo,omitempty"`
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
@@ -3855,6 +3856,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
+		PickUpTo:              c.PickUpTo,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
 		PickMatchArg:          c.PickMatchArg,
@@ -5040,6 +5042,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
+		PickUpTo:              c.PickUpTo,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
 		PickMatchArg:          c.PickMatchArg,

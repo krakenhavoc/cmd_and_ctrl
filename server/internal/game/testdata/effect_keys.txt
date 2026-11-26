@@ -1099,6 +1099,7 @@ choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jace-living-guildpact-put-one-into-graveyard
 choose choose-cards/jadzi-journey-return
+choose choose-cards/jarads-orders-settle
 choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
@@ -1652,6 +1653,7 @@ choose choose-cards/s82-old-b413-bane-alley-broker-return
 choose choose-cards/s82-old-b415-dimir-charm-rest
 choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
+choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2465,6 +2467,8 @@ drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen s82-old-b259/discard-if-no-artifacts
 drawthen s82-old-b322/jace-discard
 drawthen s82-old-b406/blast-of-genius-discard
+drawthen s82-old-b431/discard-a-card-at-random
+drawthen s82-old-b431/see-beyond-pick
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -3213,6 +3217,7 @@ payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/satya-sacrifice-token
 payunless pay-unless/savai-thundermane-damage
 payunless pay-unless/scavengers-talent-return
+payunless pay-unless/screeching-bat-transform
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/serene-steward-counter
 payunless pay-unless/seymour-flux-draw-and-counter
@@ -3306,6 +3311,7 @@ pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/pick-the-brain-search
 pick revealed-pick/psychic-intrusion-may-cast
+pick revealed-pick/reap-intellect-search
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/s82-old-b108-kitesail-freebooter-return
@@ -4534,6 +4540,7 @@ tail itazura-lingering-wick/exiled
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail jacob-frye/copy-and-cast
 tail janice-rand-essential-aide/reveal-until-land
+tail jarads-orders/choose
 tail jaya-fiery-negotiator/choose-exiled
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail journey-to-the-lost-city/exiled

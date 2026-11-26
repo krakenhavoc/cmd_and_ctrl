@@ -191,12 +191,16 @@ func (e *enumerator) choiceMoves() bool {
 			if c.PickDestination == game.PickExile {
 				verb = "exile"
 			}
-			if c.PickOptional {
+			if c.PickOptional || c.PickUpTo {
 				p := base()
 				p.CardIDs = []string{}
 				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
 			}
-			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+			minPick := c.Count
+			if c.PickUpTo {
+				minPick = 1
+			}
+			for _, set := range e.combos(pool, minPick, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
 				// #6271: one card per filter of an EachOf pick.
 				if !g.RevealedPickSlotsFitLocked(c, set) {
 					continue

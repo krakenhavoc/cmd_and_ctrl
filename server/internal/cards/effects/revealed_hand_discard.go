@@ -53,6 +53,10 @@ type ChooseFromRevealedHand struct {
 	Linked bool
 	// Optional is "You may choose".
 	Optional bool
+	// UpTo is "You choose up to Count": any number from none to Count
+	// (Reap Intellect's "up to X nonland cards"), where Optional is all or
+	// nothing.
+	UpTo bool
 	// Revealed says an earlier instruction of this resolution already
 	// revealed the hand, so the pick does not show it again (Cloak and
 	// Dagger, Entwined).
@@ -124,6 +128,7 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 		Filter:        filter,
 		Label:         e.Label,
 		Optional:      e.Optional,
+		UpTo:          e.UpTo,
 		FromGraveyard: e.FromGraveyard,
 		Then:          e.Then,
 	}
@@ -153,7 +158,7 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 			d.EachOf = append(d.EachOf, func(c game.Card) bool { return pred(g, chooser, c) })
 		}
 	}
-	if e.Exile || e.Keep || e.Look || e.Revealed || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil || len(e.EachOf) > 0 {
+	if e.Exile || e.Keep || e.Look || e.Revealed || e.Optional || e.UpTo || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil || len(e.EachOf) > 0 {
 		_, err := ctx.Game.RevealedHandPickForEffect(d)
 		return err
 	}

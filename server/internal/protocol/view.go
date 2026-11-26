@@ -11248,7 +11248,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.EligibleLabel = c.DiscardLabel
 			v.ChooseMax = c.Count
 			v.ChooseMin = c.Count
-			if c.PickOptional {
+			if c.PickOptional || c.PickUpTo {
 				v.ChooseMin = 0
 			}
 			v.PickDestination = string(c.PickDestination)
