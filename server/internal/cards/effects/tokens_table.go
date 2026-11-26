@@ -796,4 +796,7 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 510 (#5588): Puppet Conjurer's Homunculus and Godsire's Beast.
 	"0/1 blue Homunculus artifact creature": {Name: "Homunculus", TypeLine: "Token Artifact Creature — Homunculus", Power: 0, Toughness: 1, Colors: []string{"U"}},
 	"8/8 red and green and white Beast":     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 8, Toughness: 8, Colors: []string{"R", "G", "W"}},
+
+	// S82 OLD batch 533 (#5591): Giantbaiting's Giant Warrior.
+	"4/4 red and green Giant Warrior with haste": {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 4, Toughness: 4, Colors: []string{"R", "G"}, Keywords: []string{"haste"}},
 }
