@@ -3065,6 +3065,7 @@ payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
 payunless pay-unless/natural-unity-counter
+payunless pay-unless/necromaster-dragon-zombie-mill
 payunless pay-unless/neo-go-shintai-ancient-wars
 payunless pay-unless/neo-go-shintai-boundless-vigor
 payunless pay-unless/neo-go-shintai-hidden-cruelty
@@ -3141,6 +3142,7 @@ payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shanna-draw
 payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/skyline-scout-flying
+payunless pay-unless/skywise-teachings-djinn-monk
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
@@ -4506,6 +4508,7 @@ tail mass/deadly-tempest-loss
 tail mass/death-begets-life-draw
 tail mass/declaration-in-stone-clues
 tail mass/demonic-junker-counters
+tail mass/descent-of-the-dragons-dragons
 tail mass/faerie-slumber-party-faeries
 tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
