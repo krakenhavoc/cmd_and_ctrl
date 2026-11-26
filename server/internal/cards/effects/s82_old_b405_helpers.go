@@ -56,12 +56,7 @@ func S82OldB405MillUntilFourLands(ctx *Context, player uuid.UUID) error {
 // or as it last existed if it has left (CR 608.2h).
 func S82OldB405EnchantedAttacksOrBlocksLoseLife(label string, n int) game.TriggeredAbility {
 	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock},
-		func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			if ev.Kind == game.EventBlock && ev.Amount > 1 {
-				return false
-			}
-			return source.IsAttachedTo(ev.CardID)
-		}, label,
+		S82OldB476EnchantedCreatureAttackedOrBlocked, label,
 		func(g *game.Game, item *game.StackItem) error {
 			ev := item.Trigger.Event
 			loser := ev.Actor

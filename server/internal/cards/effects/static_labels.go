@@ -186,6 +186,8 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack unless you control more of a certain permanent than defending player."
 	case r.ControllerMustHaveCitysBlessing:
 		return "Can't attack unless you have the city's blessing."
+	case r.OpponentMustHaveBeenDealtDamage:
+		return "Can't attack unless an opponent has been dealt damage this turn."
 	case r.CantAttackDuringExtraTurns:
 		return "Can't attack during extra turns."
 	case r.MustBePairedWithKeyword != "":
