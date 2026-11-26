@@ -1093,6 +1093,7 @@ choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jace-living-guildpact-put-one-into-graveyard
 choose choose-cards/jadzi-journey-return
+choose choose-cards/jarads-orders-settle
 choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
 choose choose-cards/jmp-inniaz-gale-force-control
@@ -4503,6 +4504,7 @@ tail itazura-lingering-wick/exiled
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail jacob-frye/copy-and-cast
 tail janice-rand-essential-aide/reveal-until-land
+tail jarads-orders/choose
 tail jaya-fiery-negotiator/choose-exiled
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail journey-to-the-lost-city/exiled
