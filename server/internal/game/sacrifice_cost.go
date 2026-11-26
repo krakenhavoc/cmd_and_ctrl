@@ -369,6 +369,13 @@ type SacrificeKind struct {
 	// CardTypes, any of, lower-case as Card.HasCardType reads them:
 	// "creature", "land", "artifact".
 	CardTypes []string
+	// Colors narrows the kind to objects of one of these colours, as the
+	// colour words the printed clause names ("W", "U", "B", "R", "G"): "a
+	// white creature" is CardTypes {"creature"} with Colors {"W"}. A
+	// colourless-or-other object is never of the kind. With Colors and no
+	// Subtypes or CardTypes the kind is "a <colour> permanent" (S82 OLD
+	// b508, Sphinx's Herald).
+	Colors []string
 	// Any is "another card" (ADR 0135 §2, Foil): every object is of
 	// this kind. With the one-to-one matching, "an Island card and
 	// another card" is any two cards of which one is an Island card.
@@ -393,6 +400,21 @@ func (k SacrificeKind) Matches(c Card) bool {
 	}
 	if k.Any {
 		return true
+	}
+	if len(k.Colors) > 0 {
+		coloured := false
+		for _, col := range k.Colors {
+			if c.HasColorWord(col) {
+				coloured = true
+				break
+			}
+		}
+		if !coloured {
+			return false
+		}
+		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			return true
+		}
 	}
 	for _, st := range k.Subtypes {
 		if c.HasSubtypeWord(st) {
