@@ -61,6 +61,7 @@ body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-artisan/exile-linked-tokens
 body arcane-denial/draws
+body arcbond/reflect-the-damage
 body archangel-avacyn/transform
 body argentum-masticore/destroy
 body armix-filigree-thrasher/shrink
@@ -140,6 +141,7 @@ body dalkovan-encampment/warriors
 body damage/old-b071-return-the-listed-object
 body damage/that-much-to-each-other-opponent
 body dash/return
+body death-frenzy/gain-one-life
 body death-to-our-enemies/divided-damage
 body decayed/sacrifice
 body decayed/schedule
@@ -980,6 +982,7 @@ choose choose-cards/extract-brain-chosen
 choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
+choose choose-cards/faerie-impostor-return
 choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/fell-beasts-shriek-pick
 choose choose-cards/feral-encounter
@@ -1212,6 +1215,7 @@ choose choose-cards/manifold-insights-pick
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masked-vandal-exile
+choose choose-cards/master-of-predicaments-chosen
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/mat-distribute-counters-among
 choose choose-cards/meanders-guide-tap
@@ -1611,6 +1615,9 @@ choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b321-erebos-titan-return
 choose choose-cards/s82-old-b322-jace-flip
 choose choose-cards/s82-old-b337-write-into-being
+choose choose-cards/s82-old-b338-reclaim-creature
+choose choose-cards/s82-old-b338-reclaim-land
+choose choose-cards/s82-old-b343-wrens-run-packmaster-champion
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -1962,6 +1969,7 @@ condition damage/gorgons-or-snakes-combat-to-player
 condition damage/old-b071-the-listed-object-dealt
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
+condition damage/the-chosen-creature-is-dealt-damage
 condition damage/your-creature-combat-damage-to-a-player
 condition damage/your-creatures-combat-damage-each-player
 condition departed/player-loses-with-counter
@@ -2154,6 +2162,7 @@ confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/magnanimous-magistrate-reprieve
 confirm confirm/mask-of-memory-loot
+confirm confirm/master-of-predicaments-guess
 confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
 confirm confirm/mind-raker-confirm
@@ -2731,9 +2740,11 @@ option option-pick/s82-old-b170-deliver-unto-evil-opponent
 option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-old-b315-veteran-warleader-keyword
 option option-pick/s82-old-b322-alhammarret-name
+option option-pick/s82-old-b348-butcher-of-the-horde-keyword
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
+option option-pick/sacrifice-this-unless-you-sacrifice-a-pegasus
 option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
 option option-pick/scrying-sheets-top-card
@@ -3100,6 +3111,7 @@ payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
+payunless pay-unless/raiders-spoils-draw
 payunless pay-unless/reckless-detective-draw-pump
 payunless pay-unless/relentless-dead-to-hand
 payunless pay-unless/relentless-dead-zombie
@@ -3143,6 +3155,7 @@ payunless pay-unless/serene-steward-counter
 payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shanna-draw
 payunless pay-unless/shriek-treblemaker-cant-block
+payunless pay-unless/shu-yun-double-strike
 payunless pay-unless/skyline-scout-flying
 payunless pay-unless/skywise-teachings-djinn-monk
 payunless pay-unless/smelted-chargebug-pump-and-menace
@@ -3210,6 +3223,7 @@ payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/withdraw-return-to-hand
 payunless pay-unless/wolf-of-devils-breach-discard
 payunless pay-unless/wolfbat-return
+payunless pay-unless/yasova-dragonclaw-steal
 payunless pay-unless/zhentarim-bandit-treasure
 payunless pay-unless/zoraline-cosmos-caller-return
 payunless pay-unless/zoyowa-lava-tongue-damage
@@ -3540,6 +3554,7 @@ run prompt-run/s82-old-b198-fraying-omnipotence-sacrifice
 run prompt-run/s82-old-b243-riches-take
 run prompt-run/s82-old-b244-cruel-reality-lose
 run prompt-run/s82-old-b314-slab-hammer-return-land
+run prompt-run/s82-old-b339-abzan-advantage-bolster
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -4264,6 +4279,7 @@ tail extraction-specialist/cant-attack-or-block
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail faerie-artisans/exile-other-tokens
+tail faerie-impostor/after-bounce
 tail fang-rokus-companion/spirit
 tail fecund-greenshell/land-declined-into-hand
 tail feldon-of-the-third-path/haste-and-sacrifice-copy
@@ -5466,6 +5482,9 @@ tail then/s82-old-b316-hellion-eruption-tokens
 tail then/s82-old-b323-throwing-knife-damage
 tail then/s82-old-b337-manifest-counters
 tail then/s82-old-b337-write-into-being-place
+tail then/s82-old-b338-rally-the-ancestors-exile
+tail then/s82-old-b338-sudden-reclamation
+tail then/s82-old-b339-map-the-wastes-bolster
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
