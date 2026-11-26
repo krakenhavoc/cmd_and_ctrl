@@ -57,6 +57,8 @@ var countersOnOptIns = map[string]string{
 		the controller).`,
 	"Innkeeper's Talent": `level 3: "If you would put one or more counters on a
 		permanent or player" — Vorinclex's doubling half, players included.`,
+	"Melira, Sylvok Outcast": `"You can't get poison counters" — the clause names the
+		controller as a player, and only poison counters.`,
 }
 
 // TestNoCounterReplacementLeaksOntoAPlayerEvent is ADR 0056 test plan
