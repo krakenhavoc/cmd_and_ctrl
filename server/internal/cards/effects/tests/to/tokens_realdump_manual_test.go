@@ -183,6 +183,11 @@ var knownUnmatchedTokens = map[string]string{
 	// The printed token card is */*, which a fixed size can never match; the template is 0/0 and the card
 	// sets X/X as it creates the token.
 	"0/0 black and green Spirit Warrior": "the printed token card is */*; Kin-Tree Invocation sets X/X as it creates it",
+
+	// Thunderheads (Weatherlight) creates "a 3/3 blue Weird creature token with defender and flying". The
+	// only printed token is the Weird face of the Weird // Goblin double-faced token (GK1), and the match
+	// reads a token card's top-level characteristics, not its faces.
+	"3/3 blue Weird with defender and flying": "printed only as a face of a double-faced token (Thunderheads)",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
