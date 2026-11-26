@@ -74,6 +74,7 @@ body auron-venerated-guardian/exile
 body aurora-shifter/copy
 body awaken-the-honored-dead/return-to-hand
 body basri-ket/soldiers-tapped-and-attacking
+body beck-call/draw-a-card
 body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
@@ -965,6 +966,7 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/emperor-of-bones-reanimate
 choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/ensign-pavel-chekov-picked
+choose choose-cards/entering-reanimate
 choose choose-cards/epistolary-librarian-cast
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
@@ -1996,6 +1998,7 @@ condition dies/the-listed-object
 condition discard/opponent-caused-yours
 condition dynaheir/next-activation-four-mana
 condition earthbend/this-object-left
+condition etb/each-creature-any-player
 condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
 condition etb/each-nontoken-creature-an-opponent-controls
@@ -4329,6 +4332,7 @@ tail fishing-gear/entered
 tail flameshadow-conjuring/haste-and-exile-copy
 tail flameskull/after-exile
 tail flare-of-cultivation/basic-land-to-hand
+tail flesh-blood/flesh-counters
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step
