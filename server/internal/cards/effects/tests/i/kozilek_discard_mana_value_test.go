@@ -201,7 +201,9 @@ func TestKozilekIsComplete(t *testing.T) {
 }
 
 // The form is an activated ability's. A mana ability announces no X
-// (CR 605.3b), and the cost cannot also pay for an {X} or a count.
+// (CR 605.3b). Beside {X} in the mana cost it is accepted since Knollspine
+// Invocation (one X is both the mana paid and the card's mana value), which
+// TestOldB530KnollspineInvocationDealsXAndNeedsAMatchingDiscard plays.
 func TestRegisterRefusesTheManaValueDiscardWhereItCannotWork(t *testing.T) {
 	cases := map[string]func() effects.Spec{
 		"on a mana ability": func() effects.Spec {
@@ -209,15 +211,6 @@ func TestRegisterRefusesTheManaValueDiscardWhereItCannotWork(t *testing.T) {
 				ManaAbilities: []effects.ManaAbility{{
 					Cost:     effects.ManaAbilityCost{DiscardCards: &game.DiscardCost{N: 1, Label: "a card", ManaValueX: true}},
 					Produced: "{C}",
-				}}}
-		},
-		"beside {X} in the mana cost": func() effects.Spec {
-			return effects.Spec{OracleID: "00000000-0000-0000-0000-00000000kz02", Name: "Kz Mana X",
-				Activated: []effects.ActivatedAbility{{
-					Label:   "{X}, Discard a card with mana value X: Counter target spell with mana value X.",
-					Cost:    effects.Plus(effects.ManaCost("{X}"), effects.DiscardCardWithManaValueX("a card with mana value X")),
-					Targets: effects.TargetSpell("target spell with mana value X").WithManaValueEqualsX(),
-					Effect:  func(*game.Game, *game.StackItem) error { return nil },
 				}}}
 		},
 		"with a predicate": func() effects.Spec {
