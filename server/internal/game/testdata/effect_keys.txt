@@ -2549,6 +2549,7 @@ maycast may-cast/free-play-land-or-exile
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
+maycast may-cast/s82-old-b518-brilliant-ultimatum-play-land
 milluntil until/creature-card-or-count
 milluntil until/four-land-cards
 milluntil until/illuna-nonland-permanent-card
@@ -2862,6 +2863,7 @@ option option-pick/s82-old-b435-primal-surge
 option option-pick/s82-old-b435-rite-of-ruin-order
 option option-pick/s82-old-b459-apostles-blessing
 option option-pick/s82-old-b497-world-queller-type
+option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -4889,6 +4891,7 @@ tail phelia-exuberant-shepherd/schedule-return
 tail phthisis/controller-loses-life
 tail picklock-prankster/after-mill
 tail pile/boneyard-parley-dealt
+tail pile/s82-old-b518-brilliant-ultimatum-dealt
 tail pile/split-the-spoils-settled
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
@@ -5726,6 +5729,7 @@ tail then/s82-old-b378-vortex-shuffle
 tail then/s82-old-b435-primal-surge-exiled
 tail then/s82-old-b461-blind-zealot-destroy
 tail then/s82-old-b461-impaler-shrike-draw
+tail then/s82-old-b518-brilliant-ultimatum-exiled
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
