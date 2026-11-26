@@ -375,6 +375,7 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 		DiscardLabel:      d.Label,
 		PickDestination:   d.Destination,
 		PickOptional:      d.Optional,
+		PickUpTo:          d.UpTo,
 		PickFromGraveyard: d.FromGraveyard,
 		PickThen:          d.Then.key,
 		PickMeasures:      measures,
@@ -527,9 +528,9 @@ func (g *Game) resolveRevealedHandPickLocked(idx int, c *PendingChoice, picks []
 		return nil
 	}
 	switch {
-	case len(picks) == 0 && !c.PickOptional:
+	case len(picks) == 0 && !c.PickOptional && !c.PickUpTo:
 		return ErrInvalidParam
-	case len(picks) != 0 && len(picks) != c.Count:
+	case len(picks) != 0 && len(picks) != c.Count && !(c.PickUpTo && len(picks) < c.Count):
 		return ErrInvalidParam
 	}
 	if !discardOptionsAllow(c, picks) || !revealedPickSlotsFit(c, picks) {
