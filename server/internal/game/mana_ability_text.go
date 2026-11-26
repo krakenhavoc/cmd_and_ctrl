@@ -167,12 +167,19 @@ func manaAbilityLine(line string) bool {
 		return false
 	}
 	if rest, ok := strings.CutPrefix(low, "whenever "); ok {
-		cond, effect, ok := strings.Cut(rest, ",")
-		if !ok || !manaEventRE.MatchString(cond) {
-			return false
+		// The condition may hold commas itself ("whenever a player taps a
+		// Mountain, Forest, or Plains for mana, that player adds …"), so try
+		// each comma as the end of the condition.
+		for i, r := range rest {
+			if r != ',' || strings.Contains(rest[:i], ".") || !manaEventRE.MatchString(strings.ReplaceAll(rest[:i], ",", "")) {
+				continue
+			}
+			e := ownEffect(rest[i+1:])
+			if manaAbilityAddRE.MatchString(e) && !manaAbilityTargetRE.MatchString(e) {
+				return true
+			}
 		}
-		e := ownEffect(effect)
-		return manaAbilityAddRE.MatchString(e) && !manaAbilityTargetRE.MatchString(e)
+		return false
 	}
 	if strings.HasPrefix(low, "when ") || strings.HasPrefix(low, "at ") {
 		return false
