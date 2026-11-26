@@ -1,8 +1,6 @@
 package cardsa
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -26,17 +24,7 @@ func init() {
 		Modes: effects.ChooseN("Choose one or both", 1, 2,
 			effects.ModeDoing("Counter target spell.", effects.TargetSpell("target spell"), effects.CounterTheModesTarget),
 			effects.ModeDoing("Tap one or two target creatures.", effects.TargetCreature("one or two target creatures").WithCount(1, 2),
-				func(_ *game.StackItem, ctx *effects.Context, occ int) error {
-					for _, t := range ctx.ModeTargets(occ) {
-						if !ctx.IsTargetLegal(t) {
-							continue
-						}
-						if err := (effects.TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				effects.S82OldB485TapModeTargets),
 		),
 	})
 }
