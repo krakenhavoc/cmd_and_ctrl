@@ -497,6 +497,7 @@ body rampage/pump
 body ratchet-field-medic/return
 body ratonhnhaketon/return-equipment
 body ravenous-rotbelly/edict
+body ray-of-command/tap-the-creature
 body rebound/cast
 body rebound/the-spell-you-just-cast
 body reckless-blaze/add-red
@@ -1409,6 +1410,7 @@ choose choose-cards/mordor-on-the-march-exile
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/murk-strider-picked
+choose choose-cards/murmurs-from-beyond-chosen
 choose choose-cards/myr-battlesphere-tap
 choose choose-cards/mystic-meditation-discard-two-unless-creature
 choose choose-cards/nael-avizoa-aeronaut-arranged
@@ -2053,6 +2055,7 @@ condition old-b050/any-creature-blocks
 condition old-b059/flying-creatures-hit-a-player
 condition old-b059/you-cast-mv-5-or-more
 condition pit-automaton/next-exhaust-activation
+condition ray-of-command/lost-control-of-the-creature
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
 condition stolen-uniform/lost-control-of-the-equipment
@@ -2740,6 +2743,7 @@ option option-pick/moonlight-bargain-card
 option option-pick/morgul-knife-wound-pay-or-exile
 option option-pick/multiform-wonder-keyword
 option option-pick/multiple-choice-player
+option option-pick/murmurs-from-beyond-chosen
 option option-pick/mutinous-massacre-parity
 option option-pick/myrkuls-edict-chosen
 option option-pick/narset-of-the-ancient-way-mana
@@ -5713,6 +5717,7 @@ tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
 tail then/transforming-flourish-cast
+tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
