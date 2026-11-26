@@ -1846,6 +1846,7 @@ choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-diviner-copy
 choose choose-cards/twilight-prophet-take
+choose choose-cards/twinning-glass-cast
 choose choose-cards/tymaret-calls-the-dead-exile
 choose choose-cards/ulamogs-nullifier-picked
 choose choose-cards/ulamogs-reclaimer-picked
