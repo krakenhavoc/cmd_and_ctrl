@@ -1658,6 +1658,7 @@ choose choose-cards/s82-old-b415-dimir-charm-rest
 choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
+choose choose-cards/s82-old-b449-scholar-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2474,6 +2475,7 @@ drawthen s82-old-b322/jace-discard
 drawthen s82-old-b406/blast-of-genius-discard
 drawthen s82-old-b431/discard-a-card-at-random
 drawthen s82-old-b431/see-beyond-pick
+drawthen s82-old-b449-scholar-loot
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
