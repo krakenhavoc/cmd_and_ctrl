@@ -95,12 +95,12 @@ func TestBatch29CardsAreRegistered(t *testing.T) {
 	if _, ok := effects.Lookup("3ed41d2d-211b-4013-8562-8c64d54cc43a"); !ok {
 		t.Error("Ramos, Dragon Engine is no longer skipped (#789) but is not registered")
 	}
-	for oracle, name := range map[string]string{
-		"855a4837-7fc8-4b97-afbd-daa88e322c89": "Walking Atlas",
-	} {
-		if _, ok := effects.Lookup(oracle); ok {
-			t.Errorf("%s is declared skipped on #391 but is registered — update the issue", name)
-		}
+	//
+	// Walking Atlas came off this list in S82 OLD batch 487 (#5582): the
+	// hand-to-battlefield prompt it was waiting for has long existed
+	// (MayPutALandFromHand), so it is registered now.
+	if _, ok := effects.Lookup("855a4837-7fc8-4b97-afbd-daa88e322c89"); !ok {
+		t.Error("Walking Atlas is no longer skipped (S82 OLD b487) but is not registered")
 	}
 }
 

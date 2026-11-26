@@ -2282,6 +2282,7 @@ confirm confirm/primal-amulet-transform
 confirm confirm/psychic-rebuttal-copy
 confirm confirm/purestrain-genestealer-remove-counter
 confirm confirm/pygmy-hippo-lose-mana
+confirm confirm/quest-for-ulas-temple-reveal
 confirm confirm/questing-phelddagrif-draw
 confirm confirm/rakdos-patron-of-chaos-sacrifice
 confirm confirm/ral-monsoon-mage-transform
@@ -2345,6 +2346,8 @@ confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tahngarth-first-mate-give
 confirm confirm/tainted-pact-take
+confirm confirm/talus-paladin-counter
+confirm confirm/talus-paladin-lifelink
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
