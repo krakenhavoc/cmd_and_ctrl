@@ -257,6 +257,15 @@ const (
 	// a turn-face-up never satisfies it; combine it with
 	// ManaRestrictTurnFaceUp through ManaRestrictAnyOf.
 	ManaRestrictFaceDownSpell = "spell:face-down"
+	// ManaRestrictTurnFaceUpMorphOrManifest permits the token only on the
+	// cost of turning a permanent face up by its morph cost (CR 702.37b, a
+	// megamorph cost included, or CR 701.40c for a manifested card with
+	// morph) or by the mana cost of a MANIFESTED creature (CR 701.40b):
+	// Qarsi Deceiver's "pay a mana cost to turn a manifested creature face up,
+	// or pay a morph cost". A disguise cost, and the mana cost of a cloaked
+	// creature (CR 701.58b), are other routes and do not pass. Combine it with
+	// the face-down cast clause through ManaRestrictAnyOf.
+	ManaRestrictTurnFaceUpMorphOrManifest = "purpose:turn_face_up:morph-or-manifest"
 	// ManaRestrictKickedSpell permits the token only on a spell cast
 	// with its kicker (or multikicker) paid (CR 702.33a): Volshe
 	// Tideturner's "cast an instant or sorcery spell or a kicked spell".
@@ -587,6 +596,14 @@ type ManaSpendContext struct {
 	// offer the cast names; empty for a cast at the mana cost, for a
 	// granted offer, and for every payment that is not a cast.
 	AltCost string
+
+	// TurnFaceUpRoute and TurnFaceUpKind say which rule a turn-face-up
+	// payment is made under (ADR 0189 decision 4) and WHY the permanent is
+	// face down: what ManaRestrictTurnFaceUpMorphOrManifest reads. Set by
+	// specialActionSpendContextFor for a turn face up; empty for every other
+	// payment.
+	TurnFaceUpRoute TurnFaceUpRoute
+	TurnFaceUpKind  FaceDownKind
 
 	// FaceDownSpell is set when the spell being cast is cast face down
 	// (CR 708.4): what ManaRestrictFaceDownSpell reads. False for every
@@ -960,6 +977,10 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:
 		return ctx.Purpose == SpendPurposeTurnFaceUp
+	case ManaRestrictTurnFaceUpMorphOrManifest:
+		return ctx.Purpose == SpendPurposeTurnFaceUp &&
+			(ctx.TurnFaceUpRoute == TurnFaceUpByMorph ||
+				(ctx.TurnFaceUpRoute == TurnFaceUpByManaCost && ctx.TurnFaceUpKind == FaceDownManifested))
 	case ManaRestrictForetell:
 		return ctx.Purpose == SpendPurposeForetell
 	case ManaRestrictCumulativeUpkeep:

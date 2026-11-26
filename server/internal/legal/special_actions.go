@@ -151,7 +151,7 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			if err != nil {
 				continue
 			}
-			best, ok := e.affordableXFrom(cost, game.SpecialActionSpendContext(sa.Kind), 0)
+			best, ok := e.affordableXFrom(cost, game.SpecialActionSpendContextFor(sa, card), 0)
 			if !ok {
 				continue
 			}

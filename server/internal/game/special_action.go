@@ -676,7 +676,7 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 			Strict:  params.Strict,
 			AutoTap: params.AutoTap,
 			XValue:  taken.X,
-		}, specialActionSpendContext(kind), nil); err != nil {
+		}, specialActionSpendContextFor(taken, card), nil); err != nil {
 			return err
 		}
 	}
@@ -843,6 +843,27 @@ func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 // the engine pays it with.
 func SpecialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
 	return specialActionSpendContext(kind)
+}
+
+// specialActionSpendContextFor is specialActionSpendContext for the offer
+// actually being taken on `card`: a turn face up also names the route it is
+// taken under and why the permanent is face down, which Qarsi Deceiver's
+// mana reads (ManaRestrictTurnFaceUpMorphOrManifest). Every other kind is
+// the plain context.
+func specialActionSpendContextFor(sa SpecialAction, card Card) ManaSpendContext {
+	ctx := specialActionSpendContext(sa.Kind)
+	if sa.Kind == SpecialActionTurnFaceUp {
+		ctx.TurnFaceUpRoute = sa.Route
+		ctx.TurnFaceUpKind = card.FaceDownKind
+	}
+	return ctx
+}
+
+// SpecialActionSpendContextFor is specialActionSpendContextFor for the
+// legal-move enumerator, which prices an offer with the same context the
+// engine pays it with.
+func SpecialActionSpendContextFor(sa SpecialAction, card Card) ManaSpendContext {
+	return specialActionSpendContextFor(sa, card)
 }
 
 // unlockLocked is the unlock performer (CR 709.5e): the cost is paid,

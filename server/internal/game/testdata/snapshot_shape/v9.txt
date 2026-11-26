@@ -49579,6 +49579,8 @@ pendingChoices[].assist.spend.Subtypes	array
 pendingChoices[].assist.spend.Subtypes[]	string
 pendingChoices[].assist.spend.Supertypes	array
 pendingChoices[].assist.spend.Supertypes[]	string
+pendingChoices[].assist.spend.TurnFaceUpKind	string
+pendingChoices[].assist.spend.TurnFaceUpRoute	string
 pendingChoices[].assist.spend.Types	array
 pendingChoices[].assist.spend.Types[]	string
 pendingChoices[].assist.spend.YourCommander	bool
