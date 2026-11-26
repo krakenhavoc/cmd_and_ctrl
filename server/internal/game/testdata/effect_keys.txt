@@ -1660,6 +1660,9 @@ choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
+choose choose-cards/s82-old-b472-clone-shell-imprint
+choose choose-cards/s82-old-b472-discard-or-sacrifice
+choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3227,6 +3230,8 @@ payunless pay-unless/s82-old-b351-goblinslide-goblin
 payunless pay-unless/s82-old-b352-kheru-lich-lord-return
 payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
 payunless pay-unless/s82-old-b369-knowledge-and-power-damage
+payunless pay-unless/s82-old-b472-lifesmith-life
+payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4932,6 +4937,7 @@ tail s82-old-b170/bond-of-insight-return
 tail s82-old-b370/deicide-after-exile
 tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
+tail s82-old-b472/glint-hawk-after-bounce
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
