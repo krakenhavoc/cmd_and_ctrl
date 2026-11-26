@@ -1686,6 +1686,7 @@ choose choose-cards/s82-old-b472-discard-or-sacrifice
 choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-old-b497-chandra-ablaze-discard
 choose choose-cards/s82-old-b498-living-tsunami-return
+choose choose-cards/s82-old-b531-exile-picked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -5715,6 +5716,7 @@ tail then/s82-old-b378-vortex-shuffle
 tail then/s82-old-b435-primal-surge-exiled
 tail then/s82-old-b461-blind-zealot-destroy
 tail then/s82-old-b461-impaler-shrike-draw
+tail then/s82-old-b531-impromptu-raid-arrived
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
