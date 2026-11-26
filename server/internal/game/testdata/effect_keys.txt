@@ -1675,6 +1675,7 @@ choose choose-cards/sunforger-shuffle
 choose choose-cards/surtland-elementalist-cast
 choose choose-cards/surveillance-monitor-collect-evidence
 choose choose-cards/svella-ice-shaper-cast
+choose choose-cards/swift-warkite-put
 choose choose-cards/sylvan-library-chosen
 choose choose-cards/sylvia-tilly-joy-of-discovery-exile
 choose choose-cards/take-one-from-graveyard-into-hand
@@ -4932,6 +4933,7 @@ tail sunforger/cast-found
 tail surge-to-victory/exiled
 tail surprise-deployment/return-at-end-step
 tail survival-cache/compare
+tail swift-warkite/haste-and-return
 tail sword-of-hearth-and-home/put-both
 tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
