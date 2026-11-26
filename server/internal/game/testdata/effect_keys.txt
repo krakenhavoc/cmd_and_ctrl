@@ -3679,6 +3679,7 @@ run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
 run prompt-run/provisions-merchant-sacrifice-pump
+run prompt-run/put-chosen-permanent-on-top-of-library
 run prompt-run/pyroclastic-hellion-return-land
 run prompt-run/ragefire-hellkite-double-strike
 run prompt-run/ravenous-rotbelly-sacrifice
@@ -5808,6 +5809,7 @@ tail then/ulamogs-reclaimer-then
 tail then/unmoored-ego-draw
 tail then/unmoored-ego-named
 tail then/unnatural-selection-type-chosen
+tail then/unscythe-killer-of-kings-zombie
 tail then/unwind-history-surveil
 tail then/urza-assembles-the-titans-may-reveal
 tail then/valakut-exploration-damage
