@@ -366,6 +366,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 378 (#5559).
 	"Skyreaping": "damages only the creatures with flying, for an amount that is your devotion to green as it resolves: a partial sweep with no fixed amount a sweep can declare",
+
+	// S82 OLD batch 421 (#5566).
+	"Street Sweeper": "its \"destroy all Auras attached to target land\" reaches only the Auras on the one land it targets, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
