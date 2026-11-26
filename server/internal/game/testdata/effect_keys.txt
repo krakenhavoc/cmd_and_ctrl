@@ -2278,6 +2278,7 @@ confirm confirm/tainted-pact-take
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
+confirm confirm/tempt-with-glory
 confirm confirm/tempt-with-immortality
 confirm confirm/tempt-with-mayhem
 confirm confirm/tempt-with-vengeance
@@ -3427,6 +3428,7 @@ run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extricator-of-sin-horror
 run prompt-run/extus-oriq-overlord-avatar
+run prompt-run/eye-of-doom-counters
 run prompt-run/fall-of-the-first-civilization-keep
 run prompt-run/fall-of-the-impostor-exile
 run prompt-run/fanatic-of-the-harrowing-draw
