@@ -624,6 +624,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedOldB228IllusionToken,
 	// S82 OLD batch 276: Make Mischief's Devil.
 	printedS82OldB276DevilToken,
+	// S82 OLD batch 450: Gutter Grime's Ooze.
+	printedGutterGrimeOozeToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
