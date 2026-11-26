@@ -755,4 +755,7 @@ var TokenTable = map[string]game.Card{
 	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
 
 	"5/5 colorless Legendary Goblin Golem artifact named Tuktuk the Returned": {Name: "Tuktuk the Returned", TypeLine: "Token Legendary Artifact Creature — Goblin Golem", Power: 5, Toughness: 5},
+
+	// S82 OLD b371: Journey into Nyx, Renowned Weaver.
+	"1/3 green Spider enchantment with reach": {Name: "Spider", TypeLine: "Token Enchantment Creature — Spider", Power: 1, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"reach"}},
 }
