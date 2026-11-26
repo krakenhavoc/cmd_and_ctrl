@@ -3223,6 +3223,7 @@ payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
 payunless pay-unless/sorcerers-broom-copy
+payunless pay-unless/soul-tithe-sacrifice
 payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
