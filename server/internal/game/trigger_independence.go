@@ -1781,7 +1781,8 @@ const (
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	// HiddenAgenda (ADR 0227) is read once, as a conspiracy goes into the command zone.
-	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert, "HiddenAgenda": defFieldInert,
+	// StartingPlayer (Power Play) is read once, as the deal begins.
+	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert, "HiddenAgenda": defFieldInert, "StartingPlayer": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,

@@ -355,6 +355,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		d.BattleDefense = spec.Battle.Defense
 	}
 	d.HiddenAgenda = spec.HiddenAgenda
+	d.StartingPlayer = spec.StartingPlayer
 	// #659 / CR 702.62b: suspend's two triggered abilities are the
 	// KEYWORD's, not the card's. Grown here from the declaration so
 	// three card files cannot spell them three ways and the fourth

@@ -16373,6 +16373,12 @@ abilities work from there only while it is face up (CR 315.5). The reveal is the
   `Card.Name ==` yourself.
 - A face-up conspiracy (Weight Advantage) declares its static or trigger with the
   conspiracy as the source; "you" is its owner.
+- A conspiracy's replacement effect (Muzzio's Preparations) and spend grant
+  (Unexpected Potential, `effects.YouMaySpendManaAsAnyColorToCastSpellsWithTheChosenName`)
+  work from the command zone as a permanent's do. "You are the starting player"
+  (Power Play) is `Spec.StartingPlayer`: the deal reads it once the conspiracies
+  are in the command zone (`game.conspiracyStartingSeatLocked`), and several
+  owners pick one at random.
 - **Draft-time text** ("reveal this card as you draft it", "draft this card face
   up", a value noted during the draft) is not decided yet: leave those cards out
   until #6102's owner question is answered.

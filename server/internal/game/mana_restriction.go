@@ -697,6 +697,30 @@ type ManaSpendContext struct {
 	// (see spendWish). Plain data, so it can sit in a stored context
 	// (AssistPrompt.Spend) without carrying a Game or a closure with it.
 	wish *spendWish
+
+	// spellName is the name of the spell being cast, empty for a face-down
+	// spell and for every other payment (CR 708.2a). It is what a grant
+	// narrowed to "spells with the chosen name" asks of a cast
+	// (Unexpected Potential, #5557) through SpellHasName. Unexported on
+	// purpose: it is read while the cast is being paid for and never stored
+	// (a stored AssistPrompt.Spend reads without it, the weaker direction).
+	spellName string
+}
+
+// spellNameForSpend is the name a cast's payment context carries.
+func spellNameForSpend(c Card) string {
+	if c.FaceDown {
+		return ""
+	}
+	return c.Name
+}
+
+// SpellHasName reports whether the spell this payment is for has the given
+// name on the face being cast (CR 201.2: any one name of a split or
+// double-faced card). False for a payment that is not a cast.
+func (ctx ManaSpendContext) SpellHasName(named string) bool {
+	return ctx.Purpose == SpendPurposeCast && ctx.spellName != "" &&
+		SpellOrLandHasName(Card{Name: ctx.spellName}, named)
 }
 
 // ManaSpendForAbilityRow is ManaSpendForAbility for one row of the
@@ -866,6 +890,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		ForetellSpell:    (!c.FaceDown || CardIsForetold(c)) && CardHasForetell(c),
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
+		spellName:        spellNameForSpend(c),
 		wish:             newSpendWish(c),
 	}.withCastManaValue(c)
 }
