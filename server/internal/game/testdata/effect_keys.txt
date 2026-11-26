@@ -2693,6 +2693,7 @@ option option-pick/pippin-guard-of-the-citadel-card-type
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
+option option-pick/polymorphous-rush-model
 option option-pick/practiced-offense-keyword
 option option-pick/prince-of-thralls-pay-or-take
 option option-pick/protection-racket-answer
@@ -4392,6 +4393,7 @@ tail hostile-negotiations/after-second-pile
 tail hostile-negotiations/lose-life
 tail hotel-of-fears/praise-him
 tail hotshot-investigators/investigate
+tail hour-of-need/sphinx-for-each-exiled
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail hungry-for-more/sacrifice-at-next-end-step
