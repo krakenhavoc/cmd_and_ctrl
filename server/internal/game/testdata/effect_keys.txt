@@ -1979,6 +1979,7 @@ coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
+coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
@@ -5311,6 +5312,7 @@ tail tail/tablet-of-the-guilds-second-color
 tail tail/tayam-after-mill
 tail tail/the-great-aurora-shuffled
 tail tail/the-moment-then-sacrifice
+tail tail/thought-hemorrhage-exiled
 tail tail/time-reaper-gain-life
 tail tail/uchuulon-copy
 tail tail/unauthorized-exit-surveil
@@ -5780,6 +5782,7 @@ tail then/the-tale-of-tamiyo-milled
 tail then/thief-of-existence-exiled
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/thornplate-intimidator-punisher-sacrificed
+tail then/thought-hemorrhage-named
 tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
