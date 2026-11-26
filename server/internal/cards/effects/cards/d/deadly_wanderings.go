@@ -23,23 +23,8 @@ func init() {
 		Name:         "Deadly Wanderings",
 		Completeness: effects.CompletenessFull,
 		Static: []game.StaticAbility{
-			effects.B16Anthem(deadlyWanderingsOnlyCreature, 2, 0),
-			effects.B16GrantKeywords(deadlyWanderingsOnlyCreature, "deathtouch", "lifelink"),
+			effects.B16Anthem(effects.ControlsExactlyOneCreatureAndIsIt, 2, 0),
+			effects.B16GrantKeywords(effects.ControlsExactlyOneCreatureAndIsIt, "deathtouch", "lifelink"),
 		},
 	})
-}
-
-// deadlyWanderingsOnlyCreature is "that creature": the source controller's
-// creature, while it is the only creature they control.
-func deadlyWanderingsOnlyCreature(target *game.Card, g *game.Game, source *game.Card) bool {
-	if !target.IsCreature() || target.Controller != source.Controller {
-		return false
-	}
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == source.Controller && c.IsCreature() {
-			n++
-		}
-	}
-	return n == 1
 }
