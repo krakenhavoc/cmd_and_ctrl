@@ -1054,6 +1054,7 @@ choose choose-cards/gilgamesh-master-at-arms-equipment
 choose choose-cards/gilgamesh-master-at-arms-samurai
 choose choose-cards/glacial-dragonhunt-discarded
 choose choose-cards/glamdring-cast
+choose choose-cards/glamer-spinners-attach
 choose choose-cards/glint-nest-crane-take
 choose choose-cards/glittering-wish-take
 choose choose-cards/glorious-protector-exile
@@ -2580,6 +2581,7 @@ number number/life-bidding-raise
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
+number number/medicine-runner-remove-counter
 number number/necrodominance-draw-that-many
 number number/old-b069-remove-counters
 number number/old-b081-stumpsquall-hydra-give
@@ -3022,6 +3024,7 @@ payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/canoptek-wraith-sacrifice
 payunless pay-unless/carefree-swinemaster-boar
 payunless pay-unless/casal-lurkwood-pathfinder-transform
+payunless pay-unless/cemetery-puca-copy
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/chandras-regulator-copy-ability
@@ -4898,6 +4901,7 @@ tail power-pack/after-exile
 tail primal-amulet/ask
 tail primal-amulet/transform
 tail prishes-wanderings/searched
+tail prismwake-merrow/colors-chosen
 tail profane-transfusion/token
 tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
