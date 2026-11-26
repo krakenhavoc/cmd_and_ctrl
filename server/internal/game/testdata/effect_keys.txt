@@ -5389,6 +5389,7 @@ tail then/expose-the-culprit-cloak
 tail then/expressive-iteration-exile
 tail then/face-down-piles-to-hand
 tail then/fact-or-fiction-take
+tail then/faiths-shield-fateful-hour-protection
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
