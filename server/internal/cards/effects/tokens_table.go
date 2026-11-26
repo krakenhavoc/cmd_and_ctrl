@@ -756,4 +756,7 @@ var TokenTable = map[string]game.Card{
 	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
 
 	"5/5 colorless Legendary Goblin Golem artifact named Tuktuk the Returned": {Name: "Tuktuk the Returned", TypeLine: "Token Legendary Artifact Creature — Goblin Golem", Power: 5, Toughness: 5},
+
+	// S82 OLD b370: Journey into Nyx, Rise of Eagles.
+	"2/2 blue Bird enchantment with flying": {Name: "Bird", TypeLine: "Token Enchantment Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 }

@@ -543,6 +543,7 @@ body s82-old-b199/skyrider-patrol-counter-and-flying
 body s82-old-b214/destroy-attached-equipment
 body s82-old-b321/its-controller-loses-2
 body s82-old-b364/destroy-at-end-of-combat
+body s82-old-b370/destroy-all-permanents
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -4827,6 +4828,7 @@ tail s82-old-b161/shuffle-up-to-four-from-graveyard
 tail s82-old-b162/collected-conjuring-exiled
 tail s82-old-b162/force-of-rage-sacrifice-the-elementals
 tail s82-old-b170/bond-of-insight-return
+tail s82-old-b370/deicide-after-exile
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
