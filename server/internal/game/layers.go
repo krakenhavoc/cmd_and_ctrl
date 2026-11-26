@@ -405,6 +405,16 @@ type StaticAbility struct {
 	// nothing and checks nothing.
 	DependsOnLibraryTop bool
 
+	// DependsOnLibrarySize is DependsOnLibraryTop for how many cards a
+	// library holds — Isleback Spawn's "as long as a library has twenty or
+	// fewer cards in it" (S82 old sets batch 528). The size changes on a
+	// draw, a mill, a search, a tuck and a shuffle-in, not always at the
+	// top, so it shares the library watch: a pass that finds such a static
+	// on the battlefield records every library's size beside its top card
+	// (libraryTopWatch), and the staleness check re-runs the pass the moment
+	// one differs. Opt-in for the flags' reason.
+	DependsOnLibrarySize bool
+
 	// DependsOnManaPool is DependsOnHandSize for a player's mana pool —
 	// Omnath, Locus of Mana's "gets +1/+1 for each unspent green mana
 	// you have" (#2363). The pool changes with every land tap and every
