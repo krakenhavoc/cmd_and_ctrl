@@ -1660,6 +1660,7 @@ choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
+choose choose-cards/s82-old-b452-sutured-ghoul-exile
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1954,6 +1955,7 @@ coinflip coin-flip/nothing
 coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
+coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
