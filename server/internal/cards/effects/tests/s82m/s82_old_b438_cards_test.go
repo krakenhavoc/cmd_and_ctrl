@@ -359,12 +359,8 @@ func TestB438DescentIntoMadnessGrowsEachUpkeep(t *testing.T) {
 		stones = append(stones, effectstest.B12Push(g, me.ID, "Stone", "Artifact", "", 0, 0))
 	}
 	effectstest.AdvanceToUpkeepOfSeat(t, g, seat)
-	for i := 0; i < 3; i++ {
-		if g.Turn.ActiveSeat != seat {
-			break
-		}
+	if g.Turn.ActiveSeat == seat {
 		effectstest.PassPriorityUntilChoice(t, g)
-		break
 	}
 	if got := effectstest.CounterCount(g, d, "despair"); got != 1 {
 		t.Fatalf("despair counters %d, want 1", got)

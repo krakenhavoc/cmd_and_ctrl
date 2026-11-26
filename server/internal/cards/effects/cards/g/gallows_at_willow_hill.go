@@ -31,17 +31,19 @@ func init() {
 			Targets: effects.TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := effects.NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					controller, ok := effects.ControllerOfTarget(ctx, t.ID)
-					if !ok {
-						return nil
-					}
-					if err := (effects.DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-					return effects.CreateToken{Controller: controller, Template: effects.TokenCard("1/1 white Spirit with flying"), N: 1}.Apply(ctx)
+				legal := ctx.LegalTargets()
+				if len(legal) == 0 {
+					return nil
 				}
-				return nil
+				t := legal[0]
+				controller, ok := effects.ControllerOfTarget(ctx, t.ID)
+				if !ok {
+					return nil
+				}
+				if err := (effects.DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+					return err
+				}
+				return effects.CreateToken{Controller: controller, Template: effects.TokenCard("1/1 white Spirit with flying"), N: 1}.Apply(ctx)
 			},
 		}},
 	})
