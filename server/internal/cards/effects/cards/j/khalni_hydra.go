@@ -37,7 +37,7 @@ func khalniHydraGreenCreaturesYouControl(q game.CostQuery) int {
 	}
 	n := 0
 	for _, c := range q.Game.BattlefieldCardsForEffect() {
-		if c.Controller == q.Controller && c.IsCreature() && c.HasColor("G") {
+		if c.Controller == q.Controller && c.IsCreature() && c.HasColor(q.Source.TextColor("G")) {
 			n++
 		}
 	}

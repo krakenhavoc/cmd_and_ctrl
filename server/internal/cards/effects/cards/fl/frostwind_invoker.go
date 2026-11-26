@@ -20,7 +20,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{8}: Creatures you control gain flying until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: game.Purpose{TeamPump: &game.Pump{Keywords: []string{"flying"}}, Answers: game.AnswerCombatGrant},
 			Cost:    effects.ManaCost("{8}"),
 			Effect: effects.Do(effects.GrantKeywordUntilEOT{
 				Match:    effects.And(effects.Creature(), effects.YouControl()),
