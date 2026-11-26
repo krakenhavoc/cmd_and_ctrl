@@ -2305,6 +2305,7 @@ confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/psychic-rebuttal-copy
 confirm confirm/purestrain-genestealer-remove-counter
+confirm confirm/put-away-shuffle
 confirm confirm/pygmy-hippo-lose-mana
 confirm confirm/quest-for-ulas-temple-reveal
 confirm confirm/questing-phelddagrif-draw
@@ -4874,6 +4875,7 @@ tail old-b051/kasmina-cast
 tail old-b330/sunbringers-touch-trample
 tail old-b331/return-face-down
 tail old-b332/mirror-mockery-exile
+tail old-b541/minus-counter-on-each-next
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
