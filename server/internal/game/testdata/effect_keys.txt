@@ -3341,6 +3341,7 @@ run engine/explore-each-pick
 run gap-b55-birthing-ritual/sacrifice
 run gap/tragic-lesson-return-a-land-or-discard
 run giant-opportunity/sacrifice-two-foods
+run permanents-pick/s82-old-b432-sunken-hope-bounce
 run prompt-run/ace-fearless-rebel-sacrifice
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
