@@ -2868,6 +2868,7 @@ option option-pick/s82-old-b435-rite-of-ruin-order
 option option-pick/s82-old-b459-apostles-blessing
 option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-old-b518-brilliant-ultimatum-chosen
+option option-pick/s82-old-b522-canker-abomination
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land

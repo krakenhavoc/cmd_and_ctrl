@@ -94044,6 +94044,7 @@ spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.cardTypes	string
+spellsCastThisTurn{}.colorSpells	string
 spellsCastThisTurn{}.colors	string
 spellsCastThisTurn{}.dragonSpells	number:int
 spellsCastThisTurn{}.enchantment	number:int
