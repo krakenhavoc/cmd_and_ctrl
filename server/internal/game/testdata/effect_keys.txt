@@ -925,6 +925,7 @@ choose choose-cards/demogorgons-clutches-mill-and-drain
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
+choose choose-cards/desecrator-hag-greatest-power
 choose choose-cards/devastating-mastery-bounce
 choose choose-cards/devourer-of-destiny-keep-one
 choose choose-cards/devout-invocation-tap
@@ -2375,6 +2376,7 @@ confirm confirm/wasteland-strangler-confirm
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/wernog-riders-chaplain
 confirm confirm/wheel-of-potential-exile-hand
+confirm confirm/whirlpool-whelm-top-or-hand
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
@@ -3168,6 +3170,9 @@ payunless pay-unless/old-b008-cumulative-upkeep-add-r
 payunless pay-unless/old-b033-squirrel-sanctuary-return
 payunless pay-unless/old-b051-copy-that-spell
 payunless pay-unless/old-b455-copy-entered-creature
+payunless pay-unless/old-b456-alliance-of-arms
+payunless pay-unless/old-b456-mana-charged-dragon
+payunless pay-unless/old-b456-shared-trauma
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -5481,6 +5486,7 @@ tail then/laezels-acrobatics-exiled
 tail then/laezels-acrobatics-returned
 tail then/lagrella-the-magpie-exiled-one
 tail then/land-becomes-chosen-type
+tail then/lash-out-clashed
 tail then/last-light-of-durins-day-search
 tail then/lavabrink-floodgates-sacrificed
 tail then/lich-knights-conquest-return
@@ -5552,6 +5558,7 @@ tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/planetary-annihilation-damage
 tail then/play-with-fire-scry
+tail then/pollen-lullaby-clashed
 tail then/polygraph-orb-punisher-sacrificed
 tail then/precognitive-perception-draw
 tail then/prevent-damage-from-chosen-color
@@ -5627,6 +5634,7 @@ tail then/s82-rpr-b25-jace-architect-take
 tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
+tail then/scattering-stroke-clashed
 tail then/scour-the-desert-birds
 tail then/scrap-mastery-exiled
 tail then/scrap-mastery-put
@@ -5725,6 +5733,7 @@ tail then/wash-out-color-chosen
 tail then/wasp-of-the-bitter-end-destroy
 tail then/wasteland-strangler-then
 tail then/wave-of-vitriol-sacrificed
+tail then/whirlpool-whelm-clashed
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled
