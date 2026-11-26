@@ -384,6 +384,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 483 (#5581).
 	"Hellcarver Demon": "sacrifices only its own controller's other permanents, a cost it pays itself, and touches no opponent's board",
+
+	// S82 old sets, batch 525 (own group).
+	"Unnerving Assault": "-1/-0 to the opponents' creatures until end of turn kills nothing, and the other half pumps the caster's own creatures",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
