@@ -777,6 +777,8 @@ choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
 choose choose-cards/back-for-seconds-pick
 choose choose-cards/bag-of-devouring-return
+choose choose-cards/bala-ged-thief-discard
+choose choose-cards/bala-ged-thief-reveal
 choose choose-cards/ballad-of-the-black-flag-historic
 choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
