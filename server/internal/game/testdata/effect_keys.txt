@@ -4206,6 +4206,7 @@ tail descent-into-madness/exile
 tail destroy-then/smashing-success-treasure
 tail destroy-then/sylvan-primordial-forests
 tail destroy/nissas-defeat-draw-for-a-nissa
+tail destroy/old-b496-kalitas-vampire
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table

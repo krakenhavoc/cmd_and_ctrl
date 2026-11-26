@@ -783,4 +783,10 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 461 (#5575): Chancellor of the Forge's Goblins (the printed token has no haste; the text gives it).
 	"1/1 red Phyrexian Goblin with haste": {Name: "Phyrexian Goblin", TypeLine: "Token Creature — Phyrexian Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+
+	// S82 OLD batch 496: Zektar Shrine Expedition's 7/1 Elemental, and Kalitas, Bloodchief of
+	// Ghet's X/X Vampire (printed */*; a 0/0 placeholder, set to the destroyed creature's power
+	// and toughness as it is created).
+	"7/1 red Elemental with trample and haste": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	"0/0 black Vampire":                        {Name: "Vampire", TypeLine: "Token Creature — Vampire", Colors: []string{"B"}, PrintedPTKnown: true},
 }

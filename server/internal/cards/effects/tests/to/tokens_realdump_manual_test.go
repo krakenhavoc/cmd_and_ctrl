@@ -188,6 +188,10 @@ var knownUnmatchedTokens = map[string]string{
 	// only printed token is the Weird face of the Weird // Goblin double-faced token (GK1), and the match
 	// reads a token card's top-level characteristics, not its faces.
 	"3/3 blue Weird with defender and flying": "printed only as a face of a double-faced token (Thunderheads)",
+
+	// Kalitas, Bloodchief of Ghet creates "a black Vampire creature token" whose power and toughness are the
+	// destroyed creature's; the printed token card is */*, which a fixed size can never match.
+	"0/0 black Vampire": "the printed token card is */*; Kalitas, Bloodchief of Ghet sets its power and toughness as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
