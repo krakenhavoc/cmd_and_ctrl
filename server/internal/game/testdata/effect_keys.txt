@@ -982,6 +982,7 @@ choose choose-cards/extract-brain-chosen
 choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
+choose choose-cards/faerie-impostor-return
 choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/fell-beasts-shriek-pick
 choose choose-cards/feral-encounter
@@ -4276,6 +4277,7 @@ tail extraction-specialist/cant-attack-or-block
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail faerie-artisans/exile-other-tokens
+tail faerie-impostor/after-bounce
 tail fang-rokus-companion/spirit
 tail fecund-greenshell/land-declined-into-hand
 tail feldon-of-the-third-path/haste-and-sacrifice-copy
