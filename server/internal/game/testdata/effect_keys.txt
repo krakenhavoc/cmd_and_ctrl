@@ -3095,6 +3095,7 @@ payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
+payunless pay-unless/raiders-spoils-draw
 payunless pay-unless/reckless-detective-draw-pump
 payunless pay-unless/relentless-dead-to-hand
 payunless pay-unless/relentless-dead-zombie
