@@ -936,6 +936,8 @@ choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
 choose choose-cards/discard-two-unless-creature-identity
 choose choose-cards/discard-two-unless-enchantment
+choose choose-cards/disciple-of-phenax-discard
+choose choose-cards/disciple-of-phenax-reveal
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/dogmeat-return-aura-or-equipment
 choose choose-cards/dokuchi-silencer-destroy
