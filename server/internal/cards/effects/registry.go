@@ -3033,6 +3033,14 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		// #5193: or collect evidence N, a floor on the total mana value
 		// (CR 701.59a), from the graveyard only. One floor, never both.
 		symbols := ec.SymbolTotal != nil
+		// S82 old b333: or a floor on the number of cards, "one or more"
+		// (Corpseweft), which stands alone.
+		if ec.MinCards > 0 && !symbols && ec.ManaValueAtLeast == 0 {
+			if ec.Zone() != game.ZoneGraveyard || ec.Match == nil {
+				panic(fmt.Sprintf("effects.Register: %q %s names a card-count floor outside a graveyard clause with a match", name, where))
+			}
+			return
+		}
 		if symbols == (ec.ManaValueAtLeast > 0) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards with no floor, or with two — "+
 				"a clause with no floor would be free (a symbol total, or collect evidence's mana value)", name, where))

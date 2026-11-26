@@ -129,6 +129,8 @@ var knownUnmatchedTokens = map[string]string{
 	"0/0 green Spirit": "the printed token card is */*; Kura, the Boundless Sky sets X/X as it creates it",
 	// Stitcher Geralf creates "an X/X blue Zombie creature token"; the printed token card is */*.
 	"0/0 blue Zombie": "the printed token card is */*; Stitcher Geralf sets X/X as it creates it",
+	// Corpseweft creates "a tapped X/X black Zombie Horror creature token"; the printed token card is */*.
+	"0/0 black Zombie Horror": "the printed token card is */*; Corpseweft sets X/X as it creates it",
 	// Soul Separator creates a black Zombie with power and toughness equal to the exiled card's; the printed token card is */*.
 	"0/0 black Zombie": "the printed token card is */*; Soul Separator sets its power and toughness as it creates it",
 	// Cynette, Jelly Drover creates "a 1/1 blue Jellyfish creature token with flying"; Scryfall lists no token card for her.

@@ -340,6 +340,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6263: Autumn's Veil's colour bar, read by targeting too. Its
 		// cases are in cant_be_countered_by_color_test.go.
 		ModCantBeTargetedBySpellsOfColors: true,
+		// S82 old b333: Display of Dominance's opponents-only variant, same
+		// reader; its cases are in cant_be_countered_by_color_test.go.
+		ModCantBeTargetedByOpponentSpellsOfColors: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
@@ -421,6 +424,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// Mistcaller's timed exile-uncast replacement. Its cases are in
 		// scoped_exile_uncast_test.go.
 		ModExileUncastCreatures: true,
+		// Hallowed Moonlight's timed exile-uncast replacement, tokens included.
+		// Its cases are in scoped_exile_uncast_tokens_test.go.
+		ModExileUncastCreaturesAndTokens: true,
 		// #6260: Gather Specimens' entry-controller replacement. Its cases
 		// are in scoped_enters_under_control_test.go.
 		ModCreaturesEnterUnderYourControl: true,

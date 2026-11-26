@@ -136,3 +136,32 @@ func TestColorSpellTargetingBarModProblem(t *testing.T) {
 		t.Error("a mod naming a non-colour passed")
 	}
 }
+
+// S82 old b333: the opponents-only colour bar (Display of Dominance) refuses
+// a coloured spell an opponent controls and leaves the owner's own alone.
+func TestOpponentColorSpellTargetingBar(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() {
+		g.RegisterScopedRuleEffectForEffect(uuid.New(), ScopeYourPermanents, me.ID,
+			[]Mod{CantBeTargetedByOpponentSpellsOfColorsMod("U", "B")}, g.UntilEndOfTurnDuration(), "Display of Dominance")
+	})
+	mine := pushBattlefieldForTest(g, me.ID, "Bear", "Creature — Bear", "")
+	blue := &Card{Name: "Blue Spell", TypeLine: "Instant", Colors: []string{"U"}}
+	red := &Card{Name: "Red Spell", TypeLine: "Instant", Colors: []string{"R"}}
+	g.WithWriteLock(func() {
+		m := g.findBattlefieldCardLocked(mine)
+		if canBeTargetedBy(g, m, ZoneBattlefield, SourceCast(opp.ID, blue)) {
+			t.Error("an opponent's blue spell targets my permanent")
+		}
+		if !canBeTargetedBy(g, m, ZoneBattlefield, SourceCast(me.ID, blue)) {
+			t.Error("my own blue spell can't target my permanent")
+		}
+		if !canBeTargetedBy(g, m, ZoneBattlefield, SourceCast(opp.ID, red)) {
+			t.Error("an opponent's red spell can't target my permanent")
+		}
+	})
+	if p := colorSpellTargetingBarModProblem(CantBeTargetedByOpponentSpellsOfColorsMod()); p == "" {
+		t.Error("an opponents-only mod naming no colour passed")
+	}
+}

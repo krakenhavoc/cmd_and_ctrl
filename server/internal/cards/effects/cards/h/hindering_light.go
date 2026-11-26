@@ -24,14 +24,6 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove, Draws: 1},
 		Targets:      effects.TargetSpell("target spell that targets you or a permanent you control", effects.HinderingLightTargetsYouOrYourPermanent),
-		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			if err := (effects.CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {
-				return err
-			}
-			return effects.DrawCards{N: 1}.Apply(ctx)
-		},
+		OnResolve:    effects.CounterFirstTargetSpellThenDraw,
 	})
 }

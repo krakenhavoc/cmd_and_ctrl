@@ -331,6 +331,13 @@ type ExileCost struct {
 	// anywhere else. False is every clause before it, additive.
 	ToLibraryBottom bool `json:",omitempty"`
 
+	// MinCards is the floor of an AnyNumber clause on the NUMBER of cards:
+	// "Exile one or more creature cards from your graveyard" (Corpseweft) is
+	// AnyNumber with MinCards 1, so an empty pick does not pay the cost. It
+	// is read by FloorMet beside the other floors. Zero is no count floor,
+	// every clause before it, additive.
+	MinCards int `json:",omitempty"`
+
 	// ManaValueAtLeast is the other floor an AnyNumber clause may read:
 	// the chosen cards' total mana value must be this or more. It is
 	// collect evidence N (CR 701.59a, #5193: "exile any number of cards
@@ -404,7 +411,7 @@ func (e *ExileCost) FloorMet(cards []Card) bool {
 	if e == nil {
 		return true
 	}
-	return e.SymbolTotal.Met(cards) && TotalManaValue(cards) >= e.ManaValueAtLeast
+	return len(cards) >= e.MinCards && e.SymbolTotal.Met(cards) && TotalManaValue(cards) >= e.ManaValueAtLeast
 }
 
 // ManaSymbolTotal is "<N> or more <colour> mana symbols among their mana
