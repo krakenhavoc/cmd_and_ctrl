@@ -111,8 +111,11 @@ func LandwalkTokens() []string {
 		seen[t.token] = true
 	}
 	for _, lt := range LandTypes {
-		if tok := SnowLandwalkToken(lt); !seen[tok] {
-			out = append(out, tok)
+		for _, tok := range []string{SnowLandwalkToken(lt), LandwalkToken(lt)} {
+			if !seen[tok] {
+				seen[tok] = true
+				out = append(out, tok)
+			}
 		}
 	}
 	return out
@@ -127,7 +130,44 @@ func landwalkRequirement(token string) (landwalkSpec, bool) {
 			return t.spec, true
 		}
 	}
-	return parameterisedSnowLandwalk(token)
+	return parameterisedLandwalk(token)
+}
+
+// parameterisedLandwalk parses the two granted-only families outside the
+// table: "snow <land type>walk" and the plain "<land type>walk" for a land
+// type the table does not name ("gatewalk", Traveler's Cloak's chosen type).
+func parameterisedLandwalk(token string) (landwalkSpec, bool) {
+	if spec, ok := parameterisedSnowLandwalk(token); ok {
+		return spec, true
+	}
+	if !strings.HasSuffix(token, landwalkSuffix) {
+		return landwalkSpec{}, false
+	}
+	name := strings.TrimSuffix(token, landwalkSuffix)
+	for _, t := range landwalkTokens {
+		if t.token == token {
+			return landwalkSpec{}, false // the table reads it
+		}
+	}
+	for _, t := range LandTypes {
+		if strings.ToLower(t) == name {
+			return landwalkSpec{subtype: t}, true
+		}
+	}
+	return landwalkSpec{}, false
+}
+
+// LandwalkToken is the keyword token for "landwalk of the chosen type"
+// (Traveler's Cloak): the land type in lower case + "walk", so a chosen
+// Island is the table's "islandwalk" and a chosen Gate is "gatewalk".
+// landType must be one of CR 205.3i's land types; anything else answers "".
+func LandwalkToken(landType string) string {
+	for _, t := range LandTypes {
+		if typeIn(landType, []string{t}) {
+			return strings.ToLower(t) + landwalkSuffix
+		}
+	}
+	return ""
 }
 
 // parameterisedSnowLandwalk parses "snow <land type>walk" for a land
@@ -236,14 +276,12 @@ func (g *Game) landwalkBlockingLandLocked(attacker *Card) (string, *Card) {
 		}
 	}
 	// The parameterised "snow <land type>walk" family (Barbarian
-	// Guides), in the attacker's ability order.
+	// Guides) and "<land type>walk" for a type outside the table
+	// (Traveler's Cloak), in the attacker's ability order.
 	var token string
 	var hit *Card
 	forEachAbilityToken(attacker, func(a string) bool {
-		if !strings.HasPrefix(a, snowLandwalkPrefix) {
-			return true
-		}
-		spec, ok := parameterisedSnowLandwalk(a)
+		spec, ok := parameterisedLandwalk(a)
 		if !ok || g.landwalkIgnoredLocked(a) {
 			return true
 		}
