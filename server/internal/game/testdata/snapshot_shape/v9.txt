@@ -25104,6 +25104,7 @@ lastKnownPermanents{}[].linkedPermanent	object
 lastKnownPermanents{}[].linkedPermanent.epoch	number:int
 lastKnownPermanents{}[].linkedPermanent.id	custom(uuid.UUID)
 lastKnownPermanents{}[].manaValue	number:int
+lastKnownPermanents{}[].monstrous	bool
 lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].notes	array
 lastKnownPermanents{}[].notes[]	string

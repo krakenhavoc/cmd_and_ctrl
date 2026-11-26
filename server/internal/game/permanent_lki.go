@@ -170,6 +170,12 @@ type PermanentInfo struct {
 	// record is written.
 	Tapped bool `json:"tapped,omitempty"`
 
+	// Monstrous is the CR 701.37b designation as the permanent last had
+	// it (Card.Monstrous): Polis Crusher's "if this creature is monstrous"
+	// is re-checked when its trigger resolves (CR 603.4), and a Crusher that
+	// has left by then is judged as it last existed.
+	Monstrous bool `json:"monstrous,omitempty"`
+
 	// Delved is the permanent's CR 607.2q link to the cards delve
 	// exiled to pay for the spell that became it (CastProvenance.Delved,
 	// ADR 0100 sub-PR 2). Last-known information like the rest of the
@@ -333,6 +339,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		DamageMarked:    c.DamageMarked,
 		AttachedTo:      c.AttachedTo,
 		Tapped:          c.Tapped,
+		Monstrous:       c.Monstrous,
 		Delved:          append([]ObjectRef(nil), c.Provenance.Delved...),
 		CraftedWith:     cloneObjectRefs(c.CraftedWith),
 		ChosenColor:     c.ChosenColor,
