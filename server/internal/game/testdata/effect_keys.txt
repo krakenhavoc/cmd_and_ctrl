@@ -4601,6 +4601,7 @@ tail kinscaer-sentry/entered
 tail kinzu-of-the-bleak-coven/copy
 tail kishla-trawlers/after-exile
 tail klothys/exiled
+tail knowledge-pool/exiled-offer-cast
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
