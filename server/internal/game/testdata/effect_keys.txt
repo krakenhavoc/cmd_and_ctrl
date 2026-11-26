@@ -1030,6 +1030,7 @@ choose choose-cards/goldwardens-gambit-attach
 choose choose-cards/goliath-hatchery-draw
 choose choose-cards/granted-take
 choose choose-cards/grave-endeavor-pick
+choose choose-cards/grave-sifter-return
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
@@ -1609,6 +1610,7 @@ choose choose-cards/s82-old-b314-blight-herder
 choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b321-erebos-titan-return
 choose choose-cards/s82-old-b322-jace-flip
+choose choose-cards/s82-old-b337-write-into-being
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2156,6 +2158,7 @@ confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
 confirm confirm/mind-raker-confirm
 confirm confirm/mindleech-mass-look-and-cast
+confirm confirm/mirror-mockery-copy
 confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
@@ -2234,6 +2237,7 @@ confirm confirm/sephiroth-cell-counter
 confirm confirm/shard-of-broken-glass-mill-two
 confirm confirm/shessra-pay-life-draw
 confirm confirm/shirei-return
+confirm confirm/shorecrasher-elemental-pump
 confirm confirm/sita-varma-base-pt
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/smellerbee-rebel-fighter-discard-hand
@@ -3063,6 +3067,7 @@ payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
 payunless pay-unless/natural-unity-counter
+payunless pay-unless/necromaster-dragon-zombie-mill
 payunless pay-unless/neo-go-shintai-ancient-wars
 payunless pay-unless/neo-go-shintai-boundless-vigor
 payunless pay-unless/neo-go-shintai-hidden-cruelty
@@ -3139,6 +3144,7 @@ payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shanna-draw
 payunless pay-unless/shriek-treblemaker-cant-block
 payunless pay-unless/skyline-scout-flying
+payunless pay-unless/skywise-teachings-djinn-monk
 payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
@@ -3634,6 +3640,7 @@ run prompt-run/winnowing-sacrifice-unshared
 run prompt-run/winter-tormented-loner-sacrifice
 run prompt-run/witch-king-of-angmar-ring
 run prompt-run/witherbloom-charm-sacrifice-draw
+run prompt-run/xathrid-demon-sacrifice
 run prompt-run/yannik-scavenging-sentinel-chosen
 run prompt-run/yuma-proud-protector-sacrifice
 run prompt-run/yunas-decision-sacrificed
@@ -4504,6 +4511,7 @@ tail mass/deadly-tempest-loss
 tail mass/death-begets-life-draw
 tail mass/declaration-in-stone-clues
 tail mass/demonic-junker-counters
+tail mass/descent-of-the-dragons-dragons
 tail mass/faerie-slumber-party-faeries
 tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
@@ -4638,6 +4646,8 @@ tail old-b044/lorehold-excavation-milled
 tail old-b044/radiant-scrollwielder-exiled
 tail old-b051/kasmina-cast
 tail old-b330/sunbringers-touch-trample
+tail old-b331/return-face-down
+tail old-b332/mirror-mockery-exile
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5285,6 +5295,7 @@ tail then/god-pharaohs-gift-haste
 tail then/gorbag-sacrificed
 tail then/grasp-of-fate-exiled-one
 tail then/grave-endeavor-drain
+tail then/grave-sifter-type-chosen
 tail then/grist-the-hunger-tide-mill
 tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
@@ -5453,6 +5464,8 @@ tail then/s82-old-b314-blight-herder-scions
 tail then/s82-old-b314-pathway-arrows-tap
 tail then/s82-old-b316-hellion-eruption-tokens
 tail then/s82-old-b323-throwing-knife-damage
+tail then/s82-old-b337-manifest-counters
+tail then/s82-old-b337-write-into-being-place
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
@@ -5460,6 +5473,8 @@ tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
 tail then/scour-the-desert-birds
+tail then/scrap-mastery-exiled
+tail then/scrap-mastery-put
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
@@ -5550,6 +5565,7 @@ tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/wasp-of-the-bitter-end-destroy
 tail then/wasteland-strangler-then
+tail then/wave-of-vitriol-sacrificed
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled

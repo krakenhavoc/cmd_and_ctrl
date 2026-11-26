@@ -322,6 +322,13 @@ type CostQuery struct {
 	// it is announcing, as AltBlitz is. False for every other cast.
 	AltFlashback bool
 
+	// AltDash reports that the alternative cost this cast claims is a dash
+	// cost (AlternativeCost.Dash, CR 702.109a): Warbringer's "Dash costs you
+	// pay cost {2} less" must not touch the same creature cast for its mana
+	// cost. Filled by the one pricer and by the enumerator from the offer it
+	// is announcing, as AltBlitz is. False for every other cast.
+	AltDash bool
+
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
 	// Augurelt's "spells you cast this way cost {2} less to cast". Read

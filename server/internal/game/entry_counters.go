@@ -159,6 +159,18 @@ type CastCounts struct {
 	// counters for each creature that convoked it". Zero for a spell not
 	// convoked, a CR 707.10 copy and every entry that was not a spell.
 	Convoked int
+
+	// Beheld is how many times the spell's behold additional cost was paid
+	// (BeholdKey, PaidCost.OptionalCosts): Scaleguard Sentinels' "if you
+	// revealed a Dragon card". Zero for a spell with no such cost, one that
+	// declined it, and every entry that was not a resolving spell.
+	Beheld int
+
+	// CastValues are the facts recorded as the spell was announced (CastTimeValues,
+	// StackItem.CastValues): "controlled a Dragon as you cast this spell" is one
+	// of them. Nil for a spell that recorded none and for every entry that was
+	// not a resolving spell. Read-only.
+	CastValues map[string]int
 }
 
 // KickedWith is CR 702.33f's "if it was kicked with its [cost]
@@ -256,6 +268,8 @@ func castCountsFor(card Card, item *StackItem) CastCounts {
 		CastFrom:    item.CastFromZone,
 		EntryRoll:   sumInts(item.EntryRolls),
 		Convoked:    len(item.Paid.Convoked),
+		Beheld:      OptionalCostTimesPaid(card, item.Paid.OptionalCosts, BeholdKey),
+		CastValues:  item.CastValues,
 	}
 }
 

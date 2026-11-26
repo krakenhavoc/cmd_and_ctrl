@@ -66,12 +66,7 @@ func init() {
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && c.IsCreature() && effects.GapB218HasAManaAbility(c)
-			}, "Raggadragga, Goreguts Boss — untap the attacking creature", func(g *game.Game, item *game.StackItem) error {
-				if item.Trigger == nil {
-					return nil
-				}
-				return effects.UntapTarget{Target: item.Trigger.Event.CardID}.Apply(effects.NewContext(g, item))
-			}),
+			}, "Raggadragga, Goreguts Boss — untap the attacking creature", effects.OldB345UntapEventCreature),
 			cast,
 		},
 	})
