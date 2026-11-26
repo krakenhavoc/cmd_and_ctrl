@@ -750,6 +750,7 @@ choose choose-cards/armored-skyhunter-attach
 choose choose-cards/arni-metalbrow-put
 choose choose-cards/as-enters-linked-permanent
 choose choose-cards/as-enters-permanent
+choose choose-cards/ashiok-nightmare-weaver-return
 choose choose-cards/ashiok-wicked-manipulator-take
 choose choose-cards/ashling-flame-dancer-then
 choose choose-cards/assimilation-assessor-assimilate
@@ -3262,6 +3263,7 @@ pick revealed-pick/elite-spellbinder-exile
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/pick-the-brain-search
+pick revealed-pick/psychic-intrusion-may-cast
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/s82-old-b108-kitesail-freebooter-return
@@ -3820,6 +3822,7 @@ tail arms-race/entered
 tail arni-metalbrow/entered
 tail artistic-process/token-haste
 tail ascent-of-the-worthy/angel-warrior
+tail ashiok-nightmare-weaver/nightmare
 tail ashling-the-limitless/haste-and-pay-or-sacrifice
 tail asmodeus-the-archfiend/returned
 tail assemble-the-legion/muster

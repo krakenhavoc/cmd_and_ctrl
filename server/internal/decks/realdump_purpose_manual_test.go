@@ -366,6 +366,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 378 (#5559).
 	"Skyreaping": "damages only the creatures with flying, for an amount that is your devotion to green as it resolves: a partial sweep with no fixed amount a sweep can declare",
+
+	// S82 OLD batch 397 (#5561).
+	"Ashiok, Nightmare Weaver": "its -10 exiles the cards in the opponents' hands and graveyards, not permanents",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
