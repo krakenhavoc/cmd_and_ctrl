@@ -2471,6 +2471,7 @@ maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
 milluntil until/creature-card-or-count
+milluntil until/four-land-cards
 milluntil until/illuna-nonland-permanent-card
 milluntil until/instant-or-sorcery-card
 milluntil until/land-card
@@ -3037,6 +3038,7 @@ payunless pay-unless/grist-voracious-larva-transform
 payunless pay-unless/grovetender-druids-plant
 payunless pay-unless/gryffwing-cavalry-flying
 payunless pay-unless/guide-of-souls-angel
+payunless pay-unless/haazda-snare-squad-tap
 payunless pay-unless/halana-kessig-ranger-damage
 payunless pay-unless/halo-forager-x-cast
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
