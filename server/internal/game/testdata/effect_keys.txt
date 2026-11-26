@@ -2234,6 +2234,7 @@ confirm confirm/sephiroth-cell-counter
 confirm confirm/shard-of-broken-glass-mill-two
 confirm confirm/shessra-pay-life-draw
 confirm confirm/shirei-return
+confirm confirm/shorecrasher-elemental-pump
 confirm confirm/sita-varma-base-pt
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/smellerbee-rebel-fighter-discard-hand
@@ -4638,6 +4639,7 @@ tail old-b044/lorehold-excavation-milled
 tail old-b044/radiant-scrollwielder-exiled
 tail old-b051/kasmina-cast
 tail old-b330/sunbringers-touch-trample
+tail old-b331/return-face-down
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
