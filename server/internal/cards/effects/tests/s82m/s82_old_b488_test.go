@@ -216,15 +216,6 @@ func TestWwkB488SelectiveMemoryExilesAnyNumberOfNonlandCards(t *testing.T) {
 	}
 }
 
-func libraryHas(p *game.Player, id uuid.UUID) bool {
-	for _, c := range p.Library.Cards {
-		if c.InstanceID == id {
-			return true
-		}
-	}
-	return false
-}
-
 // --- Ricochet Trap -----------------------------------------------------------
 
 func TestWwkB488RicochetTrapChangesTheTargetOfASingleTargetSpell(t *testing.T) {
