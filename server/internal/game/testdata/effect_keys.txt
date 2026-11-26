@@ -5534,6 +5534,7 @@ tail then/lim-duls-vault-looked
 tail then/living-lore-cast
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
+tail then/loss-shuffle-all-draw-seven
 tail then/lost-legacy-named
 tail then/lumbering-battlement-exiled-one
 tail then/make-an-example-chosen-pile
