@@ -1,8 +1,6 @@
 package cardsso
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -17,15 +15,6 @@ func init() {
 		Name:         "Soldier On",
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			id, ok := effects.B16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			if err := (effects.AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return effects.UntapTarget{Target: id}.Apply(ctx)
-		},
+		OnResolve:    effects.OldB346TwoCountersAndUntapTheTarget,
 	})
 }
