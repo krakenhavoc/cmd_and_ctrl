@@ -779,4 +779,10 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 427 (#5567): Thunderheads' Weird (the printed token's Weird face).
 	"3/3 blue Weird with defender and flying": {Name: "Weird", TypeLine: "Token Creature — Weird", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"defender", "flying"}},
+
+	// S82 OLD batch 496: Zektar Shrine Expedition's 7/1 Elemental, and Kalitas, Bloodchief of
+	// Ghet's X/X Vampire (printed */*; a 0/0 placeholder, set to the destroyed creature's power
+	// and toughness as it is created).
+	"7/1 red Elemental with trample and haste": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	"0/0 black Vampire":                        {Name: "Vampire", TypeLine: "Token Creature — Vampire", Colors: []string{"B"}, PrintedPTKnown: true},
 }
