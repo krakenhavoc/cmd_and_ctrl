@@ -4775,6 +4775,8 @@ tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/aspiring-champion-shuffle-then-demon-damage
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
+tail put-from-library/guild-feud-opponent
+tail put-from-library/guild-feud-you
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/lantern-of-revealing-after-put
 tail put-from-library/rest-into-graveyard
