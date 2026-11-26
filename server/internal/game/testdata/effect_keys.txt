@@ -1449,6 +1449,7 @@ choose choose-cards/old-b193-borderland-explorer-search
 choose choose-cards/old-b193-dream-cache-put-back
 choose choose-cards/old-b193-prototype-portal-imprint
 choose choose-cards/old-b271-covenant-of-minds-all-to-hand
+choose choose-cards/old-b387-order-of-succession-pick
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -2288,6 +2289,7 @@ confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
 confirm confirm/tempt-with-immortality
 confirm confirm/tempt-with-mayhem
+confirm confirm/tempt-with-reflections
 confirm confirm/tempt-with-vengeance
 confirm confirm/tempting-contract
 confirm confirm/terrapact-intimidator-landers-or-counters
@@ -2699,6 +2701,7 @@ option option-pick/old-b071-cosima-voyage
 option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
 option option-pick/old-b240-unesh-splitter
+option option-pick/old-b387-order-of-succession-direction
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
