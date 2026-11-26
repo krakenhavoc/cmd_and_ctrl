@@ -159,6 +159,7 @@ body delifs-cube/no-combat-damage-and-a-cube-counter
 body departed/token-copies-of-artifacts-and-creatures
 body desert-warfare/put-listed-onto-the-battlefield
 body desperate-measures/draw-two
+body destroy/old-b499-the-object
 body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
@@ -1486,6 +1487,7 @@ choose choose-cards/old-b386-reincarnation-return
 choose choose-cards/old-b387-order-of-succession-pick
 choose choose-cards/old-b447-graveyard-shovel-exile
 choose choose-cards/old-b493-attach-equipment
+choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -1683,6 +1685,7 @@ choose choose-cards/s82-old-b472-clone-shell-imprint
 choose choose-cards/s82-old-b472-discard-or-sacrifice
 choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-old-b497-chandra-ablaze-discard
+choose choose-cards/s82-old-b498-living-tsunami-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -4999,6 +5002,7 @@ tail s82-old-b370/deicide-after-exile
 tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
+tail s82-old-b498/living-tsunami-after-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5617,6 +5621,9 @@ tail then/old-b179-emergency-powers-next
 tail then/old-b240-unesh-take
 tail then/old-b386-augury-adept-gain
 tail then/old-b443-seance-copy
+tail then/old-b499-shuffle-carried
+tail then/old-b499-sphinx-found
+tail then/old-b499-sphinx-named
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
