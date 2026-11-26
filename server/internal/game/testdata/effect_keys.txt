@@ -4637,6 +4637,7 @@ tail old-b044/aether-helix-return
 tail old-b044/lorehold-excavation-milled
 tail old-b044/radiant-scrollwielder-exiled
 tail old-b051/kasmina-cast
+tail old-b330/sunbringers-touch-trample
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
