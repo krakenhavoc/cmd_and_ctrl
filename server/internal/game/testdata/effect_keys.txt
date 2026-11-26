@@ -906,6 +906,7 @@ choose choose-cards/crashing-wave-stun-two
 choose choose-cards/creeping-inn-exile
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
+choose choose-cards/curse-of-oblivion-exile
 choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
 choose choose-cards/danitha-benalias-hope-attach
@@ -2620,6 +2621,7 @@ option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
 option option-pick/craig-boone-damage
 option option-pick/creeping-renaissance-type
+option option-pick/curse-of-the-pierced-heart-recipient
 option option-pick/dack-fayden-helping-hand-opponent
 option option-pick/dark-tutor-placed
 option option-pick/dathon-his-heart-open-counter-kind
