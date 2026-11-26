@@ -1,8 +1,6 @@
 package cardskr
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -32,37 +30,7 @@ func init() {
 			Sweep:   game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, OpponentsOnly: true, Partial: true},
 		},
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			x := ctx.X()
-			targets := ctx.LegalTargets()
-			if x <= 0 || len(targets) == 0 {
-				return nil
-			}
-			t := targets[0]
-			player := t.ID
-			if t.Kind == game.TargetCard {
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
-					return nil
-				}
-				player = c.Controller
-			}
-			var creatures []uuid.UUID
-			for _, c := range effects.MatchingBattlefield(ctx, effects.Creature()) {
-				if c.Controller == player {
-					creatures = append(creatures, c.InstanceID)
-				}
-			}
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				if err := (effects.DealDamage{Source: ctx.Source(), Target: t.ID, Amount: x}).Apply(ctx); err != nil {
-					return err
-				}
-				for _, id := range creatures {
-					if err := (effects.DealDamage{Source: ctx.Source(), Target: id, Amount: x}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
+			return effects.S82OldB437XDamageToPlayerOrWalkerAndTheirCreatures(ctx)
 		},
 	})
 }
