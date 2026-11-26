@@ -5909,6 +5909,7 @@ tail yawgmoths-vile-offering/destroy-then-exile-this
 tail yenna-redtooth-regent/after-copy
 tail yggdrasil/haste
 tail zara-renegade-recruiter/return-at-end-step
+tail zen/elemental-appeal-token
 tail zethi/kick-counters
 tail zimones-experiment/creatures-then-rest
 tail zombie-apocalypse/destroy-humans
