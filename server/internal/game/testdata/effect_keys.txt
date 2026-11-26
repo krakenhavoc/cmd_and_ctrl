@@ -105,6 +105,7 @@ body catalog/triggered
 body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
+body chancellor-of-the-spires/first-upkeep-mill
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
@@ -1654,6 +1655,7 @@ choose choose-cards/s82-old-b415-dimir-charm-rest
 choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
+choose choose-cards/s82-old-b463-psychic-surgery-exile
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
