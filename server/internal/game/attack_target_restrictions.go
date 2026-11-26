@@ -153,6 +153,11 @@ type AttackTargetRestriction struct {
 	// spell this turn" (Silburlind Snapper, S82 OLD b293, CR 508.1c).
 	// Read live at declaration from the per-turn cast tally.
 	ControllerMustHaveCastNoncreature bool `json:",omitempty"`
+	// CantAttackDuringExtraTurns forbids attacking anything during an extra
+	// turn (a turn made by an effect, Turn.Extra): "can't attack during
+	// extra turns" (Medomai the Ageless, S82 OLD b394, CR 508.1c, CR 500.7).
+	// Read live at declaration.
+	CantAttackDuringExtraTurns bool `json:",omitempty"`
 	// ControllerHandAtLeast, when above zero, forbids attacking anything
 	// while the attacking creature's controller has fewer cards than this
 	// in hand: "can't attack unless you have seven or more cards in hand"
@@ -267,6 +272,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerMustHaveCastNoncreature == o.ControllerMustHaveCastNoncreature &&
+		r.CantAttackDuringExtraTurns == o.CantAttackDuringExtraTurns &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
 		r.ControllerGraveyardAtLeast == o.ControllerGraveyardAtLeast &&
 		r.ControllerHandAtMost == o.ControllerHandAtMost &&
@@ -296,7 +302,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
+		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.CantAttackDuringExtraTurns || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
 		len(r.ControllerMustControlAnother) > 0
 }
 
@@ -332,6 +338,9 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	}
 	if r.ControllerMustHaveCitysBlessing && !g.CitysBlessingForEffect(you) {
 		return g.playerNameLocked(you) + " doesn't have the city's blessing"
+	}
+	if r.CantAttackDuringExtraTurns && g.Turn.Extra {
+		return "this is an extra turn"
 	}
 	if r.ControllerMustHaveCastNoncreature && g.CastTallyFor(you).Noncreature < 1 {
 		return g.playerNameLocked(you) + " hasn't cast a noncreature spell this turn"
