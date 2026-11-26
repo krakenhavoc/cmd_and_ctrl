@@ -4465,6 +4465,7 @@ tail grist-the-plague-swarm/mill-two
 tail grizzled-angler/after-mill
 tail grolnok/croak-counter
 tail grubs-command/after-mill
+tail gruesome-encore/entered
 tail gul-dukat/drain-each-opponent
 tail gyruda/even-creature-among-milled
 tail hama/choose-from-graveyard
