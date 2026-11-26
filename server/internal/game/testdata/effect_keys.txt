@@ -425,6 +425,7 @@ body old-b059/look-at-that-hand-and-draw
 body old-b193/adarkar-valkyrie-return
 body old-b270/burn-away-exile-graveyard
 body old-b356/return-listed-tapped
+body old-b386/reincarnation-return
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -1450,6 +1451,7 @@ choose choose-cards/old-b193-borderland-explorer-search
 choose choose-cards/old-b193-dream-cache-put-back
 choose choose-cards/old-b193-prototype-portal-imprint
 choose choose-cards/old-b271-covenant-of-minds-all-to-hand
+choose choose-cards/old-b386-reincarnation-return
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -5576,6 +5578,7 @@ tail then/std-b15-strongbox-raider-choose
 tail then/steam-augury-take
 tail then/string-of-disappearances-offer-payment
 tail then/stronghold-arena-lose-life
+tail then/sudden-demise-color-chosen
 tail then/sungold-sentinel-color-chosen
 tail then/surrounded-by-orcs-mill
 tail then/suspect-each
