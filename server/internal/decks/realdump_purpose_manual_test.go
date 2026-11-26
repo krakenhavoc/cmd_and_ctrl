@@ -387,6 +387,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 505 (#5586).
 	"Identity Crisis": "exiles the cards in one player's hand and graveyard, not permanents",
+
+	// S82 OLD batch 538 (#5591).
+	"Strip Bare": "destroys only the Auras and Equipment attached to one target creature, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
