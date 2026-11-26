@@ -779,4 +779,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 427 (#5567): Thunderheads' Weird (the printed token's Weird face).
 	"3/3 blue Weird with defender and flying": {Name: "Weird", TypeLine: "Token Creature — Weird", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"defender", "flying"}},
+
+	// S82 OLD batch 503 (#5586): Predatory Advantage's Lizard.
+	"2/2 green Lizard": {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 2, Toughness: 2, Colors: []string{"G"}},
 }
