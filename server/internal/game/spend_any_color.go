@@ -81,6 +81,11 @@ type AnyColorSpendStatic struct {
 	// A context with no object (an "unless pays" cost, an attack tax)
 	// is a payment a narrowed grant does not reach.
 	Covers func(ManaSpendContext) bool
+	// CoversFrom is Covers for a grant that reads the object granting it,
+	// asked after Covers: "to cast spells with the chosen name"
+	// (Unexpected Potential, #5557) reads the conspiracy's chosen name.
+	// Nil asks nothing more.
+	CoversFrom func(ctx ManaSpendContext, source *Card) bool
 	// AnyType makes it "as though it were mana of any TYPE" (Vizier of
 	// the Menagerie): colourless is a type too, so coloured mana may also
 	// pay a {C} symbol (CR 106.1b no longer stops it). False is the
@@ -215,11 +220,10 @@ func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) spendGran
 	if CatalogAnyColorSpend == nil || g.Battlefield == nil {
 		return out
 	}
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
+	apply := func(src *Card) {
 		key := catalogAbilityKeyOf(src)
 		if key == "" {
-			continue
+			return
 		}
 		for _, s := range CatalogAnyColorSpend(key) {
 			switch s.Whose {
@@ -237,10 +241,28 @@ func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) spendGran
 			if s.Covers != nil && !s.Covers(withPayer(ctx, payer)) {
 				continue
 			}
+			if s.CoversFrom != nil && !s.CoversFrom(withPayer(ctx, payer), src) {
+				continue
+			}
 			if s.OthersOnlyColorless {
 				out.restrict(s.From)
 			}
 			out.noteTo(s.AnyType, s.From, s.To)
+		}
+	}
+	for i := range g.Battlefield.Cards {
+		apply(&g.Battlefield.Cards[i])
+	}
+	// A face-up conspiracy's statics work from the command zone (CR 315.5,
+	// ADR 0227); a face-down one has no catalog key and grants nothing.
+	for _, p := range g.Seats {
+		if p == nil || p.Emblems == nil {
+			continue
+		}
+		for i := range p.Emblems.Cards {
+			if IsConspiracy(p.Emblems.Cards[i]) {
+				apply(&p.Emblems.Cards[i])
+			}
 		}
 	}
 	return out

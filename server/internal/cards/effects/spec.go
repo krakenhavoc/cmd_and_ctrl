@@ -2210,6 +2210,13 @@ type Spec struct {
 	// Zero for every other card. #6102, ADR 0227.
 	HiddenAgenda int
 
+	// StartingPlayer is a face-up conspiracy's "You are the starting player.
+	// If multiple players would be the starting player, one of those players
+	// is chosen at random." (Power Play, #5557): its owner takes the first
+	// turn, whoever the opening roll chose (CR 103.1). Zero for every other
+	// card.
+	StartingPlayer bool
+
 	// XMatters declares that everything this card does scales with
 	// the announced X (CR 601.2b / 602.2b), so an announcement of
 	// X=0 does nothing at all: Fireball deals no damage, Soothsaying
