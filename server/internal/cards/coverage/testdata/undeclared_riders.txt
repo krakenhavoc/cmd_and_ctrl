@@ -137,3 +137,4 @@ Zoetic Glyph | discover | on a triggered row that is not the card's enters effec
 Hylda of the Icy Crown | scry | the scry is a mode of the reflexive trigger raised only after the {1} is paid, built at resolution, where no catalog slot can carry it (the mode itself declares Scry 2)
 You Find the Villains' Lair | learn | "Learn Their Secrets" is a bullet's name, not the learn keyword action: the bullet draws two cards, then discards two
 Reaper of the Wilds | scry | on a triggered row that is not the card's enters effect, which nothing prices
+Witches' Eye | scry | the scry is in the ability an equipped creature has, a granted row that no catalog slot of the Equipment can carry (the granted row itself declares Scry 1)
