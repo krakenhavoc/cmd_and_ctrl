@@ -84,6 +84,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 blue Faerie Dragon with flying":                            {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"1/1 blue Faerie with flying":                                   {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Djinn Monk with flying":                               {Name: "Djinn Monk", TypeLine: "Token Creature — Djinn Monk", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"2/2 blue Homunculus":                                           {Name: "Homunculus", TypeLine: "Token Creature — Homunculus", Power: 2, Toughness: 2, Colors: []string{"U"}},
 	"0/0 blue Alien":                                                {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 0, Toughness: 0, Colors: []string{"U"}, PrintedPTKnown: true},
 	"0/0 black Phyrexian Germ":                                      {Name: "Phyrexian Germ", TypeLine: "Token Creature — Phyrexian Germ", Power: 0, Toughness: 0, Colors: []string{"B"}, PrintedPTKnown: true},
 	"0/0 green and blue Fractal":                                    {Name: "Fractal", TypeLine: "Token Creature — Fractal", Power: 0, Toughness: 0, Colors: []string{"G", "U"}, PrintedPTKnown: true},
