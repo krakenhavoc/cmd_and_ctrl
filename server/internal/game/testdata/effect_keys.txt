@@ -2706,6 +2706,7 @@ option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
+option option-pick/sacrifice-this-unless-you-sacrifice-a-pegasus
 option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
 option option-pick/scrying-sheets-top-card
