@@ -400,14 +400,14 @@ func (k SacrificeKind) Matches(c Card) bool {
 		return true
 	}
 	if len(k.Colors) > 0 {
-		hasColor := false
+		coloured := false
 		for _, col := range k.Colors {
-			if c.HasColor(col) {
-				hasColor = true
+			if c.HasColorWord(col) {
+				coloured = true
 				break
 			}
 		}
-		if !hasColor {
+		if !coloured {
 			return false
 		}
 		if len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
