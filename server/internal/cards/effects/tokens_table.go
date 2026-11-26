@@ -742,4 +742,6 @@ var TokenTable = map[string]game.Card{
 	"4/2 green Beast": {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 2, Colors: []string{"G"}},
 	// S82 OLD batch 252 (#5536): Release the Gremlins and Gremlin Infestation's Gremlin.
 	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
+	// S82 OLD batch 333 (#5551): Corpseweft's Zombie Horror; an X/X whose printed token card is */*, so 0/0 here and X is set as it is created.
+	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
 }

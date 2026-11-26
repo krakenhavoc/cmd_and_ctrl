@@ -27,6 +27,13 @@ func CantBeTargetedBySpellsOfColorsMod(colors ...string) Mod {
 	return Mod{Kind: ModCantBeTargetedBySpellsOfColors, Colors: colors}
 }
 
+// CantBeTargetedByOpponentSpellsOfColorsMod is the mod for "<affected> can't
+// be the targets of <colour> spells your opponents control": the same bar,
+// but a spell controlled by the effect's own controller is not refused.
+func CantBeTargetedByOpponentSpellsOfColorsMod(colors ...string) Mod {
+	return Mod{Kind: ModCantBeTargetedByOpponentSpellsOfColors, Colors: colors}
+}
+
 // colorSpellTargetingBarLocked reports whether a live record bars the
 // spell `src` from targeting the permanent `c`: some record carries the
 // mod over `c` and the spell has one of its colours (read off the
@@ -46,7 +53,13 @@ func (g *Game) colorSpellTargetingBarLocked(c *Card, src TargetSource) bool {
 	for i := range g.ScopedEffects {
 		e := &g.ScopedEffects[i]
 		for _, m := range e.Mods {
-			if m.Kind != ModCantBeTargetedBySpellsOfColors || !colorsOverlap(colors, m.Colors) {
+			if m.Kind != ModCantBeTargetedBySpellsOfColors && m.Kind != ModCantBeTargetedByOpponentSpellsOfColors {
+				continue
+			}
+			if !colorsOverlap(colors, m.Colors) {
+				continue
+			}
+			if m.Kind == ModCantBeTargetedByOpponentSpellsOfColors && src.Controller == e.Controller {
 				continue
 			}
 			covers := affectedPredicate(e.Affected)
@@ -76,7 +89,7 @@ func colorsOverlap(a, b []string) bool {
 // colorSpellTargetingBarModProblem is the restore check for the mod: it
 // names at least one colour, every one a WUBRG letter. "" when sound.
 func colorSpellTargetingBarModProblem(m Mod) string {
-	if m.Kind != ModCantBeTargetedBySpellsOfColors {
+	if m.Kind != ModCantBeTargetedBySpellsOfColors && m.Kind != ModCantBeTargetedByOpponentSpellsOfColors {
 		return ""
 	}
 	if len(m.Colors) == 0 {
