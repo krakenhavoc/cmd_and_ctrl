@@ -162,13 +162,12 @@ func TestS82OldB469RustedRelicIsAGolemOnlyWithMetalcraft(t *testing.T) {
 
 func TestS82OldB469BladeTribeBerserkersPumpsAndHastesWithMetalcraft(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
 	id := b469CastCreature(t, g, "Blade-Tribe Berserkers", "Creature — Human Berserker", b469Berserk, 3, 3)
 	if c := b469Layered(t, g, id); c.CurrentPower() != 3 || effectstest.HasKeywordOnBattlefield(t, g, id, "haste") {
 		t.Fatalf("without metalcraft it is %d/%d", c.CurrentPower(), c.CurrentToughness())
 	}
 	g = effectstest.NewCatalogGame(t)
-	me = g.Seats[g.Turn.ActiveSeat]
+	me := g.Seats[g.Turn.ActiveSeat]
 	b469Artifacts(g, me, 3)
 	id = b469CastCreature(t, g, "Blade-Tribe Berserkers", "Creature — Human Berserker", b469Berserk, 3, 3)
 	if c := b469Layered(t, g, id); c.CurrentPower() != 6 || c.CurrentToughness() != 6 {
@@ -185,13 +184,13 @@ func TestS82OldB469BladeTribeBerserkersPumpsAndHastesWithMetalcraft(t *testing.T
 
 func TestS82OldB469BleakCovenVampiresDrainsFourWithMetalcraft(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
-	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	me := g.Seats[g.Turn.ActiveSeat]
 	b469CastCreature(t, g, "Bleak Coven Vampires", "Creature — Vampire Warrior", b469Vampires, 4, 3)
 	if effectstest.LatestPickTarget(g, me.ID) != nil {
 		t.Fatal("a target was asked for without metalcraft")
 	}
 	g = effectstest.NewCatalogGame(t)
-	me, opp = g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
 	b469Artifacts(g, me, 3)
 	mine, theirs := me.Life, opp.Life
 	b469CastCreature(t, g, "Bleak Coven Vampires", "Creature — Vampire Warrior", b469Vampires, 4, 3)
