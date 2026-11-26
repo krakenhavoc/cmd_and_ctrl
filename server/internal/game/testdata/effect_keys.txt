@@ -1623,6 +1623,7 @@ choose choose-cards/s82-old-b337-write-into-being
 choose choose-cards/s82-old-b338-reclaim-creature
 choose choose-cards/s82-old-b338-reclaim-land
 choose choose-cards/s82-old-b343-wrens-run-packmaster-champion
+choose choose-cards/s82-old-b371-disciple-of-deceit-discard
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2241,6 +2242,7 @@ confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/s82-old-b104-sweep-away
 confirm confirm/s82-old-b105-sanctum-of-calm-waters
 confirm confirm/s82-old-b246-remove-a-minus-one-counter
+confirm confirm/s82-old-b371-dakra-mystic
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -5511,6 +5513,9 @@ tail then/s82-old-b338-rally-the-ancestors-exile
 tail then/s82-old-b338-sudden-reclamation
 tail then/s82-old-b339-map-the-wastes-bolster
 tail then/s82-old-b340-supplant-form-copy
+tail then/s82-old-b371-disciple-of-deceit-search
+tail then/s82-old-b371-king-macar-gold
+tail then/s82-old-b371-ritual-of-the-returned-zombie
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
