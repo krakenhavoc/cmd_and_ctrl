@@ -105,6 +105,7 @@ body catalog/triggered
 body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
+body chancellor-of-the-dross/first-upkeep-drain
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
@@ -2551,6 +2552,7 @@ number number/s82-old-b280-diminishing-returns-draw-up-to-seven
 number number/s82-old-b281-void-number
 number number/s82-old-b408-vizkopa-confessor-paid
 number number/s82-old-b411-bioshift-move
+number number/s82-old-b459-hex-parasite-remove
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -2809,6 +2811,7 @@ option option-pick/s82-old-b408-angelic-skirmisher
 option option-pick/s82-old-b408-thrull-parasite-counter
 option option-pick/s82-old-b435-primal-surge
 option option-pick/s82-old-b435-rite-of-ruin-order
+option option-pick/s82-old-b459-apostles-blessing
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3227,6 +3230,7 @@ payunless pay-unless/s82-old-b351-goblinslide-goblin
 payunless pay-unless/s82-old-b352-kheru-lich-lord-return
 payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
 payunless pay-unless/s82-old-b369-knowledge-and-power-damage
+payunless pay-unless/s82-old-b459-isolation-cell-life
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
