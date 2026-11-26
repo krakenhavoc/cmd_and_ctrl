@@ -4717,6 +4717,7 @@ tail patient-naturalist/after-mill
 tail pavel-chekov-first-posting/taken
 tail pay-unless/paid
 tail pendant-of-prosperity/owners-half
+tail peregrination/basic-land-to-hand
 tail perilous-voyage/scry-if-small
 tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
@@ -5523,6 +5524,7 @@ tail then/s82-old-b340-supplant-form-copy
 tail then/s82-old-b371-disciple-of-deceit-search
 tail then/s82-old-b371-king-macar-gold
 tail then/s82-old-b371-ritual-of-the-returned-zombie
+tail then/s82-old-b378-vortex-shuffle
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
