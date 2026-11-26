@@ -105,6 +105,8 @@ body catalog/triggered
 body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
+body chancellor-of-the-annex/first-spell-counter
+body chancellor-of-the-tangle/first-main-mana
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
@@ -2294,6 +2296,7 @@ confirm confirm/s82-old-b371-dakra-mystic
 confirm confirm/s82-old-b450-caravan-vigil-morbid
 confirm confirm/s82-old-b450-cloistered-youth-transform
 confirm confirm/s82-old-b450-thraben-sentry-transform
+confirm confirm/s82-old-b462-auriok-survivors-attach
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3935,6 +3938,7 @@ tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail attacking-tokens/war-effort-sacrifice-the-warrior
 tail augusta-order-returned/after-exile
+tail auriok-survivors/offer-attach
 tail author-of-shadows/choose-nonland
 tail avatar-b24/put-n-counters-on-each-next
 tail avatar-b30/bison-whistle-after-bison
@@ -4842,6 +4846,7 @@ tail portal-to-phyrexia/phyrexian
 tail portent-of-calamity/after-graveyard
 tail portent/ask-shuffle
 tail possibility-storm/walk
+tail postmortem-lunge/haste-and-exile
 tail power-pack/after-exile
 tail primal-amulet/ask
 tail primal-amulet/transform
