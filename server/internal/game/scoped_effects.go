@@ -767,7 +767,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects,
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects, ScopeYourCreaturesExceptObjects,
 		ScopeCreaturesMatching, ScopeOpponentsCreaturesMatching:
 		return true
 	}
@@ -2500,6 +2500,10 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 		case e.Scope == ScopeCreaturesExceptObjects:
 			// #6087: the spared objects ride the record's mods.
 			applies = exceptObjectsPredicate(e.Mods)
+		case e.Scope == ScopeYourCreaturesExceptObjects:
+			// S82 OLD b411: the same spared objects, among the record
+			// controller's creatures only (your_creatures_except_objects.go).
+			applies = yourCreaturesExceptObjectsPredicate(e.Mods, e.Controller)
 		case scopeMatchesQueries(e.Scope):
 			// #6237: the filter rides the record's mods, as the spared
 			// objects do (scope_matching.go).

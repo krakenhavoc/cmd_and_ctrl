@@ -593,6 +593,10 @@ var TokenTable = map[string]game.Card{
 	// 0/0 placeholder, set to the greatest toughness among your creatures as it is created).
 	"0/0 black and green Spirit Warrior": {Name: "Spirit Warrior", TypeLine: "Token Creature — Spirit Warrior", Colors: []string{"B", "G"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 411: Miming Slime's X/X green Ooze (printed */*; a 0/0 placeholder, set to the
+	// greatest power among your creatures as it is created).
+	"0/0 green Ooze": {Name: "Ooze", TypeLine: "Token Creature — Ooze", Colors: []string{"G"}, PrintedPTKnown: true},
+
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
 	"0/2 colorless Thopter artifact with flying named Ornithopter": {Name: "Ornithopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 2, Keywords: []string{"flying"}},
 

@@ -62,7 +62,7 @@ func exceptObjectsPredicate(mods []Mod) func(*Card, *Game, *Card) bool {
 // other scope. "" when sound.
 func exceptObjectsScopeProblem(scope AffectedScope, mods []Mod) string {
 	for _, m := range mods {
-		if scope != ScopeCreaturesExceptObjects {
+		if scope != ScopeCreaturesExceptObjects && scope != ScopeYourCreaturesExceptObjects {
 			if m.Kind == ModAddRestrictions && len(m.Objects) != 0 {
 				return fmt.Sprintf("an addRestrictions mod with scope %q names objects, which only a creaturesExceptObjects record reads", scope)
 			}
