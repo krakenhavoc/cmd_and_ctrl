@@ -136,7 +136,9 @@ func TestOldB442DeathsCaressGainsLifeOnlyForAHuman(t *testing.T) {
 	}
 	// A Human that survives the destruction still pays: "if that creature was a Human".
 	tough := effectstest.B12Push(g, opp.ID, "Indestructible Human", "Creature — Human", "", 1, 3)
-	g.WithWriteLock(func() { effectstest.BattlefieldCardPtr(t, g, tough).Keywords = append(effectstest.BattlefieldCardPtr(t, g, tough).Keywords, "indestructible") })
+	g.WithWriteLock(func() {
+		effectstest.BattlefieldCardPtr(t, g, tough).Keywords = append(effectstest.BattlefieldCardPtr(t, g, tough).Keywords, "indestructible")
+	})
 	oldB442Cast(t, g, "Death's Caress", "Sorcery", oldB442DeathsCaress, oldB442Card(tough))
 	if !g.Battlefield.Contains(tough) || me.Life != life+7 {
 		t.Errorf("indestructible Human on table %v, life %d→%d: want it alive and +3", g.Battlefield.Contains(tough), life, me.Life)
