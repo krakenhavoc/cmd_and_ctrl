@@ -4110,6 +4110,7 @@ tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
+tail cumulative-upkeep/jötun-grunt-cumulative-upkeep-put-two-cards-from-a-single-graveyard-on-the-bottom-of-their-owner-s-library
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
