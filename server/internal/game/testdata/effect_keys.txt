@@ -1663,6 +1663,7 @@ choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
 choose choose-cards/s82-old-b452-sutured-ghoul-exile
+choose choose-cards/s82-old-b497-chandra-ablaze-discard
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2822,6 +2823,7 @@ option option-pick/s82-old-b408-angelic-skirmisher
 option option-pick/s82-old-b408-thrull-parasite-counter
 option option-pick/s82-old-b435-primal-surge
 option option-pick/s82-old-b435-rite-of-ruin-order
+option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
