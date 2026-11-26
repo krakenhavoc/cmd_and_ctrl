@@ -2774,6 +2774,8 @@ option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-old-b315-veteran-warleader-keyword
 option option-pick/s82-old-b322-alhammarret-name
 option option-pick/s82-old-b348-butcher-of-the-horde-keyword
+option option-pick/s82-old-b435-primal-surge
+option option-pick/s82-old-b435-rite-of-ruin-order
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3604,6 +3606,7 @@ run prompt-run/s82-old-b243-riches-take
 run prompt-run/s82-old-b244-cruel-reality-lose
 run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-old-b339-abzan-advantage-bolster
+run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
@@ -5560,6 +5563,7 @@ tail then/s82-old-b371-disciple-of-deceit-search
 tail then/s82-old-b371-king-macar-gold
 tail then/s82-old-b371-ritual-of-the-returned-zombie
 tail then/s82-old-b378-vortex-shuffle
+tail then/s82-old-b435-primal-surge-exiled
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
