@@ -56,13 +56,7 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Kind != game.EventBecomesTarget || ev.CardID == uuid.Nil || ev.Actor != source.Controller || !effects.OnBattlefield(g, ev.CardID) {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature() && c.Controller != source.Controller
-			}, bountyLabel, func(g *game.Game, item *game.StackItem) error {
+			effects.On(game.EventBecomesTarget, effects.OldB322CreatureAnOpponentControlsBecameYourTarget, bountyLabel, func(g *game.Game, item *game.StackItem) error {
 				id := item.Trigger.Event.CardID
 				if !effects.OnBattlefield(g, id) {
 					return nil

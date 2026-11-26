@@ -1601,6 +1601,7 @@ choose choose-cards/s82-old-b313-ruin-processor
 choose choose-cards/s82-old-b314-blight-herder
 choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b321-erebos-titan-return
+choose choose-cards/s82-old-b322-jace-flip
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2396,6 +2397,7 @@ drawthen old-b193/dream-cache-put-back
 drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen s82-old-b259/discard-if-no-artifacts
+drawthen s82-old-b322/jace-discard
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2715,6 +2717,7 @@ option option-pick/s82-old-b113-enters-with-counters
 option option-pick/s82-old-b170-deliver-unto-evil-opponent
 option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-old-b315-veteran-warleader-keyword
+option option-pick/s82-old-b322-alhammarret-name
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
