@@ -265,6 +265,7 @@ var TokenTable = map[string]game.Card{
 	"3/1 black Mindless-One":                                           {Name: "Mindless-One", TypeLine: "Token Creature — Mindless-One", Power: 3, Toughness: 1, Colors: []string{"B"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"3/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}}, // Valduk, Keeper of the Flame
+	"7/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 7, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}}, // Elemental Appeal
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
 	"2/2 red Soldier":                                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red Dwarf":                                                    {Name: "Dwarf", TypeLine: "Token Creature — Dwarf", Power: 2, Toughness: 2, Colors: []string{"R"}}, // The Hobbit (#4475)
@@ -779,4 +780,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 427 (#5567): Thunderheads' Weird (the printed token's Weird face).
 	"3/3 blue Weird with defender and flying": {Name: "Weird", TypeLine: "Token Creature — Weird", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"defender", "flying"}},
+
+	// S82 OLD batch 461 (#5575): Chancellor of the Forge's Goblins (the printed token has no haste; the text gives it).
+	"1/1 red Phyrexian Goblin with haste": {Name: "Phyrexian Goblin", TypeLine: "Token Creature — Phyrexian Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
 }

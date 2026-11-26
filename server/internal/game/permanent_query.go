@@ -95,6 +95,12 @@ type PermanentQuery struct {
 	// so a colourless permanent and a multicoloured one are both out. Additive
 	// within the snapshot schema (omitted when false).
 	Monocolored bool `json:",omitempty"`
+	// WithoutTypes are lowercase card types the permanent must NOT have:
+	// "nonartifact creatures can't block this turn" (Ruthless Invasion, S82
+	// OLD b459) is Types {"creature"}, WithoutTypes {"artifact"}. Read
+	// through the layers like Types, so an animated artifact is out. Additive
+	// within the snapshot schema (omitted when empty).
+	WithoutTypes []string `json:",omitempty"`
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -134,6 +140,7 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.HasExactPT == o.HasExactPT && q.ExactPower == o.ExactPower && q.ExactToughness == o.ExactToughness &&
 		q.Untapped == o.Untapped && q.ToughnessOverPower == o.ToughnessOverPower &&
 		q.Monocolored == o.Monocolored &&
+		slices.Equal(q.WithoutTypes, o.WithoutTypes) &&
 		q.WithoutKeyword == o.WithoutKeyword
 }
 
@@ -184,6 +191,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if q.Monocolored && len(c.EffectiveColors()) != 1 {
+		return false
+	}
+	if len(q.WithoutTypes) > 0 && slices.ContainsFunc(q.WithoutTypes, c.HasCardType) {
 		return false
 	}
 	if q.boundsPower() {
@@ -320,6 +330,9 @@ func (q PermanentQuery) Noun() string {
 	}
 	if q.Monocolored {
 		words = append(words, "monocolored")
+	}
+	for _, t := range q.WithoutTypes {
+		words = append(words, "non"+t)
 	}
 	for _, c := range q.Colors {
 		words = append(words, ColorName(c))
