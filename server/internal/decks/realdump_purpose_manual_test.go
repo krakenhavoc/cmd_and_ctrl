@@ -353,6 +353,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 312 (#5547).
 	"Dampening Pulse": "a standing -1/-0 on the opponents' creatures that destroys nothing: it weakens their attacks, not a board wipe",
+
+	// S82 OLD batch 359 (#5556).
+	"Blastfire Bolt": "its \"destroy all Equipment attached to that creature\" reaches only the Equipment on the one creature it targets, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

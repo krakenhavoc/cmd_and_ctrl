@@ -3033,6 +3033,7 @@ payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
 payunless pay-unless/krydle-of-baldurs-gate-unblockable
+payunless pay-unless/kurkesh-copy-ability
 payunless pay-unless/labyrinth-adversary-cant-block
 payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-of-lightning-ping
