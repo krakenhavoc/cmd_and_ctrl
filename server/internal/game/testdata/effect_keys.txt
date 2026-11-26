@@ -423,6 +423,7 @@ body old-b059/draw-two-then-discard-one
 body old-b059/look-at-that-hand-and-draw
 body old-b193/adarkar-valkyrie-return
 body old-b270/burn-away-exile-graveyard
+body old-b356/return-listed-tapped
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -1898,6 +1899,7 @@ coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
 coinflip coin-flip/fighting-chance-shields
+coinflip coin-flip/goblin-kaboomist
 coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
@@ -3170,6 +3172,7 @@ payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/spined-tyrranax-counter
+payunless pay-unless/spirit-bonds-spirit
 payunless pay-unless/spirit-cairn-spirit
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
@@ -3474,6 +3477,7 @@ run prompt-run/indoctrination-attendant-return
 run prompt-run/infernal-offering-sacrificed
 run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
+run prompt-run/invasive-species-return
 run prompt-run/ironclad-revolutionary-sacrifice
 run prompt-run/kardurs-vicious-return-sacrifice
 run prompt-run/kefka-court-mage-draw
