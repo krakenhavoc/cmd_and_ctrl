@@ -432,6 +432,7 @@ body old-b193/adarkar-valkyrie-return
 body old-b270/burn-away-exile-graveyard
 body old-b356/return-listed-tapped
 body old-b386/reincarnation-return
+body old-b516-skeletonize/skeleton
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -3199,6 +3200,8 @@ payunless pay-unless/old-b455-copy-entered-creature
 payunless pay-unless/old-b456-alliance-of-arms
 payunless pay-unless/old-b456-mana-charged-dragon
 payunless pay-unless/old-b456-shared-trauma
+payunless pay-unless/old-b516-carrion-thrash-return
+payunless pay-unless/old-b516-minion-reflector-copy
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3632,6 +3635,7 @@ run prompt-run/necrotic-hex-zombies
 run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
 run prompt-run/old-b178-consume-gain-power
+run prompt-run/old-b516-archdemon-of-unx-zombie
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -4915,6 +4919,7 @@ tail recipient/drain-life-gain-up-to
 tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail recipient/marauding-raptor-dinosaur-pump
+tail recipient/old-b516-skeletonize-watch-death
 tail recipient/reckless-blaze-watch-death
 tail recipient/redcap-melee-sacrifice-a-land
 tail recipient/s82-one-b14-loses-indestructible

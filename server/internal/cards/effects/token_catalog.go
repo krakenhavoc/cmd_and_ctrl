@@ -626,6 +626,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedS82OldB276DevilToken,
 	// S82 OLD batch 450: Gutter Grime's Ooze.
 	printedGutterGrimeOozeToken,
+	// S82 OLD batch 516: Skeletonize's Skeleton ("{B}: Regenerate this creature.").
+	printedOldB516SkeletonToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
