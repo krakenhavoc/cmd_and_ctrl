@@ -6,23 +6,6 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// S82OldB503CycledOrDies is one triggered ability with two conditions: "When
-// you cycle this card and when this creature dies" (the Alara Reborn
-// Sojourners). It watches from the graveyard, where the cycled card already is
-// (CR 702.29c) and where the creature has just arrived (CR 700.4), and so
-// fires once for either event.
-func S82OldB503CycledOrDies(label string, effect Effect) game.TriggeredAbility {
-	t := OnAny([]game.EventKind{game.EventCycle, game.EventLTB},
-		func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-			if ev.Kind == game.EventCycle {
-				return Self(ev, source, lki, g)
-			}
-			return ThisDied(ev, source, lki, g)
-		}, label, effect)
-	t.Zones = []game.ZoneKind{game.ZoneGraveyard}
-	return t
-}
-
 // PrintedOldB503Dragon is Dragon Broodmother's token: a 1/1 red and green
 // Dragon creature token with flying and devour 2 (CR 702.82a: as it enters, its
 // controller may sacrifice any number of creatures, and it enters with twice

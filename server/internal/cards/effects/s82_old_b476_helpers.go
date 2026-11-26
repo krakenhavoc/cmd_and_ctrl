@@ -29,15 +29,7 @@ func S82OldB476PlainsYouControl(g *game.Game, source *game.Card) int {
 // block declaration (Amount <= 1, so a creature that blocks two attackers
 // triggers once).
 func S82OldB476EnchantedAttacksOrBlocks(label string, effect Effect) game.TriggeredAbility {
-	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, S82OldB476EnchantedCreatureAttackedOrBlocked, label, effect)
-}
-
-// S82OldB476EnchantedCreatureAttackedOrBlocked is that trigger's condition.
-func S82OldB476EnchantedCreatureAttackedOrBlocked(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-	if ev.Kind == game.EventBlock && ev.Amount > 1 {
-		return false
-	}
-	return source.IsAttachedTo(ev.CardID)
+	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, OldB484EnchantedAttacksOrBlocks, label, effect)
 }
 
 // S82OldB476ThisBlocked is "whenever this creature blocks": the event is a

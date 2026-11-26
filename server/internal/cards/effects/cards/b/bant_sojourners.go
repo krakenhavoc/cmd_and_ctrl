@@ -13,7 +13,7 @@ import (
 //	 1/1 white Soldier creature token.
 //	 Cycling {2}{W}"
 //
-// One ability with two conditions (S82OldB503CycledOrDies); the token is
+// One ability with two conditions (S82OldB501CycledOrDies); the token is
 // optional and is created under your control.
 //
 // No simplification.
@@ -25,7 +25,7 @@ func init() {
 		Activated:    []effects.ActivatedAbility{effects.Cycling("{2}{W}")},
 		Triggered: []game.TriggeredAbility{
 			effects.Optional(
-				effects.S82OldB503CycledOrDies("Bant Sojourners — you may create a 1/1 white Soldier creature token",
+				effects.S82OldB501CycledOrDies("Bant Sojourners — you may create a 1/1 white Soldier creature token",
 					effects.Do(effects.CreateToken{Template: effects.TokenCard("1/1 white Soldier"), N: 1})),
 				"Bant Sojourners — create a 1/1 white Soldier token?"),
 		},

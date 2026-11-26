@@ -13,7 +13,7 @@ import (
 //	 counter on target creature.
 //	 Cycling {2}{G}"
 //
-// One ability with two conditions (S82OldB503CycledOrDies); the creature is
+// One ability with two conditions (S82OldB501CycledOrDies); the creature is
 // chosen as the trigger goes on the stack and judged again as it resolves
 // (CR 608.2b); the counter is optional.
 //
@@ -27,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(
 				effects.Optional(
-					effects.S82OldB503CycledOrDies("Naya Sojourners — you may put a +1/+1 counter on target creature",
+					effects.S82OldB501CycledOrDies("Naya Sojourners — you may put a +1/+1 counter on target creature",
 						effects.PlusOneCounterOnTheTarget),
 					"Naya Sojourners — put a +1/+1 counter on the target creature?"),
 				effects.TargetCreature("target creature")),

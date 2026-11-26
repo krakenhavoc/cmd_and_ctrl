@@ -14,7 +14,8 @@ import (
 //
 // Mana Flare's triggered mana ability (CR 605.1b) narrowed to a land with one
 // of three basic land types, read off the land as it was when it produced, so
-// a land made a Forest counts and a Forest that lost the type does not.
+// a land made a Forest counts and a Forest that lost the type does not. The three land words are read through Keeper's own text, so a
+// text-changing effect reaches them (CR 612.2).
 //
 // No simplification.
 func init() {
@@ -24,9 +25,10 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		ManaTriggers: []game.ManaTrigger{{
 			Label: "Keeper of Progenitus — add one mana of any type that land produced",
-			AppliesTo: func(prod game.ManaProduced, _ *game.Card, _ *game.Game) bool {
+			AppliesTo: func(prod game.ManaProduced, keeper *game.Card, _ *game.Game) bool {
 				s := prod.Source
-				return s.IsLand() && (s.HasSubtype("Mountain") || s.HasSubtype("Forest") || s.HasSubtype("Plains"))
+				return s.IsLand() && (s.HasSubtype(keeper.TextSubtype("Mountain")) ||
+					s.HasSubtype(keeper.TextSubtype("Forest")) || s.HasSubtype(keeper.TextSubtype("Plains")))
 			},
 			Produced: effects.AddsOneManaOfAnyTypeProduced(),
 		}},
