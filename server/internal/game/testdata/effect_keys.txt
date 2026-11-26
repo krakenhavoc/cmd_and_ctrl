@@ -1609,6 +1609,7 @@ choose choose-cards/s82-old-b314-blight-herder
 choose choose-cards/s82-old-b314-kiora-take
 choose choose-cards/s82-old-b321-erebos-titan-return
 choose choose-cards/s82-old-b322-jace-flip
+choose choose-cards/s82-old-b337-write-into-being
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -5460,6 +5461,8 @@ tail then/s82-old-b314-blight-herder-scions
 tail then/s82-old-b314-pathway-arrows-tap
 tail then/s82-old-b316-hellion-eruption-tokens
 tail then/s82-old-b323-throwing-knife-damage
+tail then/s82-old-b337-manifest-counters
+tail then/s82-old-b337-write-into-being-place
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
