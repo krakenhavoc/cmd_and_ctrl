@@ -19,14 +19,7 @@ func init() {
 		Name:         "Kheru Bloodsucker",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				dead, ok := effects.DiedCreature(ev, g)
-				if !ok || effects.LeftUnderControlOf(ev, dead) != source.Controller {
-					return false
-				}
-				info, ok := g.LastKnownPermanentForEffect(dead.InstanceID)
-				return ok && info.Toughness >= 4
-			}, "Kheru Bloodsucker — each opponent loses 2 life and you gain 2 life", effects.Do(effects.EachOpponentLosesLife{N: 2}, effects.GainLife{Amount: 2})),
+			effects.On(game.EventLTB, effects.OldB348YourCreatureWithToughnessFourOrMoreDied, "Kheru Bloodsucker — each opponent loses 2 life and you gain 2 life", effects.Do(effects.EachOpponentLosesLife{N: 2}, effects.GainLife{Amount: 2})),
 		},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{B}, Sacrifice another creature: Put a +1/+1 counter on this creature.",
