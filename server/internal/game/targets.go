@@ -2004,6 +2004,11 @@ const (
 	// The source's power is its live value while it stands and its
 	// last-known value once it has left (CR 608.2h), as for SourcePower.
 	SourceManaValueVsPower SourceStat = "mana_value_vs_power"
+	// SourceToughnessVsPower compares the CANDIDATE's toughness with the
+	// SOURCE's power: "target creature you control with toughness less
+	// than this creature's power" (Stone Giant). The source's power is
+	// live while it stands and last-known once it has left (CR 608.2h).
+	SourceToughnessVsPower SourceStat = "toughness_vs_power"
 	// SourceManaValueVsLoyalty compares the CANDIDATE's mana value with
 	// the number of loyalty counters on the SOURCE: "target creature or
 	// Equipment card with mana value less than Nahiri's loyalty" (Nahiri,
@@ -2043,6 +2048,8 @@ func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
 		cand, src = c.CurrentToughness(), srcToughness
 	case SourceManaValueVsPower:
 		cand = c.ManaValue()
+	case SourceToughnessVsPower:
+		cand = c.CurrentToughness()
 	case SourceManaValueVsLoyalty:
 		cand = c.ManaValue()
 	}

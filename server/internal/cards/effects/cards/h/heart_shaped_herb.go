@@ -48,27 +48,7 @@ func init() {
 // heartShapedHerbPrevention is "if a source an opponent controls would deal
 // damage to you, prevent 1 of that damage".
 func heartShapedHerbPrevention() game.ReplacementEffect {
-	return game.ReplacementEffect{
-		Watches:    []game.EventKind{game.EventDealDamage},
-		Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-			if src == nil || ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.DamageTarget != src.Controller {
-				return false
-			}
-			return ev.SourceLKI != nil && ev.SourceLKI.Controller != uuid.Nil && ev.SourceLKI.Controller != src.Controller
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			if ev.DamageAmount <= 1 {
-				ev.Cancel()
-				return nil
-			}
-			ev.DamageAmount--
-			return nil
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
-		Label:      "Heart-Shaped Herb — prevent 1 of that damage",
-		RowLabel:   "Prevent 1 of the damage a source an opponent controls would deal to you.",
-	}
+	return effects.OldB499PreventOneOfTheDamageToYou("Heart-Shaped Herb")
 }
 
 // heartShapedHerbAsk is the resolution: the optional sacrifice prompt.
