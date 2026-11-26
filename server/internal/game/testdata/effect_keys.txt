@@ -991,6 +991,7 @@ choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/emperor-of-bones-reanimate
 choose choose-cards/end-blaze-epiphany-play
+choose choose-cards/endless-horizons-take
 choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/entering-reanimate
 choose choose-cards/epistolary-librarian-cast
