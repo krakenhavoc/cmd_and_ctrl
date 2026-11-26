@@ -13,7 +13,7 @@ import (
 //	 card from a graveyard.
 //	 Cycling {2}{B}"
 //
-// One ability with two conditions (S82OldB504CycledOrDies); the card, from any
+// One ability with two conditions (S82OldB501CycledOrDies); the card, from any
 // graveyard, is chosen as the trigger goes on the stack and judged again as it
 // resolves (CR 608.2b); the exile is optional. The Sojourners itself is in a
 // graveyard when the ability triggers, and so may be the target.
@@ -28,7 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.Targeting(
 				effects.Optional(
-					effects.S82OldB504CycledOrDies("Grixis Sojourners — you may exile target card from a graveyard", effects.S82OldB504ExileTheFirstTarget),
+					effects.S82OldB501CycledOrDies("Grixis Sojourners — you may exile target card from a graveyard", effects.S82OldB504ExileTheFirstTarget),
 					"Grixis Sojourners — exile the target card?"),
 				effects.TargetCardInGraveyard("target card from a graveyard")),
 		},

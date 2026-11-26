@@ -6,23 +6,6 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// S82OldB504CycledOrDies is one triggered ability with two conditions: "When
-// you cycle this card and when this creature dies" (the Alara Reborn
-// Sojourners). It watches from the graveyard, where the cycled card already is
-// (CR 702.29c) and where the creature has just arrived (CR 700.4), and so
-// fires once for either event.
-func S82OldB504CycledOrDies(label string, effect Effect) game.TriggeredAbility {
-	t := OnAny([]game.EventKind{game.EventCycle, game.EventLTB},
-		func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-			if ev.Kind == game.EventCycle {
-				return Self(ev, source, lki, g)
-			}
-			return ThisDied(ev, source, lki, g)
-		}, label, effect)
-	t.Zones = []game.ZoneKind{game.ZoneGraveyard}
-	return t
-}
-
 // S82OldB504ExileTheFirstTarget is "exile target card from a graveyard" as the
 // whole of an optional trigger's effect: the first target still legal as it
 // resolves (CR 608.2b) goes to exile, nothing when none is.
