@@ -105,6 +105,7 @@ body catalog/triggered
 body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
+body chancellor-of-the-spires/first-upkeep-mill
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
@@ -554,6 +555,7 @@ body s82-old-b364/destroy-at-end-of-combat
 body s82-old-b370/destroy-all-permanents
 body s82-old-b389/triton-tactics-tap-blocked
 body s82-old-b408/obzedat-return
+body s82-old-b464/virulent-wound-poison
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1665,6 +1667,11 @@ choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
 choose choose-cards/s82-old-b452-sutured-ghoul-exile
+choose choose-cards/s82-old-b463-psychic-surgery-exile
+choose choose-cards/s82-old-b471-psychic-miasma-land
+choose choose-cards/s82-old-b472-clone-shell-imprint
+choose choose-cards/s82-old-b472-discard-or-sacrifice
+choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2299,6 +2306,7 @@ confirm confirm/s82-old-b371-dakra-mystic
 confirm confirm/s82-old-b450-caravan-vigil-morbid
 confirm confirm/s82-old-b450-cloistered-youth-transform
 confirm confirm/s82-old-b450-thraben-sentry-transform
+confirm confirm/s82-old-b464-vedalken-infuser-counter
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3245,6 +3253,9 @@ payunless pay-unless/s82-old-b351-goblinslide-goblin
 payunless pay-unless/s82-old-b352-kheru-lich-lord-return
 payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
 payunless pay-unless/s82-old-b369-knowledge-and-power-damage
+payunless pay-unless/s82-old-b471-embersmith-damage
+payunless pay-unless/s82-old-b472-lifesmith-life
+payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4957,6 +4968,7 @@ tail s82-old-b170/bond-of-insight-return
 tail s82-old-b370/deicide-after-exile
 tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
+tail s82-old-b472/glint-hawk-after-bounce
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
