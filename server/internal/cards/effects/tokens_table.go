@@ -596,6 +596,8 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 414 (Gatecrash): Ooze Flux's and Mystic Genesis's X/X green Ooze (printed */*; a
 	// 0/0 placeholder, set to X as it is created). Beckon Apparition's Spirit is the std_b43 row.
+	// S82 OLD batch 411: Miming Slime's X/X green Ooze (printed */*; a 0/0 placeholder, set to the
+	// greatest power among your creatures as it is created).
 	"0/0 green Ooze": {Name: "Ooze", TypeLine: "Token Creature — Ooze", Colors: []string{"G"}, PrintedPTKnown: true},
 
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.

@@ -2533,6 +2533,7 @@ number number/s82-old-b170-remove-counters
 number number/s82-old-b280-diminishing-returns-draw-up-to-seven
 number number/s82-old-b281-void-number
 number number/s82-old-b408-vizkopa-confessor-paid
+number number/s82-old-b411-bioshift-move
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -5737,6 +5738,7 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail unexpected-results/return-to-hand
 tail unlucky-cabbage-merchant/after-search
 tail urborg-scavengers/counter
 tail urgoros/draw-if-no-discard
