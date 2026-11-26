@@ -1104,6 +1104,7 @@ choose choose-cards/isochron-scepter-imprint
 choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jace-living-guildpact-put-one-into-graveyard
+choose choose-cards/jaddi-lifestrider-tap
 choose choose-cards/jadzi-journey-return
 choose choose-cards/jarads-orders-settle
 choose choose-cards/jaya-fiery-negotiator-play
