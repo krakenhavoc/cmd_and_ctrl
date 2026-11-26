@@ -89,6 +89,10 @@ var teamPumpTails = map[string]string{
 	// "Activate only during your turn.": a timing restriction, the
 	// row's Condition, not an effect.
 	"Steadfast Unicorn": "a timing restriction",
+
+	// "Activate only if creatures you control have total power 8 or greater.":
+	// the formidable activation condition, the row's Condition, not an effect.
+	"Atarka Pummeler": "an activation condition",
 }
 
 // TestTeamPumpRowsDeclareTheirPump holds every catalog activated row of
