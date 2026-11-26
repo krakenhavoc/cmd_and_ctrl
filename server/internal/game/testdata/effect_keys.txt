@@ -61,6 +61,7 @@ body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-artisan/exile-linked-tokens
 body arcane-denial/draws
+body arcbond/reflect-the-damage
 body archangel-avacyn/transform
 body argentum-masticore/destroy
 body armix-filigree-thrasher/shrink
@@ -1942,6 +1943,7 @@ condition damage/gorgons-or-snakes-combat-to-player
 condition damage/old-b071-the-listed-object-dealt
 condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
+condition damage/the-chosen-creature-is-dealt-damage
 condition damage/your-creature-combat-damage-to-a-player
 condition damage/your-creatures-combat-damage-each-player
 condition departed/player-loses-with-counter
