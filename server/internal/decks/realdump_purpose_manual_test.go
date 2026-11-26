@@ -393,6 +393,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 old sets, batch 525 (own group).
 	"Unnerving Assault": "-1/-0 to the opponents' creatures until end of turn kills nothing, and the other half pumps the caster's own creatures",
+
+	// S82 OLD batch 538 (#5591).
+	"Strip Bare": "destroys only the Auras and Equipment attached to one target creature, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

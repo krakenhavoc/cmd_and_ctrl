@@ -4097,6 +4097,8 @@ tail card-name/s82-old-b426-slaughter-games
 tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
+tail card/gloomlance-discard
+tail card/poison-the-well-damage
 tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail carrion-locust/lose-life
