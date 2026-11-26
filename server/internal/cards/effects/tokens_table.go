@@ -743,4 +743,6 @@ var TokenTable = map[string]game.Card{
 	"4/2 green Beast": {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 2, Colors: []string{"G"}},
 	// S82 OLD batch 252 (#5536): Release the Gremlins and Gremlin Infestation's Gremlin.
 	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
+
+	"5/5 colorless Legendary Goblin Golem artifact named Tuktuk the Returned": {Name: "Tuktuk the Returned", TypeLine: "Token Legendary Artifact Creature — Goblin Golem", Power: 5, Toughness: 5},
 }
