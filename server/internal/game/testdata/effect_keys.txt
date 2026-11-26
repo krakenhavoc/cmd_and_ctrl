@@ -2135,6 +2135,8 @@ confirm confirm/brightling-pump
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
 confirm confirm/cacophony-scamp-sacrifice
+confirm confirm/cankerous-thirst-black
+confirm confirm/cankerous-thirst-green
 confirm confirm/cathartic-parting-shuffle
 confirm confirm/chain-sacrifice-a-land
 confirm confirm/champion-of-wits-loot
