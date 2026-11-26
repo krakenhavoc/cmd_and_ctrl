@@ -319,6 +319,11 @@ type TurnTally struct {
 	// Reminder's "each opponent who cast a spell this turn with the same
 	// name as that card"). See turn_records.go. Additive.
 	SpellNames []CastNameRecord `json:"spellNames,omitempty"`
+	// SpellColors are the colours of each spell cast this turn, by caster
+	// and spell, in cast order (S82 old sets batch 526, Dream Thief's
+	// "if you've cast another blue spell this turn"). See turn_records.go.
+	// Additive.
+	SpellColors []CastColorRecord `json:"spellColors,omitempty"`
 	// TappedToPay records each permanent tapped to pay a cost of an
 	// activated ability this turn, with the ability's source (#6217,
 	// Vodalian War Machine's "destroy all Merfolk tapped this turn to pay
@@ -2346,6 +2351,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.TappedToPay = append([]TappedToPayRecord(nil), t.TappedToPay...)
 	out.SpellNames = append([]CastNameRecord(nil), t.SpellNames...)
+	out.SpellColors = append([]CastColorRecord(nil), t.SpellColors...)
 	out.PrevNoncombatVictims = append([]uuid.UUID(nil), t.PrevNoncombatVictims...)
 	out.PrevLifeLosers = append([]uuid.UUID(nil), t.PrevLifeLosers...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)

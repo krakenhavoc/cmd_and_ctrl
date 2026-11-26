@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // turn_records.go — #6217: four things a card asks about this turn that
 // the turn tally (turn_tally.go) did not keep, recorded as they happen and
@@ -26,6 +30,16 @@ import "github.com/google/uuid"
 type CastNameRecord struct {
 	Player uuid.UUID `json:"player"`
 	Name   string    `json:"name"`
+}
+
+// CastColorRecord is the colours of one spell cast this turn, with its caster
+// and the spell's instance ID, which a permanent that spell becomes keeps.
+type CastColorRecord struct {
+	Player uuid.UUID `json:"player"`
+	Spell  uuid.UUID `json:"spell"`
+	// Colors are the colour letters the spell had as it was cast (CR 601.2i),
+	// in WUBRG order ("UR"); empty for a colourless spell.
+	Colors string `json:"colors,omitempty"`
 }
 
 // LastSpellCastRecord is the spell most recently cast this turn.
@@ -69,6 +83,8 @@ func (g *Game) noteSpellCastLocked(playerID, cardID uuid.UUID) {
 		for _, n := range names {
 			g.TurnTally.SpellNames = append(g.TurnTally.SpellNames, CastNameRecord{Player: playerID, Name: n})
 		}
+		g.TurnTally.SpellColors = append(g.TurnTally.SpellColors,
+			CastColorRecord{Player: playerID, Spell: cardID, Colors: unionColorLetters("", ch.Colors)})
 		g.TurnTally.LastSpellCast = &LastSpellCastRecord{Colors: append([]string(nil), ch.Colors...)}
 		return
 	}
@@ -114,6 +130,20 @@ func (g *Game) isLastDrawnThisTurnLocked(playerID, cardID uuid.UUID) bool {
 func (g *Game) CastSpellNamedThisTurnForEffect(playerID uuid.UUID, card Card) bool {
 	for _, r := range g.TurnTally.SpellNames {
 		if r.Player == playerID && r.Name != "" && HasName(card, r.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+// CastAnotherSpellOfColorThisTurnForEffect reports whether `playerID` cast a
+// spell of the colour this turn other than the spell or permanent `except`
+// ("if you've cast another blue spell this turn", CR 700.2: another means
+// not the object itself). A spell cast and then countered still counts, as
+// it was cast; a copy was never cast (CR 707.10). Caller must hold g.mu.
+func (g *Game) CastAnotherSpellOfColorThisTurnForEffect(playerID, except uuid.UUID, color string) bool {
+	for _, r := range g.TurnTally.SpellColors {
+		if r.Player == playerID && r.Spell != except && strings.Contains(r.Colors, color) {
 			return true
 		}
 	}
