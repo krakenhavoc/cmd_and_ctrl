@@ -4159,6 +4159,7 @@ tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
+tail descent-into-madness/exile
 tail destroy-then/smashing-success-treasure
 tail destroy-then/sylvan-primordial-forests
 tail destroy/nissas-defeat-draw-for-a-nissa
