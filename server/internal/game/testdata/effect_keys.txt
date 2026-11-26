@@ -3132,6 +3132,8 @@ payunless pay-unless/s82-old-b199-skyrider-patrol
 payunless pay-unless/s82-old-b205-tenacious-dead-return
 payunless pay-unless/s82-old-b212-lingering-phantom-return
 payunless pay-unless/s82-old-b216-azor-gain-and-draw-x
+payunless pay-unless/s82-old-b352-kheru-lich-lord-return
+payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
