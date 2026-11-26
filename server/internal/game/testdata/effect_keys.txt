@@ -2156,6 +2156,7 @@ confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
 confirm confirm/mind-raker-confirm
 confirm confirm/mindleech-mass-look-and-cast
+confirm confirm/mirror-mockery-copy
 confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
@@ -4640,6 +4641,7 @@ tail old-b044/radiant-scrollwielder-exiled
 tail old-b051/kasmina-cast
 tail old-b330/sunbringers-touch-trample
 tail old-b331/return-face-down
+tail old-b332/mirror-mockery-exile
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
