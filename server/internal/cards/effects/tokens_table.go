@@ -792,4 +792,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 503 (#5586): Predatory Advantage's Lizard.
 	"2/2 green Lizard": {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 2, Toughness: 2, Colors: []string{"G"}},
+
+	// S82 OLD batch 533 (#5591): Giantbaiting's Giant Warrior.
+	"4/4 red and green Giant Warrior with haste": {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 4, Toughness: 4, Colors: []string{"R", "G"}, Keywords: []string{"haste"}},
 }
