@@ -55,13 +55,7 @@ func init() {
 				c, ok := g.LookupCardForEffect(ev.DamageTarget)
 				return ok && c.IsPlaneswalker() && c.Controller == src.Controller
 			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.DamageAmount--
-				if ev.DamageAmount <= 0 {
-					ev.Cancel()
-				}
-				return nil
-			},
+			Replace:    effects.S82OldB317PreventOneOfThatDamage,
 			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
 			Label:      "Djeru — prevent 1 of that damage",
 			RowLabel:   "Prevent 1 of the damage a source would deal to a planeswalker you control.",
