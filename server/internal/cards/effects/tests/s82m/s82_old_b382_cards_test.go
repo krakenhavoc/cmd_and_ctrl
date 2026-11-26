@@ -49,10 +49,6 @@ func oldB382Cast(t *testing.T, g *game.Game, name, typeLine, oracle string, para
 	return g.CastSpell(me.ID, id, params)
 }
 
-func oldB382Card(id uuid.UUID, p *game.Player, name, typeLine string) game.Card {
-	return game.Card{InstanceID: id, Name: name, TypeLine: typeLine, Owner: p.ID, Controller: p.ID}
-}
-
 // oldB382TakeTheMay answers Act of Authority's two prompts, the target pick
 // and the "you may", whichever order they come in.
 func oldB382TakeTheMay(t *testing.T, g *game.Game, me *game.Player, target uuid.UUID) {

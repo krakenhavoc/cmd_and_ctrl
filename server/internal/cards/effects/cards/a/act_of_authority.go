@@ -44,16 +44,18 @@ func init() {
 
 func actOfAuthorityUpkeep(g *game.Game, item *game.StackItem) error {
 	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok {
-			return nil
-		}
-		tail := ctx.ItemTail(actOfAuthorityHandOver)
-		tail.Carry = []uuid.UUID{c.Controller}
-		return g.ExileCardKeyedForEffect(t.ID, tail)
+	targets := ctx.LegalTargets()
+	if len(targets) == 0 {
+		return nil
 	}
-	return nil
+	t := targets[0]
+	c, ok := g.LookupCardForEffect(t.ID)
+	if !ok {
+		return nil
+	}
+	tail := ctx.ItemTail(actOfAuthorityHandOver)
+	tail.Carry = []uuid.UUID{c.Controller}
+	return g.ExileCardKeyedForEffect(t.ID, tail)
 }
 
 // actOfAuthorityHandOver is "If you do, its controller gains control of this

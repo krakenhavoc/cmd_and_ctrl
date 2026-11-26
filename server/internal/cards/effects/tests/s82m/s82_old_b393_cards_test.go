@@ -190,16 +190,6 @@ func TestOldB393MeletisCharlatanRefusesAPermanentSpell(t *testing.T) {
 	}
 }
 
-func oldB393ExileIDsOf(g *game.Game, owner uuid.UUID) []uuid.UUID {
-	var out []uuid.UUID
-	for _, c := range g.Exile.Cards {
-		if c.Owner == owner {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
-}
-
 func TestOldB393PyxisExilesFaceDownThenReleasesOnlyPermanents(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	a, b, c := g.Seats[0], g.Seats[1], g.Seats[2]
