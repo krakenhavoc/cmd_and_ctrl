@@ -762,4 +762,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD b371: Journey into Nyx, Renowned Weaver.
 	"1/3 green Spider enchantment with reach": {Name: "Spider", TypeLine: "Token Enchantment Creature — Spider", Power: 1, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"reach"}},
+
+	// S82 OLD batch 375 (#5559): Forlorn Pseudamma's token (Aerie Worshippers uses b370's Bird row).
+	"2/2 black Zombie enchantment creature":          {Name: "Zombie", TypeLine: "Token Enchantment Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }
