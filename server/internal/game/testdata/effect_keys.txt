@@ -147,6 +147,7 @@ body decayed/sacrifice
 body decayed/schedule
 body delayed/biolume-egg-return-transformed
 body delayed/daretti-scrap-savant-return
+body delayed/old-b443-return-this-card-transformed
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
 body departed/token-copies-of-artifacts-and-creatures
@@ -892,6 +893,7 @@ choose choose-cards/coral-atoll-return-an-untapped-island
 choose choose-cards/corpse-appraiser-take
 choose choose-cards/cosmic-cube-cast
 choose choose-cards/cosmium-confluence-animate-cave
+choose choose-cards/counterlash-cast
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
 choose choose-cards/coveted-prize-cast
@@ -5474,6 +5476,7 @@ tail then/old-b081-fact-or-fiction-take
 tail then/old-b179-emergency-powers-next
 tail then/old-b240-unesh-take
 tail then/old-b386-augury-adept-gain
+tail then/old-b443-seance-copy
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill

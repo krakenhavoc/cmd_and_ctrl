@@ -49574,6 +49574,7 @@ pendingChoices[].assist.spend.CostHasC	bool
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
 pendingChoices[].assist.spend.FaceDownSpell	bool
+pendingChoices[].assist.spend.FlashbackSpell	bool
 pendingChoices[].assist.spend.ForetellSpell	bool
 pendingChoices[].assist.spend.FreerunningSpell	bool
 pendingChoices[].assist.spend.HasDevoid	bool
