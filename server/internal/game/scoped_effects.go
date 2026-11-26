@@ -562,6 +562,13 @@ const (
 	// attacker(s). Pure data, and the blocker's power is read live as
 	// ModCantBeBlockedByPower's is. An on-disk identity: never renamed.
 	ModCantBeBlockedByPowerAtLeast ModKind = "cantBeBlockedByPowerAtLeast"
+	// ModCantBeBlockedByTokens is "<creature> can't be blocked by creature
+	// tokens this turn" (Legion Loyalist, CR 509.1b). Reads Text, the
+	// clause as the refusal sentence reads it. The pinned attacker(s) or
+	// the locked set of them. Pure data: whether a blocker is a token is
+	// read live as blockers are declared. An on-disk identity: never
+	// renamed.
+	ModCantBeBlockedByTokens ModKind = "cantBeBlockedByTokens"
 	// ModCantBeBlockedByColor bars blockers with Colors[0], read live.
 	// It uses existing Mod fields and is additive within this schema.
 	ModCantBeBlockedByColor ModKind = "cantBeBlockedByColor"
@@ -767,7 +774,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects,
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects, ScopeYourCreaturesExceptObjects,
 		ScopeCreaturesMatching, ScopeOpponentsCreaturesMatching:
 		return true
 	}
@@ -1392,6 +1399,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBlockPlayersCreatures:   {reader: readerBlockRule},
 	ModCantBeBlockedByPower:        {reader: readerBlockRule},
 	ModCantBeBlockedByPowerAtLeast: {reader: readerBlockRule},
+	ModCantBeBlockedByTokens:       {reader: readerBlockRule},
 	ModCantBeBlockedByColor:        {reader: readerBlockRule},
 	ModCantBeBlockedBySubtypes:     {reader: readerBlockRule},
 	ModCantBlockSubtypes:           {reader: readerBlockRule},
@@ -2506,6 +2514,10 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 		case e.Scope == ScopeCreaturesExceptObjects:
 			// #6087: the spared objects ride the record's mods.
 			applies = exceptObjectsPredicate(e.Mods)
+		case e.Scope == ScopeYourCreaturesExceptObjects:
+			// S82 OLD b411: the same spared objects, among the record
+			// controller's creatures only (your_creatures_except_objects.go).
+			applies = yourCreaturesExceptObjectsPredicate(e.Mods, e.Controller)
 		case scopeMatchesQueries(e.Scope):
 			// #6237: the filter rides the record's mods, as the spared
 			// objects do (scope_matching.go).

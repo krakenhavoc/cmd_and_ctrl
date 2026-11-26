@@ -74,6 +74,7 @@ body auron-venerated-guardian/exile
 body aurora-shifter/copy
 body awaken-the-honored-dead/return-to-hand
 body basri-ket/soldiers-tapped-and-attacking
+body beck-call/draw-a-card
 body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
@@ -286,9 +287,11 @@ body good-king-mog/copy-a-non-saga-token
 body gorbag-of-minas-morgul/modes
 body graf-reaver/destroy
 body grant/double-strike-and-trample-until-eot
+body grave-betrayal/return
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
+body graveyard/the-cards-owner-loses-1-life
 body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
 body grishnakh-brash-instigator/steal-body
@@ -547,6 +550,7 @@ body s82-old-b321/its-controller-loses-2
 body s82-old-b364/destroy-at-end-of-combat
 body s82-old-b370/destroy-all-permanents
 body s82-old-b389/triton-tactics-tap-blocked
+body s82-old-b408/obzedat-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -973,6 +977,7 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/emperor-of-bones-reanimate
 choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/ensign-pavel-chekov-picked
+choose choose-cards/entering-reanimate
 choose choose-cards/epistolary-librarian-cast
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
@@ -1638,8 +1643,15 @@ choose choose-cards/s82-old-b371-disciple-of-deceit-discard
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
+choose choose-cards/s82-old-b406-blast-of-genius-damage
+choose choose-cards/s82-old-b408-purge-the-profane-life
+choose choose-cards/s82-old-b408-vizkopa-confessor-exile
+choose choose-cards/s82-old-b408-vizkopa-confessor-reveal
 choose choose-cards/s82-old-b413-bane-alley-broker-exile
 choose choose-cards/s82-old-b413-bane-alley-broker-return
+choose choose-cards/s82-old-b415-dimir-charm-rest
+choose choose-cards/s82-old-b416-cleric-return-angel
+choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2011,12 +2023,14 @@ condition dies/the-listed-object
 condition discard/opponent-caused-yours
 condition dynaheir/next-activation-four-mana
 condition earthbend/this-object-left
+condition etb/each-creature-any-player
 condition etb/each-creature-or-enchantment-you-control
 condition etb/each-creature-you-control
 condition etb/each-nontoken-creature-an-opponent-controls
 condition fra-creature-c/lyra-combat-damage-to-a-player
 condition girl-in-the-fireplace/creature-combat-damage-to-player
 condition good-king-mog/you-cast-a-noncreature-spell
+condition graveyard/card-into-an-opponents
 condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
 condition ltb/mechtitan-token
@@ -2450,6 +2464,7 @@ drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen s82-old-b259/discard-if-no-artifacts
 drawthen s82-old-b322/jace-discard
+drawthen s82-old-b406/blast-of-genius-discard
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2521,6 +2536,8 @@ number number/s82-old-b061-blessing-of-frost-share
 number number/s82-old-b170-remove-counters
 number number/s82-old-b280-diminishing-returns-draw-up-to-seven
 number number/s82-old-b281-void-number
+number number/s82-old-b408-vizkopa-confessor-paid
+number number/s82-old-b411-bioshift-move
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -2774,6 +2791,8 @@ option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-old-b315-veteran-warleader-keyword
 option option-pick/s82-old-b322-alhammarret-name
 option option-pick/s82-old-b348-butcher-of-the-horde-keyword
+option option-pick/s82-old-b408-angelic-skirmisher
+option option-pick/s82-old-b408-thrull-parasite-counter
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3206,6 +3225,7 @@ payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
 payunless pay-unless/sorcerers-broom-copy
+payunless pay-unless/soul-tithe-sacrifice
 payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
@@ -3966,6 +3986,7 @@ tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
 tail card-name/day-of-the-moon-goad
 tail card-name/s82-old-b321-infinite-obliteration
+tail card-name/s82-old-b426-slaughter-games
 tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
@@ -4357,6 +4378,7 @@ tail fishing-gear/entered
 tail flameshadow-conjuring/haste-and-exile-copy
 tail flameskull/after-exile
 tail flare-of-cultivation/basic-land-to-hand
+tail flesh-blood/flesh-counters
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step
@@ -4785,6 +4807,8 @@ tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/aspiring-champion-shuffle-then-demon-damage
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
+tail put-from-library/guild-feud-opponent
+tail put-from-library/guild-feud-you
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/lantern-of-revealing-after-put
 tail put-from-library/rest-into-graveyard
@@ -4871,6 +4895,8 @@ tail s82-old-b162/collected-conjuring-exiled
 tail s82-old-b162/force-of-rage-sacrifice-the-elementals
 tail s82-old-b170/bond-of-insight-return
 tail s82-old-b370/deicide-after-exile
+tail s82-old-b408/obzedat-haste
+tail s82-old-b408/obzedat-schedule-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5173,6 +5199,8 @@ tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
 tail tail/stain-the-mind-exiled
 tail tail/steam-augury-rest
+tail tail/tablet-of-the-guilds-first-color
+tail tail/tablet-of-the-guilds-second-color
 tail tail/tayam-after-mill
 tail tail/the-great-aurora-shuffled
 tail tail/the-moment-then-sacrifice
@@ -5656,6 +5684,7 @@ tail then/viewpoint-synchronization-second
 tail then/viewpoint-synchronization-third
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
+tail then/void-stalker-shuffle
 tail then/volcanic-offering-damage
 tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
@@ -5720,6 +5749,7 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail unexpected-results/return-to-hand
 tail unlucky-cabbage-merchant/after-search
 tail urborg-scavengers/counter
 tail urgoros/draw-if-no-discard

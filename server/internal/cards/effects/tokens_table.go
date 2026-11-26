@@ -596,6 +596,8 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 414 (Gatecrash): Ooze Flux's and Mystic Genesis's X/X green Ooze (printed */*; a
 	// 0/0 placeholder, set to X as it is created). Beckon Apparition's Spirit is the std_b43 row.
+	// S82 OLD batch 411: Miming Slime's X/X green Ooze (printed */*; a 0/0 placeholder, set to the
+	// greatest power among your creatures as it is created).
 	"0/0 green Ooze": {Name: "Ooze", TypeLine: "Token Creature — Ooze", Colors: []string{"G"}, PrintedPTKnown: true},
 
 	// S82 DMU batch 14: Yotia Declares War's Ornithopter.
@@ -770,4 +772,7 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 375 (#5559): Forlorn Pseudamma's token (Aerie Worshippers uses b370's Bird row).
 	"2/2 black Zombie enchantment creature": {Name: "Zombie", TypeLine: "Token Enchantment Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+	// S82 OLD batch 426 (#5566): Grove of the Guardian's Elemental.
+	"8/8 green and white Elemental with vigilance": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 8, Toughness: 8, Colors: []string{"G", "W"}, Keywords: []string{"vigilance"}},
 }
