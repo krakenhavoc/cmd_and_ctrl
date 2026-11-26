@@ -2507,7 +2507,9 @@ func (s *TargetSpec) eventObjectManaValueAdmits(g *Game, src TargetSource, c Car
 // permanent entering, whose Actor is whoever put it there (Arboria's
 // distinction, ADR 0109) and whose "its controller" is the player it
 // entered under, as the trigger's own CR 603.10 snapshot recorded it
-// (Confusion in the Ranks, #5739). That snapshot rides the trigger, so
+// (Confusion in the Ranks, #5739), and for a permanent that left the
+// battlefield, whose "its controller" is the one it last had (Necrotic
+// Plague). That snapshot rides the trigger, so
 // the announce, a restore and the CR 608.2b re-check read one answer.
 func triggerChooserOf(src TargetSource) uuid.UUID {
 	if src.Trigger != nil && src.Trigger.Fired() {
@@ -2519,6 +2521,14 @@ func triggerChooserOf(src TargetSource) uuid.UUID {
 				return uuid.Nil
 			}
 			return src.Trigger.Object.Controller
+		case EventLTB:
+			// "Its controller chooses" on a permanent that left: the
+			// controller it had as it last existed (CR 603.10a), which the
+			// event carries (Necrotic Plague, S82 OLD b476). An event built
+			// without one falls back to the Actor.
+			if c := src.Trigger.Event.LastKnownController; c != uuid.Nil {
+				return c
+			}
 		}
 	}
 	return triggerActorOf(src)
