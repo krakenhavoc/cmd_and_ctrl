@@ -5232,6 +5232,7 @@ tail surge-to-victory/exiled
 tail surprise-deployment/return-at-end-step
 tail survival-cache/compare
 tail swift-warkite/haste-and-return
+tail swirling-spriggan/colors-chosen
 tail sword-of-hearth-and-home/put-both
 tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
