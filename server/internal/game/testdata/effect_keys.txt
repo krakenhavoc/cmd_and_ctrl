@@ -3476,6 +3476,7 @@ run prompt-run/sculpted-sunburst-mine
 run prompt-run/scythe-specter-discarded
 run prompt-run/season-of-weaving-copy
 run prompt-run/seize-the-spotlight-gain-control
+run prompt-run/self-inflicted-wound-lose
 run prompt-run/selfcraft-mechan-sacrificed
 run prompt-run/sephiroth-sacrifice-draw
 run prompt-run/seraph-of-new-phyrexia-pump
