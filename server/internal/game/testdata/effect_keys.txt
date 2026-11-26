@@ -437,6 +437,7 @@ body old-b193/adarkar-valkyrie-return
 body old-b270/burn-away-exile-graveyard
 body old-b356/return-listed-tapped
 body old-b386/reincarnation-return
+body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
