@@ -1649,6 +1649,7 @@ choose choose-cards/s82-old-b408-purge-the-profane-life
 choose choose-cards/s82-old-b408-vizkopa-confessor-exile
 choose choose-cards/s82-old-b408-vizkopa-confessor-reveal
 choose choose-cards/s82-old-b415-dimir-charm-rest
+choose choose-cards/s82-old-b416-cleric-return-angel
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
