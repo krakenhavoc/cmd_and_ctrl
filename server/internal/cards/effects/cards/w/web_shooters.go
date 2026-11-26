@@ -30,14 +30,7 @@ func init() {
 					effects.On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 						return effects.AttackDeclared(ev, source)
 					}, "Web-Shooters — tap target creature an opponent controls",
-						func(g *game.Game, item *game.StackItem) error {
-							ctx := effects.NewContext(g, item)
-							target, ok := effects.B16FirstLegalTargetCard(ctx)
-							if !ok {
-								return nil
-							}
-							return effects.TapTarget{Target: target}.Apply(ctx)
-						}),
+						effects.OldB319TapTheTargetCreature),
 					effects.TargetCreature("target creature an opponent controls", effects.OpponentControls())),
 			},
 			Text: "Whenever this creature attacks, tap target creature an opponent controls.",
