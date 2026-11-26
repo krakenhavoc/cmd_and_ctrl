@@ -2152,6 +2152,7 @@ confirm confirm/flaxen-intruder-sacrifice
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
+confirm confirm/furnace-scamp-sacrifice
 confirm confirm/gain-life
 confirm confirm/galadriel-reveal
 confirm confirm/gap-b218-amber-gristle-discard-hand
@@ -2369,6 +2370,7 @@ confirm confirm/wasteland-strangler-confirm
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/wernog-riders-chaplain
 confirm confirm/wheel-of-potential-exile-hand
+confirm confirm/whispering-specter-sacrifice
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
@@ -2519,6 +2521,7 @@ number number/fatal-lore-draw-up-to-three
 number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
+number number/gremlin-mine-remove-charge-counters
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/life-bidding-opening-bid
 number number/life-bidding-raise
@@ -5391,6 +5394,7 @@ tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
 tail then/full-flowering-populate-again
+tail then/furnace-scamp-damage
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/gales-redirection-exiled
@@ -5698,6 +5702,7 @@ tail then/wash-out-color-chosen
 tail then/wasp-of-the-bitter-end-destroy
 tail then/wasteland-strangler-then
 tail then/wave-of-vitriol-sacrificed
+tail then/whispering-specter-discard
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled

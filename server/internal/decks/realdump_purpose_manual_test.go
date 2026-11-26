@@ -372,6 +372,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 421 (#5566).
 	"Street Sweeper": "its \"destroy all Auras attached to target land\" reaches only the Auras on the one land it targets, not a board",
+
+	// S82 OLD batch 458 (#5575).
+	"Cathedral Membrane": "its death trigger deals 6 damage only to the creature it blocked (one creature in combat), not to a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
