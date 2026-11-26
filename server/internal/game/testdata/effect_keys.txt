@@ -3752,6 +3752,7 @@ searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
 searchrule search/different-powers
 searchrule search/one-card-per-color
+searchrule search/s82-old-b428-island-swamp-mountain
 searchrule search/total-mana-value-at-most
 searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
