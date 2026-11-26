@@ -5140,6 +5140,8 @@ tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
 tail tail/stain-the-mind-exiled
 tail tail/steam-augury-rest
+tail tail/tablet-of-the-guilds-first-color
+tail tail/tablet-of-the-guilds-second-color
 tail tail/tayam-after-mill
 tail tail/the-great-aurora-shuffled
 tail tail/the-moment-then-sacrifice
