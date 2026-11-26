@@ -749,4 +749,6 @@ var TokenTable = map[string]game.Card{
 	"4/4 red Hellion": {Name: "Hellion", TypeLine: "Token Creature — Hellion", Power: 4, Toughness: 4, Colors: []string{"R"}},
 	// S82 OLD batch 333 (#5551): Corpseweft's Zombie Horror; an X/X whose printed token card is */*, so 0/0 here and X is set as it is created.
 	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
+
+	"5/5 colorless Legendary Goblin Golem artifact named Tuktuk the Returned": {Name: "Tuktuk the Returned", TypeLine: "Token Legendary Artifact Creature — Goblin Golem", Power: 5, Toughness: 5},
 }

@@ -1030,6 +1030,7 @@ choose choose-cards/goldwardens-gambit-attach
 choose choose-cards/goliath-hatchery-draw
 choose choose-cards/granted-take
 choose choose-cards/grave-endeavor-pick
+choose choose-cards/grave-sifter-return
 choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
@@ -3639,6 +3640,7 @@ run prompt-run/winnowing-sacrifice-unshared
 run prompt-run/winter-tormented-loner-sacrifice
 run prompt-run/witch-king-of-angmar-ring
 run prompt-run/witherbloom-charm-sacrifice-draw
+run prompt-run/xathrid-demon-sacrifice
 run prompt-run/yannik-scavenging-sentinel-chosen
 run prompt-run/yuma-proud-protector-sacrifice
 run prompt-run/yunas-decision-sacrificed
@@ -5293,6 +5295,7 @@ tail then/god-pharaohs-gift-haste
 tail then/gorbag-sacrificed
 tail then/grasp-of-fate-exiled-one
 tail then/grave-endeavor-drain
+tail then/grave-sifter-type-chosen
 tail then/grist-the-hunger-tide-mill
 tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
@@ -5470,6 +5473,8 @@ tail then/sacrifice-choice-done
 tail then/sauron-the-necromancer-wraith
 tail then/saurons-ransom-take
 tail then/scour-the-desert-birds
+tail then/scrap-mastery-exiled
+tail then/scrap-mastery-put
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
@@ -5560,6 +5565,7 @@ tail then/wall-of-mourning-link
 tail then/wash-out-color-chosen
 tail then/wasp-of-the-bitter-end-destroy
 tail then/wasteland-strangler-then
+tail then/wave-of-vitriol-sacrificed
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
 tail then/xenagos-the-reveler-exiled
