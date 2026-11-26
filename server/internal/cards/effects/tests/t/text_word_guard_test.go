@@ -138,6 +138,11 @@ var textWordLiteralAllowed = map[string]string{
 	// Crashing Tide (S82 RIX b1, #5531): the Merfolk flash condition is
 	// judged as the spell is cast, Bard's Company's shape.
 	"crashing_tide.go": "flash condition, judged as cast",
+
+	// Jaws of Stone (S82 OLD b530): the Mountains counted as the spell is cast.
+	// A divided-amount rule runs under the game lock with only the source's ID
+	// (game.DivideAmountArgs), so it has no card whose text it could read.
+	"s82_old_b530_helpers.go": "divided amount judged as cast",
 }
 
 // textWordHelperArgs are effects-package helpers that take a colour or
