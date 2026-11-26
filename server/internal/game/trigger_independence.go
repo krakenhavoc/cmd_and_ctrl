@@ -1494,7 +1494,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
-	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBlockSubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
+	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBlockSubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true, ModCantBeBlockedByTokens: true,
 	ModCantBeBlockedByMoreThan: true, ModAssignsAsThoughUnblocked: true,
 }
 

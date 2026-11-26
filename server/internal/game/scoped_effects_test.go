@@ -309,6 +309,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModCantBeBlockedBySubtypes:     true, // #4100
 		ModCantBlockSubtypes:           true, // Pyrophobia, cases in cards/effects
 		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
+		ModCantBeBlockedByTokens:       true, // Legion Loyalist, cases in scoped_block_rules_tokens_test.go
 		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go
 		ModCantBeBlockedByMoreThan:     true, // cases in scoped_block_rules_max_test.go
 		// #1651: cantHaveKeywords has a case above; waiveHexproof is read
