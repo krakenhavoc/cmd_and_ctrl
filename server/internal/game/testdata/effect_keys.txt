@@ -290,6 +290,7 @@ body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
+body graveyard/the-cards-owner-loses-1-life
 body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
 body grishnakh-brash-instigator/steal-body
@@ -548,6 +549,7 @@ body s82-old-b321/its-controller-loses-2
 body s82-old-b364/destroy-at-end-of-combat
 body s82-old-b370/destroy-all-permanents
 body s82-old-b389/triton-tactics-tap-blocked
+body s82-old-b408/obzedat-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1643,6 +1645,9 @@ choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-old-b413-bane-alley-broker-exile
 choose choose-cards/s82-old-b413-bane-alley-broker-return
 choose choose-cards/s82-old-b406-blast-of-genius-damage
+choose choose-cards/s82-old-b408-purge-the-profane-life
+choose choose-cards/s82-old-b408-vizkopa-confessor-exile
+choose choose-cards/s82-old-b408-vizkopa-confessor-reveal
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2021,6 +2026,7 @@ condition etb/each-nontoken-creature-an-opponent-controls
 condition fra-creature-c/lyra-combat-damage-to-a-player
 condition girl-in-the-fireplace/creature-combat-damage-to-player
 condition good-king-mog/you-cast-a-noncreature-spell
+condition graveyard/card-into-an-opponents
 condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
 condition ltb/mechtitan-token
@@ -2526,6 +2532,7 @@ number number/s82-old-b061-blessing-of-frost-share
 number number/s82-old-b170-remove-counters
 number number/s82-old-b280-diminishing-returns-draw-up-to-seven
 number number/s82-old-b281-void-number
+number number/s82-old-b408-vizkopa-confessor-paid
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -2779,6 +2786,8 @@ option option-pick/s82-old-b206-friend-or-foe
 option option-pick/s82-old-b315-veteran-warleader-keyword
 option option-pick/s82-old-b322-alhammarret-name
 option option-pick/s82-old-b348-butcher-of-the-horde-keyword
+option option-pick/s82-old-b408-angelic-skirmisher
+option option-pick/s82-old-b408-thrull-parasite-counter
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -4877,6 +4886,8 @@ tail s82-old-b162/collected-conjuring-exiled
 tail s82-old-b162/force-of-rage-sacrifice-the-elementals
 tail s82-old-b170/bond-of-insight-return
 tail s82-old-b370/deicide-after-exile
+tail s82-old-b408/obzedat-haste
+tail s82-old-b408/obzedat-schedule-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
