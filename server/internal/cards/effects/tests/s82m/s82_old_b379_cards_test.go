@@ -142,7 +142,6 @@ func TestOldB379PillarOfWarAttacksOnlyWhileEnchanted(t *testing.T) {
 
 func TestOldB379ScourgeOfSkolaValeEntersWithTwoAndEatsForToughness(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
 	scourge := effectstest.CastAndResolveCreature(t, g, "Scourge of Skola Vale", "Creature — Hydra", oldB379Scourge)
 	effectstest.PassPriorityAroundTable(t, g)
 	if p, tough := effectstest.PtOf(t, g, scourge); p != 2 || tough != 2 {
@@ -154,7 +153,7 @@ func TestOldB379ScourgeOfSkolaValeEntersWithTwoAndEatsForToughness(t *testing.T)
 
 	// A Scourge that is no longer summoning sick eats a creature.
 	g = effectstest.NewCatalogGame(t)
-	me = g.Seats[g.Turn.ActiveSeat]
+	me := g.Seats[g.Turn.ActiveSeat]
 	scourge = effectstest.B12Push(g, me.ID, "Scourge of Skola Vale", "Creature — Hydra", oldB379Scourge, 2, 2)
 	food := effectstest.B12Creature(g, me.ID, "Wall", oldB379Bear, 1, 4)
 	if err := g.ActivateCatalogAbility(me.ID, scourge, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{scourge}}); err == nil {
