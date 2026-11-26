@@ -841,6 +841,7 @@ choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-flameshaper-play
 choose choose-cards/chandra-legacy-of-fire-remove
+choose choose-cards/chandra-pyromaster-copy-three-times
 choose choose-cards/change-of-plans-discarded
 choose choose-cards/change-of-plans-phase-out
 choose choose-cards/chaos-shrines-black-crystal-return
@@ -1081,6 +1082,7 @@ choose choose-cards/isildurs-fateful-strike-exile
 choose choose-cards/isochron-scepter-imprint
 choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
+choose choose-cards/jace-living-guildpact-put-one-into-graveyard
 choose choose-cards/jadzi-journey-return
 choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
@@ -5115,6 +5117,7 @@ tail tail/s82-old-b110-idol-of-endurance-hold
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
+tail tail/stain-the-mind-exiled
 tail tail/steam-augury-rest
 tail tail/tayam-after-mill
 tail tail/the-great-aurora-shuffled
@@ -5223,6 +5226,7 @@ tail then/chain-of-acid-offer-copy
 tail then/chain-of-vapor-offer-chain
 tail then/chain-sacrificed-offer-copy
 tail then/chandra-acolyte-of-flame-elementals
+tail then/chandra-pyromaster-exiled
 tail then/change-creature-type-word-replace
 tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
@@ -5404,6 +5408,7 @@ tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/nicol-bolas-the-deceiver-punisher-sacrificed
+tail then/nissa-worldwaker-animate
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/offsprings-revenge-copy
@@ -5524,6 +5529,7 @@ tail then/spawn-of-mayhem-counter
 tail then/sphinx-of-clear-skies-take
 tail then/spiteful-repossession-step
 tail then/split-the-spoils-exiled
+tail then/stain-the-mind-named
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
