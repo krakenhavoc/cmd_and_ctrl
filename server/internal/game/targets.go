@@ -2086,6 +2086,13 @@ const (
 	// above ("creature blocking or blocked by this creature", Steadfast
 	// Armasaur).
 	CombatBlockingOrBlockedBy CombatRole = "blocking_or_blocked_by"
+	// CombatControlledByDefender: the candidate is controlled by the
+	// player the reference creature is attacking, which is itself
+	// attacking ("target creature defending player controls" on an
+	// activated ability of an attacker, Ancient Hellkite; CR 506.3d).
+	// A reference attacking a planeswalker or battle names that
+	// permanent's controller or protector (defendingPlayerForAttackLocked).
+	CombatControlledByDefender CombatRole = "controlled_by_defender"
 )
 
 // SourceCombat is one combat relation between a candidate and the
@@ -2103,6 +2110,9 @@ type combatReference struct {
 	id        uuid.UUID
 	blocks    []uuid.UUID
 	attacking bool
+	// attackTarget is who or what the reference attacks, for
+	// CombatControlledByDefender; zero for a source that has left.
+	attackTarget uuid.UUID
 }
 
 // combatReferenceLocked resolves SourceCombat.Of against the walk's
@@ -2138,7 +2148,7 @@ func (g *Game) combatReferenceLocked(src TargetSource, of SourceCombatOf) (comba
 	if r == nil {
 		return combatReference{}, false
 	}
-	return combatReference{id: id, blocks: r.BlockedAttackers(), attacking: r.AttackingTarget != uuid.Nil}, true
+	return combatReference{id: id, blocks: r.BlockedAttackers(), attacking: r.AttackingTarget != uuid.Nil, attackTarget: r.AttackingTarget}, true
 }
 
 // combatAdmits is CombatWithSource's gate: true with no relation,
@@ -2165,6 +2175,12 @@ func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	case CombatBlocking:
 		return ref.attacking && c.IsBlockingAttacker(ref.id)
+	case CombatControlledByDefender:
+		if !ref.attacking {
+			return false
+		}
+		defender := g.defendingPlayerForAttackLocked(ref.attackTarget)
+		return defender != uuid.Nil && c.Controller == defender
 	case CombatBlockingOrBlockedBy:
 		if ref.attacking && c.IsBlockingAttacker(ref.id) {
 			return true
