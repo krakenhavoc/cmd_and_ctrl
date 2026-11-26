@@ -1297,6 +1297,8 @@ choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
 choose choose-cards/mind-swords-exile-two
 choose choose-cards/minion-of-the-mighty-put
+choose choose-cards/mires-toll-discard
+choose choose-cards/mires-toll-reveal
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mission-briefing-chosen
@@ -5686,6 +5688,7 @@ tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
 tail then/steam-augury-take
+tail then/stone-idol-trap-exile
 tail then/string-of-disappearances-offer-payment
 tail then/stronghold-arena-lose-life
 tail then/sudden-demise-color-chosen
@@ -5725,6 +5728,7 @@ tail then/transforming-flourish-cast
 tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
+tail then/tuktuk-scrapper-destroyed
 tail then/twisted-fates-counters
 tail then/tyrant-of-discord-repeat
 tail then/ulamogs-nullifier-counter

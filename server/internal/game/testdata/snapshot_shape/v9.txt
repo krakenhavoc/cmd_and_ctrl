@@ -94118,6 +94118,8 @@ turnTally.diedSubtypes{}	number:int
 turnTally.entered	map:array
 turnTally.enteredCardTypes	map:string
 turnTally.enteredCardTypes{}	number:int
+turnTally.enteredCreatureColors	map:string
+turnTally.enteredCreatureColors{}	number:int
 turnTally.enteredCreatures	array
 turnTally.enteredCreatures[]	object
 turnTally.enteredCreatures[].card	custom(uuid.UUID)
