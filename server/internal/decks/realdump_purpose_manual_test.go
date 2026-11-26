@@ -381,6 +381,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 458 (#5575).
 	"Cathedral Membrane": "its death trigger deals 6 damage only to the creature it blocked (one creature in combat), not to a board",
+
+	// S82 OLD batch 483 (#5581).
+	"Hellcarver Demon": "sacrifices only its own controller's other permanents, a cost it pays itself, and touches no opponent's board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
