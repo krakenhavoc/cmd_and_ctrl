@@ -26,13 +26,7 @@ func init() {
 		Name:         "Battle Cry Goblin",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.S82AfrB09PackTactics("Battle Cry Goblin — pack tactics: a tapped and attacking Goblin", func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				tmpl := effects.TokenCard("1/1 red Goblin")
-				tmpl.Tapped = true
-				tmpl.AttackingTarget = ctx.Trigger().Event.Target
-				return effects.CreateToken{Controller: item.Controller, Template: tmpl, N: 1}.Apply(ctx)
-			}),
+			effects.S82AfrB09PackTactics("Battle Cry Goblin — pack tactics: a tapped and attacking Goblin", effects.OldB351TappedAttackingTokenLikeTheAttacker("1/1 red Goblin")),
 		},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}{R}: Goblins you control get +1/+0 and gain haste until end of turn.",
