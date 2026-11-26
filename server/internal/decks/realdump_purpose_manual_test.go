@@ -384,6 +384,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 483 (#5581).
 	"Hellcarver Demon": "sacrifices only its own controller's other permanents, a cost it pays itself, and touches no opponent's board",
+
+	// S82 OLD batch 505 (#5586).
+	"Identity Crisis": "exiles the cards in one player's hand and graveyard, not permanents",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

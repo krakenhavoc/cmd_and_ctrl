@@ -130,6 +130,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 blue Bird with flying and vigilance":                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying", "vigilance"}},
 	"1/1 blue Illusion":                                             {Name: "Illusion", TypeLine: "Token Creature — Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Illusion with flying":                                 {Name: "Illusion", TypeLine: "Token Creature — Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"2/2 blue Illusion":                                             {Name: "Illusion", TypeLine: "Token Creature — Illusion", Power: 2, Toughness: 2, Colors: []string{"U"}},
 	"1/1 blue Fish":                                                 {Name: "Fish", TypeLine: "Token Creature — Fish", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Squid with islandwalk":                                {Name: "Squid", TypeLine: "Token Creature — Squid", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"islandwalk"}},
 	"1/1 blue Merfolk":                                              {Name: "Merfolk", TypeLine: "Token Creature — Merfolk", Power: 1, Toughness: 1, Colors: []string{"U"}},
@@ -783,4 +784,12 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 461 (#5575): Chancellor of the Forge's Goblins (the printed token has no haste; the text gives it).
 	"1/1 red Phyrexian Goblin with haste": {Name: "Phyrexian Goblin", TypeLine: "Token Creature — Phyrexian Goblin", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+
+	// S82 OLD batch 496: Kalitas, Bloodchief of Ghet's X/X Vampire (printed */*; a 0/0
+	// placeholder, set to the destroyed creature's power and toughness as it is created).
+	// Zektar Shrine Expedition's 7/1 Elemental shares the existing Elemental Appeal row.
+	"0/0 black Vampire": {Name: "Vampire", TypeLine: "Token Creature — Vampire", Colors: []string{"B"}, PrintedPTKnown: true},
+
+	// S82 OLD batch 503 (#5586): Predatory Advantage's Lizard.
+	"2/2 green Lizard": {Name: "Lizard", TypeLine: "Token Creature — Lizard", Power: 2, Toughness: 2, Colors: []string{"G"}},
 }

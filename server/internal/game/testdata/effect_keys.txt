@@ -159,6 +159,7 @@ body delifs-cube/no-combat-damage-and-a-cube-counter
 body departed/token-copies-of-artifacts-and-creatures
 body desert-warfare/put-listed-onto-the-battlefield
 body desperate-measures/draw-two
+body destroy/old-b499-the-object
 body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
@@ -1308,6 +1309,8 @@ choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
 choose choose-cards/mind-swords-exile-two
 choose choose-cards/minion-of-the-mighty-put
+choose choose-cards/mires-toll-discard
+choose choose-cards/mires-toll-reveal
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mission-briefing-chosen
@@ -1484,6 +1487,7 @@ choose choose-cards/old-b386-reincarnation-return
 choose choose-cards/old-b387-order-of-succession-pick
 choose choose-cards/old-b447-graveyard-shovel-exile
 choose choose-cards/old-b493-attach-equipment
+choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -1681,6 +1685,7 @@ choose choose-cards/s82-old-b472-clone-shell-imprint
 choose choose-cards/s82-old-b472-discard-or-sacrifice
 choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-old-b497-chandra-ablaze-discard
+choose choose-cards/s82-old-b498-living-tsunami-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1977,6 +1982,7 @@ coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
+coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
 coinflip coin-flip/tavern-swindler-gain
@@ -3067,6 +3073,7 @@ payunless pay-unless/edgars-awakening-return
 payunless pay-unless/eirdu-transform
 payunless pay-unless/eldrazi-obligator-threaten
 payunless pay-unless/electro-assaulting-battery-damage
+payunless pay-unless/electropotence-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
 payunless pay-unless/elven-bow-token-and-attach
@@ -4203,6 +4210,7 @@ tail descent-into-madness/exile
 tail destroy-then/smashing-success-treasure
 tail destroy-then/sylvan-primordial-forests
 tail destroy/nissas-defeat-draw-for-a-nissa
+tail destroy/old-b496-kalitas-vampire
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
 tail dice/aberrant-mind-sorcerer-table
@@ -4994,6 +5002,7 @@ tail s82-old-b370/deicide-after-exile
 tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
+tail s82-old-b498/living-tsunami-after-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5307,6 +5316,7 @@ tail tail/tablet-of-the-guilds-second-color
 tail tail/tayam-after-mill
 tail tail/the-great-aurora-shuffled
 tail tail/the-moment-then-sacrifice
+tail tail/thought-hemorrhage-exiled
 tail tail/time-reaper-gain-life
 tail tail/uchuulon-copy
 tail tail/unauthorized-exit-surveil
@@ -5565,6 +5575,7 @@ tail then/lim-duls-vault-looked
 tail then/living-lore-cast
 tail then/lobelia-treasures
 tail then/locke-treasure-hunter-mug-step
+tail then/loss-shuffle-all-draw-seven
 tail then/lost-legacy-named
 tail then/lumbering-battlement-exiled-one
 tail then/make-an-example-chosen-pile
@@ -5585,6 +5596,7 @@ tail then/mirror-match-exile-at-end-of-combat
 tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/morbid-bloom-saprolings
 tail then/mortal-obstinacy-destroy
 tail then/murk-strider-then
 tail then/mystery-key-draw-three
@@ -5609,6 +5621,9 @@ tail then/old-b179-emergency-powers-next
 tail then/old-b240-unesh-take
 tail then/old-b386-augury-adept-gain
 tail then/old-b443-seance-copy
+tail then/old-b499-shuffle-carried
+tail then/old-b499-sphinx-found
+tail then/old-b499-sphinx-named
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
@@ -5742,6 +5757,7 @@ tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
 tail then/std-b15-strongbox-raider-choose
 tail then/steam-augury-take
+tail then/stone-idol-trap-exile
 tail then/string-of-disappearances-offer-payment
 tail then/stronghold-arena-lose-life
 tail then/sudden-demise-color-chosen
@@ -5774,6 +5790,7 @@ tail then/the-tale-of-tamiyo-milled
 tail then/thief-of-existence-exiled
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/thornplate-intimidator-punisher-sacrificed
+tail then/thought-hemorrhage-named
 tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
@@ -5781,6 +5798,7 @@ tail then/transforming-flourish-cast
 tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
+tail then/tuktuk-scrapper-destroyed
 tail then/twisted-fates-counters
 tail then/tyrant-of-discord-repeat
 tail then/ulamogs-nullifier-counter

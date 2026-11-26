@@ -387,6 +387,17 @@ type TurnTally struct {
 	// ruling says the artifact may since have left, stopped being an
 	// artifact or changed controller.
 	EnteredCardTypes map[string]int `json:"enteredCardTypes,omitempty"`
+	// EnteredCreatureColors counts the CREATURES that entered the battlefield
+	// under each player this turn, per colour they had as they entered
+	// (S82 OLD b488, Permafrost Trap's "an opponent had a green creature
+	// enter the battlefield under their control this turn"), keyed by
+	// subtypeTallyKey with the colour letter in lowercase ("g"). Judged after
+	// the layers, as EnteredFliers is, so a creature that has since died,
+	// changed colour or changed hands still answers; each entry bumps each of
+	// its colours once and a colourless creature bumps none. Read through
+	// Game.EnteredCreatureOfColorThisTurn. Additive: a file without it
+	// restores no entries.
+	EnteredCreatureColors map[string]int `json:"enteredCreatureColors,omitempty"`
 	// Entered counts the battlefield entries each permanent made this
 	// turn, keyed by the instance ID the entry produced. Read through
 	// Game.EnteredThisTurn.
@@ -2092,6 +2103,33 @@ func (g *Game) recordEnteredFlierLocked(controller uuid.UUID, c *Card) {
 	g.TurnTally.EnteredFliers = append(g.TurnTally.EnteredFliers, EnteredFlierRecord{Controller: controller, Card: c.InstanceID})
 }
 
+// recordEnteredCreatureColorsLocked bumps TurnTally.EnteredCreatureColors once
+// per colour of an entering creature, as it entered (after the layers).
+func (g *Game) recordEnteredCreatureColorsLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil || c == nil || !c.IsCreature() {
+		return
+	}
+	for _, col := range c.EffectiveColors() {
+		if g.TurnTally.EnteredCreatureColors == nil {
+			g.TurnTally.EnteredCreatureColors = map[string]int{}
+		}
+		g.TurnTally.EnteredCreatureColors[subtypeTallyKey(controller, col)]++
+	}
+}
+
+// EnteredCreatureOfColorThisTurn reports how many creatures of the colour
+// `letter` ("G") entered the battlefield under playerID's control this turn,
+// judged as each entered (TurnTally.EnteredCreatureColors): a token counts, a
+// creature that has since left or changed colour still counts.
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredCreatureOfColorThisTurn(playerID uuid.UUID, letter string) int {
+	if playerID == uuid.Nil || letter == "" {
+		return 0
+	}
+	return g.TurnTally.EnteredCreatureColors[subtypeTallyKey(playerID, letter)]
+}
+
 // recordEnteredCreatureLocked notes a creature entering under `controller`
 // (TurnTally.EnteredCreatures).
 func (g *Game) recordEnteredCreatureLocked(controller uuid.UUID, c *Card) {
@@ -2312,6 +2350,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.PrevLifeLosers = append([]uuid.UUID(nil), t.PrevLifeLosers...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
+	out.EnteredCreatureColors = copyStringIntMap(t.EnteredCreatureColors)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.EnteredFliers = append([]EnteredFlierRecord(nil), t.EnteredFliers...)
 	out.EnteredCreatures = append([]EnteredCreatureRecord(nil), t.EnteredCreatures...)
@@ -2665,6 +2704,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		g.recordEnteredSubtypesLocked(controller, entered)
 		g.recordEnteredCardTypesLocked(controller, entered)
 		g.recordEnteredFlierLocked(controller, entered)
+		g.recordEnteredCreatureColorsLocked(controller, entered)
 		g.recordEnteredCreatureLocked(controller, entered)
 		if controller != uuid.Nil && entered.IsCreature() && !entered.IsToken() {
 			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NontokenCreaturesEntered++ })

@@ -302,6 +302,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Deathpact Angel's Cleric (S82 OLD batch 416, #5565).
 	PrintedOldB416Cleric,
 
+	// Dragon Broodmother's Dragon (S82 OLD batch 503, #5586).
+	PrintedOldB503Dragon,
+
 	// Magic 2015 (S82 OLD batch 356, #5556): Brood Keeper's Dragon, Goblin
 	// Kaboomist's Land Mine and Kalonian Twingrove's Treefolk Warrior.
 	PrintedOldB356Dragon,
