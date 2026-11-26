@@ -5215,6 +5215,8 @@ tail tail/gap-b213-intellect-devourer-hold
 tail tail/gap-b216-druid-emerald-grove-found
 tail tail/gap-b216-durnan-exiled
 tail tail/gap-b82-savage-order-indestructible
+tail tail/hellcarver-demon-exiled
+tail tail/hellcarver-demon-sacrificed
 tail tail/hide-in-plain-sight-rest
 tail tail/induced-amnesia-draw
 tail tail/intrude-on-the-mind-rest
