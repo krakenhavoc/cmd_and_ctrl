@@ -1628,6 +1628,8 @@ choose choose-cards/s82-old-b371-disciple-of-deceit-discard
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
+choose choose-cards/s82-old-b413-bane-alley-broker-exile
+choose choose-cards/s82-old-b413-bane-alley-broker-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -4071,6 +4073,7 @@ tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
 tail destroy-then/smashing-success-treasure
+tail destroy-then/sylvan-primordial-forests
 tail destroy/nissas-defeat-draw-for-a-nissa
 tail devastating-onslaught/haste-and-sacrifice-copies
 tail diamond-city/take-one
@@ -4608,6 +4611,7 @@ tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
 tail mill-then-take/vivien-on-the-hunt
 tail mill-then-take/wasteful-harvest
+tail mill-then/coerced-confession-draw
 tail mill-then/lluwen-imperfect-naturalist
 tail mill-then/renegade-reaper-angel
 tail mill-then/sequestered-stash
@@ -5005,6 +5009,7 @@ tail shifting-shadow/attach-then-bottom
 tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail sifter-wurm/reveal-gain-life
+tail signal-the-clans/found
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
 tail simic-guildmage/take-one
