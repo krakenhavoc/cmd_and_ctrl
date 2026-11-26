@@ -920,6 +920,7 @@ choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/desecrate-reality-return
 choose choose-cards/devastating-mastery-bounce
 choose choose-cards/devourer-of-destiny-keep-one
+choose choose-cards/devout-invocation-tap
 choose choose-cards/dihada-binder-of-wills-take
 choose choose-cards/dimir-machinations-exile
 choose choose-cards/dinosaur-headdress-copy
@@ -1922,6 +1923,7 @@ coinflip coin-flip/krark-the-thumbless
 coinflip coin-flip/mana-crypt-damage
 coinflip coin-flip/mirror-march-flip-until-you-lose
 coinflip coin-flip/mogg-assassin
+coinflip coin-flip/molten-birth
 coinflip coin-flip/mutalith-vortex-beast-warp-vortex
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
