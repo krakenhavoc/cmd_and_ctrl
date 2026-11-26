@@ -272,6 +272,11 @@ func (g *Game) resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 		// Lilah: exile it, and it becomes plotted once it is there.
 		out = append(out, exit("Exile it, and it becomes plotted", resolutionExitExilePlot))
 	}
+	if item != nil && !item.IsCopy && item.HandInsteadOfGraveyard {
+		// Soulfire Grand Master: the card goes to its owner's hand instead of
+		// its graveyard, through buyback's exit.
+		out = append(out, exit("Put it into your hand instead of into your graveyard", resolutionExitBuyback))
+	}
 	if item != nil && !item.IsCopy && item.ExileAndReturn {
 		// Feather: exile it; it returns to hand at the next end step.
 		out = append(out, exit("Exile it, and return it to your hand at the beginning of the next end step", resolutionExitExileReturn))

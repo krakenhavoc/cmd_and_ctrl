@@ -1953,6 +1953,10 @@ type stackItemSnapshot struct {
 	// spell and return it to its controller's hand at the beginning of the
 	// next end step. Carried for the reason ExileWithCounter is.
 	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
+	// HandInsteadOfGraveyard is Soulfire Grand Master's mark: the resolving
+	// spell goes to its owner's hand instead of its graveyard. Carried for the
+	// reason ExileAndReturn is.
+	HandInsteadOfGraveyard bool `json:"handInsteadOfGraveyard,omitempty"`
 	// ExileAndSuspend is Gandalf of the Secret Fire's mark: exile the
 	// resolving spell with this many time counters and give it suspend.
 	// Carried for the reason ExileWithCounter is.
@@ -3618,6 +3622,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
 		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		HandInsteadOfGraveyard:   s.HandInsteadOfGraveyard,
 		Commutes:                 s.Commutes,
 		Paid:                     clonePaidCost(s.Paid),
 		HasEffect:                s.Effect != nil,
@@ -4873,6 +4878,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
 		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		HandInsteadOfGraveyard:   s.HandInsteadOfGraveyard,
 		Commutes:                 s.Commutes,
 		Paid:                     clonePaidCost(s.Paid),
 		Body:                     s.Body,

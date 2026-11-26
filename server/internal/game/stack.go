@@ -602,6 +602,14 @@ type StackItem struct {
 	// MarkSpellExilesAndReturnsForEffect; never on a copy.
 	ExileAndReturn bool `json:"exileAndReturn,omitempty"`
 
+	// HandInsteadOfGraveyard is Soulfire Grand Master's "put that card into your
+	// hand instead of into your graveyard as it resolves" as a fact about this
+	// stack object (a spent NextSpellPromise.HandInsteadOfGraveyard). Resolution
+	// only, like ExileAndReturn: a countered or fizzled spell goes to the
+	// graveyard. It is one of the resolution exits; never set on a copy.
+	// Additive within the snapshot version.
+	HandInsteadOfGraveyard bool `json:"handInsteadOfGraveyard,omitempty"`
+
 	// ExileAndSuspend, when positive, is Gandalf of the Secret Fire's
 	// "exile that card with three time counters on it instead of putting
 	// it into your graveyard as it resolves. Then if the exiled card

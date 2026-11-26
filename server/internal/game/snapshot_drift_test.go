@@ -1081,6 +1081,7 @@ var stackItemFields = plan(
 	"ExileWithCounter", carried, "",
 	"ExileAndPlot", carried, "",
 	"ExileAndReturn", carried, "",
+	"HandInsteadOfGraveyard", carried, "",
 	"ExileAndSuspend", carried, "",
 	"ExileLinkedTo", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",

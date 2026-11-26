@@ -1010,6 +1010,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
 		BottomInsteadOfGraveyard: s.BottomInsteadOfGraveyard,
+		HandInsteadOfGraveyard:   s.HandInsteadOfGraveyard,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each
 		// token's Restrictions) because an undo snapshot that
