@@ -2111,6 +2111,7 @@ confirm confirm/farrels-zealot-damage
 confirm confirm/fetid-gargantua-draw
 confirm confirm/firebender-ascension-copy
 confirm confirm/fishing-gear-put
+confirm confirm/flamespeaker-s-will-sacrifice
 confirm confirm/flaxen-intruder-sacrifice
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
@@ -2178,6 +2179,7 @@ confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/moon-circuit-hacker-draw
 confirm confirm/moonveil-regent-discard-hand
+confirm confirm/mortal-obstinacy-sacrifice
 confirm confirm/moss-pit-skeleton-top-of-library
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
@@ -5304,6 +5306,7 @@ tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
 tail then/firemind-s-foresight-second
 tail then/firemind-s-foresight-third
+tail then/flamespeaker-s-will-destroy
 tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
@@ -5402,6 +5405,7 @@ tail then/mirror-match-exile-at-end-of-combat
 tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/mortal-obstinacy-destroy
 tail then/murk-strider-then
 tail then/mystery-key-draw-three
 tail then/nahiri-heir-of-the-ancients-attach-equipment
