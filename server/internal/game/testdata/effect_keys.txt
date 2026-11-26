@@ -587,6 +587,7 @@ body sigil-of-myrkul/boost
 body silumgar-butcher/minus-three
 body silumgar-sorcerer/counter
 body skyfisher-spider/destroy
+body slave-of-bolas/sacrifice
 body slumbering-walker/return-from-graveyard
 body smoke-bomb/unblockable
 body snaremaster-sprite/tap-and-stun
@@ -2878,6 +2879,7 @@ option option-pick/sylvan-offering-elves
 option option-pick/sylvan-offering-treefolk
 option option-pick/tahngarth-first-mate-defender
 option option-pick/tap-or-untap-that-permanent
+option option-pick/tap-unless-pays-life
 option option-pick/tasigur-the-golden-fang-opponent
 option option-pick/teferis-realm-phase-out
 option option-pick/teyo-geometric-tactician-direction
