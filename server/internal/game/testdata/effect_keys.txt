@@ -1642,6 +1642,7 @@ choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
 choose choose-cards/s82-old-b413-bane-alley-broker-exile
 choose choose-cards/s82-old-b413-bane-alley-broker-return
+choose choose-cards/s82-old-b406-blast-of-genius-damage
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2453,6 +2454,7 @@ drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen s82-old-b259/discard-if-no-artifacts
 drawthen s82-old-b322/jace-discard
+drawthen s82-old-b406/blast-of-genius-discard
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
