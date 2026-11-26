@@ -105,7 +105,11 @@ body catalog/triggered
 body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
+body chancellor-of-the-annex/first-spell-counter
+body chancellor-of-the-dross/first-upkeep-drain
+body chancellor-of-the-forge/first-upkeep-goblin
 body chancellor-of-the-spires/first-upkeep-mill
+body chancellor-of-the-tangle/first-main-mana
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
@@ -1676,6 +1680,7 @@ choose choose-cards/s82-old-b471-psychic-miasma-land
 choose choose-cards/s82-old-b472-clone-shell-imprint
 choose choose-cards/s82-old-b472-discard-or-sacrifice
 choose choose-cards/s82-old-b472-glint-hawk-return
+choose choose-cards/s82-old-b497-chandra-ablaze-discard
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2311,6 +2316,7 @@ confirm confirm/s82-old-b371-dakra-mystic
 confirm confirm/s82-old-b450-caravan-vigil-morbid
 confirm confirm/s82-old-b450-cloistered-youth-transform
 confirm confirm/s82-old-b450-thraben-sentry-transform
+confirm confirm/s82-old-b462-auriok-survivors-attach
 confirm confirm/s82-old-b464-vedalken-infuser-counter
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
@@ -2585,6 +2591,7 @@ number number/s82-old-b280-diminishing-returns-draw-up-to-seven
 number number/s82-old-b281-void-number
 number number/s82-old-b408-vizkopa-confessor-paid
 number number/s82-old-b411-bioshift-move
+number number/s82-old-b459-hex-parasite-remove
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -2845,6 +2852,8 @@ option option-pick/s82-old-b408-angelic-skirmisher
 option option-pick/s82-old-b408-thrull-parasite-counter
 option option-pick/s82-old-b435-primal-surge
 option option-pick/s82-old-b435-rite-of-ruin-order
+option option-pick/s82-old-b459-apostles-blessing
+option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3264,6 +3273,7 @@ payunless pay-unless/s82-old-b351-goblinslide-goblin
 payunless pay-unless/s82-old-b352-kheru-lich-lord-return
 payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
 payunless pay-unless/s82-old-b369-knowledge-and-power-damage
+payunless pay-unless/s82-old-b459-isolation-cell-life
 payunless pay-unless/s82-old-b471-embersmith-damage
 payunless pay-unless/s82-old-b472-lifesmith-life
 payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
@@ -3964,6 +3974,7 @@ tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
 tail attacking-tokens/war-effort-sacrifice-the-warrior
 tail augusta-order-returned/after-exile
+tail auriok-survivors/offer-attach
 tail author-of-shadows/choose-nonland
 tail avatar-b24/put-n-counters-on-each-next
 tail avatar-b30/bison-whistle-after-bison
@@ -4874,6 +4885,7 @@ tail portal-to-phyrexia/phyrexian
 tail portent-of-calamity/after-graveyard
 tail portent/ask-shuffle
 tail possibility-storm/walk
+tail postmortem-lunge/haste-and-exile
 tail power-pack/after-exile
 tail primal-amulet/ask
 tail primal-amulet/transform
@@ -5686,6 +5698,8 @@ tail then/s82-old-b371-king-macar-gold
 tail then/s82-old-b371-ritual-of-the-returned-zombie
 tail then/s82-old-b378-vortex-shuffle
 tail then/s82-old-b435-primal-surge-exiled
+tail then/s82-old-b461-blind-zealot-destroy
+tail then/s82-old-b461-impaler-shrike-draw
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

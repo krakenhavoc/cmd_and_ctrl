@@ -52,7 +52,7 @@ func hexParasiteAsk(ctx *Context, parasite, target uuid.UUID, after string, budg
 					Max:      min(budget, c.Counters[kind]),
 					Question: "Hex Parasite — how many " + kind + " counters do you remove?",
 					Unit:     game.PayAmountCounters,
-					Then:     hexParasiteStep,
+					Then:     hexParasiteStep(),
 					Carry:    []uuid.UUID{parasite, target},
 					Words:    []string{kind},
 					Nums:     []int{budget, removed},
@@ -63,11 +63,18 @@ func hexParasiteAsk(ctx *Context, parasite, target uuid.UUID, after string, budg
 	return hexParasitePump(ctx, parasite, removed)
 }
 
-// hexParasiteStep is registered in init: the chain refers back to itself.
-var hexParasiteStep game.NumberThen
+// hexParasiteRemoveKey is the chain's number branch. The chain refers back
+// to itself, so hexParasiteAsk looks the branch up by key when it runs
+// rather than naming a package variable (which would be an initialization
+// cycle), and the core keeps no init() (#5906).
+const hexParasiteRemoveKey = "number/s82-old-b459-hex-parasite-remove"
 
-func init() {
-	hexParasiteStep = NumberThen("number/s82-old-b459-hex-parasite-remove", hexParasiteRemoved)
+var _ = NumberThen(hexParasiteRemoveKey, hexParasiteRemoved)
+
+// hexParasiteStep is the registered branch.
+func hexParasiteStep() game.NumberThen {
+	then, _ := game.NumberThenOf(hexParasiteRemoveKey)
+	return then
 }
 
 func hexParasiteRemoved(ctx *Context, r game.NumberAnswer) error {
