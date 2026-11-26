@@ -3028,6 +3028,7 @@ payunless pay-unless/haunted-library-spirit
 payunless pay-unless/hawkeye-trick-arrows
 payunless pay-unless/heavyweight-demolisher-tap
 payunless pay-unless/hellkite-charger-extra-combat
+payunless pay-unless/hero-of-leina-tower-counters
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
 payunless pay-unless/hired-heist-draw
