@@ -2113,6 +2113,7 @@ confirm confirm/cosmic-rebirth-battlefield-or-hand
 confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/cultivator-of-blades-pump
+confirm confirm/curse-of-echoes-copy
 confirm confirm/curse-of-shallow-graves
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
@@ -4817,6 +4818,7 @@ tail push-the-limit/sacrifice-animate-haste
 tail put-from-hand/jadzi-journey-lands
 tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/aspiring-champion-shuffle-then-demon-damage
+tail put-from-library/call-to-the-kindred-bottom
 tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/divergent-transformations-shuffle
 tail put-from-library/guild-feud-opponent
