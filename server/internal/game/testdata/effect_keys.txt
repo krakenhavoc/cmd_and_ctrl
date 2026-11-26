@@ -4647,8 +4647,10 @@ tail mill-then/sludge-titan
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
 tail mimic-vat/return-others
+tail mindshrieker/boost-by-milled-mana-value
 tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
+tail mirror-mad-phantasm/shuffled-in-then-reveal
 tail mirror-march/exile-the-copies
 tail misfortune-teller/exiled-card-clause
 tail mission-briefing/choose
