@@ -1454,6 +1454,7 @@ choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
 choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
+choose choose-cards/oracle-of-bones-cast
 choose choose-cards/ordered-pick-leg
 choose choose-cards/organ-hoarder-take
 choose choose-cards/orphans-of-the-wheat-tap
