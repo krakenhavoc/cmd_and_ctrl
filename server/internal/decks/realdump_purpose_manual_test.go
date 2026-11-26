@@ -357,6 +357,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batches 336 (#5552).
 	"Arcbond":         "the damage it deals each other creature and player is whatever the chosen creature is later dealt this turn: no fixed amount a sweep can declare, and none at all if it is never damaged",
 	"Shockmaw Dragon": "its combat-damage trigger deals 1 damage to the creatures of the one player it hit: a conditional ping at a single player's board, not a wipe",
+
+	// S82 OLD batch 344 (#5554).
+	"Blinding Spray": "a one-turn -4/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
