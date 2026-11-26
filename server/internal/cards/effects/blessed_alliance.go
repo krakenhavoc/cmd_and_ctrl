@@ -41,17 +41,7 @@ func init() {
 				ForTargets(game.TargetPurpose{Slot: 0, LifeGain: 4})),
 			ModeDoing("Untap up to two target creatures.",
 				TargetCreature("up to two target creatures").WithCount(0, 2),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					for _, t := range ctx.ModeTargets(occ) {
-						if !ctx.IsTargetLegal(t) {
-							continue
-						}
-						if err := (UntapTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				S82OldB485UntapModeTargets),
 			ModeDoing("Target opponent sacrifices an attacking creature of their choice.",
 				TargetPlayer("target opponent", Opponent()),
 				func(_ *game.StackItem, ctx *Context, occ int) error {

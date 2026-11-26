@@ -105,6 +105,7 @@ body catalog/triggered
 body cavalier-of-night/destroy
 body caveat-h2/vizkopa-guildmage-drain
 body cemetery-desecrator/modes
+body chancellor-of-the-spires/first-upkeep-mill
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
@@ -420,6 +421,7 @@ body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
 body ogre-battlecaster/pump
+body ogre-geargrabber/unattach-the-equipment
 body old-b036/mount-velus-manticore-strike
 body old-b042/rushed-rebirth-search
 body old-b049/devouring-tendrils-gain-2
@@ -553,6 +555,7 @@ body s82-old-b364/destroy-at-end-of-combat
 body s82-old-b370/destroy-all-permanents
 body s82-old-b389/triton-tactics-tap-blocked
 body s82-old-b408/obzedat-return
+body s82-old-b464/virulent-wound-poison
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1103,6 +1106,7 @@ choose choose-cards/isochron-scepter-imprint
 choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jace-living-guildpact-put-one-into-graveyard
+choose choose-cards/jaddi-lifestrider-tap
 choose choose-cards/jadzi-journey-return
 choose choose-cards/jarads-orders-settle
 choose choose-cards/jaya-fiery-negotiator-play
@@ -1663,6 +1667,11 @@ choose choose-cards/s82-old-b426-search-the-city
 choose choose-cards/s82-old-b431-see-beyond-shuffle
 choose choose-cards/s82-old-b449-scholar-discarded
 choose choose-cards/s82-old-b452-sutured-ghoul-exile
+choose choose-cards/s82-old-b463-psychic-surgery-exile
+choose choose-cards/s82-old-b471-psychic-miasma-land
+choose choose-cards/s82-old-b472-clone-shell-imprint
+choose choose-cards/s82-old-b472-discard-or-sacrifice
+choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1837,6 +1846,7 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/vapor-snare-return-a-land
 choose choose-cards/vault-101-attach
 choose choose-cards/vault-101-put
 choose choose-cards/vault-13-dwellers-journey-return-two
@@ -2051,6 +2061,7 @@ condition ltb/the-listed-object
 condition ltb/ugin-the-ineffable-spirit
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
+condition ogre-geargrabber/lost-control-of-the-equipment
 condition old-b050/any-creature-blocks
 condition old-b059/flying-creatures-hit-a-player
 condition old-b059/you-cast-mv-5-or-more
@@ -2130,6 +2141,7 @@ confirm confirm/curse-of-shallow-graves
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
 confirm confirm/dawnbreak-reclaimer-return
+confirm confirm/dead-reckoning-tuck
 confirm confirm/deadly-complication-unsuspect
 confirm confirm/decoy-gambit-draw-or-bounce
 confirm confirm/delifs-cone-gain-life
@@ -2294,6 +2306,7 @@ confirm confirm/s82-old-b371-dakra-mystic
 confirm confirm/s82-old-b450-caravan-vigil-morbid
 confirm confirm/s82-old-b450-cloistered-youth-transform
 confirm confirm/s82-old-b450-thraben-sentry-transform
+confirm confirm/s82-old-b464-vedalken-infuser-counter
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3240,6 +3253,9 @@ payunless pay-unless/s82-old-b351-goblinslide-goblin
 payunless pay-unless/s82-old-b352-kheru-lich-lord-return
 payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
 payunless pay-unless/s82-old-b369-knowledge-and-power-damage
+payunless pay-unless/s82-old-b471-embersmith-damage
+payunless pay-unless/s82-old-b472-lifesmith-life
+payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3338,6 +3354,7 @@ pick revealed-pick/dreams-of-steel-and-oil-graveyard
 pick revealed-pick/elite-spellbinder-exile
 pick revealed-pick/nightsnare-discard-two
 pick revealed-pick/oildeep-gearhulk-draw
+pick revealed-pick/perish-the-thought-shuffle
 pick revealed-pick/pick-the-brain-search
 pick revealed-pick/psychic-intrusion-may-cast
 pick revealed-pick/reap-intellect-search
@@ -4159,6 +4176,7 @@ tail demilich/copy-exiled
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
 tail demonlord-belzenlok/put-into-hand
+tail descent-into-madness/exile
 tail destroy-then/smashing-success-treasure
 tail destroy-then/sylvan-primordial-forests
 tail destroy/nissas-defeat-draw-for-a-nissa
@@ -4600,6 +4618,7 @@ tail kinscaer-sentry/entered
 tail kinzu-of-the-bleak-coven/copy
 tail kishla-trawlers/after-exile
 tail klothys/exiled
+tail knowledge-pool/exiled-offer-cast
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
@@ -4949,6 +4968,7 @@ tail s82-old-b170/bond-of-insight-return
 tail s82-old-b370/deicide-after-exile
 tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
+tail s82-old-b472/glint-hawk-after-bounce
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5571,6 +5591,7 @@ tail then/paradoxical-outcome-draw
 tail then/patient-rebuilding-draw
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
+tail then/perish-the-thought-shuffled
 tail then/phenomenon-investigators-draw
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
@@ -5869,6 +5890,9 @@ tail wishclaw-talisman/hand-it-over
 tail wondrous-crucible/copy-and-cast
 tail worlds-within-worlds/return
 tail wrenn-and-realmbreaker/after-mill
+tail wwk/dead-reckoning-tucked
+tail wwk/scrib-nibblers-exiled-a-land-card
+tail wwk/vapor-snare-after-return
 tail yannik-scavenging-sentinel/exiled
 tail yavimaya-bloomsage/prepare
 tail yawgmoths-vile-offering/destroy-then-exile-this
