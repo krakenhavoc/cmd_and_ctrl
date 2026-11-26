@@ -130,7 +130,10 @@ func TestSnowAndLegendaryLandwalkDescribe(t *testing.T) {
 		}
 	}
 	all := LandwalkTokens()
-	if len(all) != len(landwalkTokens)+len(LandTypes)-5 {
-		t.Errorf("LandwalkTokens has %d, want the table plus every non-basic land type's snow token", len(all))
+	// The table, every non-basic land type's snow token, and (Traveler's
+	// Cloak) the plain "<type>walk" of every type the table does not name:
+	// the five basics and Desert are in it already.
+	if len(all) != len(landwalkTokens)+len(LandTypes)-5+len(LandTypes)-6 {
+		t.Errorf("LandwalkTokens has %d, want the table plus every non-basic land type's snow token and the plain tokens outside the table", len(all))
 	}
 }

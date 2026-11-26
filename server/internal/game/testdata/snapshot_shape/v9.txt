@@ -1149,6 +1149,7 @@ delayedTriggers[].copiesSpell.item.faceDown	string
 delayedTriggers[].copiesSpell.item.foretold	bool
 delayedTriggers[].copiesSpell.item.grantedBy	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.item.hadConvoke	bool
+delayedTriggers[].copiesSpell.item.handInsteadOfGraveyard	bool
 delayedTriggers[].copiesSpell.item.hasEffect	bool
 delayedTriggers[].copiesSpell.item.hasModeSpec	bool
 delayedTriggers[].copiesSpell.item.hasTargetSpec	bool
@@ -16589,6 +16590,7 @@ frozenEntries[].event.stackItem.faceDown	string
 frozenEntries[].event.stackItem.foretold	bool
 frozenEntries[].event.stackItem.grantedBy	custom(uuid.UUID)
 frozenEntries[].event.stackItem.hadConvoke	bool
+frozenEntries[].event.stackItem.handInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.hasEffect	bool
 frozenEntries[].event.stackItem.hasModeSpec	bool
 frozenEntries[].event.stackItem.hasTargetSpec	bool
@@ -25656,6 +25658,7 @@ lastKnownStack[].item.faceDown	string
 lastKnownStack[].item.foretold	bool
 lastKnownStack[].item.grantedBy	custom(uuid.UUID)
 lastKnownStack[].item.hadConvoke	bool
+lastKnownStack[].item.handInsteadOfGraveyard	bool
 lastKnownStack[].item.hasEffect	bool
 lastKnownStack[].item.hasModeSpec	bool
 lastKnownStack[].item.hasTargetSpec	bool
@@ -40496,6 +40499,7 @@ movesAwaitingTokens[].stackItem.faceDown	string
 movesAwaitingTokens[].stackItem.foretold	bool
 movesAwaitingTokens[].stackItem.grantedBy	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.hadConvoke	bool
+movesAwaitingTokens[].stackItem.handInsteadOfGraveyard	bool
 movesAwaitingTokens[].stackItem.hasEffect	bool
 movesAwaitingTokens[].stackItem.hasModeSpec	bool
 movesAwaitingTokens[].stackItem.hasTargetSpec	bool
@@ -48049,6 +48053,7 @@ pausedModeWalk.item.faceDown	string
 pausedModeWalk.item.foretold	bool
 pausedModeWalk.item.grantedBy	custom(uuid.UUID)
 pausedModeWalk.item.hadConvoke	bool
+pausedModeWalk.item.handInsteadOfGraveyard	bool
 pausedModeWalk.item.hasEffect	bool
 pausedModeWalk.item.hasModeSpec	bool
 pausedModeWalk.item.hasTargetSpec	bool
@@ -48444,6 +48449,7 @@ pausedResolutionTail.item.faceDown	string
 pausedResolutionTail.item.foretold	bool
 pausedResolutionTail.item.grantedBy	custom(uuid.UUID)
 pausedResolutionTail.item.hadConvoke	bool
+pausedResolutionTail.item.handInsteadOfGraveyard	bool
 pausedResolutionTail.item.hasEffect	bool
 pausedResolutionTail.item.hasModeSpec	bool
 pausedResolutionTail.item.hasTargetSpec	bool
@@ -48833,6 +48839,7 @@ pausedStepWalk.item.faceDown	string
 pausedStepWalk.item.foretold	bool
 pausedStepWalk.item.grantedBy	custom(uuid.UUID)
 pausedStepWalk.item.hadConvoke	bool
+pausedStepWalk.item.handInsteadOfGraveyard	bool
 pausedStepWalk.item.hasEffect	bool
 pausedStepWalk.item.hasModeSpec	bool
 pausedStepWalk.item.hasTargetSpec	bool
@@ -51949,6 +51956,7 @@ pendingChoices[].copyWalk.item.faceDown	string
 pendingChoices[].copyWalk.item.foretold	bool
 pendingChoices[].copyWalk.item.grantedBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.hadConvoke	bool
+pendingChoices[].copyWalk.item.handInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.hasEffect	bool
 pendingChoices[].copyWalk.item.hasModeSpec	bool
 pendingChoices[].copyWalk.item.hasTargetSpec	bool
@@ -71751,6 +71759,7 @@ pendingChoices[].replacementResume.event.stackItem.faceDown	string
 pendingChoices[].replacementResume.event.stackItem.foretold	bool
 pendingChoices[].replacementResume.event.stackItem.grantedBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.hadConvoke	bool
+pendingChoices[].replacementResume.event.stackItem.handInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.hasEffect	bool
 pendingChoices[].replacementResume.event.stackItem.hasModeSpec	bool
 pendingChoices[].replacementResume.event.stackItem.hasTargetSpec	bool
@@ -83135,6 +83144,7 @@ pendingTriggers[].faceDown	string
 pendingTriggers[].foretold	bool
 pendingTriggers[].grantedBy	custom(uuid.UUID)
 pendingTriggers[].hadConvoke	bool
+pendingTriggers[].handInsteadOfGraveyard	bool
 pendingTriggers[].hasEffect	bool
 pendingTriggers[].hasModeSpec	bool
 pendingTriggers[].hasTargetSpec	bool
@@ -86091,6 +86101,7 @@ resolving.item.faceDown	string
 resolving.item.foretold	bool
 resolving.item.grantedBy	custom(uuid.UUID)
 resolving.item.hadConvoke	bool
+resolving.item.handInsteadOfGraveyard	bool
 resolving.item.hasEffect	bool
 resolving.item.hasModeSpec	bool
 resolving.item.hasTargetSpec	bool
@@ -92426,6 +92437,8 @@ seats[].statics[].nextSpell.filter.surveilledThisTurn	bool
 seats[].statics[].nextSpell.filter.withCounter	string
 seats[].statics[].nextSpell.flash	bool
 seats[].statics[].nextSpell.followUp	string
+seats[].statics[].nextSpell.fromHandOnly	bool
+seats[].statics[].nextSpell.handInsteadOfGraveyard	bool
 seats[].statics[].nextSpell.improvise	bool
 seats[].statics[].nextSpell.increase	number:int
 seats[].statics[].nextSpell.manaCostAnyType	bool
@@ -93133,6 +93146,7 @@ stackMeta[].faceDown	string
 stackMeta[].foretold	bool
 stackMeta[].grantedBy	custom(uuid.UUID)
 stackMeta[].hadConvoke	bool
+stackMeta[].handInsteadOfGraveyard	bool
 stackMeta[].hasEffect	bool
 stackMeta[].hasModeSpec	bool
 stackMeta[].hasTargetSpec	bool

@@ -181,6 +181,18 @@ type NextSpellPromise struct {
 	// version.
 	ManaCostAnyType bool `json:"manaCostAnyType,omitempty"`
 
+	// FromHandOnly narrows the promise to a spell cast from its caster's
+	// hand: "the next time you cast an instant or sorcery spell from your
+	// hand this turn" (Soulfire Grand Master). A spell cast from another zone
+	// does not spend it. Additive within the schema version.
+	FromHandOnly bool `json:"fromHandOnly,omitempty"`
+
+	// HandInsteadOfGraveyard is "put that card into your hand instead of into
+	// your graveyard as it resolves" (Soulfire Grand Master): the spend marks
+	// the spell's item (StackItem.HandInsteadOfGraveyard), and as it resolves
+	// the card goes to its owner's hand. Additive within the schema version.
+	HandInsteadOfGraveyard bool `json:"handInsteadOfGraveyard,omitempty"`
+
 	// Text is the clause as printed, for the log and the panel. Not a
 	// rules input.
 	Text string `json:"text,omitempty"`
@@ -446,7 +458,8 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []spentPr
 	)
 	for _, s := range p.Statics {
 		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Matches(*spell) &&
-			(!s.NextSpell.ManaCostAnyType || manaCostPromiseReaches(*spell, item.AltCost == "")) {
+			(!s.NextSpell.ManaCostAnyType || manaCostPromiseReaches(*spell, item.AltCost == "")) &&
+			(!s.NextSpell.FromHandOnly || item.CastFromZone == ZoneHand) {
 			spent = append(spent, s)
 			continue
 		}
@@ -465,6 +478,9 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []spentPr
 		if np.Counters > 0 && np.CounterKind != "" {
 			addPromisedCounterLocked(item,
 				PromisedCounter{Kind: np.CounterKind, Count: np.Counters, Source: s.Source, SourceName: s.Label})
+		}
+		if np.HandInsteadOfGraveyard {
+			item.HandInsteadOfGraveyard = true
 		}
 		if np.FollowUp != "" {
 			followUps = append(followUps, spentPromiseFollowUp{Key: np.FollowUp, Source: s.Source})

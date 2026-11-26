@@ -423,6 +423,7 @@ body old-b059/draw-two-then-discard-one
 body old-b059/look-at-that-hand-and-draw
 body old-b193/adarkar-valkyrie-return
 body old-b270/burn-away-exile-graveyard
+body old-b356/return-listed-tapped
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -840,6 +841,7 @@ choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-flameshaper-play
 choose choose-cards/chandra-legacy-of-fire-remove
+choose choose-cards/chandra-pyromaster-copy-three-times
 choose choose-cards/change-of-plans-discarded
 choose choose-cards/change-of-plans-phase-out
 choose choose-cards/chaos-shrines-black-crystal-return
@@ -1080,6 +1082,7 @@ choose choose-cards/isildurs-fateful-strike-exile
 choose choose-cards/isochron-scepter-imprint
 choose choose-cards/itazura-lingering-wick-to-hand
 choose choose-cards/izoni-center-of-the-web-collect-evidence
+choose choose-cards/jace-living-guildpact-put-one-into-graveyard
 choose choose-cards/jadzi-journey-return
 choose choose-cards/jaya-fiery-negotiator-play
 choose choose-cards/jiang-yanggu-alone-rest
@@ -1898,6 +1901,7 @@ coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
 coinflip coin-flip/fighting-chance-shields
+coinflip coin-flip/goblin-kaboomist
 coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
@@ -2702,6 +2706,7 @@ option option-pick/pippin-guard-of-the-citadel-card-type
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
+option option-pick/polymorphous-rush-model
 option option-pick/practiced-offense-keyword
 option option-pick/prince-of-thralls-pay-or-take
 option option-pick/protection-racket-answer
@@ -3144,6 +3149,10 @@ payunless pay-unless/s82-old-b199-skyrider-patrol
 payunless pay-unless/s82-old-b205-tenacious-dead-return
 payunless pay-unless/s82-old-b212-lingering-phantom-return
 payunless pay-unless/s82-old-b216-azor-gain-and-draw-x
+payunless pay-unless/s82-old-b351-goblinslide-goblin
+payunless pay-unless/s82-old-b352-kheru-lich-lord-return
+payunless pay-unless/s82-old-b352-quiet-contemplation-freeze
+payunless pay-unless/s82-old-b369-knowledge-and-power-damage
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3167,6 +3176,7 @@ payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
 payunless pay-unless/spined-tyrranax-counter
+payunless pay-unless/spirit-bonds-spirit
 payunless pay-unless/spirit-cairn-spirit
 payunless pay-unless/springheart-nantuko-copy-or-insect
 payunless pay-unless/starks-ingenuity-draw-x
@@ -3243,6 +3253,7 @@ pick revealed-pick/pick-the-brain-search
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/s82-old-b108-kitesail-freebooter-return
+pick revealed-pick/s82-old-b369-brain-maggot-return
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/soul-search-spirit
@@ -3471,6 +3482,7 @@ run prompt-run/indoctrination-attendant-return
 run prompt-run/infernal-offering-sacrificed
 run prompt-run/insatiable-appetite-sacrifice
 run prompt-run/invasion-of-new-capenna-sacrificed
+run prompt-run/invasive-species-return
 run prompt-run/ironclad-revolutionary-sacrifice
 run prompt-run/kardurs-vicious-return-sacrifice
 run prompt-run/kefka-court-mage-draw
@@ -3914,6 +3926,7 @@ tail cantankerous-keepers/after-mill
 tail capricious-hellraiser/choose-and-copy
 tail card-name/day-of-the-moon-goad
 tail card-name/s82-old-b321-infinite-obliteration
+tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
@@ -4408,6 +4421,7 @@ tail hostile-negotiations/after-second-pile
 tail hostile-negotiations/lose-life
 tail hotel-of-fears/praise-him
 tail hotshot-investigators/investigate
+tail hour-of-need/sphinx-for-each-exiled
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf
 tail hungry-for-more/sacrifice-at-next-end-step
@@ -5108,6 +5122,7 @@ tail tail/s82-old-b110-idol-of-endurance-hold
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
+tail tail/stain-the-mind-exiled
 tail tail/steam-augury-rest
 tail tail/tayam-after-mill
 tail tail/the-great-aurora-shuffled
@@ -5216,6 +5231,7 @@ tail then/chain-of-acid-offer-copy
 tail then/chain-of-vapor-offer-chain
 tail then/chain-sacrificed-offer-copy
 tail then/chandra-acolyte-of-flame-elementals
+tail then/chandra-pyromaster-exiled
 tail then/change-creature-type-word-replace
 tail then/change-creature-type-word-to-fixed
 tail then/change-creature-type-word-with
@@ -5397,6 +5413,7 @@ tail then/neera-wild-mage-tucked
 tail then/neo-collision-of-realms-shuffle-reveal
 tail then/neo-roaring-earth-animate-land
 tail then/nicol-bolas-the-deceiver-punisher-sacrificed
+tail then/nissa-worldwaker-animate
 tail then/northampton-farm-rest-to-hand
 tail then/notion-rain-draw-and-damage
 tail then/offsprings-revenge-copy
@@ -5485,6 +5502,7 @@ tail then/s82-old-b337-write-into-being-place
 tail then/s82-old-b338-rally-the-ancestors-exile
 tail then/s82-old-b338-sudden-reclamation
 tail then/s82-old-b339-map-the-wastes-bolster
+tail then/s82-old-b340-supplant-form-copy
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
@@ -5516,6 +5534,7 @@ tail then/spawn-of-mayhem-counter
 tail then/sphinx-of-clear-skies-take
 tail then/spiteful-repossession-step
 tail then/split-the-spoils-exiled
+tail then/stain-the-mind-named
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
