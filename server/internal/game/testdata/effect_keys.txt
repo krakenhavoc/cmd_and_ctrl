@@ -4717,6 +4717,7 @@ tail necron-deathmark/after-mill
 tail necron-monolith/after-mill
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
+tail nemesis-trap/copy
 tail neo-b15/discover-the-impossible-cast
 tail neo-invoke-the-ancients/counters
 tail nesting-grounds/remove
