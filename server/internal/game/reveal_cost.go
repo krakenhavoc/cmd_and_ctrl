@@ -113,6 +113,12 @@ type RevealCost struct {
 	// The printed mana cost of the card in hand, parsed (CardHasXInManaCost).
 	// Combines with the other qualities by AND.
 	XInManaCost bool `json:",omitempty"`
+	// PowerAtLeast narrows the candidates to cards whose power is at least
+	// this (CR 208.1): Sacellum Godspeaker's "creature cards with power 5 or
+	// greater" (S82 OLD batch 517). The printed power of the card in hand;
+	// a card with no power (a noncreature) never matches. Zero is off.
+	// Combines with the other qualities by AND.
+	PowerAtLeast int `json:",omitempty"`
 }
 
 // CardHasXInManaCost reports whether `c`'s mana cost has an {X} in it
@@ -189,6 +195,9 @@ func (rc *RevealCost) matches(c Card) bool {
 		return false
 	}
 	if rc.XInManaCost && !CardHasXInManaCost(c) {
+		return false
+	}
+	if rc.PowerAtLeast > 0 && (!c.IsCreature() || c.Power < rc.PowerAtLeast) {
 		return false
 	}
 	return true

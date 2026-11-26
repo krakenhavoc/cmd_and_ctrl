@@ -24,23 +24,6 @@ func init() {
 		OracleID:     "ad0c6d46-a1ca-4a9f-93f0-4a4dc31868e6",
 		Name:         "Mouser Mark III",
 		Completeness: effects.CompletenessFull,
-		Static: []game.StaticAbility{{
-			Label: "This creature can't attack unless you control another artifact.",
-			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				if !effects.SelfOnly(target, g, source) {
-					return false
-				}
-				for _, id := range effects.PermanentsControlledByMatching(g, source.Controller, effects.Artifact()) {
-					if id != source.InstanceID {
-						return false
-					}
-				}
-				return true
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				c.Restrictions |= game.CantAttack
-			},
-		}},
+		Static:       []game.StaticAbility{effects.S82OldB517CantAttackUnlessAnotherArtifact()},
 	})
 }
