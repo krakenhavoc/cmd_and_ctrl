@@ -421,6 +421,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// Mistcaller's timed exile-uncast replacement. Its cases are in
 		// scoped_exile_uncast_test.go.
 		ModExileUncastCreatures: true,
+		// Hallowed Moonlight's timed exile-uncast replacement, tokens included.
+		// Its cases are in scoped_exile_uncast_tokens_test.go.
+		ModExileUncastCreaturesAndTokens: true,
 		// #6260: Gather Specimens' entry-controller replacement. Its cases
 		// are in scoped_enters_under_control_test.go.
 		ModCreaturesEnterUnderYourControl: true,
