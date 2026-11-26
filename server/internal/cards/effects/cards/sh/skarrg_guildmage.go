@@ -31,7 +31,7 @@ func init() {
 		Activated: []effects.ActivatedAbility{
 			{
 				Label:   "{R}{G}: Creatures you control gain trample until end of turn.",
-				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Purpose: game.Purpose{Answers: game.AnswerPump, TeamPump: &game.Pump{Keywords: []string{"trample"}}},
 				Cost:    effects.ManaCost("{R}{G}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return effects.GrantKeywordUntilEOT{

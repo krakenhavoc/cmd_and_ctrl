@@ -25,7 +25,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}{G}, Remove one or more +1/+1 counters from among creatures you control: Create an X/X green Ooze creature token, where X is the number of +1/+1 counters removed this way.",
-			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1, Answers: game.AnswerMakesBlocker},
 			Cost: effects.Plus(effects.ManaCost("{1}{G}"), game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
 				Counter:  game.CounterPlusOne,
 				N:        1,
