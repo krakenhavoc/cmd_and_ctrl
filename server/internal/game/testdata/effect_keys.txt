@@ -420,6 +420,7 @@ body nyssa-of-traken/sonic-booster
 body ochre-jelly/split-token
 body offspring/granted-token
 body ogre-battlecaster/pump
+body ogre-geargrabber/unattach-the-equipment
 body old-b036/mount-velus-manticore-strike
 body old-b042/rushed-rebirth-search
 body old-b049/devouring-tendrils-gain-2
@@ -2046,6 +2047,7 @@ condition ltb/the-listed-object
 condition ltb/ugin-the-ineffable-spirit
 condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
+condition ogre-geargrabber/lost-control-of-the-equipment
 condition old-b050/any-creature-blocks
 condition old-b059/flying-creatures-hit-a-player
 condition old-b059/you-cast-mv-5-or-more
