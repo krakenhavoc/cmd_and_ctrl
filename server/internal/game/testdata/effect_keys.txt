@@ -4850,6 +4850,7 @@ tail reality-fracture-helpers/after-exile
 tail reality-fracture/surveil-keep-noncreature-nonland
 tail realms-uncharted/choose
 tail reason-believe/rest-to-hand
+tail recipient/aggravate-attacks-if-able
 tail recipient/cant-be-regenerated-if-dealt-damage
 tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
@@ -5679,6 +5680,7 @@ tail then/transforming-flourish-cast
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
+tail then/tyrant-of-discord-repeat
 tail then/ulamogs-nullifier-counter
 tail then/ulamogs-reclaimer-then
 tail then/unmoored-ego-draw
