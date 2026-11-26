@@ -381,6 +381,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 458 (#5575).
 	"Cathedral Membrane": "its death trigger deals 6 damage only to the creature it blocked (one creature in combat), not to a board",
+
+	// S82 OLD batch 505 (#5586).
+	"Identity Crisis": "exiles the cards in one player's hand and graveyard, not permanents",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
