@@ -37,7 +37,7 @@ func init() {
 			{
 				Label:   "{2}, {T}, Remove a charge counter from this artifact: Create a 3/3 colorless Phyrexian Golem artifact creature token.",
 				Cost:    effects.Plus(effects.ManaCost("{2}"), effects.TapCost(), effects.RemoveCountersFromThis(game.CounterCharge, 1)),
-				Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+				Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1, Answers: game.AnswerMakesBlocker},
 				Effect: effects.Do(effects.CreateTokenAdvanced{
 					Spec: effects.Token(effects.TokenCard("3/3 colorless Phyrexian Golem artifact")),
 					N:    1,

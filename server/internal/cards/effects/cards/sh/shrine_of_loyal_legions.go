@@ -27,7 +27,7 @@ func init() {
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{3}, {T}, Sacrifice this artifact: Create a 1/1 colorless Phyrexian Myr artifact creature token for each charge counter on this artifact.",
 			Cost:    effects.Plus(effects.ManaCost("{3}"), effects.TapCost(), effects.SacrificeThis()),
-			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1, Answers: game.AnswerMakesBlocker},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				n := effects.OldB460ChargeCountersOnSource(g, item.SourceCardID)
 				if n <= 0 {
