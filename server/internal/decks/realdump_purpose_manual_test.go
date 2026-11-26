@@ -369,6 +369,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 397 (#5561).
 	"Ashiok, Nightmare Weaver": "its -10 exiles the cards in the opponents' hands and graveyards, not permanents",
+
+	// S82 OLD batch 421 (#5566).
+	"Street Sweeper": "its \"destroy all Auras attached to target land\" reaches only the Auras on the one land it targets, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
