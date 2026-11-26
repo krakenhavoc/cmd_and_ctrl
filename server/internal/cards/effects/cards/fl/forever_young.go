@@ -27,20 +27,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Targets: effects.TargetCardInGraveyard("any number of target creature cards from your graveyard",
 			effects.Creature(), effects.YouOwn()).WithCount(0, 0),
-		Purpose: game.Purpose{Draws: 1},
-		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetCard {
-						continue
-					}
-					if err := ctx.Game.TuckToLibraryForEffect(t.ID, false); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
-			effects.DrawCards{N: 1},
-		),
+		Purpose:   game.Purpose{Draws: 1},
+		OnResolve: effects.TuckTargetCreatureCardsOnTopThenDraw(),
 	})
 }

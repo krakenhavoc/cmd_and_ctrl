@@ -340,6 +340,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6263: Autumn's Veil's colour bar, read by targeting too. Its
 		// cases are in cant_be_countered_by_color_test.go.
 		ModCantBeTargetedBySpellsOfColors: true,
+		// S82 old b333: Display of Dominance's opponents-only variant, same
+		// reader; its cases are in cant_be_countered_by_color_test.go.
+		ModCantBeTargetedByOpponentSpellsOfColors: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.

@@ -635,6 +635,12 @@ const (
 	// ability. Not hexproof and not protection. The targeting choke point
 	// reads it (targeting_bar_colors.go).
 	ModCantBeTargetedBySpellsOfColors ModKind = "cantBeTargetedBySpellsOfColors"
+	// ModCantBeTargetedByOpponentSpellsOfColors is the same bar narrowed to
+	// spells the effect controller's opponents control (Display of
+	// Dominance's "permanents you control can't be the targets of blue or
+	// black spells your opponents control this turn"). Same parameters and
+	// reader; a spell its controller casts is not refused.
+	ModCantBeTargetedByOpponentSpellsOfColors ModKind = "cantBeTargetedByOpponentSpellsOfColors"
 )
 
 // ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
@@ -1403,6 +1409,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeTargetedBySpellsOrActivated: {reader: readerTargeting},
 	// #6263: Autumn's Veil's bar on blue and black spells.
 	ModCantBeTargetedBySpellsOfColors: {reader: readerTargeting},
+	// Display of Dominance's opponents-only variant of the same bar.
+	ModCantBeTargetedByOpponentSpellsOfColors: {reader: readerTargeting},
 	// #5948: Tax Collector's timed cost increase, read by the cast pricer
 	// (scoped_cost_tax.go).
 	ModSpellsCostMoreForOpponents: {reader: readerRule},

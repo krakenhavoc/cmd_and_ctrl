@@ -747,4 +747,6 @@ var TokenTable = map[string]game.Card{
 	"2/2 red Gremlin": {Name: "Gremlin", TypeLine: "Token Creature — Gremlin", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	// S82 OLD batch 316 (#5548): Hellion Eruption's Hellion.
 	"4/4 red Hellion": {Name: "Hellion", TypeLine: "Token Creature — Hellion", Power: 4, Toughness: 4, Colors: []string{"R"}},
+	// S82 OLD batch 333 (#5551): Corpseweft's Zombie Horror; an X/X whose printed token card is */*, so 0/0 here and X is set as it is created.
+	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
 }
