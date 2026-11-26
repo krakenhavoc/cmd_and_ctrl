@@ -13,7 +13,7 @@ import (
 //	"{6}, {T}: Two target players exchange life totals."
 //
 // With either target gone by resolution nothing is exchanged: a player can't
-// exchange life totals with no one (CR 119.7).
+// exchange life totals with no one (CR 701.12a).
 func init() {
 	effects.Register(effects.Spec{
 		OracleID:     "b48befc5-a9f2-4a64-a16d-c883b034ea9c",
