@@ -1215,6 +1215,7 @@ choose choose-cards/manifold-insights-pick
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masked-vandal-exile
+choose choose-cards/master-of-predicaments-chosen
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/mat-distribute-counters-among
 choose choose-cards/meanders-guide-tap
@@ -2161,6 +2162,7 @@ confirm confirm/lurking-predators-bottom
 confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/magnanimous-magistrate-reprieve
 confirm confirm/mask-of-memory-loot
+confirm confirm/master-of-predicaments-guess
 confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
 confirm confirm/mind-raker-confirm
