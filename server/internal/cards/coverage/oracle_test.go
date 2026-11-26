@@ -39,6 +39,8 @@ var knownOracleMismatches = map[string]string{
 	"Echo Mage | printed ability not registered | {u}{u}, {t}":       "a level band's ability, granted to itself behind the band's level check",
 	"Guul Draz Assassin | printed ability not registered | {b}, {t}": "a level band's ability, granted to itself behind the band's level check",
 	"Kazandu Tuskcaller | printed ability not registered | {t}":      "a level band's ability, granted to itself behind the band's level check",
+	"Kargan Dragonlord | printed ability not registered | {r}":       "a level band's ability, granted to itself behind the band's level check",
+	"Null Champion | printed ability not registered | {b}":           "a level band's ability, granted to itself behind the band's level check",
 
 	// Heart of Kiran prints the alternative crew as prose — "You may
 	// remove a loyalty counter from a planeswalker you control rather
