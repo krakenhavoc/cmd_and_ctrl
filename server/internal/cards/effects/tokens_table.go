@@ -756,4 +756,13 @@ var TokenTable = map[string]game.Card{
 	"0/0 black Zombie Horror": {Name: "Zombie Horror", TypeLine: "Token Creature — Zombie Horror", Power: 0, Toughness: 0, Colors: []string{"B"}},
 
 	"5/5 colorless Legendary Goblin Golem artifact named Tuktuk the Returned": {Name: "Tuktuk the Returned", TypeLine: "Token Legendary Artifact Creature — Goblin Golem", Power: 5, Toughness: 5},
+
+	// S82 OLD b370: Journey into Nyx, Rise of Eagles.
+	"2/2 blue Bird enchantment with flying": {Name: "Bird", TypeLine: "Token Enchantment Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
+
+	// S82 OLD b371: Journey into Nyx, Renowned Weaver.
+	"1/3 green Spider enchantment with reach": {Name: "Spider", TypeLine: "Token Enchantment Creature — Spider", Power: 1, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"reach"}},
+
+	// S82 OLD batch 375 (#5559): Forlorn Pseudamma's token (Aerie Worshippers uses b370's Bird row).
+	"2/2 black Zombie enchantment creature": {Name: "Zombie", TypeLine: "Token Enchantment Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }

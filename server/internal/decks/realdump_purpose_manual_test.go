@@ -360,6 +360,12 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 344 (#5554).
 	"Blinding Spray": "a one-turn -4/-0 on the opponents' creatures that destroys nothing: a combat trick that also draws a card, not a board wipe",
+
+	// S82 OLD batch 359 (#5556).
+	"Blastfire Bolt": "its \"destroy all Equipment attached to that creature\" reaches only the Equipment on the one creature it targets, not a board",
+
+	// S82 OLD batch 378 (#5559).
+	"Skyreaping": "damages only the creatures with flying, for an amount that is your devotion to green as it resolves: a partial sweep with no fixed amount a sweep can declare",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

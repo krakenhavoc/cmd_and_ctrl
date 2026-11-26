@@ -70,6 +70,12 @@ type CardDef struct {
 	// agenda, 2 for double agenda (CR 702.106a, 702.106f), 0 for every
 	// other card. #6102, ADR 0227.
 	HiddenAgenda int
+	// StartingPlayer marks a face-up conspiracy that makes its owner the
+	// starting player (Power Play, #5557): "You are the starting player. If
+	// multiple players would be the starting player, one of those players is
+	// chosen at random." Read as the deal begins, once the conspiracies are in
+	// the command zone; see starting_player_conspiracy.go.
+	StartingPlayer bool
 
 	// TargetMode is the client hint: the structured clause's Mode
 	// when there is one, else the legacy free-form string.

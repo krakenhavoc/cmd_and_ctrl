@@ -542,6 +542,8 @@ body s82-old-b198/viviens-invocation-damage
 body s82-old-b199/skyrider-patrol-counter-and-flying
 body s82-old-b214/destroy-attached-equipment
 body s82-old-b321/its-controller-loses-2
+body s82-old-b364/destroy-at-end-of-combat
+body s82-old-b370/destroy-all-permanents
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1452,6 +1454,7 @@ choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
 choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
+choose choose-cards/oracle-of-bones-cast
 choose choose-cards/ordered-pick-leg
 choose choose-cards/organ-hoarder-take
 choose choose-cards/orphans-of-the-wheat-tap
@@ -1621,6 +1624,7 @@ choose choose-cards/s82-old-b337-write-into-being
 choose choose-cards/s82-old-b338-reclaim-creature
 choose choose-cards/s82-old-b338-reclaim-land
 choose choose-cards/s82-old-b343-wrens-run-packmaster-champion
+choose choose-cards/s82-old-b371-disciple-of-deceit-discard
 choose choose-cards/s82-old-b39-artifact-from-hand-or-graveyard
 choose choose-cards/s82-old-b40-exile-instant-or-sorcery-for-counters
 choose choose-cards/s82-old-b40-flamethrower-sonata-discarded
@@ -2032,6 +2036,7 @@ confirm confirm/altar-of-the-wretched-sacrifice
 confirm confirm/amareth-the-lustrous-take
 confirm confirm/ambulatory-edifice-pay-life
 confirm confirm/another-chance-mill
+confirm confirm/arbiter-of-the-ideal-put
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
 confirm confirm/arcane-endeavor-result
@@ -2110,6 +2115,7 @@ confirm confirm/farrels-zealot-damage
 confirm confirm/fetid-gargantua-draw
 confirm confirm/firebender-ascension-copy
 confirm confirm/fishing-gear-put
+confirm confirm/flamespeaker-s-will-sacrifice
 confirm confirm/flaxen-intruder-sacrifice
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
@@ -2177,6 +2183,7 @@ confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/moon-circuit-hacker-draw
 confirm confirm/moonveil-regent-discard-hand
+confirm confirm/mortal-obstinacy-sacrifice
 confirm confirm/moss-pit-skeleton-top-of-library
 confirm confirm/msh-a6-nick-fury-transform
 confirm confirm/msh-a8-kingpin-pay-life
@@ -2237,6 +2244,7 @@ confirm confirm/s82-mom-b12-guerrilla-exile
 confirm confirm/s82-old-b104-sweep-away
 confirm confirm/s82-old-b105-sanctum-of-calm-waters
 confirm confirm/s82-old-b246-remove-a-minus-one-counter
+confirm confirm/s82-old-b371-dakra-mystic
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -2861,6 +2869,7 @@ payunless evereth-viceroy-of-plunder/paid
 payunless god-favored-general/paid
 payunless najal-the-storm-runner/paid
 payunless pay-unless/adrianas-valor-indestructible
+payunless pay-unless/aerie-worshippers-bird
 payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/agrus-kos-copy-ability
@@ -2980,6 +2989,7 @@ payunless pay-unless/eye-of-vecna-draw-and-lose
 payunless pay-unless/ezio-auditore-lose
 payunless pay-unless/ezuri-stalker-of-spheres-proliferate-twice
 payunless pay-unless/faith-of-the-devoted-drain
+payunless pay-unless/felhide-spiritbinder-copy
 payunless pay-unless/filigree-racer-jump-start
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -2987,6 +2997,7 @@ payunless pay-unless/flameshadow-conjuring-copy
 payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/flay-discard
 payunless pay-unless/forage-only
+payunless pay-unless/forlorn-pseudamma-zombie
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
@@ -3049,6 +3060,7 @@ payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
 payunless pay-unless/krydle-of-baldurs-gate-unblockable
+payunless pay-unless/kurkesh-copy-ability
 payunless pay-unless/labyrinth-adversary-cant-block
 payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-of-lightning-ping
@@ -3585,6 +3597,7 @@ run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/shrapnel-slinger-sacrifice
 run prompt-run/sidequest-play-blitzball-attach
 run prompt-run/single-combat-sacrifice
+run prompt-run/siren-of-the-silent-song-mill
 run prompt-run/skull-storm-half-life
 run prompt-run/skullslither-worm-counters
 run prompt-run/skyfisher-spider-sacrifice
@@ -4296,6 +4309,7 @@ tail faerie-impostor/after-bounce
 tail fang-rokus-companion/spirit
 tail fecund-greenshell/land-declined-into-hand
 tail feldon-of-the-third-path/haste-and-sacrifice-copy
+tail felhide-spiritbinder/haste-and-exile-copy
 tail fell-gravship/after-mill
 tail fetch-quest/after-mill
 tail fevered-suspicion/after-mill
@@ -4703,6 +4717,7 @@ tail patient-naturalist/after-mill
 tail pavel-chekov-first-posting/taken
 tail pay-unless/paid
 tail pendant-of-prosperity/owners-half
+tail peregrination/basic-land-to-hand
 tail perilous-voyage/scry-if-small
 tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
@@ -4823,6 +4838,7 @@ tail s82-old-b161/shuffle-up-to-four-from-graveyard
 tail s82-old-b162/collected-conjuring-exiled
 tail s82-old-b162/force-of-rage-sacrifice-the-elementals
 tail s82-old-b170/bond-of-insight-return
+tail s82-old-b370/deicide-after-exile
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5302,6 +5318,7 @@ tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
 tail then/firemind-s-foresight-second
 tail then/firemind-s-foresight-third
+tail then/flamespeaker-s-will-destroy
 tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
 tail then/frodo-adventurous-hobbit-draw
@@ -5400,6 +5417,7 @@ tail then/mirror-match-exile-at-end-of-combat
 tail then/mirror-of-life-trapping-return
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
+tail then/mortal-obstinacy-destroy
 tail then/murk-strider-then
 tail then/mystery-key-draw-three
 tail then/nahiri-heir-of-the-ancients-attach-equipment
@@ -5503,6 +5521,10 @@ tail then/s82-old-b338-rally-the-ancestors-exile
 tail then/s82-old-b338-sudden-reclamation
 tail then/s82-old-b339-map-the-wastes-bolster
 tail then/s82-old-b340-supplant-form-copy
+tail then/s82-old-b371-disciple-of-deceit-search
+tail then/s82-old-b371-king-macar-gold
+tail then/s82-old-b371-ritual-of-the-returned-zombie
+tail then/s82-old-b378-vortex-shuffle
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

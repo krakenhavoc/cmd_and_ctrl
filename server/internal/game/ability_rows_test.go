@@ -28,6 +28,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"StartingLoyalty":            "a characteristic (loyalty), shown as the loyalty pip",
 	"BattleDefense":              "a characteristic (defense), shown on the card",
 	"HiddenAgenda":               "how many names a conspiracy's hidden agenda chooses before the game (ADR 0227), not an ability row",
+	"StartingPlayer":             "Power Play's \"you are the starting player\", read once as the deal begins (starting_player_conspiracy.go), not an ability row",
 	"TargetMode":                 "the spell's target hint",
 	"Targets":                    "the spell's target clause",
 	"ReturnedAura":               "the enchant clause of the card's Aura form, read by CR 303.4f's host choice and CR 704.5m (#2809)",
