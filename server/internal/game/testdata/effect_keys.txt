@@ -2996,6 +2996,7 @@ payunless pay-unless/anointer-of-valor-counter
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/anthropede-destroy-room
+payunless pay-unless/apothecary-initiate-gain-1
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/armix-filigree-thrasher-discard
@@ -3310,6 +3311,7 @@ payunless pay-unless/shu-yun-double-strike
 payunless pay-unless/skyline-scout-flying
 payunless pay-unless/skywise-teachings-djinn-monk
 payunless pay-unless/smelted-chargebug-pump-and-menace
+payunless pay-unless/smolder-initiate-lose-1
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
 payunless pay-unless/sorcerers-broom-copy
@@ -3345,6 +3347,7 @@ payunless pay-unless/trail-of-crumbs-look-at-top-two
 payunless pay-unless/tranquil-frillback-pay-g
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
+payunless pay-unless/tyrannize-discard-hand
 payunless pay-unless/ulalek-copy-everything
 payunless pay-unless/ultimecia-exile
 payunless pay-unless/ultron-artificial-malevolence-copy
