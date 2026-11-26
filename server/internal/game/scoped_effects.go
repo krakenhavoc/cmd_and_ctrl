@@ -1474,6 +1474,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6244: "the next time you would lose the game this turn, instead
 	// …" (Stunning Reversal).
 	ModNextLossInstead: {reader: readerRule},
+	// S82 OLD b385: "this turn, creatures can't block unless their controller
+	// pays {X} for each" (War Cadence), block_tax_this_turn.go.
+	ModBlockTaxThisTurn: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -2075,6 +2078,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipThisTurnModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := blockTaxThisTurnModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := nextLossInsteadModProblem(m); problem != "" {

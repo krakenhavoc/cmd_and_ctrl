@@ -524,6 +524,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6244 (Stunning Reversal): the next loss this turn replaced.
 		// Its cases are in next_loss_replacement_test.go.
 		ModNextLossInstead: true,
+		// S82 OLD b385 (War Cadence): cases in block_tax_this_turn_test.go.
+		ModBlockTaxThisTurn: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,
