@@ -3854,6 +3854,7 @@ run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/kroxa-titan-of-deaths-hunger-life
 run prompt-run/kylox-sacrifice
 run prompt-run/larval-scoutlander-search
+run prompt-run/last-ditch-effort-sacrifice
 run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/light-of-judgment-destroy
 run prompt-run/liliana-dreadhorde-general-keep
@@ -6231,6 +6232,7 @@ tail tricksters-talisman/sacrificed
 tail troop-of-ponies/basic-land-to-hand
 tail trostanis-judgment/after-exile
 tail tuck/each-owner-orders
+tail tuck/old-b718-each-owner-orders-top
 tail tune-up/vehicle-becomes-artifact-creature
 tail turtle-tracks/search-step
 tail turtle-van/double
