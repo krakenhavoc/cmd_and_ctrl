@@ -3431,10 +3431,12 @@ payunless pay-unless/overencumbered-no-attack
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/papercraft-decoy-draw
 payunless pay-unless/passenger-ferry-unblockable
+payunless pay-unless/pendrell-flux-sacrifice
 payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/phoenix-chick-return
 payunless pay-unless/phyrexian-tyranny-lose-two
 payunless pay-unless/pillar-tombs-of-aku-decline
+payunless pay-unless/power-taint-lose-2
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/pyre-zombie-return
