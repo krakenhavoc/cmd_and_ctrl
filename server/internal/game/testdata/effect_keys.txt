@@ -2042,6 +2042,7 @@ condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
+condition block/s82-old-b632-zombie-boa-blocked-by-color
 condition cast/any-player-casts
 condition cast/opening-hand-reveal-that-players-first-spell
 condition cast/the-named-spell-first-time-this-turn
@@ -5851,6 +5852,7 @@ tail then/s82-old-b461-impaler-shrike-draw
 tail then/s82-old-b518-brilliant-ultimatum-exiled
 tail then/s82-old-b524-evershrike-entered
 tail then/s82-old-b531-impromptu-raid-arrived
+tail then/s82-old-b632-zombie-boa-color
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
@@ -6067,6 +6069,7 @@ tail vis/s82-gap-b143-trevas-ruins-after-return
 tail vision-quest/haste
 tail vivien-monsters-advocate/beast-counter-choice
 tail viviens-invocation/rest-then-damage
+tail vodalian-mystic/color-chosen
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
 tail wake-to-slaughter/entered
