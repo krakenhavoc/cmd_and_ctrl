@@ -30,12 +30,15 @@ import "github.com/google/uuid"
 type libraryTopMark struct {
 	owner uuid.UUID
 	top   uuid.UUID
+	// size is the library's card count, recorded beside the top card for a
+	// static declaring DependsOnLibrarySize.
+	size int
 }
 
 // libraryTopStaticIsLiveLocked is handSizeStaticIsLiveLocked for the top
 // of a library.
 func libraryTopStaticIsLiveLocked(g *Game) bool {
-	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnLibraryTop })
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnLibraryTop || ab.DependsOnLibrarySize })
 }
 
 // libraryTopsLocked lists every seat's library top now.
@@ -48,6 +51,9 @@ func (g *Game) libraryTopsLocked() []libraryTopMark {
 		m := libraryTopMark{owner: p.ID}
 		if p.Library != nil && len(p.Library.Cards) > 0 {
 			m.top = p.Library.Cards[len(p.Library.Cards)-1].InstanceID
+		}
+		if p.Library != nil {
+			m.size = len(p.Library.Cards)
 		}
 		out = append(out, m)
 	}

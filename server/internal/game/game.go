@@ -2203,6 +2203,14 @@ type CastTally struct {
 	// spells you've cast this turn" (#4455). Additive within the snapshot
 	// version.
 	Colors string `json:"colors,omitempty"`
+	// ColorSpells holds one colour letter for every colour of every spell the
+	// player cast this turn (a two-colour spell adds two letters), read as each
+	// spell became cast like Colors: "RRW" is two red spells and a white one.
+	// Hotheaded Giant's "unless you've cast another red spell this turn" counts
+	// them, which the Colors set cannot. A string rather than a map so a clone
+	// of the tally shares nothing. Read through SpellsCastOfColor. Additive
+	// within the snapshot version.
+	ColorSpells string `json:"colorSpells,omitempty"`
 	// CardTypes is the card types (CR 205.2a) of EVERY spell the player
 	// cast this turn, as a set of type names in alphabetical order joined
 	// by spaces ("Artifact Creature Instant"), read off the spell as it
@@ -2441,7 +2449,18 @@ func (t CastTally) withInstantSorceryColors(colors []string) CastTally {
 // withSpellColors adds a cast spell's colours to Colors.
 func (t CastTally) withSpellColors(colors []string) CastTally {
 	t.Colors = unionColorLetters(t.Colors, colors)
+	for _, c := range colors {
+		if len(c) == 1 {
+			t.ColorSpells += c
+		}
+	}
 	return t
+}
+
+// SpellsCastOfColor is how many spells of the colour letter the player cast
+// this turn, a spell of several colours counting once for each of them.
+func (t CastTally) SpellsCastOfColor(letter string) int {
+	return strings.Count(t.ColorSpells, letter)
 }
 
 // cardTypes205Sorted is CR 205.2a's card types in alphabetical order,
