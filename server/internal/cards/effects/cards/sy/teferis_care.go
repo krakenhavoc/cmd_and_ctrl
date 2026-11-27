@@ -1,8 +1,6 @@
 package cardssy
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -33,18 +31,8 @@ func init() {
 				Label:   "{3}{U}{U}: Counter target enchantment spell.",
 				Cost:    effects.ManaCost("{3}{U}{U}"),
 				Targets: effects.TargetSpell("target enchantment spell", effects.Enchantment()),
-				Effect:  teferisCareCounter,
+				Effect:  effects.S82OldB700CounterTheTargetItem,
 			},
 		},
 	})
-}
-
-func teferisCareCounter(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return effects.CounterTarget{StackID: t.ID}.Apply(ctx)
-		}
-	}
-	return nil
 }
