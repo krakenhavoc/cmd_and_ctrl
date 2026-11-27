@@ -43,6 +43,7 @@ anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/vexing-devil-sacrifice
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
+anyplayer s82-old-b635/ice-cave-counter
 anyplayer sword-point-diplomacy/card
 body aang-at-the-crossroads/transform
 body ace-fearless-rebel/counter-and-fight
@@ -440,6 +441,7 @@ body old-b386/reincarnation-return
 body old-b507/quenchable-fire-damage
 body old-b516-skeletonize/skeleton
 body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
+body old-b639/planeswalkers-mischief-return
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -570,6 +572,7 @@ body s82-old-b464/virulent-wound-poison
 body s82-old-b581/gaze-of-the-gorgon-destroy
 body s82-old-b585/discard-three-at-next-end-step
 body s82-old-b614/destroy-the-named-creature
+body s82-old-b635/suppress-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -5013,6 +5016,7 @@ tail old-b587/sacrifice-that-creature-at-the-next-end-step
 tail old-b607/lightning-coils-exile-the-elementals
 tail old-b621/grave-consequences-then
 tail old-b623/scalpelexis-repeat
+tail old-b639/planeswalkers-mischief-exiled
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5179,7 +5183,12 @@ tail s82-old-b600/tomorrow-done
 tail s82-old-b600/tomorrow-taken
 tail s82-old-b602-spoils-of-the-vault/exiled
 tail s82-old-b602-spoils-of-the-vault/taken
+tail s82-old-b635/suppress-schedule
 tail s82-old-b636/sisays-ingenuity-color
+tail s82-old-b645/aerostat-return-this
+tail s82-old-b646/target-color-chosen
+tail s82-old-b646/this-color-chosen
+tail s82-old-b647/blind-seer-color-chosen
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
