@@ -1,8 +1,6 @@
 package cardsj
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -30,14 +28,7 @@ func init() {
 			Label:   "{1}{U}, {Q}: Target opponent exiles the top card of their library. Until end of turn, you may play that card.",
 			Cost:    effects.OldB531UntapCost("{1}{U}"),
 			Targets: effects.TargetPlayer("target opponent", effects.Opponent()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				opp := effects.FirstLegalTargetPlayer(ctx)
-				if opp == [16]byte{} {
-					return nil
-				}
-				return effects.ExileTopWithPermission{From: opp, GrantTo: item.Controller, N: 1}.Apply(ctx)
-			},
+			Effect:  effects.TargetOpponentExilesTopYouMayPlay,
 		}},
 	})
 }
