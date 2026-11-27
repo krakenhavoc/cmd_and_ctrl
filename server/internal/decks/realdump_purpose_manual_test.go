@@ -440,6 +440,8 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 717 (#5623).
 	"Impending Disaster": "destroys only lands, which no sweep class names alone (Armageddon declares none)",
 	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
+	// S82 OLD batch 735 (#5625).
+	"Return of the Nightstalkers": "returns your Nightstalker cards, then destroys only the Swamps you control, which no sweep class names alone (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
