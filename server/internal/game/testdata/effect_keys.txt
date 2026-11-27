@@ -3993,6 +3993,8 @@ run prompt-run/s82-old-b723-wildfire-damage
 run prompt-run/s82-old-b745-oath-of-ghouls-return
 run prompt-run/s82-old-b742-cataclysm-keep
 run prompt-run/s82-old-b743-mana-breach-return
+run prompt-run/s82-old-b744-crashing-boars-block
+run prompt-run/s82-old-b744-limited-resources-keep
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw

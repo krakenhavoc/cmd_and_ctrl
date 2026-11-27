@@ -445,6 +445,9 @@ var reviewedNotAWipe = map[string]string{
 	"Overlaid Terrain": "sacrifices only its own controller's lands as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
 	// S82 OLD batch 735 (#5625).
 	"Return of the Nightstalkers": "returns your Nightstalker cards, then destroys only the Swamps you control, which no sweep class names alone (Armageddon declares none)",
+
+	// S82 OLD batch 744 (#5626).
+	"Wall of Nets": "exiles only the creatures it blocked this combat and returns them when it leaves, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
