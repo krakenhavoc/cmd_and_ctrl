@@ -25,9 +25,10 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{
 			{
-				Label:  "{3}, {T}: Put an elixir counter on this artifact.",
-				Cost:   effects.Plus(effects.ManaCost("{3}"), effects.TapCost()),
-				Effect: effects.PutACounterOnThis("elixir"),
+				Label:   "{3}, {T}: Put an elixir counter on this artifact.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    effects.Plus(effects.ManaCost("{3}"), effects.TapCost()),
+				Effect:  effects.PutACounterOnThis("elixir"),
 			},
 			{
 				Label:   "{T}, Remove all elixir counters from this artifact: You gain 2 life for each elixir counter removed this way.",
