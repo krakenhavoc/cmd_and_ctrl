@@ -96,7 +96,7 @@ func TestOldB556HunterOfEyeblightsCountersAnOpposingCreatureAndDestroysOneWithAC
 	foe := effectstest.B12Creature(g, opp.ID, "Foe", oldB556Bear, 2, 2)
 	other := effectstest.B12Creature(g, opp.ID, "Other Foe", oldB556Bear, 2, 2)
 	effectstest.AdvanceToMain(t, g)
-	hunter := effectstest.CastHoldCreature(t, g, "Hunter of Eyeblights", "Creature — Elf Assassin", oldB556Hunter, 3, 3)
+	effectstest.CastHoldCreature(t, g, "Hunter of Eyeblights", "Creature — Elf Assassin", oldB556Hunter, 3, 3)
 	effectstest.PassPriorityAroundTable(t, g)
 	if err := g.ResolvePickTargets(effectstest.LatestPickTarget(g, me.ID).ID, me.ID, effectstest.CardTargets(mine)); err == nil {
 		t.Fatal("targeted my own creature")
@@ -107,7 +107,7 @@ func TestOldB556HunterOfEyeblightsCountersAnOpposingCreatureAndDestroysOneWithAC
 		t.Fatalf("the target has %d +1/+1 counters, want 1", n)
 	}
 	// The cast Hunter is summoning sick; a second one that has been here a while taps for the ability.
-	hunter = effectstest.PushCatalogPermanent(g, me.ID, "Hunter of Eyeblights", "Creature — Elf Assassin", oldB556Hunter, false)
+	hunter := effectstest.PushCatalogPermanent(g, me.ID, "Hunter of Eyeblights", "Creature — Elf Assassin", oldB556Hunter, false)
 	effectstest.FloatForTest(g, me, "BBB")
 	if err := g.ActivateCatalogAbility(me.ID, hunter, 0, game.ActivateAbilityParams{Strict: true, Targets: effectstest.CardTargets(other)}); err == nil {
 		t.Fatal("destroyed a creature with no counter")
