@@ -132,7 +132,9 @@ func clashRunFrom(r OptionPicked) (clashRun, int, bool) {
 // an opponent", CR 701.30b) is the caller's.
 //
 // `then` is the rest of the card, run once the clash is over: its
-// TailOutcome.Amount is 1 when `player` won the clash and 0 otherwise.
+// TailOutcome.Amount is 1 when `player` won the clash and 0 otherwise, and
+// its TailOutcome.IDs is the one player clashed with ("that player",
+// Captivating Glance); empty when no opponent was chosen.
 // Pass the zero tail when nothing follows. The questions are prompts, so a
 // statement after this call would run before they are answered.
 //
@@ -327,5 +329,5 @@ func (g *Game) clashFinishLocked(run clashRun) error {
 	if run.winner == 0 {
 		won = 1
 	}
-	return run.then.RunTold(g, nil, won)
+	return run.then.RunTold(g, []uuid.UUID{run.players[1]}, won)
 }
