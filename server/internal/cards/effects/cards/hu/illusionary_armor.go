@@ -39,12 +39,7 @@ func init() {
 			Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				return game.NewTriggeredItem(source, label)
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !effects.OnBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return effects.SacrificePermanent{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
-			},
+			Effect: effects.S82OldB636SacrificeThisAura,
 		}},
 	})
 }
