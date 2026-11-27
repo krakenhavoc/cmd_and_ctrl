@@ -399,6 +399,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 548 (#5593).
 	"Ego Erasure": "-2/-0 and losing creature types to one player's creatures until end of turn kills nothing",
+
+	// S82 OLD batch 591 (#5601).
+	"Meishin, the Mind Cage": "-X/-0 to every creature for as long as it stays out: it shrinks power only and kills nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

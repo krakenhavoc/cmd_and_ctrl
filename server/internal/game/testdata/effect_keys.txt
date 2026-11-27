@@ -795,6 +795,7 @@ choose choose-cards/ballad-of-the-black-flag-historic
 choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barals-expertise-cast
+choose choose-cards/barrel-down-sokenzan-mountains
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/battlefield-improvisation-equipment
 choose choose-cards/beamsplitter-mage-copy
@@ -871,6 +872,7 @@ choose choose-cards/chandra-pyromaster-copy-three-times
 choose choose-cards/change-of-plans-discarded
 choose choose-cards/change-of-plans-phase-out
 choose choose-cards/chaos-shrines-black-crystal-return
+choose choose-cards/charge-across-the-araba-plains
 choose choose-cards/charming-scoundrel-draw
 choose choose-cards/charnel-serenade-return
 choose choose-cards/charnel-troll-exile
@@ -1517,6 +1519,7 @@ choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
 choose choose-cards/planetarium-of-wan-shi-tong-cast
 choose choose-cards/plargg-and-nassari-picked
+choose choose-cards/plow-through-reito-plains
 choose choose-cards/plunge-into-darkness-take
 choose choose-cards/polygraph-orb-punisher-discarded
 choose choose-cards/populate
@@ -1735,6 +1738,7 @@ choose choose-cards/sigardas-vanguard-double-strike
 choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/simic-guildmage-attach
+choose choose-cards/sink-into-takenuma-swamps
 choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/sludge-titan-creature
