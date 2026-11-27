@@ -1704,9 +1704,9 @@ choose choose-cards/s82-old-b548-changeling-titan-champion
 choose choose-cards/s82-old-b556-boggart-mob-champion
 choose choose-cards/s82-old-b556-nova-chaser-champion
 choose choose-cards/s82-old-b556-thoughtweft-trio-champion
+choose choose-cards/s82-old-b568-jokulmorder-lands
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
-choose choose-cards/s82-old-b568-jokulmorder-lands
 choose choose-cards/s82-old-b581-sisters-of-stone-death-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
