@@ -4783,6 +4783,7 @@ tail meek-attack/entered
 tail memory-jar/exile-hand-step
 tail memory-jar/schedule-return
 tail memory-vessel/ban-hands
+tail mercy-killing/elf-warriors
 tail mgb/bull-elephant-after-return
 tail mgb/ovinomancer-after-return
 tail mill-then-take/cache-grab
