@@ -1768,6 +1768,7 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
 choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
+choose choose-cards/s82-old-b678-exile-linked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3446,6 +3447,8 @@ payunless pay-unless/s82-old-b670-death-charmer-lose-life
 payunless pay-unless/s82-old-b670-plague-fiend-destroy
 payunless pay-unless/s82-old-b670-soul-charmer-gain-life
 payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
+payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
+payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3893,6 +3896,7 @@ run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-old-b552-crush-underfoot
 run prompt-run/s82-old-b662-global-ruin-keep
 run prompt-run/s82-old-b674-overburden-return-land
+run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
