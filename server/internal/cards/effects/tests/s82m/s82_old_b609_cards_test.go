@@ -1,12 +1,12 @@
 package testss82m
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects/effectstest"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // s82_old_b609_cards_test.go — Eighth Edition, life gain and loss (S82 OLD
