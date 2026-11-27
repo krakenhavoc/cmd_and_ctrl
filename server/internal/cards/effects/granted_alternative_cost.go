@@ -361,6 +361,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.LifeEqualToManaValue && (o.ManaCost != "" || o.Energy != 0 || gr.PricedAtManaCost) {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q pays life equal to mana value and also declares another price", name, o.Key))
 		}
+		if gr.PricedAtManaValue && (o.ManaCost != "" || gr.PricedAtManaCost || gr.LifeEqualToManaValue) {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q is priced at the spell's mana value and also declares another price", name, o.Key))
+		}
 		if gr.PricedAtManaCost && o.ManaCost != "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q is priced at the spell's mana cost and also declares ManaCost %q", name, o.Key, o.ManaCost))
 		}
