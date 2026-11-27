@@ -1776,6 +1776,7 @@ choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
 choose choose-cards/s82-old-b678-exile-linked
 choose choose-cards/s82-old-b694-renounce-sacrifice
+choose choose-cards/s82-old-b701-eye-spy-graveyard
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
