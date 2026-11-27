@@ -2875,6 +2875,7 @@ option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
 option option-pick/polymorphous-rush-model
 option option-pick/practiced-offense-keyword
+option option-pick/primeval-force-three-forests-or-this
 option option-pick/prince-of-thralls-pay-or-take
 option option-pick/protection-racket-answer
 option option-pick/psychic-puppetry-tap-or-untap
@@ -3771,6 +3772,7 @@ run prompt-run/pox-plague-sacrifice
 run prompt-run/pox-sacrifice-creatures
 run prompt-run/pox-sacrifice-lands
 run prompt-run/priest-of-forgotten-gods-payout
+run prompt-run/primeval-force-three-forests
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
 run prompt-run/provisions-merchant-sacrifice-pump
