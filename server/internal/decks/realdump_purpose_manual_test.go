@@ -418,6 +418,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 619 (#5607).
 	"Death Pit Offering": "sacrifices only its own controller's creatures as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 677 (#5618).
+	"Divining Witch": "exiles only the top six cards and the cards it reveals from its controller's own library, never a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
