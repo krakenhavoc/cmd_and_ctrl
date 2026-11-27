@@ -36,7 +36,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    game.AbilityCost{Mana: "{U}", Tap: true},
 				Targets: effects.TargetCreature("target creature you control", effects.YouControl()),
-				Effect:  effects.OldB651PutTheTargetOnTopOfItsOwnersLibrary,
+				Effect:  effects.S82OldB645TargetToTopOfLibrary,
 			},
 		},
 	})

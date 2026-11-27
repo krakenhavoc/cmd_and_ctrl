@@ -10,17 +10,6 @@ import (
 
 // s82_old_b651_helpers.go — Invasion, S82 older sets batch 651 (#5616).
 
-// OldB651PutTheTargetOnTopOfItsOwnersLibrary is "Put target creature you
-// control on top of its owner's library" as an ability's body: the first legal
-// target, read as the ability resolves.
-func OldB651PutTheTargetOnTopOfItsOwnersLibrary(g *game.Game, item *game.StackItem) error {
-	id, ok := B16FirstLegalTargetCard(NewContext(g, item))
-	if !ok {
-		return nil
-	}
-	return g.TuckToLibraryForEffect(id, false)
-}
-
 // OldB651CostsMoreMana is "<matching> spells you cast cost <mana> more to
 // cast" for a coloured unit (Andradite Leech's {B}): CostsMore with one point
 // of a fixed mana Unit, which the increase pass adds as ordinary coloured

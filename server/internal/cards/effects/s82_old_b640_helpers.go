@@ -6,23 +6,6 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// OldB640RevealRandomFromHand is "<player> reveals a card at random from
-// their hand": the card is picked from the game's keyed random stream (so an
-// undo rewinds it) and revealed to the table. ok is false for an empty hand
-// (nothing is revealed) or a player who is gone.
-func OldB640RevealRandomFromHand(ctx *Context, player uuid.UUID, reason string) (id uuid.UUID, ok bool) {
-	p := ctx.Game.PlayerByIDForEffect(player)
-	if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
-		return uuid.Nil, false
-	}
-	pick := ctx.Game.ChooseAtRandomForEffect(RandomDraw(ctx), HandCardIDs(ctx.Game, player), 1)
-	if len(pick) == 0 {
-		return uuid.Nil, false
-	}
-	ctx.Game.RevealForEffect(game.RevealSpec{Player: player, Source: ctx.Source(), Cards: pick, Reason: reason})
-	return pick[0], true
-}
-
 // OldB640RevealThenDamage is Planeswalker's Fury: the target opponent reveals
 // a card at random from their hand, then the enchantment deals damage equal to
 // that card's mana value to that player (the mana value read as it is revealed,
@@ -38,7 +21,7 @@ func OldB640RevealThenDamage(ctx *Context) error {
 	if opp == uuid.Nil {
 		return nil
 	}
-	id, ok := OldB640RevealRandomFromHand(ctx, opp, "Planeswalker's Fury")
+	id, ok := OldB639RevealRandomFromHand(ctx, opp, "Planeswalker's Fury")
 	if !ok {
 		return nil
 	}

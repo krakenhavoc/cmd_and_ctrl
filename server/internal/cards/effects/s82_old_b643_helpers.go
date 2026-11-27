@@ -87,17 +87,6 @@ func OldB643YourLandsAre22FirstStrikeCreatures(label string) []game.StaticAbilit
 	}
 }
 
-// OldB643ControlsLandType reports whether `controller` controls a land of the
-// basic land type, read from the layered land.
-func OldB643ControlsLandType(g *game.Game, controller uuid.UUID, landType string) bool {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsLand() && c.HasSubtype(landType) {
-			return true
-		}
-	}
-	return false
-}
-
 // OldB643AddCreatureType is a layer 4 Apply that adds the creature type and keeps
 // every other type and subtype (Living Plane, Natural Emergence).
 func OldB643AddCreatureType(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

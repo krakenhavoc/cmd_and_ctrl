@@ -29,7 +29,7 @@ func init() {
 			for _, p := range []struct{ landType, color string }{
 				{"Plains", "white"}, {"Island", "blue"}, {"Swamp", "black"}, {"Mountain", "red"}, {"Forest", "green"},
 			} {
-				if !effects.OldB643ControlsLandType(ctx.Game, ctx.Controller(), p.landType) {
+				if !effects.OldB642ControlsLandType(ctx.Game, ctx.Controller(), p.landType) {
 					continue
 				}
 				if err := (effects.GrantKeywordUntilEOT{

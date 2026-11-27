@@ -57,15 +57,6 @@ func oldB648Activate(t *testing.T, g *game.Game, src uuid.UUID, ability int, man
 	return g.ActivateCatalogAbility(me.ID, src, ability, params)
 }
 
-func oldB648Effective(g *game.Game, id uuid.UUID) game.Card {
-	c, _ := g.LookupCardForEffect(id)
-	return c
-}
-
-func oldB648Target(id uuid.UUID) game.ActivateAbilityParams {
-	return game.ActivateAbilityParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: id}}}
-}
-
 const (
 	oldB648Overload   = "07159efc-c69f-4164-a8ca-9da641dbf702"
 	oldB648Squadron   = "109f7a7d-dc08-4c8f-8065-93c620a9194e"
