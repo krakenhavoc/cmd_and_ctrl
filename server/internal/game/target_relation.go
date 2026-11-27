@@ -73,6 +73,13 @@ const (
 	// wherever it is now (the mana value it has, CR 202.3), and the
 	// candidate a battlefield permanent whose mana value is no greater.
 	TargetManaValueNoGreater TargetRelationKind = "mana_value_no_greater"
+	// TargetPowerNoGreater is "with power less than or equal to that
+	// creature's", where that creature is the earlier target (Spawnbroker's
+	// "target creature with power less than or equal to that creature's power
+	// an opponent controls"). The anchor must be a card, read wherever it is
+	// now (the power it has, CR 208.1), and the candidate a battlefield
+	// permanent whose power is no greater.
+	TargetPowerNoGreater TargetRelationKind = "power_no_greater"
 )
 
 // ManyPicks reports whether a dependent clause of this kind may pick
@@ -133,6 +140,12 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 		}
 		a := g.findCardByIDLocked(anchor.ID)
 		return a != nil && c.ManaValue() <= a.ManaValue()
+	case TargetPowerNoGreater:
+		if anchor.Kind != TargetCard || z.Kind != ZoneBattlefield {
+			return false
+		}
+		a := g.findCardByIDLocked(anchor.ID)
+		return a != nil && c.Effective().Power <= a.Effective().Power
 	case TargetSharesCardType:
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&

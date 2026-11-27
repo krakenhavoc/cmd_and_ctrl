@@ -1,8 +1,6 @@
 package cardsr
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -30,64 +28,8 @@ func init() {
 		Name:         "Reins of Power",
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetPlayer("target opponent", effects.Opponent()),
-		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
-			victim, ok := effects.FirstLegalPlayerTarget(ctx)
-			if !ok {
-				return nil
-			}
-			caster := ctx.Controller()
-			mine := effects.MatchingBattlefield(ctx, effects.And(effects.Creature(), effects.YouControl()))
-			theirs := effects.MatchingBattlefield(ctx, reinsOfPowerControlledBy(victim))
-			for _, c := range mine {
-				if err := (effects.UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			for _, c := range theirs {
-				if err := (effects.UntapTarget{Target: c.InstanceID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			if err := reinsOfPowerSwap(ctx, mine, victim); err != nil {
-				return err
-			}
-			return reinsOfPowerSwap(ctx, theirs, caster)
+		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
+			return effects.SwapEachPlayersCreatures(ctx, "Reins of Power")
 		},
 	})
-}
-
-// reinsOfPowerControlledBy is a MatchingBattlefield predicate for "all
-// creatures <player> controls" — the ignore-caster shape a target
-// player's own creatures need, since MatchingBattlefield always hands
-// the resolving spell's caster to the predicate and this half of the
-// clause cares about someone else.
-func reinsOfPowerControlledBy(player uuid.UUID) effects.CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.IsCreature() && c.Controller == player
-	}
-}
-
-// reinsOfPowerSwap hands one snapshot of creatures to `to`: gain
-// control until end of turn, then haste until end of turn, for each.
-func reinsOfPowerSwap(ctx *effects.Context, creatures []game.Card, to uuid.UUID) error {
-	for _, c := range creatures {
-		if err := (effects.GainControl{
-			Target:     c.InstanceID,
-			Controller: to,
-			Duration:   effects.DurationUntilEndOfTurn(ctx),
-			Label:      "Reins of Power — gain control until end of turn",
-		}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	for _, c := range creatures {
-		if err := (effects.GrantKeywordUntilEOT{
-			Target:   c.InstanceID,
-			Keywords: []string{"haste"},
-			Label:    "Reins of Power — haste until end of turn",
-		}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }

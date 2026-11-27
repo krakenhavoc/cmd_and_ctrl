@@ -565,6 +565,8 @@ body s82-old-b370/destroy-all-permanents
 body s82-old-b389/triton-tactics-tap-blocked
 body s82-old-b408/obzedat-return
 body s82-old-b464/virulent-wound-poison
+body s82-old-b581/gaze-of-the-gorgon-destroy
+body s82-old-b585/discard-three-at-next-end-step
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1106,6 +1108,7 @@ choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/industrial-advancement-sacrifice
 choose choose-cards/infernal-tutor-reveal
+choose choose-cards/ink-treader-nephilim-copy-order
 choose choose-cards/inscribed-tablet-take
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
@@ -1701,8 +1704,10 @@ choose choose-cards/s82-old-b548-changeling-titan-champion
 choose choose-cards/s82-old-b556-boggart-mob-champion
 choose choose-cards/s82-old-b556-nova-chaser-champion
 choose choose-cards/s82-old-b556-thoughtweft-trio-champion
+choose choose-cards/s82-old-b568-jokulmorder-lands
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
+choose choose-cards/s82-old-b581-sisters-of-stone-death-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2299,6 +2304,7 @@ confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/old-b271-covenant-of-minds
+confirm confirm/old-b586-choice-of-damnations
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -2447,6 +2453,7 @@ confirm confirm/whispering-specter-sacrifice
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
+confirm confirm/witch-maw-nephilim-counters
 confirm confirm/zagorka-sanctum
 confirm confirm/zareth-san-reanimate
 confirm confirm/zealot-il-vec-damage
@@ -2580,6 +2587,7 @@ milluntil until/instant-or-sorcery-card
 milluntil until/land-card
 milluntil until/legendary-card
 milluntil until/nonland-card
+milluntil until/s82-old-b590-group-of-three-ends-on-a-land
 milluntil until/starrix-n-permanent-cards
 milluntil until/strago-and-relm-hit
 milluntil until/total-mana-value
@@ -2610,6 +2618,8 @@ number number/medicine-runner-remove-counter
 number number/necrodominance-draw-that-many
 number number/old-b069-remove-counters
 number number/old-b081-stumpsquall-hydra-give
+number number/old-b585-pains-reward-lose-the-bid-and-draw-four
+number number/old-b586-choice-of-damnations
 number number/overseer-of-vault-76-split-quest-counters
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plague-of-vermin-paid
@@ -2825,6 +2835,7 @@ option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
 option option-pick/old-b240-unesh-splitter
 option option-pick/old-b387-order-of-succession-direction
+option option-pick/old-b586-blood-clock
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -2889,6 +2900,7 @@ option option-pick/s82-old-b459-apostles-blessing
 option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-old-b522-canker-abomination
+option option-pick/s82-old-b568-jokulmorder-choice
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3264,6 +3276,8 @@ payunless pay-unless/old-b516-carrion-thrash-return
 payunless pay-unless/old-b516-minion-reflector-copy
 payunless pay-unless/old-b554-flamekin-elemental-shaman
 payunless pay-unless/old-b554-tapped-attacking-kithkin-soldier
+payunless pay-unless/old-b579-blood-funnel-counter
+payunless pay-unless/old-b580-perplex-counter
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3351,6 +3365,7 @@ payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
+payunless pay-unless/spelltithe-enforcer-sacrifice
 payunless pay-unless/spined-tyrranax-counter
 payunless pay-unless/spirit-bonds-spirit
 payunless pay-unless/spirit-cairn-spirit
@@ -3707,6 +3722,9 @@ run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
 run prompt-run/old-b178-consume-gain-power
 run prompt-run/old-b516-archdemon-of-unx-zombie
+run prompt-run/old-b579-draw-sacrificed-power
+run prompt-run/old-b586-blood-clock-return
+run prompt-run/old-b586-sacrifice-all-but
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -3728,6 +3746,7 @@ run prompt-run/put-chosen-permanent-on-top-of-library
 run prompt-run/pyroclastic-hellion-return-land
 run prompt-run/ragefire-hellkite-double-strike
 run prompt-run/ravenous-rotbelly-sacrifice
+run prompt-run/razias-purification-sacrifice-the-rest
 run prompt-run/reactor-raid-draw
 run prompt-run/redcap-gutter-dweller-sacrificed
 run prompt-run/reign-of-the-pit-demon
@@ -4061,6 +4080,7 @@ tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
 tail biblioplex-kraken/unblockable
 tail bind-to-life/after-mill
+tail bioplasm/exiled-creature-pump
 tail bismuth-mindrender/after-exile
 tail blb/coiling-rebirth-copy
 tail blb/driftgloom-coyote-counter
@@ -4123,6 +4143,7 @@ tail capricious-hellraiser/choose-and-copy
 tail card-name/day-of-the-moon-goad
 tail card-name/s82-old-b321-infinite-obliteration
 tail card-name/s82-old-b426-slaughter-games
+tail card-name/s82-old-b581-tunnel-vision
 tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
@@ -4195,6 +4216,7 @@ tail copy-and-cast/mnemonic-deluge-three-copies
 tail copy-and-cast/spelltwine-both-then-exile-self
 tail cori-steel-cutter/offer-attach
 tail corpse-appraiser/look-at-top-three
+tail counter/descendant-of-masumaro-remove
 tail counter/double-if-grew
 tail counter/double-plus-one
 tail counter/draw-per-counter
@@ -4519,6 +4541,7 @@ tail fecund-greenshell/land-declined-into-hand
 tail feldon-of-the-third-path/haste-and-sacrifice-copy
 tail felhide-spiritbinder/haste-and-exile-copy
 tail fell-gravship/after-mill
+tail feral-lightning/exile-the-elementals
 tail fetch-quest/after-mill
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
@@ -4923,6 +4946,8 @@ tail old-b332/mirror-mockery-exile
 tail old-b541/minus-counter-on-each-next
 tail old-b543/clash-counter-on-this
 tail old-b544/clash-counter-on-this
+tail old-b579/draw-that-many
+tail old-b579/eye-of-the-storm-copies
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5004,10 +5029,12 @@ tail q-stacking-the-deck/gains-copy-ability
 tail quag-feast/after-mill
 tail queen-kayla-bin-kroog/after-discard
 tail queens-bay-paladin/lose-life
+tail quickchange/colors-chosen
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
 tail ragnarok-divine-deliverance/return
+tail rally-the-horde/warriors
 tail rampaging-growth/animate
 tail rampant-frogantua/after-mill
 tail random-encounter/entered
@@ -5986,6 +6013,7 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail undying-flames/damage
 tail unexpected-results/return-to-hand
 tail unlucky-cabbage-merchant/after-search
 tail urborg-scavengers/counter
