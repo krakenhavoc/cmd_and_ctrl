@@ -3305,6 +3305,7 @@ payunless pay-unless/s82-old-b471-embersmith-damage
 payunless pay-unless/s82-old-b472-lifesmith-life
 payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
 payunless pay-unless/s82-old-b549-bog-strider-ash
+payunless pay-unless/s82-old-b564-recover
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
