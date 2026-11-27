@@ -1041,6 +1041,7 @@ choose choose-cards/forbidden-alchemy-take
 choose choose-cards/foreboding-steamboat-grave
 choose choose-cards/fork-in-the-road-settle
 choose choose-cards/formidable-speaker-search
+choose choose-cards/forsaken-city-exile-to-untap
 choose choose-cards/fortunate-few-pick
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/founding-the-third-path-cast
@@ -4844,6 +4845,7 @@ tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
 tail mass/krenkos-buzzcrusher-search
 tail mass/legions-end-name-sweep
+tail mass/march-of-souls-spirits
 tail mass/mass-polymorph-reveal
 tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
@@ -5831,6 +5833,7 @@ tail then/risky-research-draw-two-lose-two
 tail then/rith-the-awakener-saprolings
 tail then/rivers-grasp-black-half
 tail then/roiling-waters-draw
+tail then/root-greevil-color-chosen
 tail then/rotisserie-elemental-exile
 tail then/rottenmouth-viper-punisher-sacrificed
 tail then/s82-afr-b04-interrogate-choose-one
