@@ -566,6 +566,7 @@ body s82-old-b389/triton-tactics-tap-blocked
 body s82-old-b408/obzedat-return
 body s82-old-b464/virulent-wound-poison
 body s82-old-b581/gaze-of-the-gorgon-destroy
+body s82-old-b585/discard-three-at-next-end-step
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2615,6 +2616,7 @@ number number/medicine-runner-remove-counter
 number number/necrodominance-draw-that-many
 number number/old-b069-remove-counters
 number number/old-b081-stumpsquall-hydra-give
+number number/old-b585-pains-reward-lose-the-bid-and-draw-four
 number number/overseer-of-vault-76-split-quest-counters
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plague-of-vermin-paid
