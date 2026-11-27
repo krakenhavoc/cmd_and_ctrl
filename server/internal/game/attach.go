@@ -871,18 +871,32 @@ func (g *Game) attachResolvedAuraLocked(cardID uuid.UUID, item *StackItem) {
 	_ = g.AttachForEffect(cardID, host)
 }
 
-// AttachedToSourceOKForEffect answers TargetSpec.AttachedToSource for
-// one candidate of a sacrifice clause: true when the clause does not
-// carry the flag, otherwise true only when `candidate` is attached to
-// the permanent paying the cost (`sourceID`). One answer for the
-// payment validator, the legal enumerator and the protocol view.
+// AttachedToSourceOKForEffect answers TargetSpec.AttachedToSource and
+// TargetSpec.SourceAttachedTo for one candidate of a sacrifice clause: true
+// when the clause carries neither flag, otherwise true only when `candidate`
+// is attached to the permanent paying the cost (`sourceID`), or, for
+// SourceAttachedTo, when the permanent paying the cost is attached to
+// `candidate` ("Sacrifice enchanted creature"). One answer for the payment
+// validator, the legal enumerator and the protocol view.
 // Caller must hold g.mu.
 func (g *Game) AttachedToSourceOKForEffect(spec *TargetSpec, sourceID, candidate uuid.UUID) bool {
-	if spec == nil || !spec.AttachedToSource {
+	if spec == nil || (!spec.AttachedToSource && !spec.SourceAttachedTo) {
 		return true
 	}
 	c := findBattlefieldCard(g, candidate)
-	return c != nil && c.IsAttachedTo(sourceID)
+	if c == nil {
+		return false
+	}
+	if spec.AttachedToSource && !c.IsAttachedTo(sourceID) {
+		return false
+	}
+	if spec.SourceAttachedTo {
+		src := findBattlefieldCard(g, sourceID)
+		if src == nil || !src.IsAttachedTo(candidate) {
+			return false
+		}
+	}
+	return true
 }
 
 // isFortificationAttachment reports whether the permanent attaches as a
