@@ -1777,12 +1777,9 @@ choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
 choose choose-cards/s82-old-b678-exile-linked
 choose choose-cards/s82-old-b694-renounce-sacrifice
 choose choose-cards/s82-old-b701-eye-spy-graveyard
+choose choose-cards/s82-old-b704-reveal-red
 choose choose-cards/s82-old-b705-scent-of-ivy
 choose choose-cards/s82-old-b705-scent-of-nightshade
-choose choose-cards/s82-old-b714-marshaling-the-troops-tap
-choose choose-cards/s82-old-b714-wei-assassins-destroy
-choose choose-cards/s82-old-b714-wu-spy-graveyard
-choose choose-cards/s82-old-b704-reveal-red
 choose choose-cards/s82-old-b706-brine-seer
 choose choose-cards/s82-old-b706-ivy-seer
 choose choose-cards/s82-old-b706-jasmine-seer
@@ -1795,6 +1792,9 @@ choose choose-cards/s82-old-b708-burning-of-xinye-mine
 choose choose-cards/s82-old-b708-burning-of-xinye-theirs
 choose choose-cards/s82-old-b711-eunuchs-intrigues-others-cant-block
 choose choose-cards/s82-old-b711-imperial-edict-destroy
+choose choose-cards/s82-old-b714-marshaling-the-troops-tap
+choose choose-cards/s82-old-b714-wei-assassins-destroy
+choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
@@ -3035,8 +3035,8 @@ option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-old-b662-death-or-glory-chosen
 option option-pick/s82-old-b671-fickle-efreet-hand-over
-option option-pick/s82-old-b716-walking-sponge-keyword
 option option-pick/s82-old-b704-goblin-festival-opponent
+option option-pick/s82-old-b716-walking-sponge-keyword
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
