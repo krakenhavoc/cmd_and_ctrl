@@ -32,7 +32,7 @@ func init() {
 			}
 			x := 0
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.Controller == ctx.Controller() && c.HasColor("U") {
+				if c.Controller == ctx.Controller() && c.HasColor(ctx.TextColor("U")) {
 					x++
 				}
 			}

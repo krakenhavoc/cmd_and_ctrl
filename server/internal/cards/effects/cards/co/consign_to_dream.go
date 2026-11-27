@@ -32,7 +32,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			if c.HasColor("R") || c.HasColor("G") {
+			if c.HasColor(ctx.TextColor("R")) || c.HasColor(ctx.TextColor("G")) {
 				return ctx.Game.TuckToLibraryForEffect(id, false)
 			}
 			return effects.BounceToHand{Target: id}.Apply(ctx)

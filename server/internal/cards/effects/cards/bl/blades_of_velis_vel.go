@@ -25,6 +25,7 @@ func init() {
 		Name:            "Blades of Velis Vel",
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{game.KeywordChangeling},
+		Purpose:         effects.ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetBenefit}),
 		Targets:         effects.TargetCreature("up to two target creatures").WithCount(0, 2),
 		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
 			for _, t := range ctx.LegalTargets() {

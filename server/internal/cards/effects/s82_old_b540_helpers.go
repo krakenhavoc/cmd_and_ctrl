@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"strings"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // s82_old_b540_helpers.go — Shadowmoor batch 540 (#5591).
 
@@ -37,7 +41,9 @@ func OldB540CounterThenExtract(card string) func(*game.StackItem, *Context) erro
 // (CR 105.1), the way the colour anthems read it, so a creature recoloured
 // in layer 5 counts.
 func OldB540ColorCreaturesYouControlHave(color, keyword string) game.StaticAbility {
-	return KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+	grant := KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.IsCreature() && target.Controller == source.Controller && target.HasColor(source.TextColor(color))
 	}, keyword)
+	name := game.ColorName(color)
+	return Labelled(grant, strings.ToUpper(name[:1])+name[1:]+" creatures you control have "+keyword+".")
 }

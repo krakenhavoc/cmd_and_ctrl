@@ -25,12 +25,12 @@ func init() {
 		Name:         "Intimidator Initiate",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.Targeting(effects.On(game.EventCast, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+			effects.Targeting(effects.On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor == uuid.Nil {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.HasColor("R")
+				return ok && spell.HasColor(source.TextColor("R"))
 			}, "Intimidator Initiate — you may pay {1}: target creature can't block this turn",
 				func(g *game.Game, item *game.StackItem) error {
 					return effects.MayPay{
