@@ -3696,6 +3696,7 @@ run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
 run prompt-run/old-b178-consume-gain-power
 run prompt-run/old-b516-archdemon-of-unx-zombie
+run prompt-run/old-b587-akuta-sacrifice-a-swamp
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -4902,6 +4903,8 @@ tail old-b331/return-face-down
 tail old-b332/mirror-mockery-exile
 tail old-b541/minus-counter-on-each-next
 tail old-b543/clash-counter-on-this
+tail old-b587/iname-exiled-return-a-spirit
+tail old-b587/sacrifice-that-creature-at-the-next-end-step
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage

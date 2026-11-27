@@ -1,8 +1,6 @@
 package cardsd
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -28,27 +26,8 @@ func init() {
 		Targets:      effects.TargetPlayer("target player"),
 		OnResolve:    effects.ResolveSteps(effects.TargetPlayerLosesLife{N: 1}, effects.GainLife{Amount: 1}),
 		Triggered: []game.TriggeredAbility{
-			effects.InGraveyard(effects.Optional(effects.InterveningIfYou("you have more cards in hand than each opponent", MoreCardsInHandThanEachOpponent,
+			effects.InGraveyard(effects.Optional(effects.InterveningIfYou("you have more cards in hand than each opponent", effects.MoreCardsInHandThanEachOpponent,
 				effects.AtYourUpkeep(label, effects.ReturnThisCardFromYourGraveyardToHand)), label+"?")),
 		},
 	})
-}
-
-// MoreCardsInHandThanEachOpponent is "you have more cards in hand than
-// each opponent": strictly more than every opponent still in the game.
-func MoreCardsInHandThanEachOpponent(g *game.Game, you uuid.UUID) bool {
-	me := g.PlayerByIDForEffect(you)
-	if me == nil || me.Hand == nil {
-		return false
-	}
-	mine := len(me.Hand.Cards)
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated || p.ID == you {
-			continue
-		}
-		if p.Hand != nil && len(p.Hand.Cards) >= mine {
-			return false
-		}
-	}
-	return true
 }
