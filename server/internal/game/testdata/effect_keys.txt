@@ -5712,6 +5712,7 @@ tail then/old-b443-seance-copy
 tail then/old-b499-shuffle-carried
 tail then/old-b499-sphinx-found
 tail then/old-b499-sphinx-named
+tail then/old-b605-grim-reminder
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
