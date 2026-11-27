@@ -1703,6 +1703,7 @@ choose choose-cards/s82-old-b556-nova-chaser-champion
 choose choose-cards/s82-old-b556-thoughtweft-trio-champion
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
+choose choose-cards/s82-old-b600-tomorrow-take
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2490,6 +2491,7 @@ drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
+drawinstead s82-old-b600-tomorrow
 drawinstead sages-of-the-anima
 drawinstead scion-of-halaster
 drawinstead underrealm-lich
@@ -5082,6 +5084,9 @@ tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
 tail s82-old-b498/living-tsunami-after-return
+tail s82-old-b600/heed-the-mists-after-mill
+tail s82-old-b600/tomorrow-done
+tail s82-old-b600/tomorrow-taken
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards

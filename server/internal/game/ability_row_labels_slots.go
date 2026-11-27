@@ -209,6 +209,8 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	switch {
 	case gr.LifeEqualToManaValue:
 		s = "You may cast " + subject + limit + " by paying life equal to their mana value rather than paying their mana costs."
+	case gr.PricedAtManaValue:
+		s = "You may pay {X} rather than pay the mana cost for " + subject + " you cast" + limit + ", where X is that spell's mana value."
 	case price == "":
 		s = "You may cast " + subject + limit + " without paying their mana costs."
 	default:
