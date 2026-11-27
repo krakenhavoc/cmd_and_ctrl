@@ -3725,6 +3725,7 @@ run prompt-run/old-b516-archdemon-of-unx-zombie
 run prompt-run/old-b579-draw-sacrificed-power
 run prompt-run/old-b586-blood-clock-return
 run prompt-run/old-b586-sacrifice-all-but
+run prompt-run/old-b621-grave-consequences-exile
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -4948,6 +4949,7 @@ tail old-b543/clash-counter-on-this
 tail old-b544/clash-counter-on-this
 tail old-b579/draw-that-many
 tail old-b579/eye-of-the-storm-copies
+tail old-b621/grave-consequences-then
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
