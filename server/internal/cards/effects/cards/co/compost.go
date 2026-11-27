@@ -1,8 +1,6 @@
 package cardsco
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -44,24 +42,5 @@ func init() {
 // CardPutIntoAGraveyard is "a card is put into a graveyard from anywhere",
 // whatever its types: CreatureCardPutIntoAGraveyard without the creature test.
 func CardPutIntoAGraveyard(ev game.Event, g *game.Game) bool {
-	if ev.CardID == uuid.Nil {
-		return false
-	}
-	switch ev.Kind {
-	case game.EventZoneMove, game.EventDiscardCard, game.EventMill:
-		if ev.NewZone != game.ZoneGraveyard || ev.OldZone == game.ZoneGraveyard {
-			return false
-		}
-	case game.EventCounterSpell:
-		if ev.Target != ev.CardID {
-			return false
-		}
-		if z := g.FindCardZoneForEffect(ev.CardID); z == nil || z.Kind != game.ZoneGraveyard {
-			return false
-		}
-	default:
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && !c.IsToken()
+	return effects.OldB720CardPutIntoAGraveyard(ev, g)
 }
