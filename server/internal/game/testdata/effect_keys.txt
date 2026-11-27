@@ -3739,6 +3739,7 @@ run prompt-run/old-b579-draw-sacrificed-power
 run prompt-run/old-b586-blood-clock-return
 run prompt-run/old-b586-sacrifice-all-but
 run prompt-run/old-b587-akuta-sacrifice-a-swamp
+run prompt-run/old-b637-urzas-guilt-lose-life
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
