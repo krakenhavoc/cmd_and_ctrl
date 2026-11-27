@@ -4183,6 +4183,7 @@ tail budding-insurgent/draw-if-legendary-enchantment
 tail budoka-gardener/flip-with-ten-lands
 tail burn-down-the-house/haste
 tail cait-sith-fortune-teller/impulse-exile
+tail caldera-kavu/color-chosen
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
 tail call-of-the-death-dweller/counters
