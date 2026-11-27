@@ -516,6 +516,8 @@ func Register(spec Spec) {
 	// #6206: the spell's own per-target life surcharge, the same guard
 	// one slot over.
 	checkLifePerTarget(spec.Name, spec.LifePerTarget)
+	// #6205: an imposed sacrifice names what it says and what it reaches.
+	CheckImposedSacrifices(spec.Name, spec.ImposedSacrifices)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.

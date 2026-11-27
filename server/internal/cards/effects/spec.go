@@ -1024,6 +1024,14 @@ type Spec struct {
 	// card.
 	LifePerTarget game.LifePerTargetCost
 
+	// ImposedSacrifices are the "<spells / activated abilities> cost an
+	// additional "Sacrifice a <kind>"" statics of this permanent
+	// (Brutal Suppression, #6205, CR 601.2f, 602.2b). Passed to
+	// CardDef.ImposedSacrifices; the engine folds them into the object's
+	// own sacrifice clause (game/imposed_sacrifice.go). Nil for nearly
+	// every card.
+	ImposedSacrifices []game.ImposedSacrifice
+
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
 	// (ADR 0045 addendum, Decision 11): "can't be blocked except by

@@ -418,6 +418,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 619 (#5607).
 	"Death Pit Offering": "sacrifices only its own controller's creatures as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 674 (#5617).
+	"Keldon Firebombers": "each player sacrifices only the lands past their third, which are lands, and no sweep class names lands (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

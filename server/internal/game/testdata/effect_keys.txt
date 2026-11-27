@@ -3825,6 +3825,7 @@ run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-old-b339-abzan-advantage-bolster
 run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-old-b552-crush-underfoot
+run prompt-run/s82-old-b674-overburden-return-land
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
