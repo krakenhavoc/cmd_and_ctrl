@@ -5189,6 +5189,7 @@ tail s82-old-b645/aerostat-return-this
 tail s82-old-b646/target-color-chosen
 tail s82-old-b646/this-color-chosen
 tail s82-old-b647/blind-seer-color-chosen
+tail s82-old-b697/clear-the-land-exile
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
