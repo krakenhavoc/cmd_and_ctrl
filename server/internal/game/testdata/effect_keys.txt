@@ -861,6 +861,21 @@ choose choose-cards/cascade-put-a-land
 choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cass-hand-of-vengeance-auras
 choose choose-cards/cass-hand-of-vengeance-equipment
+choose choose-cards/cataclysm-keep-artifact
+choose choose-cards/cataclysm-keep-artifact-creature
+choose choose-cards/cataclysm-keep-artifact-creature-enchantment
+choose choose-cards/cataclysm-keep-artifact-creature-enchantment-land
+choose choose-cards/cataclysm-keep-artifact-creature-land
+choose choose-cards/cataclysm-keep-artifact-enchantment
+choose choose-cards/cataclysm-keep-artifact-enchantment-land
+choose choose-cards/cataclysm-keep-artifact-land
+choose choose-cards/cataclysm-keep-creature
+choose choose-cards/cataclysm-keep-creature-enchantment
+choose choose-cards/cataclysm-keep-creature-enchantment-land
+choose choose-cards/cataclysm-keep-creature-land
+choose choose-cards/cataclysm-keep-enchantment
+choose choose-cards/cataclysm-keep-enchantment-land
+choose choose-cards/cataclysm-keep-land
 choose choose-cards/cataclysmic-gearhulk-keep-artifact
 choose choose-cards/cataclysmic-gearhulk-keep-artifact-creature
 choose choose-cards/cataclysmic-gearhulk-keep-artifact-creature-enchantment
@@ -2412,6 +2427,7 @@ confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/nylea-keen-eyed-to-graveyard
 confirm confirm/oath-of-druids-reveal-until-creature
 confirm confirm/oath-of-mages-damage
+confirm confirm/oath-of-scholars-discard-hand-draw-three
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
@@ -3517,6 +3533,7 @@ payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
 payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
 payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-old-b696-rishadan-sacrifice
+payunless pay-unless/s82-old-b742-fade-away-sacrifice
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3972,6 +3989,7 @@ run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-old-b723-wildfire-damage
 run prompt-run/s82-old-b745-oath-of-ghouls-return
+run prompt-run/s82-old-b742-cataclysm-keep
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
