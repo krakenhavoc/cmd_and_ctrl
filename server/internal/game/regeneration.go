@@ -146,6 +146,22 @@ func (g *Game) RegenerateForEffect(cardID uuid.UUID) error {
 	return nil
 }
 
+// RegenerateWithRiderForEffect is RegenerateForEffect for an ability that
+// prints "When it regenerates this way, <effect>" (Matopi Golem, #5631):
+// the shield it makes is marked, so the EventRegenerated that spends it
+// carries Event.RegenerationRider and nothing else's regeneration does.
+//
+// Caller must hold g.mu.
+func (g *Game) RegenerateWithRiderForEffect(cardID uuid.UUID) error {
+	idx := findCardOnBattlefield(g, cardID)
+	if idx < 0 {
+		return ErrCardNotFound
+	}
+	g.Battlefield.Cards[idx].RegenerationShields++
+	g.Battlefield.Cards[idx].RegenerationRiderShields++
+	return nil
+}
+
 // RegenerationShieldsOn reports how many regeneration shields a
 // permanent is carrying. Zero for a card that is not on the
 // battlefield.
@@ -283,7 +299,7 @@ func (g *Game) RegenerateInsteadForEffect(ev *ReplacementEvent) {
 	if idx < 0 {
 		return
 	}
-	g.regenerateLocked(ev, &g.Battlefield.Cards[idx])
+	g.regenerateLocked(ev, &g.Battlefield.Cards[idx], false)
 }
 
 // applyRegenerationShieldLocked is the built-in's Replace: spend one
@@ -332,7 +348,14 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 		return
 	}
 	c.RegenerationShields--
-	g.regenerateLocked(ev, c)
+	// A plain shield goes first; a rider one is spent only when no plain
+	// shield is left, and then the regeneration says so (#5631).
+	rider := false
+	if c.RegenerationRiderShields > c.RegenerationShields {
+		c.RegenerationRiderShields--
+		rider = true
+	}
+	g.regenerateLocked(ev, c, rider)
 }
 
 // regenerateLocked is what regenerating DOES (CR 701.19a/b), shield or
@@ -340,7 +363,7 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 // damage is removed and it leaves combat.
 //
 // Caller must hold g.mu (write).
-func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card) {
+func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card, rider bool) {
 	ev.Cancel()
 	// CR 701.19a/b: "its controller taps it". The creature BECOMES
 	// tapped, so "whenever ~ becomes tapped" sees it, as every other tap
@@ -359,6 +382,9 @@ func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card) {
 		Actor:  controller,
 		Source: id,
 		CardID: id,
+		// #5631: the shield that was just spent came from an ability
+		// with a "when it regenerates this way" rider.
+		RegenerationRider: rider,
 	})
 }
 
@@ -377,5 +403,6 @@ func (g *Game) clearRegenerationShieldsLocked() {
 	}
 	for i := range g.Battlefield.Cards {
 		g.Battlefield.Cards[i].RegenerationShields = 0
+		g.Battlefield.Cards[i].RegenerationRiderShields = 0
 	}
 }

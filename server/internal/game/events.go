@@ -2300,6 +2300,12 @@ type Event struct {
 	// Additive within schema v9.
 	SourceName string `json:"source_name,omitempty"`
 
+	// RegenerationRider marks an EventRegenerated whose shield was made by
+	// an ability with a "when it regenerates this way" rider (Matopi Golem,
+	// #5631). False for every other regeneration and every other kind.
+	// Additive within the schema version.
+	RegenerationRider bool `json:"regeneration_rider,omitempty"`
+
 	// Exhaust marks an EventActivateAbility or
 	// EventManaAbilityActivated whose ability prints the exhaust
 	// keyword — "Activate each exhaust ability only once" (#1181,

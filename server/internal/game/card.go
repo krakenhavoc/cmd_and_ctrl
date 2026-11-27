@@ -505,6 +505,17 @@ type Card struct {
 	// does not live in Card.Counters. Added in #667.
 	RegenerationShields int
 
+	// RegenerationRiderShields is how many of RegenerationShields were
+	// made by an ability that adds a rider to the regeneration ("{1}:
+	// Regenerate this creature. When it regenerates this way, put a -1/-1
+	// counter on it." Matopi Golem, S82 OLD #5631). Always at most
+	// RegenerationShields, and cleared with it. A shield that replaces a
+	// destruction spends a plain shield first; only when none is left does
+	// it spend a rider one, and the EventRegenerated that follows carries
+	// Event.RegenerationRider, which is what "when it regenerates this
+	// way" watches. A regeneration from another source never sets it.
+	RegenerationRiderShields int
+
 	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's

@@ -493,6 +493,7 @@ battlefield.cards[].provenance.phyrexianLife	number:int
 battlefield.cards[].provenance.x	number:int
 battlefield.cards[].putInGraveyardFrom	string
 battlefield.cards[].putInGraveyardThisTurn	bool
+battlefield.cards[].regenerationRiderShields	number:int
 battlefield.cards[].regenerationShields	number:int
 battlefield.cards[].renowned	bool
 battlefield.cards[].returnedAura	bool
@@ -1067,6 +1068,7 @@ delayedTriggers[].copiesSpell.card.provenance.phyrexianLife	number:int
 delayedTriggers[].copiesSpell.card.provenance.x	number:int
 delayedTriggers[].copiesSpell.card.putInGraveyardFrom	string
 delayedTriggers[].copiesSpell.card.putInGraveyardThisTurn	bool
+delayedTriggers[].copiesSpell.card.regenerationRiderShields	number:int
 delayedTriggers[].copiesSpell.card.regenerationShields	number:int
 delayedTriggers[].copiesSpell.card.renowned	bool
 delayedTriggers[].copiesSpell.card.returnedAura	bool
@@ -1442,6 +1444,7 @@ delayedTriggers[].copiesSpell.item.trigger.Event.power_up	bool
 delayedTriggers[].copiesSpell.item.trigger.Event.public_names	map:array
 delayedTriggers[].copiesSpell.item.trigger.Event.public_names{}	string
 delayedTriggers[].copiesSpell.item.trigger.Event.put_by	custom(uuid.UUID)
+delayedTriggers[].copiesSpell.item.trigger.Event.regeneration_rider	bool
 delayedTriggers[].copiesSpell.item.trigger.Event.resolved	bool
 delayedTriggers[].copiesSpell.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 delayedTriggers[].copiesSpell.item.trigger.Event.reveal_seq	number:uint64
@@ -2046,6 +2049,7 @@ enteringTokens[].provenance.phyrexianLife	number:int
 enteringTokens[].provenance.x	number:int
 enteringTokens[].putInGraveyardFrom	string
 enteringTokens[].putInGraveyardThisTurn	bool
+enteringTokens[].regenerationRiderShields	number:int
 enteringTokens[].regenerationShields	number:int
 enteringTokens[].renowned	bool
 enteringTokens[].returnedAura	bool
@@ -2190,6 +2194,7 @@ events[].power_up	bool
 events[].public_names	map:array
 events[].public_names{}	string
 events[].put_by	custom(uuid.UUID)
+events[].regeneration_rider	bool
 events[].resolved	bool
 events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
@@ -2676,6 +2681,7 @@ exile.cards[].provenance.phyrexianLife	number:int
 exile.cards[].provenance.x	number:int
 exile.cards[].putInGraveyardFrom	string
 exile.cards[].putInGraveyardThisTurn	bool
+exile.cards[].regenerationRiderShields	number:int
 exile.cards[].regenerationShields	number:int
 exile.cards[].renowned	bool
 exile.cards[].returnedAura	bool
@@ -3170,6 +3176,7 @@ followUpParks[].then.asked.trigger.Event.power_up	bool
 followUpParks[].then.asked.trigger.Event.public_names	map:array
 followUpParks[].then.asked.trigger.Event.public_names{}	string
 followUpParks[].then.asked.trigger.Event.put_by	custom(uuid.UUID)
+followUpParks[].then.asked.trigger.Event.regeneration_rider	bool
 followUpParks[].then.asked.trigger.Event.resolved	bool
 followUpParks[].then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.reveal_seq	number:uint64
@@ -3961,6 +3968,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -4729,6 +4737,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.resolved	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.reveal_seq	number:uint64
@@ -5488,6 +5497,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -6596,6 +6606,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -7488,6 +7499,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.powe
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -8328,6 +8340,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -9087,6 +9100,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.resolved	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.reveal_seq	number:uint64
@@ -9882,6 +9896,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.power_u
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.resolved	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -10663,6 +10678,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -11768,6 +11784,7 @@ frozenEntries[].event.keywordActionTail.armyToken.provenance.phyrexianLife	numbe
 frozenEntries[].event.keywordActionTail.armyToken.provenance.x	number:int
 frozenEntries[].event.keywordActionTail.armyToken.putInGraveyardFrom	string
 frozenEntries[].event.keywordActionTail.armyToken.putInGraveyardThisTurn	bool
+frozenEntries[].event.keywordActionTail.armyToken.regenerationRiderShields	number:int
 frozenEntries[].event.keywordActionTail.armyToken.regenerationShields	number:int
 frozenEntries[].event.keywordActionTail.armyToken.renowned	bool
 frozenEntries[].event.keywordActionTail.armyToken.returnedAura	bool
@@ -11950,6 +11967,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -12735,6 +12753,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -13497,6 +13516,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -14590,6 +14610,7 @@ frozenEntries[].event.millTail.run.planned[].provenance.phyrexianLife	number:int
 frozenEntries[].event.millTail.run.planned[].provenance.x	number:int
 frozenEntries[].event.millTail.run.planned[].putInGraveyardFrom	string
 frozenEntries[].event.millTail.run.planned[].putInGraveyardThisTurn	bool
+frozenEntries[].event.millTail.run.planned[].regenerationRiderShields	number:int
 frozenEntries[].event.millTail.run.planned[].regenerationShields	number:int
 frozenEntries[].event.millTail.run.planned[].renowned	bool
 frozenEntries[].event.millTail.run.planned[].returnedAura	bool
@@ -15094,6 +15115,7 @@ frozenEntries[].event.millTail.run.seen[].provenance.phyrexianLife	number:int
 frozenEntries[].event.millTail.run.seen[].provenance.x	number:int
 frozenEntries[].event.millTail.run.seen[].putInGraveyardFrom	string
 frozenEntries[].event.millTail.run.seen[].putInGraveyardThisTurn	bool
+frozenEntries[].event.millTail.run.seen[].regenerationRiderShields	number:int
 frozenEntries[].event.millTail.run.seen[].regenerationShields	number:int
 frozenEntries[].event.millTail.run.seen[].renowned	bool
 frozenEntries[].event.millTail.run.seen[].returnedAura	bool
@@ -15269,6 +15291,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -16026,6 +16049,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.millTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -17354,6 +17378,7 @@ frozenEntries[].event.stackItem.trigger.Event.power_up	bool
 frozenEntries[].event.stackItem.trigger.Event.public_names	map:array
 frozenEntries[].event.stackItem.trigger.Event.public_names{}	string
 frozenEntries[].event.stackItem.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.stackItem.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.stackItem.trigger.Event.resolved	bool
 frozenEntries[].event.stackItem.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.reveal_seq	number:uint64
@@ -17897,6 +17922,7 @@ frozenEntries[].event.tokenGroups[].template.provenance.phyrexianLife	number:int
 frozenEntries[].event.tokenGroups[].template.provenance.x	number:int
 frozenEntries[].event.tokenGroups[].template.putInGraveyardFrom	string
 frozenEntries[].event.tokenGroups[].template.putInGraveyardThisTurn	bool
+frozenEntries[].event.tokenGroups[].template.regenerationRiderShields	number:int
 frozenEntries[].event.tokenGroups[].template.regenerationShields	number:int
 frozenEntries[].event.tokenGroups[].template.renowned	bool
 frozenEntries[].event.tokenGroups[].template.returnedAura	bool
@@ -18073,6 +18099,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -19180,6 +19207,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.phyrexianLi
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.x	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.putInGraveyardFrom	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.putInGraveyardThisTurn	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.regenerationRiderShields	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.regenerationShields	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.renowned	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.returnedAura	bool
@@ -19698,6 +19726,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.phyrexianLif
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.x	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].putInGraveyardFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].regenerationRiderShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].regenerationShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].renowned	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].returnedAura	bool
@@ -20202,6 +20231,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.phyrexianLife	n
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.x	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].putInGraveyardFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].regenerationRiderShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].regenerationShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].renowned	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].returnedAura	bool
@@ -20377,6 +20407,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.power_up
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -21172,6 +21203,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.po
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -21929,6 +21961,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.power_up	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -22706,6 +22739,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.power_up	bo
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -23553,6 +23587,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.power_up	b
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names{}	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.regeneration_rider	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -24641,6 +24676,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.phyrexianLife	numb
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.x	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].putInGraveyardFrom	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].regenerationRiderShields	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].regenerationShields	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].renowned	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].returnedAura	bool
@@ -26310,6 +26346,7 @@ lastKnownStack[].card.provenance.phyrexianLife	number:int
 lastKnownStack[].card.provenance.x	number:int
 lastKnownStack[].card.putInGraveyardFrom	string
 lastKnownStack[].card.putInGraveyardThisTurn	bool
+lastKnownStack[].card.regenerationRiderShields	number:int
 lastKnownStack[].card.regenerationShields	number:int
 lastKnownStack[].card.renowned	bool
 lastKnownStack[].card.returnedAura	bool
@@ -26685,6 +26722,7 @@ lastKnownStack[].item.trigger.Event.power_up	bool
 lastKnownStack[].item.trigger.Event.public_names	map:array
 lastKnownStack[].item.trigger.Event.public_names{}	string
 lastKnownStack[].item.trigger.Event.put_by	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.regeneration_rider	bool
 lastKnownStack[].item.trigger.Event.resolved	bool
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
@@ -27337,6 +27375,7 @@ match.decks[].fixed[].provenance.phyrexianLife	number:int
 match.decks[].fixed[].provenance.x	number:int
 match.decks[].fixed[].putInGraveyardFrom	string
 match.decks[].fixed[].putInGraveyardThisTurn	bool
+match.decks[].fixed[].regenerationRiderShields	number:int
 match.decks[].fixed[].regenerationShields	number:int
 match.decks[].fixed[].renowned	bool
 match.decks[].fixed[].returnedAura	bool
@@ -27839,6 +27878,7 @@ match.decks[].main[].provenance.phyrexianLife	number:int
 match.decks[].main[].provenance.x	number:int
 match.decks[].main[].putInGraveyardFrom	string
 match.decks[].main[].putInGraveyardThisTurn	bool
+match.decks[].main[].regenerationRiderShields	number:int
 match.decks[].main[].regenerationShields	number:int
 match.decks[].main[].renowned	bool
 match.decks[].main[].returnedAura	bool
@@ -28344,6 +28384,7 @@ match.decks[].side[].provenance.phyrexianLife	number:int
 match.decks[].side[].provenance.x	number:int
 match.decks[].side[].putInGraveyardFrom	string
 match.decks[].side[].putInGraveyardThisTurn	bool
+match.decks[].side[].regenerationRiderShields	number:int
 match.decks[].side[].regenerationShields	number:int
 match.decks[].side[].renowned	bool
 match.decks[].side[].returnedAura	bool
@@ -28560,6 +28601,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -29328,6 +29370,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.reveal_seq	number:uint64
@@ -30087,6 +30130,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -31195,6 +31239,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -32087,6 +32132,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.powe
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -32927,6 +32973,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -33686,6 +33733,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.reveal_seq	number:uint64
@@ -34481,6 +34529,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.power_u
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -35262,6 +35311,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -36367,6 +36417,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.provenance.phyrexianLife	numbe
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.x	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.putInGraveyardFrom	string
 movesAwaitingTokens[].keywordActionTail.armyToken.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.regenerationRiderShields	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.regenerationShields	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.renowned	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.returnedAura	bool
@@ -36549,6 +36600,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -37334,6 +37386,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -38096,6 +38149,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -39189,6 +39243,7 @@ movesAwaitingTokens[].millTail.run.planned[].provenance.phyrexianLife	number:int
 movesAwaitingTokens[].millTail.run.planned[].provenance.x	number:int
 movesAwaitingTokens[].millTail.run.planned[].putInGraveyardFrom	string
 movesAwaitingTokens[].millTail.run.planned[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.run.planned[].regenerationRiderShields	number:int
 movesAwaitingTokens[].millTail.run.planned[].regenerationShields	number:int
 movesAwaitingTokens[].millTail.run.planned[].renowned	bool
 movesAwaitingTokens[].millTail.run.planned[].returnedAura	bool
@@ -39693,6 +39748,7 @@ movesAwaitingTokens[].millTail.run.seen[].provenance.phyrexianLife	number:int
 movesAwaitingTokens[].millTail.run.seen[].provenance.x	number:int
 movesAwaitingTokens[].millTail.run.seen[].putInGraveyardFrom	string
 movesAwaitingTokens[].millTail.run.seen[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.run.seen[].regenerationRiderShields	number:int
 movesAwaitingTokens[].millTail.run.seen[].regenerationShields	number:int
 movesAwaitingTokens[].millTail.run.seen[].renowned	bool
 movesAwaitingTokens[].millTail.run.seen[].returnedAura	bool
@@ -39868,6 +39924,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -40625,6 +40682,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -41953,6 +42011,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.power_up	bool
 movesAwaitingTokens[].stackItem.trigger.Event.public_names	map:array
 movesAwaitingTokens[].stackItem.trigger.Event.public_names{}	string
 movesAwaitingTokens[].stackItem.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].stackItem.trigger.Event.resolved	bool
 movesAwaitingTokens[].stackItem.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.reveal_seq	number:uint64
@@ -42496,6 +42555,7 @@ movesAwaitingTokens[].tokenGroups[].template.provenance.phyrexianLife	number:int
 movesAwaitingTokens[].tokenGroups[].template.provenance.x	number:int
 movesAwaitingTokens[].tokenGroups[].template.putInGraveyardFrom	string
 movesAwaitingTokens[].tokenGroups[].template.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].tokenGroups[].template.regenerationRiderShields	number:int
 movesAwaitingTokens[].tokenGroups[].template.regenerationShields	number:int
 movesAwaitingTokens[].tokenGroups[].template.renowned	bool
 movesAwaitingTokens[].tokenGroups[].template.returnedAura	bool
@@ -42672,6 +42732,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -43779,6 +43840,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.phyrexianLi
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.x	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.putInGraveyardFrom	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.regenerationRiderShields	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.regenerationShields	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.renowned	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.returnedAura	bool
@@ -44297,6 +44359,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.phyrexianLif
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.x	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].putInGraveyardFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].regenerationRiderShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].regenerationShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].renowned	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].returnedAura	bool
@@ -44801,6 +44864,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.phyrexianLife	n
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.x	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].putInGraveyardFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].regenerationRiderShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].regenerationShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].renowned	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].returnedAura	bool
@@ -44976,6 +45040,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.power_up
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -45771,6 +45836,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.po
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -46528,6 +46594,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.power_up	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -47305,6 +47372,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.power_up	bo
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -48152,6 +48220,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.power_up	b
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names{}	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.regeneration_rider	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -49240,6 +49309,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.phyrexianLife	numb
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.x	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].putInGraveyardFrom	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].regenerationRiderShields	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].regenerationShields	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].renowned	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].returnedAura	bool
@@ -49663,6 +49733,7 @@ pausedModeWalk.item.trigger.Event.power_up	bool
 pausedModeWalk.item.trigger.Event.public_names	map:array
 pausedModeWalk.item.trigger.Event.public_names{}	string
 pausedModeWalk.item.trigger.Event.put_by	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.regeneration_rider	bool
 pausedModeWalk.item.trigger.Event.resolved	bool
 pausedModeWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.reveal_seq	number:uint64
@@ -50059,6 +50130,7 @@ pausedResolutionTail.item.trigger.Event.power_up	bool
 pausedResolutionTail.item.trigger.Event.public_names	map:array
 pausedResolutionTail.item.trigger.Event.public_names{}	string
 pausedResolutionTail.item.trigger.Event.put_by	custom(uuid.UUID)
+pausedResolutionTail.item.trigger.Event.regeneration_rider	bool
 pausedResolutionTail.item.trigger.Event.resolved	bool
 pausedResolutionTail.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.reveal_seq	number:uint64
@@ -50449,6 +50521,7 @@ pausedStepWalk.item.trigger.Event.power_up	bool
 pausedStepWalk.item.trigger.Event.public_names	map:array
 pausedStepWalk.item.trigger.Event.public_names{}	string
 pausedStepWalk.item.trigger.Event.put_by	custom(uuid.UUID)
+pausedStepWalk.item.trigger.Event.regeneration_rider	bool
 pausedStepWalk.item.trigger.Event.resolved	bool
 pausedStepWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.reveal_seq	number:uint64
@@ -50666,6 +50739,7 @@ pendingChoices[].asked.trigger.Event.power_up	bool
 pendingChoices[].asked.trigger.Event.public_names	map:array
 pendingChoices[].asked.trigger.Event.public_names{}	string
 pendingChoices[].asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].asked.trigger.Event.resolved	bool
 pendingChoices[].asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.reveal_seq	number:uint64
@@ -51394,6 +51468,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.provenance.phyrexianLife	
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.x	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.putInGraveyardFrom	string
 pendingChoices[].attackSplit.settled.chosen[].template.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.settled.chosen[].template.regenerationRiderShields	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.regenerationShields	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.renowned	bool
 pendingChoices[].attackSplit.settled.chosen[].template.returnedAura	bool
@@ -51918,6 +51993,7 @@ pendingChoices[].attackSplit.settled.groups[].template.provenance.phyrexianLife	
 pendingChoices[].attackSplit.settled.groups[].template.provenance.x	number:int
 pendingChoices[].attackSplit.settled.groups[].template.putInGraveyardFrom	string
 pendingChoices[].attackSplit.settled.groups[].template.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.settled.groups[].template.regenerationRiderShields	number:int
 pendingChoices[].attackSplit.settled.groups[].template.regenerationShields	number:int
 pendingChoices[].attackSplit.settled.groups[].template.renowned	bool
 pendingChoices[].attackSplit.settled.groups[].template.returnedAura	bool
@@ -52098,6 +52174,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.power_up	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.public_names	map:array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.public_names{}	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.resolved	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.reveal_seq	number:uint64
@@ -53181,6 +53258,7 @@ pendingChoices[].attackSplit.template.provenance.phyrexianLife	number:int
 pendingChoices[].attackSplit.template.provenance.x	number:int
 pendingChoices[].attackSplit.template.putInGraveyardFrom	string
 pendingChoices[].attackSplit.template.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.template.regenerationRiderShields	number:int
 pendingChoices[].attackSplit.template.regenerationShields	number:int
 pendingChoices[].attackSplit.template.renowned	bool
 pendingChoices[].attackSplit.template.returnedAura	bool
@@ -53595,6 +53673,7 @@ pendingChoices[].copyWalk.item.trigger.Event.power_up	bool
 pendingChoices[].copyWalk.item.trigger.Event.public_names	map:array
 pendingChoices[].copyWalk.item.trigger.Event.public_names{}	string
 pendingChoices[].copyWalk.item.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.trigger.Event.regeneration_rider	bool
 pendingChoices[].copyWalk.item.trigger.Event.resolved	bool
 pendingChoices[].copyWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.reveal_seq	number:uint64
@@ -54126,6 +54205,7 @@ pendingChoices[].copyWalk.src.provenance.phyrexianLife	number:int
 pendingChoices[].copyWalk.src.provenance.x	number:int
 pendingChoices[].copyWalk.src.putInGraveyardFrom	string
 pendingChoices[].copyWalk.src.putInGraveyardThisTurn	bool
+pendingChoices[].copyWalk.src.regenerationRiderShields	number:int
 pendingChoices[].copyWalk.src.regenerationShields	number:int
 pendingChoices[].copyWalk.src.renowned	bool
 pendingChoices[].copyWalk.src.returnedAura	bool
@@ -54752,6 +54832,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.power_up	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].diceRoll.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.resolved	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -56244,6 +56325,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.power_up	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.public_names	map:array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.public_names{}	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.resolved	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.reveal_seq	number:uint64
@@ -57003,6 +57085,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.power_up	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.resolved	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -57768,6 +57851,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.power_up	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.resolved	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -58588,6 +58672,7 @@ pendingChoices[].nameThen.asked.trigger.Event.power_up	bool
 pendingChoices[].nameThen.asked.trigger.Event.public_names	map:array
 pendingChoices[].nameThen.asked.trigger.Event.public_names{}	string
 pendingChoices[].nameThen.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].nameThen.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].nameThen.asked.trigger.Event.resolved	bool
 pendingChoices[].nameThen.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.reveal_seq	number:uint64
@@ -59354,6 +59439,7 @@ pendingChoices[].ordered.asked.trigger.Event.power_up	bool
 pendingChoices[].ordered.asked.trigger.Event.public_names	map:array
 pendingChoices[].ordered.asked.trigger.Event.public_names{}	string
 pendingChoices[].ordered.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].ordered.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].ordered.asked.trigger.Event.resolved	bool
 pendingChoices[].ordered.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.reveal_seq	number:uint64
@@ -59885,6 +59971,7 @@ pendingChoices[].pickTail.asked.trigger.Event.power_up	bool
 pendingChoices[].pickTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].pickTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].pickTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].pickTail.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].pickTail.asked.trigger.Event.resolved	bool
 pendingChoices[].pickTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -60691,6 +60778,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.po
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -61459,6 +61547,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.reveal_seq	number:uint64
@@ -62218,6 +62307,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -63326,6 +63416,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.pow
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -64218,6 +64309,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -65058,6 +65150,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -65817,6 +65910,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.pow
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.reveal_seq	number:uint64
@@ -66612,6 +66706,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -67393,6 +67488,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -68498,6 +68594,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.x	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.regenerationShields	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.renowned	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.returnedAura	bool
@@ -68680,6 +68777,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -69465,6 +69563,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -70227,6 +70326,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.power
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -71320,6 +71420,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.phyre
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.x	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].renowned	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].returnedAura	bool
@@ -71824,6 +71925,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.phyrexia
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.x	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].renowned	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].returnedAura	bool
@@ -71999,6 +72101,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.p
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -72756,6 +72859,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.power
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -74084,6 +74188,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.power_up	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.reveal_seq	number:uint64
@@ -74627,6 +74732,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.phyre
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.x	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.regenerationShields	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.renowned	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.returnedAura	bool
@@ -74803,6 +74909,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.powe
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -75910,6 +76017,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pro
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.x	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.regenerationShields	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.renowned	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.returnedAura	bool
@@ -76428,6 +76536,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prov
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.x	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].renowned	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].returnedAura	bool
@@ -76932,6 +77041,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provena
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.x	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].renowned	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].returnedAura	bool
@@ -77107,6 +77217,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -77902,6 +78013,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -78659,6 +78771,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -79436,6 +79549,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -80283,6 +80397,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names	map:array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.public_names{}	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.reveal_seq	number:uint64
@@ -81371,6 +81486,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.x	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].regenerationRiderShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].renowned	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].returnedAura	bool
@@ -81576,6 +81692,7 @@ pendingChoices[].scryThen.asked.trigger.Event.power_up	bool
 pendingChoices[].scryThen.asked.trigger.Event.public_names	map:array
 pendingChoices[].scryThen.asked.trigger.Event.public_names{}	string
 pendingChoices[].scryThen.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].scryThen.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].scryThen.asked.trigger.Event.resolved	bool
 pendingChoices[].scryThen.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.reveal_seq	number:uint64
@@ -82384,6 +82501,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.power_up	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.public_names	map:array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.public_names{}	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.regeneration_rider	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.resolved	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.reveal_seq	number:uint64
@@ -84191,6 +84309,7 @@ pendingChoices[].targetWalk.frame.source.provenance.phyrexianLife	number:int
 pendingChoices[].targetWalk.frame.source.provenance.x	number:int
 pendingChoices[].targetWalk.frame.source.putInGraveyardFrom	string
 pendingChoices[].targetWalk.frame.source.putInGraveyardThisTurn	bool
+pendingChoices[].targetWalk.frame.source.regenerationRiderShields	number:int
 pendingChoices[].targetWalk.frame.source.regenerationShields	number:int
 pendingChoices[].targetWalk.frame.source.renowned	bool
 pendingChoices[].targetWalk.frame.source.returnedAura	bool
@@ -84333,6 +84452,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.power_up	bool
 pendingChoices[].targetWalk.frame.trigger.Event.public_names	map:array
 pendingChoices[].targetWalk.frame.trigger.Event.public_names{}	string
 pendingChoices[].targetWalk.frame.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.trigger.Event.regeneration_rider	bool
 pendingChoices[].targetWalk.frame.trigger.Event.resolved	bool
 pendingChoices[].targetWalk.frame.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.reveal_seq	number:uint64
@@ -85241,6 +85361,7 @@ pendingChoices[].triggerFrame.source.provenance.phyrexianLife	number:int
 pendingChoices[].triggerFrame.source.provenance.x	number:int
 pendingChoices[].triggerFrame.source.putInGraveyardFrom	string
 pendingChoices[].triggerFrame.source.putInGraveyardThisTurn	bool
+pendingChoices[].triggerFrame.source.regenerationRiderShields	number:int
 pendingChoices[].triggerFrame.source.regenerationShields	number:int
 pendingChoices[].triggerFrame.source.renowned	bool
 pendingChoices[].triggerFrame.source.returnedAura	bool
@@ -85383,6 +85504,7 @@ pendingChoices[].triggerFrame.trigger.Event.power_up	bool
 pendingChoices[].triggerFrame.trigger.Event.public_names	map:array
 pendingChoices[].triggerFrame.trigger.Event.public_names{}	string
 pendingChoices[].triggerFrame.trigger.Event.put_by	custom(uuid.UUID)
+pendingChoices[].triggerFrame.trigger.Event.regeneration_rider	bool
 pendingChoices[].triggerFrame.trigger.Event.resolved	bool
 pendingChoices[].triggerFrame.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.reveal_seq	number:uint64
@@ -85782,6 +85904,7 @@ pendingTriggers[].trigger.Event.power_up	bool
 pendingTriggers[].trigger.Event.public_names	map:array
 pendingTriggers[].trigger.Event.public_names{}	string
 pendingTriggers[].trigger.Event.put_by	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.regeneration_rider	bool
 pendingTriggers[].trigger.Event.resolved	bool
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
@@ -86605,6 +86728,7 @@ phasedOut.cards[].provenance.phyrexianLife	number:int
 phasedOut.cards[].provenance.x	number:int
 phasedOut.cards[].putInGraveyardFrom	string
 phasedOut.cards[].putInGraveyardThisTurn	bool
+phasedOut.cards[].regenerationRiderShields	number:int
 phasedOut.cards[].regenerationShields	number:int
 phasedOut.cards[].renowned	bool
 phasedOut.cards[].returnedAura	bool
@@ -87114,6 +87238,7 @@ planechase.deck.cards[].provenance.phyrexianLife	number:int
 planechase.deck.cards[].provenance.x	number:int
 planechase.deck.cards[].putInGraveyardFrom	string
 planechase.deck.cards[].putInGraveyardThisTurn	bool
+planechase.deck.cards[].regenerationRiderShields	number:int
 planechase.deck.cards[].regenerationShields	number:int
 planechase.deck.cards[].renowned	bool
 planechase.deck.cards[].returnedAura	bool
@@ -87621,6 +87746,7 @@ planechase.faceUp.cards[].provenance.phyrexianLife	number:int
 planechase.faceUp.cards[].provenance.x	number:int
 planechase.faceUp.cards[].putInGraveyardFrom	string
 planechase.faceUp.cards[].putInGraveyardThisTurn	bool
+planechase.faceUp.cards[].regenerationRiderShields	number:int
 planechase.faceUp.cards[].regenerationShields	number:int
 planechase.faceUp.cards[].renowned	bool
 planechase.faceUp.cards[].returnedAura	bool
@@ -87845,6 +87971,7 @@ promptRuns[].asked.trigger.Event.power_up	bool
 promptRuns[].asked.trigger.Event.public_names	map:array
 promptRuns[].asked.trigger.Event.public_names{}	string
 promptRuns[].asked.trigger.Event.put_by	custom(uuid.UUID)
+promptRuns[].asked.trigger.Event.regeneration_rider	bool
 promptRuns[].asked.trigger.Event.resolved	bool
 promptRuns[].asked.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.reveal_seq	number:uint64
@@ -88388,6 +88515,7 @@ resolving.card.provenance.phyrexianLife	number:int
 resolving.card.provenance.x	number:int
 resolving.card.putInGraveyardFrom	string
 resolving.card.putInGraveyardThisTurn	bool
+resolving.card.regenerationRiderShields	number:int
 resolving.card.regenerationShields	number:int
 resolving.card.renowned	bool
 resolving.card.returnedAura	bool
@@ -88763,6 +88891,7 @@ resolving.item.trigger.Event.power_up	bool
 resolving.item.trigger.Event.public_names	map:array
 resolving.item.trigger.Event.public_names{}	string
 resolving.item.trigger.Event.put_by	custom(uuid.UUID)
+resolving.item.trigger.Event.regeneration_rider	bool
 resolving.item.trigger.Event.resolved	bool
 resolving.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 resolving.item.trigger.Event.reveal_seq	number:uint64
@@ -89607,6 +89736,7 @@ seats[].attractionDeck.cards[].provenance.phyrexianLife	number:int
 seats[].attractionDeck.cards[].provenance.x	number:int
 seats[].attractionDeck.cards[].putInGraveyardFrom	string
 seats[].attractionDeck.cards[].putInGraveyardThisTurn	bool
+seats[].attractionDeck.cards[].regenerationRiderShields	number:int
 seats[].attractionDeck.cards[].regenerationShields	number:int
 seats[].attractionDeck.cards[].renowned	bool
 seats[].attractionDeck.cards[].returnedAura	bool
@@ -90304,6 +90434,7 @@ seats[].command.cards[].provenance.phyrexianLife	number:int
 seats[].command.cards[].provenance.x	number:int
 seats[].command.cards[].putInGraveyardFrom	string
 seats[].command.cards[].putInGraveyardThisTurn	bool
+seats[].command.cards[].regenerationRiderShields	number:int
 seats[].command.cards[].regenerationShields	number:int
 seats[].command.cards[].renowned	bool
 seats[].command.cards[].returnedAura	bool
@@ -90813,6 +90944,7 @@ seats[].companion.cards[].provenance.phyrexianLife	number:int
 seats[].companion.cards[].provenance.x	number:int
 seats[].companion.cards[].putInGraveyardFrom	string
 seats[].companion.cards[].putInGraveyardThisTurn	bool
+seats[].companion.cards[].regenerationRiderShields	number:int
 seats[].companion.cards[].regenerationShields	number:int
 seats[].companion.cards[].renowned	bool
 seats[].companion.cards[].returnedAura	bool
@@ -91323,6 +91455,7 @@ seats[].departedPermanents[].source.provenance.phyrexianLife	number:int
 seats[].departedPermanents[].source.provenance.x	number:int
 seats[].departedPermanents[].source.putInGraveyardFrom	string
 seats[].departedPermanents[].source.putInGraveyardThisTurn	bool
+seats[].departedPermanents[].source.regenerationRiderShields	number:int
 seats[].departedPermanents[].source.regenerationShields	number:int
 seats[].departedPermanents[].source.renowned	bool
 seats[].departedPermanents[].source.returnedAura	bool
@@ -91836,6 +91969,7 @@ seats[].emblems.cards[].provenance.phyrexianLife	number:int
 seats[].emblems.cards[].provenance.x	number:int
 seats[].emblems.cards[].putInGraveyardFrom	string
 seats[].emblems.cards[].putInGraveyardThisTurn	bool
+seats[].emblems.cards[].regenerationRiderShields	number:int
 seats[].emblems.cards[].regenerationShields	number:int
 seats[].emblems.cards[].renowned	bool
 seats[].emblems.cards[].returnedAura	bool
@@ -92441,6 +92575,7 @@ seats[].graveyard.cards[].provenance.phyrexianLife	number:int
 seats[].graveyard.cards[].provenance.x	number:int
 seats[].graveyard.cards[].putInGraveyardFrom	string
 seats[].graveyard.cards[].putInGraveyardThisTurn	bool
+seats[].graveyard.cards[].regenerationRiderShields	number:int
 seats[].graveyard.cards[].regenerationShields	number:int
 seats[].graveyard.cards[].renowned	bool
 seats[].graveyard.cards[].returnedAura	bool
@@ -92946,6 +93081,7 @@ seats[].hand.cards[].provenance.phyrexianLife	number:int
 seats[].hand.cards[].provenance.x	number:int
 seats[].hand.cards[].putInGraveyardFrom	string
 seats[].hand.cards[].putInGraveyardThisTurn	bool
+seats[].hand.cards[].regenerationRiderShields	number:int
 seats[].hand.cards[].regenerationShields	number:int
 seats[].hand.cards[].renowned	bool
 seats[].hand.cards[].returnedAura	bool
@@ -93456,6 +93592,7 @@ seats[].junkyard.cards[].provenance.phyrexianLife	number:int
 seats[].junkyard.cards[].provenance.x	number:int
 seats[].junkyard.cards[].putInGraveyardFrom	string
 seats[].junkyard.cards[].putInGraveyardThisTurn	bool
+seats[].junkyard.cards[].regenerationRiderShields	number:int
 seats[].junkyard.cards[].regenerationShields	number:int
 seats[].junkyard.cards[].renowned	bool
 seats[].junkyard.cards[].returnedAura	bool
@@ -93987,6 +94124,7 @@ seats[].library.cards[].provenance.phyrexianLife	number:int
 seats[].library.cards[].provenance.x	number:int
 seats[].library.cards[].putInGraveyardFrom	string
 seats[].library.cards[].putInGraveyardThisTurn	bool
+seats[].library.cards[].regenerationRiderShields	number:int
 seats[].library.cards[].regenerationShields	number:int
 seats[].library.cards[].renowned	bool
 seats[].library.cards[].returnedAura	bool
@@ -94536,6 +94674,7 @@ seats[].sideboard.cards[].provenance.phyrexianLife	number:int
 seats[].sideboard.cards[].provenance.x	number:int
 seats[].sideboard.cards[].putInGraveyardFrom	string
 seats[].sideboard.cards[].putInGraveyardThisTurn	bool
+seats[].sideboard.cards[].regenerationRiderShields	number:int
 seats[].sideboard.cards[].regenerationShields	number:int
 seats[].sideboard.cards[].renowned	bool
 seats[].sideboard.cards[].returnedAura	bool
@@ -95462,6 +95601,7 @@ stack.cards[].provenance.phyrexianLife	number:int
 stack.cards[].provenance.x	number:int
 stack.cards[].putInGraveyardFrom	string
 stack.cards[].putInGraveyardThisTurn	bool
+stack.cards[].regenerationRiderShields	number:int
 stack.cards[].regenerationShields	number:int
 stack.cards[].renowned	bool
 stack.cards[].returnedAura	bool
@@ -95840,6 +95980,7 @@ stackMeta[].trigger.Event.power_up	bool
 stackMeta[].trigger.Event.public_names	map:array
 stackMeta[].trigger.Event.public_names{}	string
 stackMeta[].trigger.Event.put_by	custom(uuid.UUID)
+stackMeta[].trigger.Event.regeneration_rider	bool
 stackMeta[].trigger.Event.resolved	bool
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
