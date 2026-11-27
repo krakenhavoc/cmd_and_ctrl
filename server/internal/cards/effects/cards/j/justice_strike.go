@@ -2,7 +2,6 @@ package cardsj
 
 import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Justice Strike — Instant {R}{W} (Guilds of Ravnica, #5525):
@@ -19,16 +18,6 @@ func init() {
 		Name:         "Justice Strike",
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok || t.Kind != game.TargetCard {
-				return nil
-			}
-			c, ok := ctx.Game.LookupCardForEffect(t.ID)
-			if !ok {
-				return nil
-			}
-			return effects.DealDamage{Source: t.ID, Target: t.ID, Amount: c.CurrentPower()}.Apply(ctx)
-		},
+		OnResolve:    effects.B583TargetCreatureDamagesItself,
 	})
 }

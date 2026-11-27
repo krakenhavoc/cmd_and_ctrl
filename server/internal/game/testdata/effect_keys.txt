@@ -489,6 +489,7 @@ body prevention/red-damage-source-controller
 body prevention/remove-a-counter-from-this
 body prevention/remove-that-many-counters-from-this
 body prevention/ria-ivor-create-mites
+body prevention/s82-old-b592-sekki-counters-for-spirits
 body prevention/shield-gain-life-equal
 body prevention/that-many-counters-on-it
 body prevention/that-many-counters-on-this
@@ -798,6 +799,7 @@ choose choose-cards/ballad-of-the-black-flag-historic
 choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barals-expertise-cast
+choose choose-cards/barrel-down-sokenzan-mountains
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/battlefield-improvisation-equipment
 choose choose-cards/beamsplitter-mage-copy
@@ -874,6 +876,7 @@ choose choose-cards/chandra-pyromaster-copy-three-times
 choose choose-cards/change-of-plans-discarded
 choose choose-cards/change-of-plans-phase-out
 choose choose-cards/chaos-shrines-black-crystal-return
+choose choose-cards/charge-across-the-araba-plains
 choose choose-cards/charming-scoundrel-draw
 choose choose-cards/charnel-serenade-return
 choose choose-cards/charnel-troll-exile
@@ -1521,6 +1524,7 @@ choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
 choose choose-cards/planetarium-of-wan-shi-tong-cast
 choose choose-cards/plargg-and-nassari-picked
+choose choose-cards/plow-through-reito-plains
 choose choose-cards/plunge-into-darkness-take
 choose choose-cards/polygraph-orb-punisher-discarded
 choose choose-cards/populate
@@ -1708,6 +1712,7 @@ choose choose-cards/s82-old-b568-jokulmorder-lands
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
 choose choose-cards/s82-old-b581-sisters-of-stone-death-return
+choose choose-cards/s82-old-b599-chisei-remove-counter
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1746,6 +1751,7 @@ choose choose-cards/sigardas-vanguard-double-strike
 choose choose-cards/sigardian-zealot-pump
 choose choose-cards/silvan-reveler-discarded
 choose choose-cards/simic-guildmage-attach
+choose choose-cards/sink-into-takenuma-swamps
 choose choose-cards/skywarp-skaab-exile
 choose choose-cards/slaughter-the-strong-keep-leg
 choose choose-cards/sludge-titan-creature
@@ -1895,6 +1901,7 @@ choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/verdant-mastery-mine
 choose choose-cards/verdant-mastery-opponents-land
 choose choose-cards/vessel-of-nascency-take
+choose choose-cards/vexing-arcanix-take
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
 choose choose-cards/vivien-arkbow-ranger-creature
@@ -2555,6 +2562,7 @@ drawthen s82-old-b406/blast-of-genius-discard
 drawthen s82-old-b431/discard-a-card-at-random
 drawthen s82-old-b431/see-beyond-pick
 drawthen s82-old-b449-scholar-loot
+drawthen s82-old-b582/bloodletter-quill-lose-life
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2830,6 +2838,7 @@ option option-pick/nicol-bolas-the-deceiver-punisher
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
+option option-pick/ogre-marauder-answer
 option option-pick/old-b071-cosima-voyage
 option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
@@ -2901,6 +2910,7 @@ option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-old-b522-canker-abomination
 option option-pick/s82-old-b568-jokulmorder-choice
+option option-pick/s82-old-b599-chisei-counter-kind
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3339,6 +3349,9 @@ payunless pay-unless/s82-old-b472-lifesmith-life
 payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
 payunless pay-unless/s82-old-b549-bog-strider-ash
 payunless pay-unless/s82-old-b564-recover
+payunless pay-unless/s82-old-b609-crystal-rod-life
+payunless pay-unless/s82-old-b609-iron-star-life
+payunless pay-unless/s82-old-b609-throne-of-bone-life
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3725,6 +3738,7 @@ run prompt-run/old-b516-archdemon-of-unx-zombie
 run prompt-run/old-b579-draw-sacrificed-power
 run prompt-run/old-b586-blood-clock-return
 run prompt-run/old-b586-sacrifice-all-but
+run prompt-run/old-b587-akuta-sacrifice-a-swamp
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -4948,6 +4962,8 @@ tail old-b543/clash-counter-on-this
 tail old-b544/clash-counter-on-this
 tail old-b579/draw-that-many
 tail old-b579/eye-of-the-storm-copies
+tail old-b587/iname-exiled-return-a-spirit
+tail old-b587/sacrifice-that-creature-at-the-next-end-step
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5739,6 +5755,7 @@ tail then/old-b443-seance-copy
 tail then/old-b499-shuffle-carried
 tail then/old-b499-sphinx-found
 tail then/old-b499-sphinx-named
+tail then/old-b605-grim-reminder
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
@@ -6032,6 +6049,7 @@ tail vengeance-mission/loss
 tail verdant-mastery/after-opponent
 tail verdant-mastery/found
 tail verdant-mastery/to-hand
+tail vexing-arcanix/named
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step
