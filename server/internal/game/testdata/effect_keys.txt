@@ -3269,6 +3269,7 @@ payunless pay-unless/old-b516-minion-reflector-copy
 payunless pay-unless/old-b554-flamekin-elemental-shaman
 payunless pay-unless/old-b554-tapped-attacking-kithkin-soldier
 payunless pay-unless/old-b579-blood-funnel-counter
+payunless pay-unless/old-b580-perplex-counter
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
