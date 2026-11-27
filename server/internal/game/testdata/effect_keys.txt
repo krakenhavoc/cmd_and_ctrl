@@ -1766,6 +1766,7 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-forest
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
+choose choose-cards/s82-old-b704-reveal-red
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2073,6 +2074,7 @@ coinflip coin-flip/s82-old-b602-fiery-gambit-flip
 coinflip coin-flip/s82-old-b626-planar-chaos-counter
 coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/s82-old-b629-squees-revenge
+coinflip coin-flip/s82-old-b704-goblin-festival
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2992,6 +2994,7 @@ option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-old-b662-death-or-glory-chosen
+option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3885,6 +3888,7 @@ run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-old-b552-crush-underfoot
 run prompt-run/s82-old-b662-global-ruin-keep
 run prompt-run/s82-old-b674-overburden-return-land
+run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
