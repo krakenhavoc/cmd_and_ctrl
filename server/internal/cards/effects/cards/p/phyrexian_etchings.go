@@ -27,11 +27,11 @@ func init() {
 			effects.CumulativeUpkeep("Phyrexian Etchings — cumulative upkeep {B}", "{B}"),
 			effects.AtYourEndStep("Phyrexian Etchings — draw a card for each age counter on it",
 				func(g *game.Game, item *game.StackItem) error {
-					return effects.DrawCards{Player: item.Controller, N: effects.OldB559AgeCounters(g, item)}.Apply(effects.NewContext(g, item))
+					return effects.DrawCards{Player: item.Controller, N: effects.AgeCountersAsItLeft(g, item)}.Apply(effects.NewContext(g, item))
 				}),
 			effects.WhenThisDies("Phyrexian Etchings — you lose 2 life for each age counter on it",
 				func(g *game.Game, item *game.StackItem) error {
-					n := effects.OldB559AgeCounters(g, item)
+					n := effects.AgeCountersAsItLeft(g, item)
 					if n <= 0 {
 						return nil
 					}

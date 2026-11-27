@@ -9,17 +9,6 @@ import (
 // s82_old_b559_helpers.go — S82 set OLD, batch 559 (Coldsnap, cumulative
 // upkeep).
 
-// OldB559AgeCounters is the number of age counters on an ability's source: the
-// count the source had as it left the battlefield when the ability is a
-// trigger about that move (the trigger's last-known object, CR 603.10a), else
-// live while it is on the battlefield, else last-known (CR 608.2h).
-func OldB559AgeCounters(g *game.Game, item *game.StackItem) int {
-	if item.Trigger != nil && item.Trigger.Event.Kind == game.EventLTB && item.Trigger.Object != nil && item.Trigger.Object.ID == item.SourceCardID {
-		return item.Trigger.Object.Counters[game.CounterAge]
-	}
-	return TrekB5CountersOnThis(g, item.SourceCardID, game.CounterAge)
-}
-
 // OldB559AgeCountersOnSource counts a permanent's age counters inside a layer
 // pass (the source as the pass sees it).
 func OldB559AgeCountersOnSource(_ *game.Game, source *game.Card) int {
