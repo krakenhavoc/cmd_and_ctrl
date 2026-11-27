@@ -440,6 +440,7 @@ body old-b386/reincarnation-return
 body old-b507/quenchable-fire-damage
 body old-b516-skeletonize/skeleton
 body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
+body old-b639/planeswalkers-mischief-return
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -4964,6 +4965,7 @@ tail old-b579/draw-that-many
 tail old-b579/eye-of-the-storm-copies
 tail old-b587/iname-exiled-return-a-spirit
 tail old-b587/sacrifice-that-creature-at-the-next-end-step
+tail old-b639/planeswalkers-mischief-exiled
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
