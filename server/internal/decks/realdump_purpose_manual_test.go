@@ -405,6 +405,10 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 591 (#5601).
 	"Meishin, the Mind Cage": "-X/-0 to every creature for as long as it stays out: it shrinks power only and kills nothing",
+
+	// S82 OLD batch 613 (#5607).
+	"Boil":       "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
+	"Flashfires": "destroys only the Plains, which are lands, and no sweep class names lands (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
