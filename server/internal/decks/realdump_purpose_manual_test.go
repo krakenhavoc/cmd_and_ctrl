@@ -430,6 +430,10 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 677 (#5618).
 	"Divining Witch": "exiles only the top six cards and the cards it reveals from its controller's own library, never a permanent",
+
+	// S82 OLD batch 717 (#5623).
+	"Impending Disaster": "destroys only lands, which no sweep class names alone (Armageddon declares none)",
+	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
