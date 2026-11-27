@@ -402,6 +402,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 593 (#5601).
 	"Tomb of Urami": "sacrificing all lands you control is the cost of making Urami, paid by its own controller; the effect only creates a token",
+
+	// S82 OLD batch 627 (#5611).
+	"Wormfang Behemoth": "exiles the cards in its controller's own hand, not permanents, and returns them to hand when it leaves",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
