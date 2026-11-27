@@ -24,7 +24,7 @@ func init() {
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}, {T}, Reveal two cards from your hand that share a color: Draw a card.",
 			Cost:    effects.Plus(effects.ManaCost("{1}"), effects.TapCost(), effects.RevealNSharingAColor(2, "two cards from your hand that share a color")),
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
 			Effect:  effects.DrawOneCardEffect,
 		}},
 	})

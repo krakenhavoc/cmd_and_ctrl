@@ -138,17 +138,6 @@ func TestS82OldB528IslebackSpawnGrowsWhenAnyLibraryIsTwentyOrFewer(t *testing.T)
 	}
 }
 
-// shmBlockedCombat has my attacker blocked by the opponent's blocker and stops in the
-// declare blockers step.
-func shmBlockedCombat(t *testing.T, g *game.Game) (me, opp *game.Player, attacker, blocker uuid.UUID) {
-	t.Helper()
-	me, opp = effectstest.SeatsForCombat(g)
-	attacker = effectstest.B12Creature(g, me.ID, "Attacker", "Creature — Bear", 2, 2)
-	blocker = effectstest.B12Creature(g, opp.ID, "Blocker", "Creature — Bear", 2, 2)
-	effectstest.Pr7aBlockedCombat(t, g, opp.ID, attacker, blocker)
-	return me, opp, attacker, blocker
-}
-
 func TestS82OldB528KithkinShielddarePumpsOnlyABlockingCreature(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := effectstest.SeatsForCombat(g)

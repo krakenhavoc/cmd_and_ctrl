@@ -21,7 +21,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}, {T}, Tap an untapped creature you control: Target creature gets +1/+1 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1, Toughness: 1}},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetBenefit, Pump: &game.Pump{Power: 1, Toughness: 1}})},
 			Cost: func() game.AbilityCost {
 				c := effects.TapAnUntapped("an untapped creature you control", effects.Creature())
 				c.Mana = "{1}"

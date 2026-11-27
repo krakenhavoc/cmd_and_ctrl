@@ -19,7 +19,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{W}, {T}: Target blocking creature gets +2/+2 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 2, Toughness: 2}},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetBenefit, Pump: &game.Pump{Power: 2, Toughness: 2}})},
 			Cost:    game.AbilityCost{Mana: "{W}", Tap: true},
 			Targets: effects.TargetCreature("target blocking creature", effects.BlockingCreature()),
 			Effect:  effects.BoostTargetUntilEOT("Kithkin Shielddare — +2/+2 until end of turn", 2, 2),

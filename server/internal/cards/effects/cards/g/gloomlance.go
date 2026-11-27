@@ -37,7 +37,7 @@ func init() {
 				return nil
 			}
 			tail := ctx.Tail(gloomlanceDiscard)
-			if c.HasColor("G") || c.HasColor("W") {
+			if c.HasColor(ctx.TextColor("G")) || c.HasColor(ctx.TextColor("W")) {
 				tail = effects.WithCarry(tail, c.Controller)
 			}
 			return ctx.Game.DestroyPermanentsKeyedForEffect([]uuid.UUID{id}, tail)

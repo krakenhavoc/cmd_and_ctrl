@@ -29,7 +29,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   label,
-			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1}},
+			Purpose: game.Purpose{Answers: game.AnswerPump, TeamPump: &game.Pump{Power: 1}},
 			Cost:    effects.ManaCost("{2}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := effects.NewContext(g, item)

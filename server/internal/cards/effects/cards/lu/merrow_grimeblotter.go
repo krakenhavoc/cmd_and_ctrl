@@ -20,7 +20,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{1}{U/B}, {Q}: Target creature gets -2/-0 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetHarm, Pump: &game.Pump{Power: -2}})},
 			Cost:    game.AbilityCost{Mana: "{1}{U/B}", UntapSelf: true},
 			Targets: effects.TargetCreature("target creature"),
 			Effect:  effects.BoostTargetUntilEOT("Merrow Grimeblotter — -2/-0 until end of turn", -2, 0),

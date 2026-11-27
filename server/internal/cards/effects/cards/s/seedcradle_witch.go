@@ -20,7 +20,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}{G}{W}: Target creature gets +3/+3 until end of turn. Untap that creature.",
-			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 3, Toughness: 3}},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, UntilEndOfTurn: game.TargetBenefit, Pump: &game.Pump{Power: 3, Toughness: 3}})},
 			Cost:    effects.ManaCost("{2}{G}{W}"),
 			Targets: effects.TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
