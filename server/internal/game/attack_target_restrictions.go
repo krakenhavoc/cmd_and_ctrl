@@ -153,6 +153,12 @@ type AttackTargetRestriction struct {
 	// spell this turn" (Silburlind Snapper, S82 OLD b293, CR 508.1c).
 	// Read live at declaration from the per-turn cast tally.
 	ControllerMustHaveCastNoncreature bool `json:",omitempty"`
+	// ControllerMustHaveCastCreature is its twin for a creature spell:
+	// "can't attack unless you've cast a creature spell this turn"
+	// (Goblin Cohort, S82 OLD b595, CR 508.1c). Read live at declaration
+	// from the per-turn cast tally (total less noncreature). Additive
+	// within the snapshot version.
+	ControllerMustHaveCastCreature bool `json:",omitempty"`
 	// OpponentMustHaveBeenDealtDamage forbids attacking anything until an
 	// opponent of the attacking creature's controller has been dealt damage
 	// this turn: "can't attack unless an opponent has been dealt damage this
@@ -286,6 +292,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerMustHaveCastNoncreature == o.ControllerMustHaveCastNoncreature &&
+		r.ControllerMustHaveCastCreature == o.ControllerMustHaveCastCreature &&
 		r.OpponentMustHaveBeenDealtDamage == o.OpponentMustHaveBeenDealtDamage &&
 		r.CantAttackDuringExtraTurns == o.CantAttackDuringExtraTurns &&
 		r.MustBePairedWithKeyword == o.MustBePairedWithKeyword &&
@@ -318,7 +325,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.OpponentMustHaveBeenDealtDamage || r.CantAttackDuringExtraTurns || r.MustBePairedWithKeyword != "" || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
+		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.ControllerMustHaveCastCreature || r.OpponentMustHaveBeenDealtDamage || r.CantAttackDuringExtraTurns || r.MustBePairedWithKeyword != "" || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
 		len(r.ControllerMustControlAnother) > 0
 }
 
@@ -368,6 +375,11 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	}
 	if r.ControllerMustHaveCastNoncreature && g.CastTallyFor(you).Noncreature < 1 {
 		return g.playerNameLocked(you) + " hasn't cast a noncreature spell this turn"
+	}
+	if r.ControllerMustHaveCastCreature {
+		if t := g.CastTallyFor(you); t.Total-t.Noncreature < 1 {
+			return g.playerNameLocked(you) + " hasn't cast a creature spell this turn"
+		}
 	}
 	if n := r.ControllerHandAtLeast; n > 0 {
 		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {

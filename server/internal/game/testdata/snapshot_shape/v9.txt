@@ -6253,6 +6253,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].Controller
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -16810,6 +16811,7 @@ frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -24831,6 +24833,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].Controller
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -25184,6 +25187,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].Untapp
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -25542,6 +25546,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMust
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -30842,6 +30847,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].Controller
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -41399,6 +41405,7 @@ movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -54371,6 +54378,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Controlle
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -55536,6 +55544,7 @@ pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].Controller
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -55878,6 +55887,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].Cont
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -62963,6 +62973,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestri
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -73520,6 +73531,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].Co
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -83458,6 +83470,7 @@ pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustC
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
@@ -84506,6 +84519,7 @@ pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustContr
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutKeyword	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControl[].WithoutTypes[]	string
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustHaveCastCreature	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustHaveCastNoncreature	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustHaveCitysBlessing	bool
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].DefenderGraveyardAtLeast	number:int
