@@ -5619,6 +5619,7 @@ tail then/faiths-shield-fateful-hour-protection
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
+tail then/fight-or-flight-chosen-pile
 tail then/firemind-s-foresight-second
 tail then/firemind-s-foresight-third
 tail then/fistful-of-force-clashed
@@ -5889,6 +5890,7 @@ tail then/split-the-spoils-exiled
 tail then/spring-cleaning-clashed
 tail then/springjack-knight-clashed
 tail then/stain-the-mind-named
+tail then/stand-or-fall-chosen-pile
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed

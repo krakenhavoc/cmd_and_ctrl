@@ -154,6 +154,8 @@ var pgReviewed = map[string]string{
 	"a3d048c8-e8df-4b50-a422-fc94a69f44bb": "Boneyard Parley — PileSplit",
 	"33befbd6-56ac-45a7-a4d0-448167162707": "Epiphany at the Drownyard — PileSplit",
 	"a9d58cad-c1c2-4bd2-80f2-da9ce60801df": "Brilliant Ultimatum — PileSplit",
+	"2fc42640-983a-49ca-9020-7756135077b4": "Fight or Flight — PileSplit",
+	"927d0085-9bd9-4454-8ac5-0e374237ed35": "Stand or Fall — PileSplit",
 	// The face-down pile family, which is PileSplit underneath.
 	"8b2b00ab-f1c5-4057-9957-d7daac95a847": "Atris, Oracle of Half-Truths — face-down piles",
 	"9baff93e-4ef9-404d-884b-f651a11f3742": "Fortune's Favor — face-down piles",
