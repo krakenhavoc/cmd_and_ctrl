@@ -3236,6 +3236,8 @@ payunless pay-unless/old-b456-mana-charged-dragon
 payunless pay-unless/old-b456-shared-trauma
 payunless pay-unless/old-b516-carrion-thrash-return
 payunless pay-unless/old-b516-minion-reflector-copy
+payunless pay-unless/old-b554-flamekin-elemental-shaman
+payunless pay-unless/old-b554-tapped-attacking-kithkin-soldier
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
