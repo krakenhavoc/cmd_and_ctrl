@@ -1215,6 +1215,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
+	// #6221, CR 107.3a / 601.2b: a printed "X can't be 0" is a floor on
+	// the announcement (Ertai's Meddling), refused rather than raised for
+	// the reason the ceiling above is.
+	if floor := XFloorFor(CatalogKey(card)); floor > 0 && params.XValue < floor {
+		slog.Warn("cast_spell rejected: X below the floor",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"x_value", params.XValue,
+			"x_floor", floor,
+		)
+		return ErrInvalidParam
+	}
 	// ADR 0073, CR 601.2b: the optional additional costs the caster
 	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
 	// with the modes and before the targets, for two reasons that

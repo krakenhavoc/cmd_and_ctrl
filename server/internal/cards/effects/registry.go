@@ -748,6 +748,9 @@ func Register(spec Spec) {
 	}
 	// #2581: a printed X ceiling with no count would read as "no
 	// ceiling", a card stronger than printed.
+	if spec.XFloor < 0 {
+		panic(fmt.Sprintf("effects.Register: %q declares a negative XFloor %d", spec.Name, spec.XFloor))
+	}
 	if xc := spec.XCeiling; xc != nil && (xc.Count == nil || xc.Label == "") {
 		panic(fmt.Sprintf("effects.Register: %q declares an X ceiling with no count or no label", spec.Name))
 	}

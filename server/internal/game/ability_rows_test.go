@@ -75,6 +75,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"LoyaltyCostAdd":             "a loyalty-cost addition, read when an ability's cost is determined (#6148); its row is the printed static text",
 	"CommanderTaxInLife":         "a commander tax paid in life, read when pricing the cast (#6151)",
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",
+	"XFloor":                     "a floor on a spell's announced X, read at cast",
 	"IgnorableEffect":            "the escape of the CastRestrictions and LandPlayRestrictions that are the tile's rows (#1986, CR 116.2d); a special action on the player's own panel",
 	"WantsDistinctColors":        "an auto-tapper hint",
 	"ReadsManaSpent":             "a waived payment's question, not an ability (#3855)",

@@ -3921,8 +3921,16 @@ and the spell is remembered as it stood on the stack, as epic remembers it
 card is still that object in exile (`DelayedTrigger.WhileExiled`, CR
 603.4), a delay counter is removed; when none is left the card itself goes
 onto the stack with the original's targets, modes, X and paid costs. It is
-not cast, so cast triggers don't see it. "X can't be 0" is the card's own
-`MinX`.
+not cast, so cast triggers don't see it. "X can't be 0" is the spell's own
+`Spec.XFloor: 1` (`game/x_floor.go`, S82 OLD batch 759): the cast is refused
+below it, as `XCeiling` refuses above; declare `XMatters` too, so the bot is
+never offered X=0. The client's X picker does not yet start at the floor.
+
+A target "with power less than or equal to the number of <kind> counters on
+this" (Legacy's Allure) is `RelativeToSource(spec,
+effects.S82OldB759PowerNoGreaterThanCounters("treasure"))`: the source's
+counters are read live, and from its last-known record once an ability's cost
+sacrificed it (CR 608.2h).
 
 Tests: [delayed_recast_test.go](../server/internal/game/delayed_recast_test.go).
 
