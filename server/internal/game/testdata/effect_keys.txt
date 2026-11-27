@@ -2833,6 +2833,7 @@ option option-pick/intellectual-offering-untap
 option option-pick/intrude-on-the-mind-chooser
 option option-pick/invasion-of-arcavios-zones
 option option-pick/itazura-lingering-wick-opponent
+option option-pick/jeweled-spirit-protection
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/khorvaths-fury-friend-or-foe
 option option-pick/kinscaer-sentry-attacks
