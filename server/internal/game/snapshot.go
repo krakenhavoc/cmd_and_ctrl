@@ -2198,16 +2198,19 @@ type pendingChoiceSnapshot struct {
 	RetargetNext     []TargetRef    `json:"retargetNext,omitempty"`
 	RetargetReason   string         `json:"retargetReason,omitempty"`
 	RetargetTo       TargetRef      `json:"retargetTo,omitempty"`
-	ModeOptionIndex  []int          `json:"modeOptionIndex,omitempty"`
-	ModeOptionLabel  []string       `json:"modeOptionLabel,omitempty"`
-	ModeMin          int            `json:"modeMin,omitempty"`
-	ModeMax          int            `json:"modeMax,omitempty"`
-	ModeRepeatable   bool           `json:"modeRepeatable,omitempty"`
-	ModeUsedIndex    []int          `json:"modeUsedIndex,omitempty"`
-	ModeUsedLabel    []string       `json:"modeUsedLabel,omitempty"`
-	ModeNotChosen    ModeMemory     `json:"modeNotChosen,omitempty"`
-	ModePickFor      *uuid.UUID     `json:"modePickFor,omitempty"` // #5771: PendingChoice.ModePickFor, the caster an opponent's mode_pick is for; absent on every other prompt
-	SacrificeOptions []uuid.UUID    `json:"sacrificeOptions,omitempty"`
+	// RetargetNewCreature is a retarget whose new target must be a creature
+	// (Silver Wyvern); additive within the version.
+	RetargetNewCreature bool        `json:"retargetNewCreature,omitempty"`
+	ModeOptionIndex     []int       `json:"modeOptionIndex,omitempty"`
+	ModeOptionLabel     []string    `json:"modeOptionLabel,omitempty"`
+	ModeMin             int         `json:"modeMin,omitempty"`
+	ModeMax             int         `json:"modeMax,omitempty"`
+	ModeRepeatable      bool        `json:"modeRepeatable,omitempty"`
+	ModeUsedIndex       []int       `json:"modeUsedIndex,omitempty"`
+	ModeUsedLabel       []string    `json:"modeUsedLabel,omitempty"`
+	ModeNotChosen       ModeMemory  `json:"modeNotChosen,omitempty"`
+	ModePickFor         *uuid.UUID  `json:"modePickFor,omitempty"` // #5771: PendingChoice.ModePickFor, the caster an opponent's mode_pick is for; absent on every other prompt
+	SacrificeOptions    []uuid.UUID `json:"sacrificeOptions,omitempty"`
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
 	DiscardLabel   string      `json:"discardLabel,omitempty"`
@@ -3845,6 +3848,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		RetargetReason:        c.RetargetReason,
 		RetargetNext:          append([]TargetRef(nil), c.RetargetNext...),
 		RetargetTo:            c.RetargetTo,
+		RetargetNewCreature:   c.RetargetNewCreature,
 		ModeOptionIndex:       copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:       copyStrings(c.ModeOptionLabel),
 		ModeMin:               c.ModeMin,
@@ -5032,6 +5036,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		RetargetReason:        c.RetargetReason,
 		RetargetNext:          append([]TargetRef(nil), c.RetargetNext...),
 		RetargetTo:            c.RetargetTo,
+		RetargetNewCreature:   c.RetargetNewCreature,
 		ModeOptionIndex:       copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:       copyStrings(c.ModeOptionLabel),
 		ModeMin:               c.ModeMin,

@@ -633,6 +633,10 @@ type PendingChoice struct {
 	// retarget.
 	RetargetTo TargetRef
 
+	// RetargetNewCreature is RetargetOffer.NewTargetCreature: the answer
+	// must name a creature on the battlefield (Silver Wyvern).
+	RetargetNewCreature bool
+
 	// RetargetNext carries the uncommitted prefix of a related-target walk.
 	RetargetNext []TargetRef
 
