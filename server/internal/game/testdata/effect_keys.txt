@@ -3392,6 +3392,7 @@ payunless pay-unless/s82-old-b609-crystal-rod-life
 payunless pay-unless/s82-old-b609-iron-star-life
 payunless pay-unless/s82-old-b609-throne-of-bone-life
 payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
+payunless pay-unless/s82-old-b696-rishadan-sacrifice
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
