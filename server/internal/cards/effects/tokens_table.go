@@ -398,6 +398,7 @@ var TokenTable = map[string]game.Card{
 	"4/4 red Giant":                                                    {Name: "Giant", TypeLine: "Token Creature — Giant", Power: 4, Toughness: 4, Colors: []string{"R"}},                                 // #5594: Pact of the Titan
 	"4/4 blue Sphinx with flying":                                      {Name: "Sphinx", TypeLine: "Token Creature — Sphinx", Power: 4, Toughness: 4, Colors: []string{"U"}, Keywords: []string{"flying"}}, // S82 OLD batch 366: Hour of Need
 	"2/2 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"2/2 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 2, Toughness: 2, Colors: []string{"G"}}, // Keeper of the Beasts (Exodus)
 	"4/4 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 blue Elemental Bird with flying":                              {Name: "Elemental Bird", TypeLine: "Token Creature — Elemental Bird", Power: 4, Toughness: 4, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"4/4 white Bird Soldier with flying":                               {Name: "Bird Soldier", TypeLine: "Token Creature — Bird Soldier", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},

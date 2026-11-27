@@ -125,6 +125,12 @@ type TargetSource struct {
 	// shares.
 	casting bool
 
+	// announcing says the walk is the ANNOUNCEMENT of an activated
+	// ability (CR 602.2b / 601.2c): the activation gate, the legal set the
+	// picker and the bot see. SourceActivating sets it; the CR 608.2b
+	// re-check never does. Read only by moreCreaturesAsActivatedAdmits.
+	announcing bool
+
 	// spell says the walk's source is a SPELL — a card being cast, a
 	// spell on the stack or a copy of one — and not an ability. Set by
 	// SourceCast, by stackItemSourceLocked for a spell item and by
@@ -333,6 +339,13 @@ func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
 // bot's enumerator all build their source here, so they agree.
 func SourceCast(controller uuid.UUID, obj *Card) TargetSource {
 	return TargetSource{Controller: controller, Object: obj, casting: true, spell: true}
+}
+
+// SourceActivating is SourceObject for the announcement of an activated
+// ability (activated.go, legal/abilities.go): the one walk a restriction
+// "as you activate this ability" reads (as_activated_more_creatures.go).
+func SourceActivating(controller uuid.UUID, obj *Card) TargetSource {
+	return TargetSource{Controller: controller, Object: obj, announcing: true}
 }
 
 // SourceSnapshot is the value-copy case (spell_copy.go, an LKI read).
@@ -1046,6 +1059,17 @@ type TargetSpec struct {
 	// target. Built with effects.ChosenAtRandom.
 	AtRandom bool
 
+	// MoreCreaturesAsActivated is "target opponent who controls more
+	// creatures than you do as you activate this ability" (Keeper of the
+	// Beasts, #5626): a player candidate must be another player who
+	// controls more creatures than the activating controller, judged only
+	// on the announcement's walk (TargetSource.announcing, CR 602.2b). The
+	// CR 608.2b re-check never reads it, so the ability still resolves if
+	// the counts change in response. DATA, judged in the one player walk
+	// (as_activated_more_creatures.go). Build it with
+	// effects.WithMoreCreaturesAsActivated.
+	MoreCreaturesAsActivated bool
+
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
 	// locking rule as CardOK.
@@ -1682,7 +1706,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
-			if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
+			if !spec.playerChooserAdmits(g, src, p) || !spec.moreCreaturesAsActivatedAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 				continue
 			}
 			out.Players = append(out.Players, p.ID)
@@ -1958,7 +1982,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
 			return false
 		}
-		if !spec.playerChooserAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
+		if !spec.playerChooserAdmits(g, src, p) || !spec.moreCreaturesAsActivatedAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
