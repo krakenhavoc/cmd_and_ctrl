@@ -2008,6 +2008,7 @@ coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
+coinflip coin-flip/chaotic-strike
 coinflip coin-flip/creepy-doll-destroy
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-kaboomist
@@ -5769,6 +5770,7 @@ tail then/make-an-example-chosen-pile
 tail then/manabond-discard-hand
 tail then/manhole-missile-draw-if-tucked
 tail then/manifest-dread
+tail then/manipulate-fate-searched
 tail then/march-from-velis-vel-type-chosen
 tail then/marit-lages-slumber-marit-lage
 tail then/mazemind-tome-gain-life
