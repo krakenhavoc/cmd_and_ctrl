@@ -3782,6 +3782,7 @@ run prompt-run/phenomenon-investigators-return
 run prompt-run/pippins-bravery-sacrifice
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
+run prompt-run/planar-overlay-return
 run prompt-run/planetary-annihilation-keep-lands
 run prompt-run/plunge-into-darkness-sacrifice
 run prompt-run/pox-plague-sacrifice
