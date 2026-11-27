@@ -285,7 +285,7 @@ func TestOldB658TsabosAssassinDestroysACreatureOfAMostCommonColour(t *testing.T)
 		colourless := oldB658Colored(g, opp.ID, "Golem", "Artifact Creature — Golem")
 		return g, assassin, green, colourless, me.ID
 	}
-	g, assassin, green, colourless, me := setup()
+	g, assassin, _, colourless, me := setup()
 	if err := oldB658Activate(g, me, assassin, 0, game.ActivateAbilityParams{Targets: effectstest.CardTarget(colourless)}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestOldB658TsabosAssassinDestroysACreatureOfAMostCommonColour(t *testing.T)
 	if !effectstest.OnBattlefieldByID(g, colourless) {
 		t.Error("a colourless creature shares no colour and must survive")
 	}
-	g, assassin, green, _, me = setup()
+	g, assassin, _, _, me = setup()
 	if err := oldB658Activate(g, me, assassin, 0, game.ActivateAbilityParams{Targets: effectstest.CardTarget(assassin)}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestOldB658TsabosAssassinDestroysACreatureOfAMostCommonColour(t *testing.T)
 	if !effectstest.OnBattlefieldByID(g, assassin) {
 		t.Error("black is not the most common colour, so the Assassin must survive targeting itself")
 	}
-	g, assassin, green, _, me = setup()
+	g, assassin, green, _, me := setup()
 	if err := oldB658Activate(g, me, assassin, 0, game.ActivateAbilityParams{Targets: effectstest.CardTarget(green)}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
