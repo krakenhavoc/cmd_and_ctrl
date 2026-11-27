@@ -2468,6 +2468,7 @@ confirm confirm/snort-wheel
 confirm confirm/social-snub-copy
 confirm confirm/spare-dagger-sacrifice
 confirm confirm/spm-cheering-crowd
+confirm confirm/sporogenesis-fungus-counter
 confirm confirm/staff-room-face-up-or-counter
 confirm confirm/star-athlete-sacrifice-or-damage
 confirm confirm/stardew-valley-gain-control
@@ -2507,6 +2508,7 @@ confirm confirm/the-second-doctor-draw
 confirm confirm/the-seventh-doctor-guess
 confirm confirm/the-trickster-gods-heist-exchange
 confirm confirm/thicket-elemental-reveal
+confirm confirm/thran-turbine-add-cc
 confirm confirm/titan-of-littjara-loot
 confirm confirm/tivash-gloom-summoner-demon
 confirm confirm/transcendent-archaic-draw
@@ -3419,6 +3421,7 @@ payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/phoenix-chick-return
 payunless pay-unless/phyrexian-tyranny-lose-two
 payunless pay-unless/pillar-tombs-of-aku-decline
+payunless pay-unless/power-sink-tap-lands
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/pyre-zombie-return
