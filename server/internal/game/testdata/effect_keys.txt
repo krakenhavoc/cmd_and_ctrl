@@ -2293,6 +2293,7 @@ confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/old-b271-covenant-of-minds
+confirm confirm/old-b586-choice-of-damnations
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -2603,6 +2604,7 @@ number number/medicine-runner-remove-counter
 number number/necrodominance-draw-that-many
 number number/old-b069-remove-counters
 number number/old-b081-stumpsquall-hydra-give
+number number/old-b586-choice-of-damnations
 number number/overseer-of-vault-76-split-quest-counters
 number number/pia-nalaar-create-nalaar-aetherjet
 number number/plague-of-vermin-paid
@@ -2818,6 +2820,7 @@ option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
 option option-pick/old-b240-unesh-splitter
 option option-pick/old-b387-order-of-succession-direction
+option option-pick/old-b586-blood-clock
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -3696,6 +3699,8 @@ run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
 run prompt-run/old-b178-consume-gain-power
 run prompt-run/old-b516-archdemon-of-unx-zombie
+run prompt-run/old-b586-blood-clock-return
+run prompt-run/old-b586-sacrifice-all-but
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
