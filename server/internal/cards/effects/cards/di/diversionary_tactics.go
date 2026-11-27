@@ -20,7 +20,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "Tap two untapped creatures you control: Tap target creature.",
-			Cost:    effects.OldB632TapTwoUntappedCreaturesCost(),
+			Cost:    effects.OldB629TapTwoUntappedCreaturesCost(),
 			Targets: effects.TargetCreature("target creature"),
 			Effect:  effects.TapChosenPermanent,
 		}},

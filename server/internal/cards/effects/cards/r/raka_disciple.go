@@ -22,7 +22,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{
 			effects.OldB632PreventOneRow("Raka Disciple", "{W}"),
-			effects.OldB632DiscipleFlyingRow("Raka Disciple", "{U}"),
+			effects.OldB630DiscipleFlyingRow("Raka Disciple", "{U}"),
 		},
 	})
 }
