@@ -261,7 +261,15 @@ const (
 	// the creature type Value, a changeling having every type
 	// (CR 702.73a). Value is the canonical creature type.
 	ProtectionQualityNonSubtypeCreatures
+	// ProtectionQualitySnow is "protection from snow" (CR 702.16a, 205.4g,
+	// Ronom Hulk): the source has the snow supertype, a snow permanent, a snow
+	// spell, or an ability of a snow permanent. Appended last so every earlier
+	// kind keeps its value.
+	ProtectionQualitySnow
 )
+
+// ProtectionFromSnow is the token for "protection from snow" (Ronom Hulk).
+const ProtectionFromSnow = protectionPrefix + "snow"
 
 // protectionOpponentsCreatures is the token of
 // ProtectionQualityOpponentsCreatures, lowercase (#6253).
@@ -355,6 +363,8 @@ func (k ProtectionQualityKind) String() string {
 		return "opponents_creatures"
 	case ProtectionQualityNonSubtypeCreatures:
 		return "non_subtype_creatures"
+	case ProtectionQualitySnow:
+		return "snow"
 	}
 	return ""
 }
@@ -658,6 +668,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityPermanentsCastThisTurn, Printed: printed}, true
 	case "legendary creatures":
 		return ProtectionQuality{Kind: ProtectionQualityLegendaryCreatures, Printed: printed}, true
+	case "snow":
+		return ProtectionQuality{Kind: ProtectionQualitySnow, Printed: printed}, true
 	case protectionColorless:
 		return ProtectionQuality{Kind: ProtectionQualityColorless, Printed: printed}, true
 	}
@@ -1136,6 +1148,8 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return src.SourceIsPermanent && !src.SourceIsSpell && src.SourceCastThisTurn
 	case ProtectionQualityLegendaryCreatures:
 		return typeListHas(src.Types, "creature") && typeListHas(src.Supertypes, "legendary")
+	case ProtectionQualitySnow:
+		return typeListHas(src.Supertypes, "snow")
 	case ProtectionQualityOpponentsCreatures:
 		return typeListHas(src.Types, "creature") &&
 			q.Holder != uuid.Nil && src.Controller != uuid.Nil && src.Controller != q.Holder
