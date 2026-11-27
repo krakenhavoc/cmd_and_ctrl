@@ -3120,6 +3120,7 @@ payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cumulative-upkeep-paid-or-sacrificed
 payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
+payunless pay-unless/darigaaz-the-igniter-hand
 payunless pay-unless/death-priest-of-myrkul-skeleton
 payunless pay-unless/decree-of-justice-soldiers
 payunless pay-unless/descendant-of-storms-endure
@@ -3133,6 +3134,7 @@ payunless pay-unless/drake-haven-drake
 payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
+payunless pay-unless/dromar-the-banisher-bounce
 payunless pay-unless/drowner-initiate-mill
 payunless pay-unless/durable-handicraft-counter
 payunless pay-unless/dutiful-replicator-copy
@@ -3421,6 +3423,7 @@ payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
 payunless pay-unless/trail-of-crumbs-look-at-top-two
 payunless pay-unless/tranquil-frillback-pay-g
+payunless pay-unless/treva-the-renewer-life
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
 payunless pay-unless/tyrannize-discard-hand
@@ -5597,6 +5600,7 @@ tail then/crosis-the-purger-discard-the-color
 tail then/crystal-spray-draw
 tail then/curse-of-silence-draw
 tail then/dance-with-calamity-exiled
+tail then/darigaaz-the-igniter-reveal
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-bargain-search
@@ -5625,6 +5629,7 @@ tail then/drain-power-add-lost-mana
 tail then/draw-a-card
 tail then/draw-n-cards
 tail then/dream-eater-reflexive-bounce
+tail then/dromar-the-banisher-bounce
 tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
@@ -5896,6 +5901,7 @@ tail then/scour-the-desert-birds
 tail then/scrap-mastery-exiled
 tail then/scrap-mastery-put
 tail then/screaming-nemesis-cant-gain-life
+tail then/searing-rays-chosen
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
 tail then/sentry-oak-clashed
@@ -5968,6 +5974,7 @@ tail then/torment-of-hailfire-punisher-sacrificed
 tail then/transforming-flourish-cast
 tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
+tail then/treva-the-renewer-life
 tail then/tribal-unity-type-chosen
 tail then/tuktuk-scrapper-destroyed
 tail then/twisted-fates-counters
