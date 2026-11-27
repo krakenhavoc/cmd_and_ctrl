@@ -646,6 +646,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"temporal_mastery.go":      true, "temporal_trespass.go": true,
 		// "Exile Sins of the Past." (S82 OLD batch 577, #5600)
 		"sins_of_the_past.go": true,
+		// "Exile Time Spiral." (S82 OLD batch 722, #5624)
+		"s82_old_b722_helpers.go": true,
 		// "Exile Bond of Insight." / "Exile Deliver Unto Evil." (S82 OLD batch 170, #5520)
 		"s82_old_b170_helpers.go": true,
 		// "Exile Draconic Intervention." (#3537)
