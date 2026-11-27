@@ -83,24 +83,9 @@ func TestBatch22CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The remaining declared skip must NOT be registered — it has a
-	// cost the engine cannot express, and a spec would ship the card
-	// stronger than printed.
-	//
-	// Two cards came OFF this list and are in `want` above: Harsh
-	// Mentor with #1210's opponent-activation watch, and Master
-	// Transmuter with #1213's return-an-artifact cost component. A
-	// third, Odric, Master Tactician, came off with #4154's
-	// declaration control and is pinned in
-	// declaration_control_cards_test.go. Steelbane Hydra came off with
-	// the remove-a-counter cost (#5011, tmc_b4_cards_test.go).
-	for _, skipped := range []string{
-		"119d719d-e965-45b4-9bc9-ac03211b10c2", // Survival of the Fittest — discard-a-card cost
-	} {
-		if _, ok := effects.Lookup(skipped); ok {
-			t.Errorf("%s is a declared skip and must not be registered", skipped)
-		}
-	}
+	// The last declared skip, Survival of the Fittest, came off with S82 OLD
+	// batch 742 (#5626): Fauna Shaman's discard-a-creature-card cost, without
+	// the {T}. It is registered and tested in s82_old_b742_test.go.
 }
 
 // --- the lands -----------------------------------------------------

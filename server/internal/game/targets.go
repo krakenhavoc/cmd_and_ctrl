@@ -968,6 +968,16 @@ type TargetSpec struct {
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
 
+	// MoreCardsInHandThanChooser is "target player who has more cards in
+	// hand than they do and is their opponent" on a ChosenByTriggerActor
+	// clause (Oath of Scholars, S82 OLD batch 742): a player candidate must
+	// be someone other than the chooser who has more cards in hand than the
+	// chooser does. DATA, judged beside MoreCreaturesThanChooser in
+	// playerChooserAdmits (more_cards_in_hand_than_chooser.go). Meaningless
+	// without ChosenByTriggerActor; effects.Register refuses it alone. Build
+	// it with effects.WithMoreCardsInHandThanTheChooser.
+	MoreCardsInHandThanChooser bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the
