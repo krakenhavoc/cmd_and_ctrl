@@ -24,15 +24,7 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      effects.TargetPermanent("two target lands", effects.Land()).WithCount(2, 2),
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := ctx.Game.TuckToLibraryForEffect(t.ID, false); err != nil {
-					return err
-				}
-			}
-			return nil
+			return effects.TuckLegalCardTargetsOnTop(ctx)
 		},
 	})
 }
