@@ -396,6 +396,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 538 (#5591).
 	"Strip Bare": "destroys only the Auras and Equipment attached to one target creature, never a board",
+
+	// S82 OLD batch 548 (#5593).
+	"Ego Erasure": "-2/-0 and losing creature types to one player's creatures until end of turn kills nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
