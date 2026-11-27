@@ -5095,6 +5095,7 @@ tail role-tokens/attach-to-host
 tail rona-tolarian-obliterator/exiled
 tail rooms-b-helpers/after-mill
 tail rootborn-defenses/grant-indestructible
+tail rooting-kavu/exiled
 tail rosheen-roaring-prophet/after-mill
 tail rottenmouth-viper/punish
 tail rousing-refrain/three-time-counters
