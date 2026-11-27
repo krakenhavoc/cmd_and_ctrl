@@ -1775,6 +1775,8 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
 choose choose-cards/s82-old-b678-exile-linked
+choose choose-cards/s82-old-b708-burning-of-xinye-mine
+choose choose-cards/s82-old-b708-burning-of-xinye-theirs
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
