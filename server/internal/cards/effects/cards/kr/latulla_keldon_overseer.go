@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "86b2879b-6c54-4d96-ab81-a3f2c87d42d9",
 		Name:         "Latulla, Keldon Overseer",
 		Completeness: effects.CompletenessFull,
+		XMatters:     true,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{X}{R}, {T}, Discard two cards: Latulla deals X damage to any target.",
 			Purpose: game.Purpose{Answers: game.AnswerRemove},
