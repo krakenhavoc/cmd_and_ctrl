@@ -2385,6 +2385,7 @@ confirm confirm/nissa-of-shadowed-boughs-animate
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
 confirm confirm/nylea-keen-eyed-to-graveyard
 confirm confirm/oath-of-druids-reveal-until-creature
+confirm confirm/oath-of-mages-damage
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/old-b051-the-biblioplex-graveyard
@@ -2398,6 +2399,7 @@ confirm confirm/orcish-squatters-gain-control
 confirm confirm/overseer-of-vault-76-remove-three-quest-counters
 confirm confirm/painful-quandary-discard-or-lose-life
 confirm confirm/palantir-of-orthanc-draw-or-mill
+confirm confirm/pandemonium-damage
 confirm confirm/parnesse-the-subtle-brush-copy
 confirm confirm/partner-with-search
 confirm confirm/pay-life-copy-that-ability
