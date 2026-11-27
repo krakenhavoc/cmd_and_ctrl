@@ -6164,6 +6164,7 @@ tail zombie-apocalypse/destroy-humans
 tail zukos-exile/after-exile
 tapcost waterbend
 vote secret/call-to-the-void
+vote secret/goblin-game
 vote secret/gollum-scheming-guide
 vote secret/itazura-lingering-wick
 vote secret/toymakers-trap
