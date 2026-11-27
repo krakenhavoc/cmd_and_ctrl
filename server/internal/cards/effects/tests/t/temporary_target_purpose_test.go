@@ -137,6 +137,13 @@ var untilEndOfTurnExempt = map[string]string{
 	// entry (slot 1) declares the direction. The check reads slot 0 only.
 	"Planeswalker's Favor": "the first target is the opponent who reveals a card; the pump's direction is declared on slot 1",
 	"Planeswalker's Scorn": "the first target is the opponent who reveals a card; the shrink's direction is declared on slot 1",
+
+
+	// Mercadian Masques (S82 OLD batch 681): takes the target for the turn,
+	// so the haste it gains is the thief's, and the creature is priced as the
+	// removal-for-a-turn it is; a benefit declaration would aim it at the
+	// bot's own creatures.
+	"Overtaker": "gains control of its target until end of turn; the target is an opposing creature, not a recipient",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
