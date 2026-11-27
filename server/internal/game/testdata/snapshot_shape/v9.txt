@@ -6150,6 +6150,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AfterTurn	number
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -16708,6 +16709,7 @@ frozenEntries[].event.sourceLki.AttackRequirements[].AfterTurn	number:int
 frozenEntries[].event.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 frozenEntries[].event.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+frozenEntries[].event.sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 frozenEntries[].event.sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 frozenEntries[].event.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 frozenEntries[].event.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -24730,6 +24732,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AfterTurn	number
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AtLeastOneCreature	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].IfAnotherWithCounterAttacks	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].IfAnotherYouControlAttacks	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].IfSourceAttacks	bool
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -25084,6 +25087,7 @@ lastKnownBattlefield{}.AttackRequirements[].AfterTurn	number:int
 lastKnownBattlefield{}.AttackRequirements[].AtLeastOneCreature	bool
 lastKnownBattlefield{}.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].IfAnotherWithCounterAttacks	string
 lastKnownBattlefield{}.AttackRequirements[].IfAnotherYouControlAttacks	bool
 lastKnownBattlefield{}.AttackRequirements[].IfSourceAttacks	bool
 lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -25443,6 +25447,7 @@ lastKnownPermanents{}[].characteristic.AttackRequirements[].AfterTurn	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements[].AtLeastOneCreature	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].IfAnotherWithCounterAttacks	string
 lastKnownPermanents{}[].characteristic.AttackRequirements[].IfAnotherYouControlAttacks	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements[].IfSourceAttacks	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -30744,6 +30749,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AfterTurn	number
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -41302,6 +41308,7 @@ movesAwaitingTokens[].sourceLki.AttackRequirements[].AfterTurn	number:int
 movesAwaitingTokens[].sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 movesAwaitingTokens[].sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+movesAwaitingTokens[].sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 movesAwaitingTokens[].sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 movesAwaitingTokens[].sourceLki.AttackRequirements[].IfSourceAttacks	bool
 movesAwaitingTokens[].sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -54275,6 +54282,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AfterTurn	numbe
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -55441,6 +55449,7 @@ pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AfterTurn	number
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].lki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -55784,6 +55793,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AfterTurn	
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -62870,6 +62880,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -73428,6 +73439,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AfterTur
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -83367,6 +83379,7 @@ pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.lki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
@@ -84416,6 +84429,7 @@ pendingChoices[].triggerFrame.lki.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].triggerFrame.lki.AttackRequirements[].AtLeastOneCreature	bool
 pendingChoices[].triggerFrame.lki.AttackRequirements[].AttacksPlayerOrTheirPlaneswalkers	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].triggerFrame.lki.AttackRequirements[].IfAnotherWithCounterAttacks	string
 pendingChoices[].triggerFrame.lki.AttackRequirements[].IfAnotherYouControlAttacks	bool
 pendingChoices[].triggerFrame.lki.AttackRequirements[].IfSourceAttacks	bool
 pendingChoices[].triggerFrame.lki.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)

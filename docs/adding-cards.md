@@ -15999,6 +15999,13 @@ reading the `CardDef` and are not set by the catalog any more.
   (CR 508.1d, "attacks if some condition is met"). Declaring nothing stays legal; declaring the source owes an attack from
   every other creature that can attack for free. For another "if <it> attacks, <creatures> attack if able" card, set
   the same flag on a requirement from `requirementFrom(source, …)` and scope the static's `AppliesTo`.
+- **"If a creature with a <kind> counter on it attacks, all creatures with <kind> counters on them attack if able"**
+  (Magnetic Web, S82 OLD batch 760) is `S82OldB760AttackIfAnotherWithCounterAttacks(kind, label)`, a static on the
+  Web: each creature with a `kind` counter gets one requirement with
+  `game.AttackRequirement.IfAnotherWithCounterAttacks` set, which exists only in a declaration in which another
+  creature with such a counter is attacking. The matching "block that creature this turn if able" half is
+  `S82OldB760EachWithCounterBlocksTheAttacker(kind, label)` on an attack trigger: Provoke's block record on each
+  creature with the counter.
 - **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
   2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
   (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the

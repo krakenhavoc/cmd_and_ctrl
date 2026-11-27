@@ -2462,6 +2462,7 @@ confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-old-b698-ley-line-put
 confirm confirm/s82-old-b698-put-counters-on-this
+confirm confirm/s82-old-b760-magmasaur
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
