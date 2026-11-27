@@ -1759,6 +1759,12 @@ export interface PendingChoiceView {
     // "cast no more of them", which is always legal.
     | "resolution_cast"
     | "mana_pick"
+    // #6101: another seat's "Choose a player. That player adds one mana
+    // of any color they choose." (Spectral Searchlight) chose the
+    // chooser. `color_options` are the colours; `from_player` is the
+    // activator. Answered with `{choice_id, color}` like a mana_pick, and
+    // the mana goes to the chooser's own pool.
+    | "mana_pick_for_player"
     | "replacement_order"
     | "optional_replacement"
     // ADR 0115 (CR 903.9a): "your commander was put into a graveyard or
@@ -6174,6 +6180,12 @@ export interface ManaAbilityView {
   // activator's pool. Whether it is live for the viewer right now is the
   // digest's answer. Absent on every other row.
   any_player?: boolean;
+  // #6101: "Choose a player. That player adds one mana of any color they
+  // choose." (Spectral Searchlight). The client asks the activator for a
+  // player and sends it as activate_mana_ability's `chosen_player`; a
+  // colour rides only when the activator chose themselves. The row
+  // publishes no `color_options`. Absent on every other row.
+  chosen_player?: boolean;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

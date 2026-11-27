@@ -1939,6 +1939,13 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.DemandsX() {
 		return false
 	}
+	// #6101: "Choose a player. That player adds …" (Spectral
+	// Searchlight) — which player is the activator's decision, and the
+	// colour is the chosen player's. Never planned, whoever it would
+	// choose (owner decision on #6101).
+	if a.ChosenPlayerAdds {
+		return false
+	}
 	// #6085: "Reveal any number of …" (Rosheen, Roaring Prophet) asks
 	// which cards to show, and keeping them hidden is the player's call.
 	if a.RevealCards != nil {

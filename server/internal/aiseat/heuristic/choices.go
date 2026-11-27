@@ -33,6 +33,7 @@ const (
 	choiceDiscardFromHand     = "discard_from_hand"
 	choiceRevealedHandPick    = "revealed_hand_pick"
 	choiceMana                = "mana_pick"
+	choiceManaForPlayer       = "mana_pick_for_player"
 	choiceReplacementOrder    = "replacement_order"
 	choiceOptionalReplacement = "optional_replacement"
 	choiceDamageAssignment    = "damage_assignment"
@@ -209,7 +210,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// lowest index, so the bot keeps answering with the canonical one.
 		return 1, "canonical damage assignment"
 
-	case choiceMana:
+	case choiceMana, choiceManaForPlayer:
+		// #6101: a mana_pick_for_player is another seat's Spectral
+		// Searchlight asking this seat which colour it adds to its own
+		// pool: the same question, scored the same way.
+		//
 		// #742: a one-pick-N-mana choice adds a different amount per
 		// colour (Nyx Lotus's devotion). The amount leads, so four {G}
 		// beats one {U} the hand wants; the hand's colour need only

@@ -1571,3 +1571,44 @@ registration refusals). Back-outs: drop the `Distinct` branch in `foldSpendOnly`
 first subset unconditionally in `distinctColorsAsPaidLocked` and the auto-pay tests fail; pass no exclusions in
 `applyAutoTapLocked` and the locked-Plains test fails; drop the `SourceOnly` line in `ManaSpendForCastParams` and the
 Rhox tests fail; build the enumerator's context from the zone alone and it offers the {R}{G} off a Mountain and a Forest.
+
+## Amendment 2026-11-27 — mana a chosen player adds, in a colour they choose (#6101)
+
+Spectral Searchlight: "{T}: Choose a player. That player adds one mana of any color they choose." Choosing a player is
+not targeting (CR 115.10a), so the ability is a mana ability (CR 605.1a) and resolves as it is activated (CR 605.3b).
+Until now every mana ability filled its activator's pool and asked only its activator. The owner decided on #6101
+(2026-11-27) to build it: the ability pauses until the chosen player has named the colour.
+
+### Decision 1 — the activator names the player with the activation
+
+`ManaAbilityShape.ChosenPlayerAdds` (data, `effects.ManaAbility.ChosenPlayerAdds`) marks the row. The activation takes
+`ManaAbilityParams.ChosenPlayer` (`chosen_player` on the wire): any player still in the game, the activator included;
+none is the activator. It is checked before anything is paid, refused on any other row, and refused beside an up-front
+colour when it names someone else. The view publishes `chosen_player` on the row and no `color_options`, so the client
+asks for the player first.
+
+### Decision 2 — another player is asked a new choice kind
+
+Choosing yourself is Birds of Paradise (a colour named up front, or a `mana_pick`). Choosing anyone else pays the cost
+and queues one `PendingChoiceManaForPlayer` (`mana_pick_for_player`) for that player: `Chooser` the chosen player,
+`FromPlayer` the activator. `ResolveManaChoice` answers it as it answers a `mana_pick`, and the mana enters the
+chooser's pool (CR 106.4). The activator stays the one who tapped the source: a CR 106.12b replacement sees them
+(`produceManaTappedByLocked`), the triggered mana abilities see them as the controller (CR 605.1b), and the run's
+`EventManaAbilityResolved` names them. The kind blocks the table like a `mana_pick` (`choiceGateDecisions`), and a
+departing chooser takes it with them (`choiceDepartureDecisions`, CR 800.4a): the cost stays paid. A disconnected
+chooser answers when they are back, since the choice is in the snapshot like every other. The legal-move enumerator and
+the bot seat answer it as a `mana_pick`.
+
+### Decision 3 — the auto-tapper never plans it
+
+`autoTapAcceptsBesidesManaCost` refuses a `ChosenPlayerAdds` row, whoever it would choose: its contract is "no further
+player decisions", and the player and another seat's colour are both decisions.
+
+**Snapshot and wire impact.** One new choice-kind string, carried by the existing snapshot fields; no
+`SnapshotSchemaVersion` bump. The wire additions are additive (docs/protocol.md). No closure: the census is unchanged.
+
+**Cards.** Spectral Searchlight (Full).
+
+Tests: `cards/effects/tests/so/spectral_searchlight_test.go` (choosing yourself, choosing an opponent and the opponent's
+colour, refusals before payment, a chooser who leaves, a restore with the pick open, the chosen seat's legal moves, use
+mid-payment under a Rhystic Study tax, never auto-tapped) and the bot's answer in `aiseat/heuristic/choices_test.go`.

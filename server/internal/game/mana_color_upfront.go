@@ -74,6 +74,15 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 		// mana_pick instead.
 		return nil
 	}
+	if ab.ChosenPlayerAdds {
+		// #6101: whose colour it is waits on the player the activator
+		// chooses (Spectral Searchlight), so no list is published: the
+		// client asks for the player first, and the colour is then the
+		// activator's mana_pick or the chosen player's
+		// mana_pick_for_player. A colour named with the activator chosen
+		// is still accepted (validateUpfrontManaColors).
+		return nil
+	}
 	if ab.DemandsX() {
 		// #6125: how many slots there are is the X the activation
 		// announces (Wizard's Rockets), so, as for the tap-any-number

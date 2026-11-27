@@ -4084,6 +4084,31 @@ Feral Hydra, Excavation) says everyone.
   "mana_abilities": ["own:0"], …}`), and the activation is an
   `activate_across` log line. A mana activation by the controller stays
   off the log.
+- **`chosen_player: true` on a `mana_abilities[i]` row, and the
+  `mana_pick_for_player` choice** (2026-11-27, #6101). "Choose a player.
+  That player adds one mana of any color they choose." (Spectral
+  Searchlight). Additive, absent on every other row and kind; `v`
+  unmoved, no snapshot change beyond the new kind string.
+  - The row publishes no `color_options`. `activate_mana_ability` takes
+    `chosen_player`?: `"<seat uuid>"`, any player still in the game, the
+    activator included; absent is the activator. It is refused with
+    `bad_request` on any other row (and beside `player_ability`), with
+    `game: player not found` for a player not in the game, and with
+    `bad_request` beside `color` / `colors` when it names someone else.
+    All before anything is paid.
+  - Choosing yourself is an ordinary activation: a `color` named up front
+    is produced at once, otherwise a `mana_pick` follows.
+  - Choosing anyone else pays the cost and queues one PendingChoiceView of
+    `kind` `mana_pick_for_player` for that player: `chooser` is the
+    chosen player, `from_player` the activator, `source` the permanent,
+    `color_options` the five colours (the chooser's commander identity
+    first). It is answered with `resolve_choice {choice_id, color}`, by
+    the chooser only, and the mana goes into the chooser's pool. It
+    blocks the table as a `mana_pick` does (the ability has not finished
+    resolving); a chosen player who leaves the game takes it with them
+    and nothing is added. The legal-move enumerator offers the chooser
+    one answer per colour; the bot seat scores them as a `mana_pick`.
+  - The auto-tapper never activates such a row.
 
 ## Declared purpose: what a spell or an ability does (ADR 0126 §6, 2026-10-06)
 
