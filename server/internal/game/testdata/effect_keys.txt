@@ -4333,6 +4333,7 @@ tail card-name/day-of-the-moon-goad
 tail card-name/s82-old-b321-infinite-obliteration
 tail card-name/s82-old-b426-slaughter-games
 tail card-name/s82-old-b581-tunnel-vision
+tail card-name/s82-old-b757-cursed-scroll
 tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then

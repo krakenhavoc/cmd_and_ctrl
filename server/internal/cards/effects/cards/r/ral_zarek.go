@@ -35,13 +35,7 @@ func init() {
 					effects.Distinct(effects.TargetPermanent("another target permanent")),
 				),
 				Effect: effects.Do(
-					effects.Instruction(func(ctx *effects.Context) error {
-						t, ok := ctx.ClauseTarget(0)
-						if !ok || t.Kind != game.TargetCard {
-							return nil
-						}
-						return effects.TapTarget{Target: t.ID}.Apply(ctx)
-					}),
+					effects.Instruction(effects.S82OldB757TapFirstClauseTarget),
 					effects.Instruction(func(ctx *effects.Context) error {
 						t, ok := ctx.ClauseTarget(1)
 						if !ok || t.Kind != game.TargetCard {
