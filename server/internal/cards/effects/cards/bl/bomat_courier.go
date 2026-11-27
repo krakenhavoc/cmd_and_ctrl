@@ -45,13 +45,7 @@ func init() {
 // bomatCourierExile exiles the top card of its controller's library face down,
 // linked to the Courier.
 func bomatCourierExile(g *game.Game, item *game.StackItem) error {
-	p := g.PlayerByIDForEffect(item.Controller)
-	if p == nil || p.Library == nil || len(p.Library.Cards) == 0 {
-		return nil
-	}
-	top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
-	_, err := g.ExileFaceDownLinkedForEffect(item.SourceCardID, item.Controller, top)
-	return err
+	return effects.OldB682ExileTopFaceDownLinked(g, item)
 }
 
 // bomatCourierReturn puts every card exiled with the Courier into its owner's

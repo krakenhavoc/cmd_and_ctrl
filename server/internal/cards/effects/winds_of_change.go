@@ -52,17 +52,17 @@ func WindsOfChangeShuffleFrom(g *game.Game, all []uuid.UUID, counts []int) error
 	}
 	id := all[len(counts)]
 	return g.TuckCardsToLibraryKeyedForEffect(AllHandCardIDs(g, id), game.TuckOptions{},
-		game.KeyedTail{Ref: windsOfChangeShuffled, Player: id, Carry: append([]uuid.UUID(nil), all...),
+		game.KeyedTail{Ref: WindsOfChangeShuffled, Player: id, Carry: append([]uuid.UUID(nil), all...),
 			Nums: append([]int(nil), counts...)})
 }
 
 // windsOfChangeShuffled is one seat's shuffle: the cards that reached the
 // library are counted, the library is shuffled, and the next seat goes.
 // An on-disk key: never renamed, never reused.
-var windsOfChangeShuffled game.TailRef
+var WindsOfChangeShuffled game.TailRef
 
 func init() {
-	windsOfChangeShuffled = game.RegisterTail("then/winds-of-change-shuffled", func(g *game.Game, o game.TailOutcome) error {
+	WindsOfChangeShuffled = game.RegisterTail("then/winds-of-change-shuffled", func(g *game.Game, o game.TailOutcome) error {
 		if err := g.ShuffleLibraryForEffect(o.Tail.Player); err != nil {
 			return err
 		}

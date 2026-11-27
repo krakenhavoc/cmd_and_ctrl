@@ -73,7 +73,7 @@ func shahAskOpponents(ctx *Context, opps []uuid.UUID, chosen []int) error {
 		Question: "Shah of Naar Isle — you may draw up to three cards",
 		Options:  shahDrawOptions[:ceiling+1],
 		ThenKey:  shahAnswer,
-		Carry:    PackIDLists(opps, intsToCarry(chosen)),
+		Carry:    PackIDLists(opps, IntsToCarry(chosen)),
 	}.Apply(ctx)
 }
 
@@ -89,7 +89,7 @@ func init() {
 		if index < 0 {
 			index = 0
 		}
-		next := append(carryToInts(answers), index)
+		next := append(CarryToInts(answers), index)
 		return shahAskOpponents(ctx, opps, next)
 	})
 }

@@ -161,6 +161,7 @@ body departed/token-copies-of-artifacts-and-creatures
 body desert-warfare/put-listed-onto-the-battlefield
 body desperate-measures/draw-two
 body destroy/old-b499-the-object
+body destroy/old-b681-the-object
 body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
@@ -316,6 +317,7 @@ body head-of-the-hunt/wolf
 body heart-piercer-manticore/damage
 body heroic-sacrifice/its-counters-and-draw
 body hidetsugu-devouring-chaos/damage
+body horn-of-plenty/draw
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body hurska-sweet-tooth/pump
@@ -574,8 +576,10 @@ body s82-old-b581/gaze-of-the-gorgon-destroy
 body s82-old-b585/discard-three-at-next-end-step
 body s82-old-b614/destroy-the-named-creature
 body s82-old-b635/suppress-return
+body s82-old-b671/fickle-efreet-flip
 body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
+body s82-old-b688/tuck-at-end-of-combat
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -699,6 +703,7 @@ body until-then/lagrella-two-plus-one-counters-on-it
 body until/return-to-battlefield
 body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
+body venomous-breath/destroy-blockers-and-blocked
 body vigorous-charge/gain-that-much
 body villainous-syndication/return
 body vivien-monsters-advocate/search-lesser-creature
@@ -787,6 +792,7 @@ choose choose-cards/as-enters-permanent
 choose choose-cards/ashiok-nightmare-weaver-return
 choose choose-cards/ashiok-wicked-manipulator-take
 choose choose-cards/ashling-flame-dancer-then
+choose choose-cards/assembly-hall-reveal
 choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/astor-bearer-of-blades-take
 choose choose-cards/atraxa-grand-unifier-card-type
@@ -933,6 +939,7 @@ choose choose-cards/court-of-ambition-discarded-6
 choose choose-cards/coveted-prize-cast
 choose choose-cards/crashing-wave-stun-among
 choose choose-cards/crashing-wave-stun-two
+choose choose-cards/credit-voucher-shuffle
 choose choose-cards/creeping-inn-exile
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
@@ -1765,7 +1772,9 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-forest
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
+choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
+choose choose-cards/s82-old-b678-exile-linked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2051,6 +2060,7 @@ coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
 coinflip coin-flip/chaotic-strike
 coinflip coin-flip/creepy-doll-destroy
+coinflip coin-flip/crooked-scales
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-kaboomist
 coinflip coin-flip/goblin-psychopath
@@ -2067,12 +2077,14 @@ coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
+coinflip coin-flip/puppets-verdict
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/s82-old-b602-fiery-gambit-flip
 coinflip coin-flip/s82-old-b626-planar-chaos-counter
 coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/s82-old-b629-squees-revenge
+coinflip coin-flip/s82-old-b671-fickle-efreet
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2763,6 +2775,7 @@ option option-pick/bend-or-break-pile
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
 option option-pick/blank-blank-rocketship-letter
+option option-pick/blood-oath-card-type
 option option-pick/boneyard-parley-chosen
 option option-pick/boreas-charger-search
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
@@ -2861,6 +2874,7 @@ option option-pick/hostile-negotiations-pile
 option option-pick/hunters-axe-keyword
 option option-pick/ilharg-the-raze-boar-attacks
 option option-pick/immard-the-stormcleaver-charge
+option option-pick/indentured-djinn-draw
 option option-pick/indulgent-tormentor-answer
 option option-pick/infernal-offering-first-chosen
 option option-pick/infernal-offering-second-chosen
@@ -2992,9 +3006,11 @@ option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-old-b662-death-or-glory-chosen
+option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
+option option-pick/sacrifice-this-unless-you-sacrifice-a-mountain
 option option-pick/sacrifice-this-unless-you-sacrifice-a-pegasus
 option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
@@ -3179,11 +3195,13 @@ payunless pay-unless/corpses-of-the-lost-return
 payunless pay-unless/counter-guarded
 payunless pay-unless/counter-guarded-exile
 payunless pay-unless/cradle-of-vitality-counters
+payunless pay-unless/crooked-scales-lost
 payunless pay-unless/crosis-the-purger-color
 payunless pay-unless/crystal-shard-return-to-hand
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cumulative-upkeep-paid-or-sacrificed
 payunless pay-unless/curious-forager-return
+payunless pay-unless/customs-depot-loot
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/darigaaz-the-igniter-hand
 payunless pay-unless/death-priest-of-myrkul-skeleton
@@ -3279,6 +3297,7 @@ payunless pay-unless/hero-of-leina-tower-counters
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
 payunless pay-unless/hired-heist-draw
+payunless pay-unless/horn-of-plenty-draw
 payunless pay-unless/human-torch-share-damage
 payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown
@@ -3373,6 +3392,7 @@ payunless pay-unless/old-b579-blood-funnel-counter
 payunless pay-unless/old-b580-perplex-counter
 payunless pay-unless/old-b608-gain-1-life
 payunless pay-unless/old-b623-dwarven-scorcher-1
+payunless pay-unless/old-b686-unnatural-hunger-damage
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3438,6 +3458,12 @@ payunless pay-unless/s82-old-b609-crystal-rod-life
 payunless pay-unless/s82-old-b609-iron-star-life
 payunless pay-unless/s82-old-b609-throne-of-bone-life
 payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
+payunless pay-unless/s82-old-b670-death-charmer-lose-life
+payunless pay-unless/s82-old-b670-plague-fiend-destroy
+payunless pay-unless/s82-old-b670-soul-charmer-gain-life
+payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
+payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
+payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3885,6 +3911,7 @@ run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-old-b552-crush-underfoot
 run prompt-run/s82-old-b662-global-ruin-keep
 run prompt-run/s82-old-b674-overburden-return-land
+run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -4780,6 +4807,7 @@ tail hoarders-greed/draw-two
 tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
+tail honor-the-fallen/gain-life
 tail hostile-negotiations/after-first-pile
 tail hostile-negotiations/after-second-pile
 tail hostile-negotiations/lose-life
@@ -4936,6 +4964,7 @@ tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
 tail mass/rampage-of-the-clans-centaurs
 tail mass/s82-old-b023-gain-two-life-for-each
+tail mass/s82-old-b672-calming-verse-then
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shai-hulud-search
 tail mass/shredders-technique-enchantment-loss
@@ -5389,6 +5418,7 @@ tail saheeli-the-gifted/haste-and-exile-copies
 tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy
 tail salt-road-skirmish/warriors-haste-and-sacrifice
 tail sanwell-avenger-ace/after-exile
+tail saprazzan-breaker/after-mill
 tail saruman-of-many-colors/after-mill
 tail saruman-of-many-colors/copy-exiled
 tail sauron-lord-of-the-rings/mill-then-return
@@ -5991,6 +6021,7 @@ tail then/s82-old-b603-detonate-damage
 tail then/s82-old-b603-molten-rain-damage
 tail then/s82-old-b632-zombie-boa-color
 tail then/s82-old-b662-desperate-research-named
+tail then/s82-old-b675-infernal-genesis-milled
 tail then/s82-old-b677-divining-witch-named
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched

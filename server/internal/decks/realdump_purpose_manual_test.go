@@ -430,6 +430,13 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 677 (#5618).
 	"Divining Witch": "exiles only the top six cards and the cards it reveals from its controller's own library, never a permanent",
+
+	// S82 OLD batch 690 (#5619).
+	"Warpath": "3 damage only to the creatures in combat (each blocking creature and each blocked creature), not a board",
+	// S82 OLD batch 691 (#5619).
+	"Honor the Fallen":  "exiles the creature cards in graveyards, never a permanent",
+	"Saprazzan Bailiff": "exiles the artifact and enchantment cards in graveyards, never a permanent, and returns cards from graveyards to hands when it leaves",
+	"Venomous Breath":   "destroys only the creatures that blocked or were blocked by one chosen creature this turn, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
