@@ -427,6 +427,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 674 (#5617).
 	"Keldon Firebombers": "each player sacrifices only the lands past their third, which are lands, and no sweep class names lands (Armageddon declares none)",
+
+	// S82 OLD batch 677 (#5618).
+	"Divining Witch": "exiles only the top six cards and the cards it reveals from its controller's own library, never a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
