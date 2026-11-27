@@ -142,7 +142,7 @@ func TestS82OldB745ExaltedDragonCantAttackUnlessYouSacrificeALand(t *testing.T) 
 }
 
 func TestS82OldB745MemoryCrystalDiscountsOnlyTheBuybackComponent(t *testing.T) {
-	cast := func(crystal bool, mana string, buyback bool) (error, *game.Player, uuid.UUID) {
+	cast := func(crystal bool, mana string, buyback bool) error {
 		g := effectstest.NewCatalogGame(t)
 		me := g.Seats[0]
 		effectstest.AdvanceToMain(t, g)
@@ -157,19 +157,17 @@ func TestS82OldB745MemoryCrystalDiscountsOnlyTheBuybackComponent(t *testing.T) {
 		if buyback {
 			params.OptionalCosts = []int{0}
 		}
-		return g.CastSpell(me.ID, id, params), me, id
+		return g.CastSpell(me.ID, id, params)
 	}
 	// Mystic Speculation is {1}{U} with buyback {2}: {3}{U} printed, {1}{U} under the Crystal.
-	if err, _, _ := cast(false, "{U}{C}", true); err == nil {
+	if err := cast(false, "{U}{C}", true); err == nil {
 		t.Error("a bought-back cast with two mana succeeded without the Crystal")
 	}
-	if err, _, id := cast(true, "{U}{C}", true); err != nil {
+	if err := cast(true, "{U}{C}", true); err != nil {
 		t.Errorf("a bought-back cast with two mana under the Crystal (any player's): %v", err)
-	} else {
-		_ = id
 	}
 	// An unbought cast is not discounted: {1}{U} still needs two mana.
-	if err, _, _ := cast(true, "{U}", false); err == nil {
+	if err := cast(true, "{U}", false); err == nil {
 		t.Error("the Crystal discounted a cast that paid no buyback")
 	}
 }
