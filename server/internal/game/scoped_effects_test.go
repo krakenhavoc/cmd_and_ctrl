@@ -537,6 +537,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6210: Harvest Mage's chosen colour; cases in
 		// cards/effects/tests/m/mana_color_of_choice_test.go.
 		ModLandManaOfChosenColor: true,
+		// S82 OLD b679: Pale Moon's colourless nonbasic lands; cases in
+		// land_mana_colorless_test.go.
+		ModNonbasicLandManaColorless: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,

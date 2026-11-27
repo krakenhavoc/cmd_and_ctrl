@@ -3774,6 +3774,7 @@ run prompt-run/old-b587-akuta-sacrifice-a-swamp
 run prompt-run/old-b606-rust-elemental
 run prompt-run/old-b621-grave-consequences-exile
 run prompt-run/old-b637-urzas-guilt-lose-life
+run prompt-run/old-b679-stronghold-gambit
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -5425,6 +5426,7 @@ tail tail/angrath-minotaur-pirate-damage
 tail tail/anzrags-rampage-after-sweep
 tail tail/anzrags-rampage-entered
 tail tail/anzrags-rampage-exiled
+tail tail/avenger-en-dal-gains-toughness
 tail tail/blood-for-bones-after-first
 tail tail/boreas-charger-put
 tail tail/bottled-cloister-draw
