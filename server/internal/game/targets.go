@@ -968,6 +968,16 @@ type TargetSpec struct {
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
 
+	// MoreLandsThanChooser is "target player who controls more lands than
+	// they do and is their opponent" on a ChosenByTriggerActor clause (Oath of
+	// Lieges, S82 OLD batch 743): a player candidate must be someone other
+	// than the chooser who controls more lands than the chooser does. DATA,
+	// judged beside MoreCreaturesThanChooser in playerChooserAdmits
+	// (more_lands_than_chooser.go). Meaningless without ChosenByTriggerActor;
+	// effects.Register refuses it alone. Build it with
+	// effects.WithMoreLandsThanTheChooser.
+	MoreLandsThanChooser bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the
