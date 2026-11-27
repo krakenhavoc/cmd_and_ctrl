@@ -103,7 +103,7 @@ func (t ChangeTextWord) Apply(ctx *Context) error {
 		Question: CardNameFor(ctx.Game, ctx.Source()) + " — choose the word to replace",
 		Options:  options,
 		ThenKey:  changeTextWordFirst,
-		Carry:    append([]uuid.UUID{t.Target}, intsToCarry([]int{textWordKindsMask(t.Kinds), textWordDuration(t.UntilEndOfTurn)})...),
+		Carry:    append([]uuid.UUID{t.Target}, IntsToCarry([]int{textWordKindsMask(t.Kinds), textWordDuration(t.UntilEndOfTurn)})...),
 		Tail:     t.ThenTail,
 	}.Apply(ctx)
 }
@@ -174,7 +174,7 @@ func init() {
 		if len(r.Carry) < 3 {
 			return r.Tail.Run(ctx.Game, nil)
 		}
-		nums := carryToInts(r.Carry[1:3])
+		nums := CarryToInts(r.Carry[1:3])
 		words := textWordChoices(textWordKindsFromMask(nums[0]))
 		if r.Index < 0 || r.Index >= len(words) {
 			return r.Tail.Run(ctx.Game, nil)
@@ -189,7 +189,7 @@ func init() {
 			Question: fmt.Sprintf("%s — replace %s with", CardNameFor(ctx.Game, ctx.Source()), from.label),
 			Options:  toOptions,
 			ThenKey:  changeTextWordSecond,
-			Carry:    append(append([]uuid.UUID(nil), r.Carry...), intsToCarry([]int{r.Index})...),
+			Carry:    append(append([]uuid.UUID(nil), r.Carry...), IntsToCarry([]int{r.Index})...),
 			Tail:     r.Tail,
 		}.Apply(ctx)
 	})
@@ -197,7 +197,7 @@ func init() {
 		if len(r.Carry) < 4 {
 			return r.Tail.Run(ctx.Game, nil)
 		}
-		nums := carryToInts(r.Carry[1:4])
+		nums := CarryToInts(r.Carry[1:4])
 		words := textWordChoices(textWordKindsFromMask(nums[0]))
 		if nums[2] < 0 || nums[2] >= len(words) {
 			return r.Tail.Run(ctx.Game, nil)
