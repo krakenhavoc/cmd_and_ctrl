@@ -800,7 +800,6 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 533 (#5591): Giantbaiting's Giant Warrior.
 	"4/4 red and green Giant Warrior with haste": {Name: "Giant Warrior", TypeLine: "Token Creature — Giant Warrior", Power: 4, Toughness: 4, Colors: []string{"R", "G"}, Keywords: []string{"haste"}},
 
-
 	// S82 OLD batch 535 (#5591): Din of the Fireherd's Elemental.
 	"5/5 black and red Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"B", "R"}},
 }
