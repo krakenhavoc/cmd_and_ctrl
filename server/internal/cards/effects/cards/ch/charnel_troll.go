@@ -70,7 +70,7 @@ func charnelTrollUpkeep(g *game.Game, item *game.StackItem) error {
 // between the counter and the sacrifice. An on-disk key.
 var charnelTrollPicked = effects.AskedPick("choose-cards/charnel-troll-exile", func(ctx *effects.Context, r game.CardsChosen) error {
 	if len(r.Picked) != 1 {
-		return charnelTrollOtherwise(ctx)
+		return effects.SacrificeThisIfStillThere(ctx)
 	}
 	return effects.ExileTarget{Target: r.Picked[0], ThenTail: ctx.ItemTail(charnelTrollExiled)}.Apply(ctx)
 })
@@ -79,17 +79,10 @@ var charnelTrollPicked = effects.AskedPick("choose-cards/charnel-troll-exile", f
 // Otherwise, sacrifice it." An on-disk key.
 var charnelTrollExiled = effects.CardTail("charnel-troll/after-exile", func(ctx *effects.Context, o game.TailOutcome) error {
 	if len(o.IDs) != 1 {
-		return charnelTrollOtherwise(ctx)
+		return effects.SacrificeThisIfStillThere(ctx)
 	}
 	if !effects.OnBattlefield(ctx.Game, ctx.Source()) || effects.SourceIsNewObject(ctx.Game, ctx.Item) {
 		return nil
 	}
 	return effects.AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 })
-
-func charnelTrollOtherwise(ctx *effects.Context) error {
-	if !effects.OnBattlefield(ctx.Game, ctx.Source()) || effects.SourceIsNewObject(ctx.Game, ctx.Item) {
-		return nil
-	}
-	return effects.SacrificePermanent{Target: ctx.Source()}.Apply(ctx)
-}

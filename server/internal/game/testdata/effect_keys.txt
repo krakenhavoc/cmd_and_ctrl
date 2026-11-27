@@ -1712,6 +1712,7 @@ choose choose-cards/s82-old-b568-jokulmorder-lands
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
 choose choose-cards/s82-old-b581-sisters-of-stone-death-return
+choose choose-cards/s82-old-b599-chisei-remove-counter
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2908,6 +2909,7 @@ option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-old-b522-canker-abomination
 option option-pick/s82-old-b568-jokulmorder-choice
+option option-pick/s82-old-b599-chisei-counter-kind
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
