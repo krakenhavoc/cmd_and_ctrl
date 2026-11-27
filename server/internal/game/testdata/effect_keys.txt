@@ -2028,6 +2028,7 @@ coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/s82-old-b602-fiery-gambit-flip
 coinflip coin-flip/s82-old-b626-planar-chaos-counter
 coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
+coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2663,6 +2664,7 @@ number number/s82-old-b281-void-number
 number number/s82-old-b408-vizkopa-confessor-paid
 number number/s82-old-b411-bioshift-move
 number number/s82-old-b459-hex-parasite-remove
+number number/s82-old-b629-squees-revenge
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -3946,6 +3948,7 @@ searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/s82-old-b428-island-swamp-mountain
 searchrule search/s82-old-b506-plains-island-swamp-mountain
+searchrule search/s82-old-b629-land-of-each-basic-type
 searchrule search/total-mana-value-at-most
 searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
