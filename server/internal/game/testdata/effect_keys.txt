@@ -704,6 +704,7 @@ body until/return-to-battlefield
 body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
 body vigorous-charge/gain-that-much
+body venomous-breath/destroy-blockers-and-blocked
 body villainous-syndication/return
 body vivien-monsters-advocate/search-lesser-creature
 body vraska-the-unseen/destroy-the-damaging-creature
@@ -2059,6 +2060,7 @@ coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/chaotic-goo
 coinflip coin-flip/chaotic-strike
 coinflip coin-flip/creepy-doll-destroy
+coinflip coin-flip/crooked-scales
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-kaboomist
 coinflip coin-flip/goblin-psychopath
@@ -2075,6 +2077,7 @@ coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
+coinflip coin-flip/puppets-verdict
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/s82-old-b602-fiery-gambit-flip
@@ -3192,6 +3195,7 @@ payunless pay-unless/corpses-of-the-lost-return
 payunless pay-unless/counter-guarded
 payunless pay-unless/counter-guarded-exile
 payunless pay-unless/cradle-of-vitality-counters
+payunless pay-unless/crooked-scales-lost
 payunless pay-unless/crosis-the-purger-color
 payunless pay-unless/crystal-shard-return-to-hand
 payunless pay-unless/cumulative-upkeep-flip-coins
@@ -4803,6 +4807,7 @@ tail hoarders-greed/draw-two
 tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
+tail honor-the-fallen/gain-life
 tail hostile-negotiations/after-first-pile
 tail hostile-negotiations/after-second-pile
 tail hostile-negotiations/lose-life
