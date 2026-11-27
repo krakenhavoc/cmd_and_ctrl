@@ -160,6 +160,16 @@ type RetargetOffer struct {
 	// targets — the restriction a free RetargetChangeOne carries
 	// exists because it would have to ask both questions at once.
 	To TargetRef
+
+	// NewTargetCreature is "the new target must be a creature" (Silver
+	// Wyvern): a slot can be changed only to a creature on the battlefield,
+	// on top of whatever its own clause demands. Carried on the prompt
+	// (PendingChoice.RetargetNewCreature) so a restored game still checks
+	// the answer. Ignored by a pinned offer, whose destination is fixed. A
+	// free "change the target" over an item with several targets is refused
+	// without it; with it the first slot that has somewhere to go is the one
+	// asked, since the printed card chooses no slot.
+	NewTargetCreature bool
 }
 
 // pinnedRetarget reports whether `to` names a destination — the
@@ -480,7 +490,7 @@ func (g *Game) OfferRetargetForEffect(offer RetargetOffer) error {
 		// One target: "change the target" is CR 115.7b's walk.
 		offer.Policy = RetargetChangeOne
 	}
-	if offer.Policy == RetargetChangeOne && n > 1 {
+	if offer.Policy == RetargetChangeOne && n > 1 && !offer.NewTargetCreature {
 		// See RetargetChangeOne's doc comment: no printed card gets
 		// here, and the prompt for it is undesigned.
 		return ErrInvalidParam
@@ -530,6 +540,9 @@ func (g *Game) queueRetargetStepLocked(offer RetargetOffer, from int) {
 		alt := g.legalTargetsLocked(src, clause)
 		alt = retargetAlternatives(alt, item.Targets, i, clause)
 		alt = g.withoutSetRuleConflictsLocked(clause, alt, item.Targets, i)
+		if offer.NewTargetCreature {
+			alt = g.onlyCreaturePermanentsLocked(alt)
+		}
 		if len(alt.Players) == 0 && len(alt.Cards) == 0 {
 			continue
 		}
@@ -562,9 +575,26 @@ func (g *Game) queueRetargetStepLocked(offer RetargetOffer, from int) {
 			RetargetOptional:  offer.Optional,
 			RetargetSlot:      i,
 			RetargetReason:    offer.Reason,
+
+			RetargetNewCreature: offer.NewTargetCreature,
 		})
 		return
 	}
+}
+
+// onlyCreaturePermanentsLocked narrows a legal set to the creatures on the
+// battlefield: no player, and no card in another zone (RetargetOffer.
+// NewTargetCreature's "the new target must be a creature").
+//
+// Caller must hold g.mu.
+func (g *Game) onlyCreaturePermanentsLocked(lt LegalTargets) LegalTargets {
+	var ids []uuid.UUID
+	for _, id := range lt.Cards {
+		if c := g.findBattlefieldCardLocked(id); c != nil && c.IsCreature() {
+			ids = append(ids, id)
+		}
+	}
+	return LegalTargets{Cards: ids}
 }
 
 // retargetClauseFor is the announced clause a ref belongs to, by
@@ -989,6 +1019,8 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 		Optional: choice.RetargetOptional,
 		Source:   choice.Source,
 		Reason:   choice.RetargetReason,
+
+		NewTargetCreature: choice.RetargetNewCreature,
 	}
 	item := g.StackMeta[offer.ItemID]
 	if item == nil {
@@ -1044,6 +1076,11 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 		t := targets[0]
 		if t.Kind != TargetPlayer && t.Kind != TargetCard {
 			return ErrInvalidParam
+		}
+		if choice.RetargetNewCreature {
+			if c := g.findBattlefieldCardLocked(t.ID); t.Kind != TargetCard || c == nil || !c.IsCreature() {
+				return ErrIllegalTarget
+			}
 		}
 		next := append([]TargetRef(nil), item.Targets...)
 		t.Mode, t.Slot = next[slot].Mode, next[slot].Slot

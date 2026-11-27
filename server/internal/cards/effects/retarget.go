@@ -83,6 +83,10 @@ type ChangeTargets struct {
 	// its ability resolves …, no targets are changed" (2020-08-07
 	// ruling). Overrides To.
 	ToSource bool
+
+	// NewTargetCreature is "the new target must be a creature" (Silver
+	// Wyvern): game.RetargetOffer.NewTargetCreature.
+	NewTargetCreature bool
 }
 
 func (c ChangeTargets) Apply(ctx *Context) error {
@@ -114,6 +118,8 @@ func (c ChangeTargets) Apply(ctx *Context) error {
 		Source:   ctx.Source(),
 		Reason:   c.Reason,
 		To:       to,
+
+		NewTargetCreature: c.NewTargetCreature,
 	})
 	if err == game.ErrCardNotFound {
 		return nil

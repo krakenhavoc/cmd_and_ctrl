@@ -162,6 +162,7 @@ body desert-warfare/put-listed-onto-the-battlefield
 body desperate-measures/draw-two
 body destroy/old-b499-the-object
 body destroy/old-b681-the-object
+body destroy/old-b746-listed-cards
 body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
@@ -4824,6 +4825,7 @@ tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
 tail honor-the-fallen/gain-life
+tail hornet-cannon/destroy-the-hornet
 tail hostile-negotiations/after-first-pile
 tail hostile-negotiations/after-second-pile
 tail hostile-negotiations/lose-life

@@ -968,6 +968,16 @@ type TargetSpec struct {
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
 
+	// ItemTargetsOnlySource is "target spell or ability that targets only
+	// this creature" on a stack clause (Silver Wyvern): the stack item the
+	// clause picks has at least one target and every one of them is the
+	// clause's own source object. DATA, judged in the shared walks (the
+	// spell zone walk through sourceAdmits, the ability walk and the
+	// announce / resolution re-check), so the legal set and CR 608.2b's
+	// re-check are one answer; a walk with no source admits nothing. Build
+	// it with effects.TargetsOnlyThisCreature.
+	ItemTargetsOnlySource bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the
@@ -1730,6 +1740,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.AbilityOK != nil && !spec.AbilityOK(g, src.Controller, item) {
 				continue
 			}
+			if !spec.itemTargetsOnlySourceAdmits(g, src, item.ID) {
+				continue
+			}
 			// "another": an ability of the clause's own source is not offered
 			// (The Peregrine Dynamo's "from another legendary source").
 			if spec.excludesSource(src, item.SourceCardID) {
@@ -1973,6 +1986,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if spec.Abilities {
 			if item := g.StackMeta[ref.ID]; item != nil && item.Kind != StackItemSpell {
 				return (spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)) &&
+					spec.itemTargetsOnlySourceAdmits(g, src, item.ID) &&
 					!spec.excludesSource(src, item.SourceCardID)
 			}
 		}
@@ -2580,7 +2594,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) || !s.itemTargetsOnlySourceAdmits(g, src, c.InstanceID) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

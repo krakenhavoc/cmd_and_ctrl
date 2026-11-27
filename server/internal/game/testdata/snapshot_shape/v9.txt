@@ -81413,6 +81413,7 @@ pendingChoices[].replacementResume.event.zoneRoute.viaBattlefieldLeave	bool
 pendingChoices[].resumeFrames	array
 pendingChoices[].resumeFrames[]	string
 pendingChoices[].retargetItem	custom(uuid.UUID)
+pendingChoices[].retargetNewCreature	bool
 pendingChoices[].retargetNext	array
 pendingChoices[].retargetNext[]	object
 pendingChoices[].retargetNext[].ID	custom(uuid.UUID)
