@@ -234,6 +234,19 @@ func (s TargetSource) loyalty() (int, bool) {
 	return 0, false
 }
 
+// counterCount is the number of counters of `kind` on the source: the live
+// object's, or a departed source's last-known count (CR 608.2h). ok is false
+// when the walk has no source object.
+func (s TargetSource) counterCount(kind string) (int, bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.Counters[kind], true
+	case s.Departed != nil:
+		return s.Departed.Counters[kind], true
+	}
+	return 0, false
+}
+
 // ObjectRef names the object this walk is relative to, as the
 // {instance, epoch} a Card.ExiledWith link records: the live source's
 // own epoch, or a departed source's last-known record (CR 608.2h,
@@ -2130,6 +2143,14 @@ const (
 	// the Unforgiving). The loyalty is the live object's while it stands
 	// and its last-known record's once it has left (CR 608.2h).
 	SourceManaValueVsLoyalty SourceStat = "mana_value_vs_loyalty"
+	// SourcePowerVsCounters compares the CANDIDATE's power with the number
+	// of counters of the kind SourceComparison.Counter on the SOURCE:
+	// "target creature with power less than or equal to the number of
+	// treasure counters on this enchantment" (Legacy's Allure). The count
+	// is the live object's while it stands and its last-known record's once
+	// it has left (CR 608.2h), as it must be for an ability whose cost
+	// sacrificed the source.
+	SourcePowerVsCounters SourceStat = "power_vs_counters"
 	// SourceSameName is "with the same name as this creature" (Callidus
 	// Assassin): the candidate's name equals the source's. It has no Cmp.
 	// Read from the live object's name, or the last-known snapshot's.
@@ -2152,6 +2173,9 @@ const (
 type SourceComparison struct {
 	Stat SourceStat `json:"stat"`
 	Cmp  SourceCmp  `json:"cmp"`
+	// Counter is the counter kind a SourcePowerVsCounters comparison counts
+	// on the source. Empty for every other stat.
+	Counter string `json:"counter,omitempty"`
 }
 
 // holds reports whether candidate c satisfies the comparison against
@@ -2685,6 +2709,13 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 		if sc.Stat == SourceSameName {
 			name, nameOK := src.name()
 			if !nameOK || name == "" || c.Name != name {
+				return false
+			}
+			continue
+		}
+		if sc.Stat == SourcePowerVsCounters {
+			n, nOK := src.counterCount(sc.Counter)
+			if !nOK || !sc.holds(c, n, 0) {
 				return false
 			}
 			continue

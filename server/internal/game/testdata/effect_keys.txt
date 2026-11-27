@@ -3075,6 +3075,7 @@ option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-old-b716-walking-sponge-keyword
 option option-pick/s82-old-b743-carnophage-pay-or-tap
+option option-pick/s82-old-b759-flowstone-sculpture
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land

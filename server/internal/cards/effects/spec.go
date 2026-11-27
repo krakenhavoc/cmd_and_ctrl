@@ -2271,6 +2271,12 @@ type Spec struct {
 	// card.
 	XCeiling *game.XCeiling
 
+	// XFloor is the spell's printed "X can't be 0" (Ertai's Meddling, CR
+	// 107.3a, 601.2b): the cast is refused below it. Zero is no floor; a
+	// negative one panics at Register. Spells only: an activated ability's
+	// floor is Cost.MinX. S82 OLD batch 759.
+	XFloor int
+
 	// Discovers declares that the card's text discovers (CR 701.57, ADR
 	// 0099) — that some effect of the card calls Discover or DiscoverN.
 	// Nothing in the engine reads it: discover is an instruction inside
