@@ -534,6 +534,7 @@ body rose-room-treasurer/damage
 body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
+body rukh-egg/create-bird
 body ruthless-lawbringer/destroy
 body s82-bns-b02/back-for-more-fight
 body s82-bns-b05/mistbind-clique-tap-lands
