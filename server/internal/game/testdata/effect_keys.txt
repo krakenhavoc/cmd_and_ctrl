@@ -146,6 +146,7 @@ body dahar-master/damage
 body dain-ironfoot/attach-axe
 body dalkovan-encampment/warriors
 body damage/old-b071-return-the-listed-object
+body damage/s82-old-b782-that-much-to-its-controller
 body damage/that-much-to-each-other-opponent
 body dash/return
 body death-frenzy/gain-one-life
@@ -2161,6 +2162,7 @@ condition combat-damage/dovin-grand-arbiter-creature-connects
 condition combat-damage/subira-small-creature-connects
 condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
+condition combat/s82-old-b782-attacker-hits-you
 condition combat/that-creature-dealt-combat-damage
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
