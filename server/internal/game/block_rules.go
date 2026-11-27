@@ -58,8 +58,8 @@ import "github.com/google/uuid"
 
 // BlockRule is one printed block restriction with a parameter, as the
 // engine reads it. Exactly one of Pair, Count, Limit, NotAlone, the
-// landwalk waiver (IgnoreLandwalk / IgnoreAllLandwalk) and the reach
-// waiver (ReachAgainst) is set; a rule with none of them is inert.
+// landwalk waiver (IgnoreLandwalk / IgnoreAllLandwalk), the reach
+// waiver (ReachAgainst) and the shadow waiver (ShadowAgainstShadow) is set; a rule with none of them is inert.
 //
 // The `source` argument is the permanent the rule was read from, so a
 // threshold that compares against its own source (Champion of
@@ -164,6 +164,17 @@ type BlockRule struct {
 	// CR 702.17b is the rule being bent — "A creature with flying can't
 	// be blocked except by creatures with flying and/or reach."
 	ReachAgainst []PermanentQuery `json:",omitempty"`
+
+	// ShadowAgainstShadow waives the CR 702.28b shadow restriction for this
+	// rule's OWN SOURCE when it blocks an attacker that has shadow: "This
+	// creature can block creatures with shadow as though it had shadow"
+	// (Heartwood Dryad). Read, like ReachAgainst, only off the BLOCKER's own
+	// rules (blockerShadowAgainstLocked) and keyed by CatalogAbilityKey, so a
+	// creature that has lost its abilities loses the waiver. It waives that
+	// one restriction: the creature does not gain shadow, a creature that
+	// counts creatures with shadow does not see it, and every other evasion
+	// still refuses the block. Plain data.
+	ShadowAgainstShadow bool `json:",omitempty"`
 
 	// Reason is the BlockReason a refused pair reports. Empty defaults
 	// to BlockReasonCantBeBlockedBy, which is the commonest shape.
@@ -482,6 +493,29 @@ func (g *Game) blockLimitTallyLocked(r BlockRule, source *Card, assign blockAssi
 		out[key] = t
 	}
 	return out
+}
+
+// blockerShadowAgainstLocked reports whether `blocker`'s own rules let it block
+// a creature with shadow "as though it had shadow" (BlockRule.
+// ShadowAgainstShadow): Heartwood Dryad. Read off the blocker's catalog entry
+// alone, and by CatalogAbilityKey, so a creature that has lost all its
+// abilities has lost the waiver (CR 613.1f).
+//
+// Caller must hold g.mu with fresh layers. Reads only.
+func (g *Game) blockerShadowAgainstLocked(blocker *Card) bool {
+	if blocker == nil || CatalogBlockRules == nil {
+		return false
+	}
+	key := catalogAbilityKeyOf(blocker)
+	if key == "" {
+		return false
+	}
+	for _, r := range CatalogBlockRules(key) {
+		if r.ShadowAgainstShadow {
+			return true
+		}
+	}
+	return false
 }
 
 // blockerReachAgainstLocked reports whether `blocker`'s own rules let it
