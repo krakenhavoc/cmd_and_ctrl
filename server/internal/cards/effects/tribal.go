@@ -323,7 +323,7 @@ func IsAlsoTheChosenType() game.StaticAbility {
 			return target.InstanceID == source.InstanceID && source.NamedTribe != ""
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			addChosenTribe(c, source)
+			AddChosenTribe(c, source)
 		},
 	}
 }

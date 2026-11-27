@@ -196,6 +196,10 @@ var knownUnmatchedTokens = map[string]string{
 	// Dune-Brood Nephilim (Guildpact) creates "a 1/1 colorless Sand creature token for each land you control". The
 	// token was never printed as a token card, so the dump has no Sand to match.
 	"1/1 colorless Sand": "no token card was ever printed for Dune-Brood Nephilim's Sand",
+
+	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
+	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
+	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
