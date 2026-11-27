@@ -1795,6 +1795,7 @@ choose choose-cards/s82-old-b708-burning-of-xinye-mine
 choose choose-cards/s82-old-b708-burning-of-xinye-theirs
 choose choose-cards/s82-old-b711-eunuchs-intrigues-others-cant-block
 choose choose-cards/s82-old-b711-imperial-edict-destroy
+choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3946,6 +3947,7 @@ run prompt-run/s82-old-b674-overburden-return-land
 run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-old-b704-landslide-sacrifice
+run prompt-run/s82-old-b723-wildfire-damage
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
