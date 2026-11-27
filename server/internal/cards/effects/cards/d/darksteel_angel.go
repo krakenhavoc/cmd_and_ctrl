@@ -1,8 +1,6 @@
 package cardsd
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -28,24 +26,8 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying", "indestructible"},
 		GameEndGates:    effects.YouCantLoseOpponentsCantWin(),
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventCounterPlaced},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventCounter || ev.CounterName != game.CounterMinusOne || ev.CounterDelta <= 0 {
-					return false
-				}
-				target, ok := g.LookupCardForEffect(ev.CounterTarget)
-				return ok && target.IsCreature() && target.Controller == src.Controller
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.Cancel()
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			PureCancel: true,
-			Label:      "Darksteel Angel: creatures you control can't have -1/-1 counters put on them",
-		}},
+		Replacements: []game.ReplacementEffect{
+			effects.CreaturesYouControlCantHaveMinusOneCounters("Darksteel Angel: creatures you control can't have -1/-1 counters put on them"),
+		},
 	})
 }

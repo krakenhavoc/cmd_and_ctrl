@@ -1,8 +1,6 @@
 package cardsso
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -26,18 +24,7 @@ func init() {
 			Label:   "{R}, {T}: Target player shuffles their library.",
 			Cost:    effects.Plus(effects.ManaCost("{R}"), effects.TapCost()),
 			Targets: effects.TargetPlayer("target player"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetPlayer {
-						continue
-					}
-					if err := (effects.ShuffleLibrary{Player: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Effect:  effects.S82OldB547TargetPlayerShufflesTheirLibrary,
 		}},
 	})
 }

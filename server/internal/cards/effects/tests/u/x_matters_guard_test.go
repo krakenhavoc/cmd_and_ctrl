@@ -102,9 +102,13 @@ var xMattersAllowlist = map[string]string{
 	"reidane_god_of_the_worthy.go Reidane, God of the Worthy":     "not an X card: its cost tax reads the spell's mana value with {X} counted at the chosen value (SpellManaValueAtLeast), which is a property of the opposing spell, never of Reidane",
 	"kianne_dean_of_substance.go Imbraham, Dean of Theory":        "at X=0 nothing is exiled but the ability still offers the pick of a card you own in exile with a study counter on it, a real play (Soothsaying-style X reads only the exile count)",
 
+	"festival_of_the_guildpact.go Festival of the Guildpact": "at X=0 it prevents nothing but still draws a card, a real play: the draw happens whatever X is",
+
 	"sanguine_sacrament.go Sanguine Sacrament": "at X=0 it gains no life but still puts itself on the bottom of its owner's library instead of the graveyard, a real play: the fixed rider happens whatever X is",
 
 	"displacement_wave.go Displacement Wave": "at X=0 it still returns every nonland permanent with mana value 0 (a token, a free artifact), a real play: the X picks which permanents go back, it is not a quantity",
+
+	"gridlock.go Gridlock": "X is the target count (CountFromX on S82OldB411XTargetNonlandPermanents' targets), which the scan cannot see; at X=0 it targets nothing and taps nothing",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its

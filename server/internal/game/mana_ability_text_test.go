@@ -24,6 +24,7 @@ func TestManaAbilityInTextReadsCR605(t *testing.T) {
 		{"Jack-in-the-Mox (a die table)", "Artifact", "{T}: Roll a six-sided die. This ability has the indicated effect.\n1 — Sacrifice this artifact and you lose 5 life.\n2 — Add {W}.\n3 — Add {U}.", true},
 		{"Cradle Clearcutter (an amount)", "Artifact Creature — Golem", "Prototype {2}{G} — 1/3 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\n{T}: Add an amount of {G} equal to this creature's power.", true},
 		// Triggered mana abilities, CR 605.1b.
+		{"Keeper of Progenitus", "Creature — Elf Druid", "Whenever a player taps a Mountain, Forest, or Plains for mana, that player adds one mana of any type that land produced.", true},
 		{"Gauntlet of Power", "Artifact", "As this artifact enters, choose a color.\nCreatures of the chosen color get +1/+1.\nWhenever a basic land is tapped for mana of the chosen color, its controller adds an additional one mana of that color.", true},
 		{"Forsaken Monument", "Legendary Artifact", "Colorless creatures you control get +2/+2.\nWhenever you tap a permanent for {C}, add an additional {C}.\nWhenever you cast a colorless spell, you gain 2 life.", true},
 		{"Caged Sun", "Artifact", "As this artifact enters, choose a color.\nWhenever a land's ability causes you to add one or more mana of the chosen color, add an additional one mana of that color.", true},

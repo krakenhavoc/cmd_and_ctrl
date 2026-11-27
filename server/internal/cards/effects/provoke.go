@@ -49,7 +49,7 @@ func provokeUntapAndBlock(g *game.Game, item *game.StackItem) error {
 	}
 	return BlocksAttackerUntilEOT{
 		Blocker:  id,
-		Attacker: attackingObjectOf(ctx),
+		Attacker: AttackingObjectOf(ctx),
 		Label:    "Provoke — blocks the provoking creature if able",
 	}.Apply(ctx)
 }
@@ -66,7 +66,7 @@ func TargetBlocksTheAttacker(g *game.Game, item *game.StackItem) error {
 	}
 	return BlocksAttackerUntilEOT{
 		Blocker:  id,
-		Attacker: attackingObjectOf(ctx),
+		Attacker: AttackingObjectOf(ctx),
 		Label:    "blocks the attacking creature if able",
 	}.Apply(ctx)
 }
@@ -93,11 +93,11 @@ func TargetBlocksThisCreature(g *game.Game, item *game.StackItem) error {
 	}.Apply(ctx)
 }
 
-// attackingObjectOf is the attacking object an attack trigger is
+// AttackingObjectOf is the attacking object an attack trigger is
 // about: the event's object (CR 603.10 last-known information, so its
 // epoch is the one it had when it attacked), falling back to the
 // ability's source for an item that carries no trigger context.
-func attackingObjectOf(ctx *Context) game.ObjectRef {
+func AttackingObjectOf(ctx *Context) game.ObjectRef {
 	if it := ctx.Item; it != nil && it.Trigger != nil && it.Trigger.Object != nil {
 		return it.Trigger.Object.Ref()
 	}

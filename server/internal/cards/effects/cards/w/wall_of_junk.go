@@ -34,21 +34,10 @@ func init() {
 					return effects.ScheduleDelayedTrigger{
 						At:     game.StepEndCombat,
 						Label:  "Wall of Junk — return it to its owner's hand",
-						Body:   wallOfJunkReturnBody,
+						Body:   effects.ReturnObjectToHandBody,
 						Params: game.EffectParams{Object: game.ObjectRef{ID: item.SourceCardID, Epoch: g.ObjectEpochForEffect(item.SourceCardID)}},
 					}.Apply(ctx)
 				}),
 		},
 	})
 }
-
-// wallOfJunkReturnBody is the delayed trigger: return the object named in
-// Params.Object to its owner's hand, only if it is still that object and
-// still on the battlefield. Its key is on disk.
-var wallOfJunkReturnBody = game.SimpleDelayedBody("s82-gap-b134/return-source-to-hand", func(g *game.Game, item *game.StackItem) error {
-	obj := item.Params.Object
-	if !effects.OnBattlefield(g, obj.ID) || g.ObjectEpochForEffect(obj.ID) != obj.Epoch {
-		return nil
-	}
-	return effects.BounceToHand{Target: obj.ID}.Apply(effects.NewContext(g, item))
-})

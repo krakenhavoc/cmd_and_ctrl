@@ -1374,6 +1374,9 @@ type cardSnapshot struct {
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
+	// DevouredTally is the devoured creatures of the tallied type. Old
+	// snapshots have no key and read zero.
+	DevouredTally int `json:"devouredTally,omitempty"`
 	// TributePaid is CR 702.104a's paid tribute (#6251). Old snapshots
 	// have no key and read "not paid", which only a tribute card reads.
 	TributePaid bool `json:"tributePaid,omitempty"`
@@ -2219,6 +2222,7 @@ type pendingChoiceSnapshot struct {
 	// pickThen is also a keyed option_pick's continuation (#2854).
 	PickDestination   PickDestination `json:"pickDestination,omitempty"`
 	PickOptional      bool            `json:"pickOptional,omitempty"`
+	PickUpTo          bool            `json:"pickUpTo,omitempty"`
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
@@ -3396,6 +3400,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Notes:                      append([]string(nil), c.Notes...),
 		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
 		Devoured:                   c.Devoured,
+		DevouredTally:              c.DevouredTally,
 		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
@@ -3855,6 +3860,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
+		PickUpTo:              c.PickUpTo,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
 		PickMatchArg:          c.PickMatchArg,
@@ -4605,6 +4611,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Notes:                      append([]string(nil), c.Notes...),
 		PlayerNotes:                copyPlayerNotes(c.PlayerNotes),
 		Devoured:                   c.Devoured,
+		DevouredTally:              c.DevouredTally,
 		TributePaid:                c.TributePaid,
 		ModesChosen:                copyModesChosen(c.ModesChosen),
 		ClassLevel:                 c.ClassLevel,
@@ -5040,6 +5047,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
+		PickUpTo:              c.PickUpTo,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
 		PickMatchArg:          c.PickMatchArg,

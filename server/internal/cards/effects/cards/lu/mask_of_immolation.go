@@ -37,15 +37,7 @@ func init() {
 				Purpose: game.Purpose{Targets: game.ForTargets(effects.DamageToTarget(0, 1)), Answers: game.AnswerRemove},
 				Cost:    effects.SacrificeThis(),
 				Targets: effects.TargetAny(),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					ref, ok := ctx.SourceRef()
-					legal := ctx.LegalTargets()
-					if !ok || len(legal) == 0 {
-						return nil
-					}
-					return effects.DealDamage{SourceObject: &ref, Target: legal[0].ID, Amount: 1}.Apply(ctx)
-				},
+				Effect:  effects.OldB466SourceDealsOneDamage,
 			}},
 			Text: "Sacrifice this creature: It deals 1 damage to any target.",
 		}},

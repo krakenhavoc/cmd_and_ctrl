@@ -3,6 +3,7 @@ package game
 import (
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -664,6 +665,15 @@ type TargetSpec struct {
 	// source, or none chosen, the clause admits nothing. Build one with
 	// effects.OfTheChosenType.
 	OfSourcesChosenType bool
+
+	// SameNameAsExiledWithSource is "target spell with the same name as a
+	// card exiled with this creature" (Mindreaver, CR 607.2a): the
+	// candidate must share its name with a card in exile whose
+	// Card.ExiledWith names the clause's source object. DATA, for the
+	// reason ExiledWithSource is: CardOK never sees the source. A walk
+	// with no source object, or a source with nothing exiled with it,
+	// admits nothing. Build one with effects.SameNameAsCardExiledWithThis.
+	SameNameAsExiledWithSource bool
 
 	// ControlledByThatPlayer is "that opponent controls" / "that player
 	// controls" on a TRIGGERED ability's clause: the candidate must be
@@ -1994,6 +2004,11 @@ const (
 	// The source's power is its live value while it stands and its
 	// last-known value once it has left (CR 608.2h), as for SourcePower.
 	SourceManaValueVsPower SourceStat = "mana_value_vs_power"
+	// SourceToughnessVsPower compares the CANDIDATE's toughness with the
+	// SOURCE's power: "target creature you control with toughness less
+	// than this creature's power" (Stone Giant). The source's power is
+	// live while it stands and last-known once it has left (CR 608.2h).
+	SourceToughnessVsPower SourceStat = "toughness_vs_power"
 	// SourceManaValueVsLoyalty compares the CANDIDATE's mana value with
 	// the number of loyalty counters on the SOURCE: "target creature or
 	// Equipment card with mana value less than Nahiri's loyalty" (Nahiri,
@@ -2033,6 +2048,8 @@ func (sc SourceComparison) holds(c Card, srcPower, srcToughness int) bool {
 		cand, src = c.CurrentToughness(), srcToughness
 	case SourceManaValueVsPower:
 		cand = c.ManaValue()
+	case SourceToughnessVsPower:
+		cand = c.CurrentToughness()
 	case SourceManaValueVsLoyalty:
 		cand = c.ManaValue()
 	}
@@ -2076,6 +2093,13 @@ const (
 	// above ("creature blocking or blocked by this creature", Steadfast
 	// Armasaur).
 	CombatBlockingOrBlockedBy CombatRole = "blocking_or_blocked_by"
+	// CombatControlledByDefender: the candidate is controlled by the
+	// player the reference creature is attacking, which is itself
+	// attacking ("target creature defending player controls" on an
+	// activated ability of an attacker, Ancient Hellkite; CR 506.3d).
+	// A reference attacking a planeswalker or battle names that
+	// permanent's controller or protector (defendingPlayerForAttackLocked).
+	CombatControlledByDefender CombatRole = "controlled_by_defender"
 )
 
 // SourceCombat is one combat relation between a candidate and the
@@ -2093,6 +2117,9 @@ type combatReference struct {
 	id        uuid.UUID
 	blocks    []uuid.UUID
 	attacking bool
+	// attackTarget is who or what the reference attacks, for
+	// CombatControlledByDefender; zero for a source that has left.
+	attackTarget uuid.UUID
 }
 
 // combatReferenceLocked resolves SourceCombat.Of against the walk's
@@ -2128,7 +2155,7 @@ func (g *Game) combatReferenceLocked(src TargetSource, of SourceCombatOf) (comba
 	if r == nil {
 		return combatReference{}, false
 	}
-	return combatReference{id: id, blocks: r.BlockedAttackers(), attacking: r.AttackingTarget != uuid.Nil}, true
+	return combatReference{id: id, blocks: r.BlockedAttackers(), attacking: r.AttackingTarget != uuid.Nil, attackTarget: r.AttackingTarget}, true
 }
 
 // combatAdmits is CombatWithSource's gate: true with no relation,
@@ -2155,6 +2182,12 @@ func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	case CombatBlocking:
 		return ref.attacking && c.IsBlockingAttacker(ref.id)
+	case CombatControlledByDefender:
+		if !ref.attacking {
+			return false
+		}
+		defender := g.defendingPlayerForAttackLocked(ref.attackTarget)
+		return defender != uuid.Nil && c.Controller == defender
 	case CombatBlockingOrBlockedBy:
 		if ref.attacking && c.IsBlockingAttacker(ref.id) {
 			return true
@@ -2208,6 +2241,31 @@ func (s *TargetSpec) exiledWithAdmits(src TargetSource, c Card) bool {
 	}
 	ref, ok := src.ObjectRef()
 	return ok && ref.ID != uuid.Nil && c.ExiledWith == ref
+}
+
+// sameNameAsExiledWithAdmits is SameNameAsExiledWithSource's gate: true
+// without the flag, and with it only a candidate whose name is the name
+// of a card in exile linked to the source object (CR 607.2a). The link
+// outlives the source (a creature sacrificed as the cost still has its
+// exiled cards), so the object reference alone is read.
+//
+// Caller must hold g.mu.
+func (s *TargetSpec) sameNameAsExiledWithAdmits(g *Game, src TargetSource, c Card) bool {
+	if !s.SameNameAsExiledWithSource {
+		return true
+	}
+	ref, ok := src.ObjectRef()
+	if !ok || ref.ID == uuid.Nil || g == nil || g.Exile == nil {
+		return false
+	}
+	name := c.Effective().Name
+	for i := range g.Exile.Cards {
+		e := &g.Exile.Cards[i]
+		if e.ExiledWith == ref && strings.EqualFold(e.Name, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // chosenTypeAdmits is OfSourcesChosenType's gate: true without the
@@ -2456,7 +2514,9 @@ func (s *TargetSpec) eventObjectManaValueAdmits(g *Game, src TargetSource, c Car
 // permanent entering, whose Actor is whoever put it there (Arboria's
 // distinction, ADR 0109) and whose "its controller" is the player it
 // entered under, as the trigger's own CR 603.10 snapshot recorded it
-// (Confusion in the Ranks, #5739). That snapshot rides the trigger, so
+// (Confusion in the Ranks, #5739), and for a permanent that left the
+// battlefield, whose "its controller" is the one it last had (Necrotic
+// Plague). That snapshot rides the trigger, so
 // the announce, a restore and the CR 608.2b re-check read one answer.
 func triggerChooserOf(src TargetSource) uuid.UUID {
 	if src.Trigger != nil && src.Trigger.Fired() {
@@ -2468,6 +2528,14 @@ func triggerChooserOf(src TargetSource) uuid.UUID {
 				return uuid.Nil
 			}
 			return src.Trigger.Object.Controller
+		case EventLTB:
+			// "Its controller chooses" on a permanent that left: the
+			// controller it had as it last existed (CR 603.10a), which the
+			// event carries (Necrotic Plague, S82 OLD b476). An event built
+			// without one falls back to the Actor.
+			if c := src.Trigger.Event.LastKnownController; c != uuid.Nil {
+				return c
+			}
 		}
 	}
 	return triggerActorOf(src)
@@ -2490,7 +2558,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

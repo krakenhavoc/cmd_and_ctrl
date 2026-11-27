@@ -61,7 +61,7 @@ func init() {
 			Targeting(
 				On(game.EventETB, AllOf(Self, NullSummonerWasCast),
 					"Null Summoner — target opponent reveals their hand, you choose a nonland card and exile it",
-					nullSummonerExileFromHand),
+					NullSummonerExileFromHand),
 				TargetPlayer("target opponent", Opponent())),
 		},
 		GatedCastPermissions: []game.CastPermissionGate{{
@@ -83,10 +83,10 @@ func NullSummonerWasCast(_ game.Event, source *game.Card, _ game.Characteristic,
 	return source != nil && source.Provenance.FromZone != ""
 }
 
-// nullSummonerExileFromHand is the trigger's effect: the targeted
+// NullSummonerExileFromHand is the trigger's effect: the targeted
 // opponent reveals their hand, the controller chooses a nonland card
 // from it, and that card is exiled linked to this Summoner.
-func nullSummonerExileFromHand(g *game.Game, item *game.StackItem) error {
+func NullSummonerExileFromHand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	return ChooseFromRevealedHand{
 		Player: TargetedPlayer(ctx),

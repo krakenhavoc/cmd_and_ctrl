@@ -736,6 +736,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
 	PendingChoiceMana: {},
+	// #6101: mana_pick_for_player too — the chosen player's pool has
+	// left with them. The activator's cost stays paid (CR 800.4a: there
+	// is nobody left to ask).
+	PendingChoiceManaForPlayer: {},
 
 	// --- their own material, already gone (CR 800.4a) ------------
 	//

@@ -835,6 +835,19 @@ type ManaAbilityShape struct {
 	// the limits ADR 0106 §1 decision 1 sets on the CR 602 flag.
 	AnyPlayer bool
 
+	// ChosenPlayerAdds is "Choose a player. That player adds one mana of
+	// any color they choose." (Spectral Searchlight, #6101). Choosing a
+	// player is not targeting, so this is still a mana ability (CR
+	// 605.1a) and resolves at once (CR 605.3b). The activator names the
+	// player with the activation (ManaAbilityParams.ChosenPlayer; none
+	// is the activator). The activator choosing themselves is an
+	// ordinary pick of the printed colours; choosing anyone else pays
+	// the cost and pauses the ability on a mana_pick_for_player asked of
+	// that player, whose answer adds the mana to THEIR pool
+	// (mana_chosen_player.go). The auto-tapper never plans one. Data,
+	// not a func: nothing for the closure census to count.
+	ChosenPlayerAdds bool `json:",omitempty"`
+
 	// Rider is the post-production half of a mana ability whose
 	// oracle text continues past the "Add …" clause — the painland
 	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.

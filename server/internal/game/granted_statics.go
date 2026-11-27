@@ -98,7 +98,7 @@ func GrantedStaticProblem(s StaticAbility) string {
 	case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "" || len(s.AffectsZones) > 0:
 		return "a granted static functions on the battlefield over permanents only"
 	case s.DependsOnLifeTotal || s.DependsOnAttackingStatus ||
-		s.DependsOnSpellsCast || s.DependsOnExile || s.DependsOnManaPool || s.DependsOnLibraryTop ||
+		s.DependsOnSpellsCast || s.DependsOnExile || s.DependsOnManaPool || s.DependsOnLibraryTop || s.DependsOnLibrarySize ||
 		len(s.DependsOnEvents) > 0:
 		// DependsOnHandSize is the one hint a granted static may declare
 		// (hellbent, an ability sticker, ADR 0208): the hint walk reads the

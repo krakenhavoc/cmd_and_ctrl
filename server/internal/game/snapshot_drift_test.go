@@ -659,6 +659,7 @@ var cardFields = plan(
 	// of Strife's war or peace). Player choices nothing can re-derive.
 	"PlayerNotes", carried, "",
 	"Devoured", carried, "",
+	"DevouredTally", carried, "",
 	// #6251, CR 702.104b: whether the chosen opponent paid the tribute.
 	"TributePaid", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
@@ -1317,6 +1318,7 @@ var pendingChoiceFields = plan(
 	// drop the rest of the card. PickThen is a key, not a closure.
 	"PickDestination", carried, "",
 	"PickOptional", carried, "",
+	"PickUpTo", carried, "",
 	"PickFromGraveyard", carried, "",
 	"PickThen", carried, "",
 	// Talara's Bane's toughness, read as the pick was raised: without

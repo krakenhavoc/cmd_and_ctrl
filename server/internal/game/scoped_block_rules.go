@@ -28,6 +28,8 @@ import (
 //     the Player whose creatures may not block it (#2172);
 //   - cantBeBlockedByPower — bars blockers at or below Amount;
 //   - cantBeBlockedByPowerAtLeast — bars blockers at or above Amount;
+//   - cantBeBlockedByTokens — Legion Loyalist's "can't be blocked by
+//     creature tokens this turn": the pinned attacker(s), reading Text;
 //   - cantBeBlockedByColor — Skrelv's chosen-color evasion, reading
 //     the blocker's effective colors against Colors[0];
 //   - limitBlockersPerDefender — Mirri, Weatherlight Duelist's attack
@@ -63,8 +65,8 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedExceptBy rule needs Text, the printed allowed set"
 		}
-		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 {
-			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype or object"
+		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 && len(m.Supertypes) == 0 {
+			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype, supertype or object"
 		}
 	case ModCantBeBlockedByPlayer:
 		if m.Player == uuid.Nil {
@@ -99,6 +101,10 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" || len(m.Subtypes) == 0 {
 			return "a cantBeBlockedBySubtypes rule needs Subtypes and Text, the clause the refusal sentence reads"
 		}
+	case ModCantBeBlockedByTokens:
+		if m.Text == "" {
+			return "a cantBeBlockedByTokens rule needs Text, the clause the refusal sentence reads"
+		}
 	case ModCantBeBlockedByObject:
 		if len(m.Objects) != 1 || m.Objects[0].ID == uuid.Nil {
 			return "a cantBeBlockedByObject rule needs exactly one blocker object"
@@ -129,6 +135,14 @@ func blockRuleModProblem(m Mod) string {
 // the refusal sentence.
 func CantBeBlockedExceptByMod(keywords, subtypes []string, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedExceptBy, Keywords: copyStrings(keywords), Subtypes: copyStrings(subtypes), Text: text}
+}
+
+// CantBeBlockedExceptBySupertypesMod is "<creature> can't be blocked except by
+// <supertype> creatures" (Rime Transfusion's "except by snow creatures"): a
+// blocker that is a creature with one of `supertypes` may block. `text` is the
+// allowed set as the card prints it.
+func CantBeBlockedExceptBySupertypesMod(supertypes []string, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedExceptBy, Supertypes: copyStrings(supertypes), Text: text}
 }
 
 // CantBeBlockedExceptByObjectsMod is CantBeBlockedExceptByMod whose
@@ -176,6 +190,13 @@ func CantBeBlockedByPowerMod(n int, text string) Mod {
 // greater").
 func CantBeBlockedByPowerAtLeastMod(n int, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedByPowerAtLeast, Amount: n, Text: text}
+}
+
+// CantBeBlockedByTokensMod is "<creature> can't be blocked by creature
+// tokens this turn" (Legion Loyalist, CR 509.1b). `text` is the barred set as
+// the refusal sentence reads it ("creature tokens").
+func CantBeBlockedByTokensMod(text string) Mod {
+	return Mod{Kind: ModCantBeBlockedByTokens, Text: text}
 }
 
 // CantBeBlockedByColorMod bars creatures of the named color from
@@ -251,6 +272,25 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 	case ModCantBeBlockedExceptBy:
 		affected := affectedPredicate(e.Affected)
 		byTrait := blockRuleAllowedPredicate(m.Keywords, m.Subtypes)
+		if len(m.Supertypes) > 0 {
+			// Rime Transfusion's "except by snow creatures": a blocker that is a
+			// creature with one of the supertypes is allowed too.
+			byKind, supers := byTrait, copyStrings(m.Supertypes)
+			byTrait = func(c *Card) bool {
+				if byKind(c) {
+					return true
+				}
+				if c == nil || !c.IsCreature() {
+					return false
+				}
+				for _, st := range supers {
+					if c.HasSupertype(st) {
+						return true
+					}
+				}
+				return false
+			}
+		}
 		// #6200: Raging River's piles. A blocker named by one of the
 		// record's Objects, as the object it was when the piles were
 		// made (CR 400.7), is allowed too.
@@ -322,6 +362,15 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return blocker != nil && blocker.PowerForComparison() >= n && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedByTokens:
+		affected := affectedPredicate(e.Affected)
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return blocker != nil && blocker.IsToken() && affected(attacker, g, nil)
 			},
 		}
 	case ModCantBeBlockedBySubtypes:

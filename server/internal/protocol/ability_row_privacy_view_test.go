@@ -158,6 +158,8 @@ var activatedRowScopes = map[string]rowScope{
 var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
 	"Ref": rowPublic, "GrantedBy": rowPublic, "BorrowedFrom": rowPublic,
+	// #6101: the printed "Choose a player" (Spectral Searchlight).
+	"ChosenPlayer": rowPublic,
 	// #1864: the printed "Any player may activate this ability".
 	"AnyPlayer":     rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,

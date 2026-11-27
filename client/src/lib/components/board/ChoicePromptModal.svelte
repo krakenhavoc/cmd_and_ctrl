@@ -772,7 +772,11 @@
   // button list, already ordered commander identity first; it renders
   // in that order. Submits via resolve_choice with `{choice_id,
   // color}` (card_ids absent).
-  const isManaPick = $derived(active?.kind === "mana_pick");
+  // #6101: a mana_pick_for_player (another seat's Spectral Searchlight
+  // chose the viewer) is the same buttons and the same answer.
+  const isManaPick = $derived(
+    active?.kind === "mana_pick" || active?.kind === "mana_pick_for_player",
+  );
   // #742: "N mana of any one color" (Gilded Lotus) is one pick that
   // adds several tokens of the picked colour; the amount can differ
   // per colour (Nyx Lotus's devotion). A colour missing from the map

@@ -65,6 +65,12 @@ const (
 	// Golden Throne's Arcane Life-support, N = 1). Life is the N.
 	ReplaceLoseGameExileThisLifeBecomes GameActionReplacementKind = "lose-game/exile-this-life-becomes"
 
+	// ReplaceLoseGameShuffleAllDrawSevenLifeBecomes is "If you would lose
+	// the game, instead shuffle your hand, your graveyard, and all
+	// permanents you own into your library, then draw seven cards and your
+	// life total becomes N" (Lich's Mirror, N = 20). Life is the N.
+	ReplaceLoseGameShuffleAllDrawSevenLifeBecomes GameActionReplacementKind = "lose-game/shuffle-all-draw-seven-life-becomes"
+
 	// ReplacePlaneswalkOrderTopTwo is "If you would planeswalk, instead
 	// look at the top two cards of your planar deck, put one on the bottom
 	// of your planar deck and the other on top, then planeswalk" (Susan
@@ -144,6 +150,9 @@ func (g *Game) replaceLossLocked(p *Player, cause LossCause) bool {
 	// #6244: a resolution's one-shot "the next time you would lose the
 	// game this turn, instead …" (next_loss_replacement.go).
 	if g.replaceLossByRecordLocked(p, cause) {
+		return true
+	}
+	if g.replaceLossShuffleAllLocked(p, cause) {
 		return true
 	}
 	ids, rows := g.gameActionReplacementSourcesLocked(p, ReplaceLoseGameExileThisLifeBecomes)
@@ -279,6 +288,8 @@ func gameActionReplacementRows(v reflect.Value) []string {
 				break
 			}
 			out = append(out, "If you would lose the game, instead exile this and your life total becomes "+strconv.Itoa(r.Life)+".")
+		case ReplaceLoseGameShuffleAllDrawSevenLifeBecomes:
+			out = append(out, "If you would lose the game, instead shuffle your hand, your graveyard, and all permanents you own into your library, then draw seven cards and your life total becomes "+strconv.Itoa(r.Life)+".")
 		case ReplacePlaneswalkOrderTopTwo:
 			out = append(out, "If you would planeswalk, instead look at the top two cards of your planar deck, put one on the bottom and the other on top, then planeswalk.")
 		default:

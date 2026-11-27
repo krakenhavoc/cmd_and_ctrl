@@ -143,7 +143,7 @@ func VehicleCreaturesAreAlsoTheChosenType() game.StaticAbility {
 				target.IsCreature() && target.HasSubtype("Vehicle")
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			addChosenTribe(c, source)
+			AddChosenTribe(c, source)
 		},
 	}
 }
@@ -153,7 +153,7 @@ func VehicleCreaturesAreAlsoTheChosenType() game.StaticAbility {
 // that type), because the wire type line is rebuilt from the slice and would
 // print the type twice. Shared by IsAlsoTheChosenType and
 // vehicleCreaturesAreAlsoTheChosenType.
-func addChosenTribe(c *game.Characteristic, source *game.Card) {
+func AddChosenTribe(c *game.Characteristic, source *game.Card) {
 	for _, t := range c.Subtypes {
 		if t == source.NamedTribe {
 			return

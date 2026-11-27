@@ -81,7 +81,7 @@ func (g *Game) manaAbilityPickAnsweredLocked(run string, actor, source uuid.UUID
 		return
 	}
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMana && c.ManaAbilityRun == run {
+		if c != nil && isManaPickKind(c.Kind) && c.ManaAbilityRun == run {
 			c.ManaAbilityAmount += base + added
 			return
 		}
@@ -109,7 +109,7 @@ func (g *Game) manaTriggerResolvedLocked(playerID, source uuid.UUID, label strin
 	}
 	run := uuid.NewString()
 	for _, c := range g.PendingChoices[choicesBefore:] {
-		if c == nil || c.Kind != PendingChoiceMana {
+		if c == nil || !isManaPickKind(c.Kind) {
 			continue
 		}
 		c.ManaAbilityRun = run

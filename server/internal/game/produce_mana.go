@@ -137,10 +137,35 @@ func (g *Game) produceManaLocked(
 	fromTap bool,
 	pending *[]ColorRequirement,
 ) []string {
+	if p == nil {
+		return nil
+	}
+	return g.produceManaTappedByLocked(p.ID, p, source, colors, restrictions, riders, kinds, fromTap, pending)
+}
+
+// produceManaTappedByLocked is produceManaLocked with the player who
+// activated the ability (`tapper`, the "you" of a CR 106.12b
+// replacement such as Mana Reflection's "If you tap a permanent for
+// mana") apart from the player whose pool the mana enters (`p`). The
+// two differ only for "Choose a player. That player adds …" (#6101,
+// mana_chosen_player.go).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) produceManaTappedByLocked(
+	tapper uuid.UUID,
+	p *Player,
+	source uuid.UUID,
+	colors []string,
+	restrictions []string,
+	riders []ManaSpendRider,
+	kinds ManaSourceKinds,
+	fromTap bool,
+	pending *[]ColorRequirement,
+) []string {
 	if p == nil || len(colors) == 0 {
 		return nil
 	}
-	produced := g.replaceProducedManaLocked(p.ID, source, colors, fromTap)
+	produced := g.replaceProducedManaLocked(tapper, source, colors, fromTap)
 	// #6210: "mana of a color of your choice instead" — the tap's colour.
 	produced = resolveChosenManaColors(colors, produced, pending)
 	// #1547: one production, one Production id on every rider it mints —

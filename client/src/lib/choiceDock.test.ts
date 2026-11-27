@@ -262,6 +262,24 @@ describe("choiceRequest", () => {
     expect(r.focus).toBe("dialog");
   });
 
+  // #6101: another seat's Spectral Searchlight chose the viewer; the
+  // dock says who, and the prompt is answered inline like a mana_pick.
+  it("names the activator on a mana_pick_for_player", () => {
+    const c = choice({
+      kind: "mana_pick_for_player",
+      from_player: "p2",
+      color_options: ["W", "U", "B", "R", "G"],
+    });
+    expect(isInlineChoice(c)).toBe(true);
+    const r = choiceRequest(
+      c,
+      { sourceName: "Spectral Searchlight", seats: [{ id: "p2", name: "Bea" }] },
+      handlers(),
+    );
+    expect(r.question).toBe("Bea chose you: Spectral Searchlight");
+    expect(r.hint).toContain("your mana pool");
+  });
+
   it("falls back to the modal's headings", () => {
     const ctx = { sourceName: "Smothering Tithe" };
     expect(choiceRequest(choice({}), ctx, handlers()).label).toBe("Smothering Tithe triggered");
@@ -285,6 +303,7 @@ describe("choiceRequest", () => {
       { kind: "coin_call", allow_stop: true },
       { kind: "loop_shortcut" },
       { kind: "mana_pick", color_options: ["G"] },
+      { kind: "mana_pick_for_player", color_options: ["G"] },
       { kind: "choose_color", color_options: ["G"] },
       { kind: "option_pick", pick_options: [{ label: "A" }] },
       { kind: "entry_read_ahead", pick_options: [{ label: "Chapter I" }] },

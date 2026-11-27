@@ -191,12 +191,16 @@ func (e *enumerator) choiceMoves() bool {
 			if c.PickDestination == game.PickExile {
 				verb = "exile"
 			}
-			if c.PickOptional {
+			if c.PickOptional || c.PickUpTo {
 				p := base()
 				p.CardIDs = []string{}
 				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
 			}
-			for _, set := range e.combos(pool, c.Count, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+			minPick := c.Count
+			if c.PickUpTo {
+				minPick = 1
+			}
+			for _, set := range e.combos(pool, minPick, c.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
 				// #6271: one card per filter of an EachOf pick.
 				if !g.RevealedPickSlotsFitLocked(c, set) {
 					continue
@@ -212,7 +216,9 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, label, p)
 			}
 
-		case game.PendingChoiceMana:
+		case game.PendingChoiceMana, game.PendingChoiceManaForPlayer:
+			// #6101: a mana_pick_for_player is answered the same way,
+			// with the colour the chosen seat adds to its own pool.
 			for _, color := range c.ColorOptions {
 				p := base()
 				p.Color = color

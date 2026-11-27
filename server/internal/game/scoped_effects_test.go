@@ -309,6 +309,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModCantBeBlockedBySubtypes:     true, // #4100
 		ModCantBlockSubtypes:           true, // Pyrophobia, cases in cards/effects
 		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
+		ModCantBeBlockedByTokens:       true, // Legion Loyalist, cases in scoped_block_rules_tokens_test.go
 		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go
 		ModCantBeBlockedByMoreThan:     true, // cases in scoped_block_rules_max_test.go
 		// #1651: cantHaveKeywords has a case above; waiveHexproof is read
@@ -460,6 +461,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
 		// read by both gates. Its cases are in graveyard_play_ban_test.go.
 		ModCantPlayFromOwnGraveyard: true,
+		// S82 OLD batch 573: Conjurer's Ban's named land-play ban, read by
+		// the land-play gate. Its cases are in the card's test
+		// (tests/s82m/s82_old_b573_cards_test.go).
+		ModCantPlayLandsNamed: true,
 		// ADR 0109 §4 amendment 2026-10-23 (#1986): an ignored static
 		// ability, read by both gates. Its cases are in
 		// ignore_effect_test.go.
@@ -524,6 +529,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6244 (Stunning Reversal): the next loss this turn replaced.
 		// Its cases are in next_loss_replacement_test.go.
 		ModNextLossInstead: true,
+		// S82 OLD b385 (War Cadence): cases in block_tax_this_turn_test.go.
+		ModBlockTaxThisTurn: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

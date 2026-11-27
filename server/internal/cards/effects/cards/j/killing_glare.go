@@ -23,12 +23,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Targets:      effects.TargetCreature("target creature with power X or less").WithPowerAtMostX(),
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetCard {
-					return effects.DestroyTarget{Target: t.ID}.Apply(ctx)
-				}
-			}
-			return nil
+			return effects.DestroyTheFirstLegalCardTarget(ctx)
 		},
 	})
 }

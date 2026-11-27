@@ -1,8 +1,6 @@
 package cardsto
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -40,21 +38,8 @@ func init() {
 			if err := (effects.ExileTarget{Target: id}).Apply(ctx); err != nil {
 				return err
 			}
-			run, hit := effects.RevealUntil(ctx, player, func(c game.Card) bool { return c.IsCreature() },
+			return effects.OldB471RevealUntilPutOntoBattlefield(ctx, player, func(c game.Card) bool { return c.IsCreature() },
 				"Transmogrify — reveal until a creature card")
-			return transmogrifyPutCreature(ctx, player, run, hit)
 		},
-	})
-}
-
-func transmogrifyPutCreature(ctx *effects.Context, player uuid.UUID, run []uuid.UUID, hit uuid.UUID) error {
-	return ctx.Game.PutByEnteringPlayerForEffect(func() error {
-		return effects.PutFromLibraryOntoBattlefield{
-			Player:   player,
-			Cards:    run,
-			Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-			All:      true,
-			ThenTail: effects.S82OldB109ShuffleRestTail,
-		}.Apply(ctx)
 	})
 }

@@ -271,6 +271,29 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 			t.Fatalf("chose %q, want the identity colour listed first", got)
 		}
 	})
+
+	// #6101: another seat's Spectral Searchlight chose this bot. The
+	// bot names the colour it adds to its own pool the way it answers
+	// its own mana_pick: the colour its hand needs.
+	t.Run("mana_pick_for_player takes the colour the hand needs", func(t *testing.T) {
+		red := spell(cardID(41), 0, "Red Spell", "{R}{R}")
+		v := newView([]protocol.PlayerView{newSeat(0, withHand(red)), newSeat(1)},
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "mana_pick_for_player", Chooser: seatID(0).String(),
+				FromPlayer: seatID(1).String(), Reason: "Spectral Searchlight",
+				ColorOptions: []string{"W", "U", "B", "R", "G"},
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "add {W}", map[string]any{"color": "W"}),
+			choiceMove(t, 0, choiceID, "add {U}", map[string]any{"color": "U"}),
+			choiceMove(t, 0, choiceID, "add {B}", map[string]any{"color": "B"}),
+			choiceMove(t, 0, choiceID, "add {R}", map[string]any{"color": "R"}),
+			choiceMove(t, 0, choiceID, "add {G}", map[string]any{"color": "G"}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "add {R}" {
+			t.Fatalf("chose %q, want the colour the hand needs", got)
+		}
+	})
 }
 
 func TestCoinCallUsesChoiceIDAndStopsAtDeclaredCeiling(t *testing.T) {

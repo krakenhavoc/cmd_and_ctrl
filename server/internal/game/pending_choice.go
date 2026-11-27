@@ -782,8 +782,12 @@ type PendingChoice struct {
 	// a keyed outside-the-game collection pick's (#4256,
 	// RegisterOutsidePick: the key names its filter too) and a keyed
 	// pay-unless prompt's decline (#4256, RegisterPayUnlessElse).
-	PickDestination   PickDestination
-	PickOptional      bool
+	PickDestination PickDestination
+	PickOptional    bool
+	// PickUpTo is "choose up to N" on a revealed-hand pick (Reap Intellect,
+	// S82 OLD b403): any number of the candidates from none to Count, not
+	// exactly Count. Additive within the snapshot schema (omitted when false).
+	PickUpTo          bool
 	PickFromGraveyard bool
 	PickThen          string
 	// PickMatchArg is the one word a keyed outside-the-game collection
@@ -1994,12 +1998,17 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		return ErrPendingChoiceNotFound
 	}
 	choice := g.PendingChoices[idx]
-	if choice.Kind != PendingChoiceMana {
+	// #6101: a mana_pick_for_player is answered the same way, by the
+	// chosen player, into their own pool.
+	if !isManaPickKind(choice.Kind) {
 		return ErrInvalidParam
 	}
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	// #6101: the player who activated the ability. The chooser, except
+	// for a mana_pick_for_player, whose chooser only names the colour.
+	actor := manaPickActor(choice)
 	// Validate color is in the pre-materialised option set.
 	matched := false
 	for _, o := range choice.ColorOptions {
@@ -2071,8 +2080,8 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	// choice carried the ability's restrictions so the minted tokens
 	// get them (#352); copyRestrictions because the choice is about to
 	// be dequeued and the tokens outlive it.
-	colors := g.produceManaLocked(
-		p, choice.Source,
+	colors := g.produceManaTappedByLocked(
+		actor, p, choice.Source,
 		produced,
 		copyRestrictions(choice.ManaRestrictions),
 		// #1547: and its spend riders, carried the same way.
@@ -2093,7 +2102,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	// #5644: this pick was the output of a mana ability, which has now
 	// finished resolving unless it still has a pick open. Before the
 	// triggered mana abilities below, which resolve after it.
-	g.manaAbilityPickAnsweredLocked(run, chooserID, source, runLabel, runBase, len(colors))
+	g.manaAbilityPickAnsweredLocked(run, actor, source, runLabel, runBase, len(colors))
 	// #763, CR 605.1b / 605.4a: the second of the three production
 	// sites, and the ONLY one that knows the colour a
 	// Birds-of-Paradise-style source produced — which is what "one
@@ -2108,7 +2117,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		if card := g.findCardByIDLocked(source); card != nil {
 			g.fireManaTriggersLocked(ManaProduced{
 				Source:     *card,
-				Controller: chooserID,
+				Controller: actor,
 				Colors:     colors,
 			}, nil, nil)
 		}
@@ -3487,6 +3496,10 @@ type RevealedHandDiscard struct {
 	// Optional is "You may choose": the chooser may choose nothing
 	// (Nightsnare, Extract the Truth).
 	Optional bool
+	// UpTo is "You choose up to N": any number of the candidates from none
+	// to Count (Reap Intellect's "up to X nonland cards"). It needs no
+	// Optional beside it.
+	UpTo bool
 	// Revealed says the hand was already revealed this resolution (Cloak
 	// and Dagger, Entwined reveals it, then asks whether to take a card
 	// from it), so the pick does not reveal it a second time. Read when

@@ -163,6 +163,11 @@ var exitPayoutAllowlist = map[string]string{
 		"happening, so an indestructible target still costs the life, and `if toughness <= 0` only skips " +
 		"a life change of nothing. The value is read before the destroy because that is the last moment " +
 		"the permanent is guaranteed findable (CR 608.2h).",
+	"s82_old_b613_helpers.go:23": "Sever Soul's `toughness` (SeverSoulResolve) is Vendetta's read: \"You gain life equal to its " +
+		"toughness\" is an unconditional clause about a PLAYER, not gated on the destroy happening, so an " +
+		"indestructible target still gains the life, and `if toughness <= 0` only skips a life change of " +
+		"nothing. The value is read before the destroy because that is the last moment the permanent is " +
+		"guaranteed findable (CR 608.2h).",
 	"cellar_door.go:46": "Cellar Door's `isCreature` is Death Mutation's read: \"If it's a creature card, you " +
 		"create a 2/2 black Zombie creature token\" asks what the card IS, which no replacement of the " +
 		"move to the graveyard changes, not whether it arrived there, so a card sent elsewhere " +
@@ -181,6 +186,11 @@ var exitPayoutAllowlist = map[string]string{
 		"about the creature as the spell resolves (CR 608.2h), asked before the destroy because that is the last " +
 		"moment it is guaranteed findable. The Snake is not gated on the destruction: the clause is true of an " +
 		"indestructible or regenerated creature too, so gating it on the destroyed list would be weaker than printed.",
+	"orzhov_charm.go:65": "Orzhov Charm's `toughness` is Death Mutation's read: \"you lose life equal to its " +
+		"toughness\" is an unconditional clause about a PLAYER, not gated on the destroy happening, so an " +
+		"indestructible target still costs the life (the card's rulings), and `if toughness <= 0` only skips " +
+		"a life change of nothing. The value is read before the destroy because that is the last moment " +
+		"the permanent is guaranteed findable (CR 608.2h).",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

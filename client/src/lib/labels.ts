@@ -1171,6 +1171,13 @@ export const LABEL_SPECS = {
     owners: ["lib/payLifeForMana.ts"],
     doc: "the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4)",
   }),
+  manaChosenPlayer: label({
+    name: "Choose a player",
+    kind: "aria",
+    role: "dialog",
+    owners: [`${BOARD}ManaChosenPlayerModal.svelte`],
+    doc: 'the sheet a "Choose a player. That player adds one mana of any color they choose." row opens before it is activated (#6101, Spectral Searchlight): one button per player still in the game, you first; another player then chooses the colour',
+  }),
 
   // -- The opening roll (ADR 0121) --
   rollForFirstTurn: label({

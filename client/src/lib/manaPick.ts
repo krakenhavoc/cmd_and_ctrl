@@ -68,7 +68,12 @@ export function colorPromptAnswerable(choice: {
   kind?: string;
   color_options?: readonly string[];
 }): boolean {
-  if (choice.kind !== "mana_pick" && choice.kind !== "choose_color") return true;
+  if (
+    choice.kind !== "mana_pick" &&
+    choice.kind !== "mana_pick_for_player" &&
+    choice.kind !== "choose_color"
+  )
+    return true;
   return (choice.color_options?.length ?? 0) > 0;
 }
 

@@ -240,6 +240,7 @@
     sacrificesAll,
   } from "../../sacrificeCost";
   import XCostModal from "./XCostModal.svelte";
+  import ManaChosenPlayerModal from "./ManaChosenPlayerModal.svelte";
   import DivideDamageModal from "./DivideDamageModal.svelte";
   import SacrificeCostModal from "./SacrificeCostModal.svelte";
   import CrewCostModal from "./CrewCostModal.svelte";
@@ -259,6 +260,9 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    chosenPlayerOptions,
+    manaChosenPlayerPayment,
+    manaColorsForChosenPlayer,
     manaXPayment,
     manaTapNeedsPicker,
     manaCostBranchPayment,
@@ -3314,6 +3318,7 @@
     // a chain that was cancelled cannot leak its colour into the next.
     manaColors = colors;
     manaCostBranch = undefined;
+    manaChosenPlayer = undefined;
     // #5397: an either/or cost (forage, Thornvault Forager) asks which
     // way to pay first, through the branch picker the CR 602 chain uses.
     // One payable branch is the answer and is taken without a question;
@@ -3377,6 +3382,12 @@
   // startManaCardCosts is the head of the mana cost chain once any
   // either/or branch is folded in (#5397).
   function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
+    // #6101: "Choose a player. That player adds …" (Spectral Searchlight)
+    // asks which player first; the rest of the chain follows the answer.
+    if (ability.chosen_player && manaChosenPlayer === undefined) {
+      manaPlayerPrompt = { card, ability };
+      return;
+    }
     // #6125: an {X} in the mana ability's own cost (Wizard's Rockets) is
     // asked first. A "Sacrifice X Goats" clause needs no prompt: the
     // permanents picked are the X (confirmSacrifice).
@@ -3393,6 +3404,19 @@
     }
     manaRevealIDs = [];
     askManaDiscardCost(card, ability);
+  }
+
+  // #6101: the player a "Choose a player" row names, carried on the side
+  // until the one activate_mana_ability goes out as `chosen_player`.
+  let manaPlayerPrompt = $state<{ card: CardView; ability: ManaAbilityView } | null>(null);
+  let manaChosenPlayer: string | undefined = undefined;
+  const manaPlayerOptions = $derived(chosenPlayerOptions(view.seats, viewerID ?? undefined));
+  function confirmManaChosenPlayer(id: string): void {
+    const p = manaPlayerPrompt;
+    manaPlayerPrompt = null;
+    if (!p) return;
+    manaChosenPlayer = id;
+    startManaCardCosts(p.card, p.ability);
   }
 
   // #6085: the reveal picks, carried on the side like the discard picks
@@ -3618,8 +3642,13 @@
         // #6085: absent unless Rosheen's reveal named a card.
         ...(manaRevealIDs.length > 0 ? { reveal_ids: manaRevealIDs } : {}),
         ...counter,
-        // #1443: absent unless the picker named a colour.
-        ...manaColorParams(manaColors),
+        // #1443: absent unless the picker named a colour. #6101: and
+        // never beside another chosen player, who names their own.
+        ...manaColorParams(
+          manaColorsForChosenPlayer(manaColors, manaChosenPlayer, viewerID ?? undefined),
+        ),
+        // #6101: absent unless the row asked "Choose a player".
+        ...manaChosenPlayerPayment(manaChosenPlayer),
         // #5397: absent unless the row's cost is an either/or (forage).
         ...manaCostBranchPayment(manaCostBranch),
         // #6125: the X — asked for an {X}, or the number a "Sacrifice X"
@@ -3640,6 +3669,7 @@
     manaTapIDs = [];
     manaColors = [];
     manaCostBranch = undefined;
+    manaChosenPlayer = undefined;
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -5244,6 +5274,18 @@
   <!-- #6125: X in a mana ability's own cost (Wizard's Rockets' "{X},
        {T}, Sacrifice this artifact"). The X rides activate_mana_ability
        as x_value. -->
+  <!-- #6101: "Choose a player. That player adds one mana of any color
+       they choose." (Spectral Searchlight). The player rides
+       activate_mana_ability as chosen_player. -->
+  <ManaChosenPlayerModal
+    card={manaPlayerPrompt?.card ?? null}
+    players={manaPlayerOptions}
+    onConfirm={confirmManaChosenPlayer}
+    onCancel={() => {
+      manaPlayerPrompt = null;
+      resetManaCostPayment();
+    }}
+  />
   <XCostModal
     gameID={view.id}
     card={manaXPrompt?.card ?? null}

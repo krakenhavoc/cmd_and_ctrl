@@ -153,6 +153,31 @@ type AttackTargetRestriction struct {
 	// spell this turn" (Silburlind Snapper, S82 OLD b293, CR 508.1c).
 	// Read live at declaration from the per-turn cast tally.
 	ControllerMustHaveCastNoncreature bool `json:",omitempty"`
+	// ControllerMustHaveCastCreature is its twin for a creature spell:
+	// "can't attack unless you've cast a creature spell this turn"
+	// (Goblin Cohort, S82 OLD b595, CR 508.1c). Read live at declaration
+	// from the per-turn cast tally (total less noncreature). Additive
+	// within the snapshot version.
+	ControllerMustHaveCastCreature bool `json:",omitempty"`
+	// OpponentMustHaveBeenDealtDamage forbids attacking anything until an
+	// opponent of the attacking creature's controller has been dealt damage
+	// this turn: "can't attack unless an opponent has been dealt damage this
+	// turn" (Bloodcrazed Goblin, S82 OLD b476, CR 508.1c). Read live at
+	// declaration from this turn's damage events, so damage prevented to
+	// nothing does not count, and a fact about the controller alone: it
+	// refuses every target while it is unmet.
+	OpponentMustHaveBeenDealtDamage bool `json:",omitempty"`
+	// CantAttackDuringExtraTurns forbids attacking anything during an extra
+	// turn (a turn made by an effect, Turn.Extra): "can't attack during
+	// extra turns" (Medomai the Ageless, S82 OLD b394, CR 508.1c, CR 500.7).
+	// Read live at declaration.
+	CantAttackDuringExtraTurns bool `json:",omitempty"`
+	// MustBePairedWithKeyword, when set, forbids attacking anything unless
+	// the attacking creature is paired (CR 702.95b) with a creature that
+	// has this keyword: "can't attack or block unless it's paired with a
+	// creature with soulbond" (Flowering Lumberknot, S82 OLD b437). Read
+	// live at declaration, through the partner's layered abilities.
+	MustBePairedWithKeyword string `json:",omitempty"`
 	// ControllerHandAtLeast, when above zero, forbids attacking anything
 	// while the attacking creature's controller has fewer cards than this
 	// in hand: "can't attack unless you have seven or more cards in hand"
@@ -267,6 +292,10 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.ControllerMustHaveCastNoncreature == o.ControllerMustHaveCastNoncreature &&
+		r.ControllerMustHaveCastCreature == o.ControllerMustHaveCastCreature &&
+		r.OpponentMustHaveBeenDealtDamage == o.OpponentMustHaveBeenDealtDamage &&
+		r.CantAttackDuringExtraTurns == o.CantAttackDuringExtraTurns &&
+		r.MustBePairedWithKeyword == o.MustBePairedWithKeyword &&
 		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
 		r.ControllerGraveyardAtLeast == o.ControllerGraveyardAtLeast &&
 		r.ControllerHandAtMost == o.ControllerHandAtMost &&
@@ -296,7 +325,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
+		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.ControllerMustHaveCastCreature || r.OpponentMustHaveBeenDealtDamage || r.CantAttackDuringExtraTurns || r.MustBePairedWithKeyword != "" || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
 		len(r.ControllerMustControlAnother) > 0
 }
 
@@ -333,8 +362,24 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	if r.ControllerMustHaveCitysBlessing && !g.CitysBlessingForEffect(you) {
 		return g.playerNameLocked(you) + " doesn't have the city's blessing"
 	}
+	if r.OpponentMustHaveBeenDealtDamage && !g.anOpponentWasDealtDamageThisTurnLocked(you) {
+		return "no opponent has been dealt damage this turn"
+	}
+	if r.CantAttackDuringExtraTurns && g.Turn.Extra {
+		return "this is an extra turn"
+	}
+	if kw := r.MustBePairedWithKeyword; kw != "" {
+		if p := g.PairedPartner(findBattlefieldCard(g, self)); p == nil || !HasKeyword(p, kw) {
+			return "it isn't paired with a creature with " + kw
+		}
+	}
 	if r.ControllerMustHaveCastNoncreature && g.CastTallyFor(you).Noncreature < 1 {
 		return g.playerNameLocked(you) + " hasn't cast a noncreature spell this turn"
+	}
+	if r.ControllerMustHaveCastCreature {
+		if t := g.CastTallyFor(you); t.Total-t.Noncreature < 1 {
+			return g.playerNameLocked(you) + " hasn't cast a creature spell this turn"
+		}
 	}
 	if n := r.ControllerHandAtLeast; n > 0 {
 		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {
@@ -362,6 +407,23 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 		return g.playerNameLocked(you) + " controls no other " + PermanentQueriesNoun(qs)
 	}
 	return ""
+}
+
+// anOpponentWasDealtDamageThisTurnLocked reports whether this turn's events
+// include damage that was really dealt (an amount above zero) to a player
+// other than `you`: the clause OpponentMustHaveBeenDealtDamage reads.
+//
+// Caller must hold g.mu.
+func (g *Game) anOpponentWasDealtDamageThisTurnLocked(you uuid.UUID) bool {
+	for _, ev := range g.EventsThisTurn() {
+		if ev.Kind != EventDealDamage || ev.Amount <= 0 || ev.Target == you {
+			continue
+		}
+		if g.playerByIDLocked(ev.Target) != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // AttackTargetRestrictionError is the refusal a declaration verb

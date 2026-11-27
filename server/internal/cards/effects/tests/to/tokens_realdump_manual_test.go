@@ -183,6 +183,23 @@ var knownUnmatchedTokens = map[string]string{
 	// The printed token card is */*, which a fixed size can never match; the template is 0/0 and the card
 	// sets X/X as it creates the token.
 	"0/0 black and green Spirit Warrior": "the printed token card is */*; Kin-Tree Invocation sets X/X as it creates it",
+
+	// Thunderheads (Weatherlight) creates "a 3/3 blue Weird creature token with defender and flying". The
+	// only printed token is the Weird face of the Weird // Goblin double-faced token (GK1), and the match
+	// reads a token card's top-level characteristics, not its faces.
+	"3/3 blue Weird with defender and flying": "printed only as a face of a double-faced token (Thunderheads)",
+
+	// Kalitas, Bloodchief of Ghet creates "a black Vampire creature token" whose power and toughness are the
+	// destroyed creature's; the printed token card is */*, which a fixed size can never match.
+	"0/0 black Vampire": "the printed token card is */*; Kalitas, Bloodchief of Ghet sets its power and toughness as it creates it",
+
+	// Dune-Brood Nephilim (Guildpact) creates "a 1/1 colorless Sand creature token for each land you control". The
+	// token was never printed as a token card, so the dump has no Sand to match.
+	"1/1 colorless Sand": "no token card was ever printed for Dune-Brood Nephilim's Sand",
+
+	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
+	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
+	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

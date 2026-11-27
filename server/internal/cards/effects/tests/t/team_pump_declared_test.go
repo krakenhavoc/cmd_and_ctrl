@@ -93,6 +93,10 @@ var teamPumpTails = map[string]string{
 	// "Activate only if creatures you control have total power 8 or greater.":
 	// the formidable activation condition, the row's Condition, not an effect.
 	"Atarka Pummeler": "an activation condition",
+	// "If this is the third time this ability has resolved this turn,
+	// creatures you control gain first strike until end of turn.": a
+	// conditional grant left out, so the declaration is a floor.
+	"Inner-Flame Igniter": "a conditional keyword grant left out",
 }
 
 // TestTeamPumpRowsDeclareTheirPump holds every catalog activated row of

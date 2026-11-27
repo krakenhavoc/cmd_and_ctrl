@@ -25,12 +25,6 @@ func init() {
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Purpose:         game.Purpose{Answers: game.AnswerRemove},
 		Targets:         effects.TargetSpell("target creature spell with mana value 4 or less", effects.And(effects.Creature(), effects.ManaValueLE(4))),
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			targets := ctx.LegalTargets()
-			if len(targets) == 0 {
-				return nil
-			}
-			return effects.CounterTarget{StackID: targets[0].ID, Dest: game.ZoneRef{Kind: game.ZoneExile}}.Apply(ctx)
-		},
+		OnResolve:       effects.CounterFirstTargetAndExile,
 	})
 }

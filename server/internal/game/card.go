@@ -1102,6 +1102,13 @@ type Card struct {
 	// (CR 400.7). Not a copiable value (CR 707.2). Read with DevouredBy.
 	Devoured int
 
+	// DevouredTally is how many of the creatures this permanent devoured as
+	// it entered had the creature type its devour clause tallies
+	// (EntryCardChoice.DevourTally). Per instance, carried by the snapshot,
+	// cleared when the permanent leaves the battlefield (CR 400.7), not a
+	// copiable value. Read with DevouredTallyBy.
+	DevouredTally int
+
 	// TributePaid (#6251) is in the bool block at the end of Card.
 
 	// ModesChosen is "choose one that hasn't been chosen" with no

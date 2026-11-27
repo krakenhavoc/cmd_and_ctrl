@@ -37,13 +37,8 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Amount > 0 && ev.Source == source.InstanceID
 				},
-				Key: "Stir the Pride — you gain that much life",
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					return effects.GainLife{Player: item.Controller, Amount: item.Trigger.Event.Amount}.Apply(effects.NewContext(g, item))
-				},
+				Key:    "Stir the Pride — you gain that much life",
+				Effect: effects.S82OldB562GainThatMuchLife,
 			}},
 			Text: "Whenever this creature deals damage, you gain that much life.",
 		}},

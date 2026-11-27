@@ -122,7 +122,11 @@ func checkDiscardXBesideOtherCosts(name, where string, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s pays X energy AND discards X cards — one announced X cannot pay both",
 			name, where))
 	}
-	if cost.XSlots() > 0 {
+	// "{X}, Discard a card with mana value X" (Knollspine Invocation) is one
+	// announced X doing both jobs on purpose: the same number is paid in
+	// mana and is the mana value of the card named, so the X is not split
+	// between two claims. A COUNT of cards still cannot share it.
+	if cost.XSlots() > 0 && !game.DiscardManaValueX(cost.DiscardCards) {
 		panic(fmt.Sprintf("effects.Register: %q %s has {X} in its mana cost %q AND discards X cards — one announced X cannot pay both",
 			name, where, cost.Mana))
 	}

@@ -24,8 +24,8 @@ import (
 //     they control": game.BlockTax.LifeCost, judged on what the creature
 //     blocks (BlockTaxQuery.Blocking) and charged once per creature.
 
-// genericMana is "{n}", or "" (no tax) for n <= 0.
-func genericMana(n int) string {
+// GenericMana is "{n}", or "" (no tax) for n <= 0.
+func GenericMana(n int) string {
 	if n <= 0 {
 		return ""
 	}
@@ -42,7 +42,7 @@ func CantAttackUnlessYouPayPerCounter(kind, label string) game.AttackTax {
 		OnAttacker: true,
 		AppliesTo:  SelfAttacker,
 		ManaCost: func(q game.AttackTaxQuery) string {
-			return genericMana(q.Attacker.Counters[kind])
+			return GenericMana(q.Attacker.Counters[kind])
 		},
 	}
 }
@@ -55,7 +55,7 @@ func CantBlockUnlessYouPayPerCounter(kind, label string) game.BlockTax {
 		Label:     label,
 		AppliesTo: game.BlockedBySelf,
 		ManaCost: func(q game.BlockTaxQuery) string {
-			return genericMana(q.Blocker.Counters[kind])
+			return GenericMana(q.Blocker.Counters[kind])
 		},
 	}
 }

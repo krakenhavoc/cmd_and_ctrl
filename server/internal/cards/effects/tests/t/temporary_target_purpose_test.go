@@ -121,6 +121,16 @@ var untilEndOfTurnExempt = map[string]string{
 	// player dealt damage; the "until end of turn" is the source's own
 	// indestructible, not a change to the target.
 	"Ellie, Vengeful Hunter": "the target is a player dealt damage; the until end of turn is the source's",
+
+	// Coldsnap (S82 OLD batch 561): takes flying from its target until end of
+	// turn, which is a harm; the pattern reads "loses" as a benefit (Urborg's case).
+	"Adarkar Windform": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Ravnica: City of Guilds (S82 OLD batch 575): the first target gets +2/+2
+	// and the second gets -2/-2. The first target's entry declares the benefit,
+	// which is true; the check reads the "gets -" of the second clause as a
+	// harm on every target.
+	"Drooling Groodion": "the first target benefits; the 'gets -' the check reads belongs to the second target",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
@@ -218,6 +228,13 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// is a change of control, which a direction cannot carry; Act of
 	// Treason, whose words the pattern does not catch, declares none.
 	"Word of Seizing": "a change of control, not a change to the target",
+	// "Untap target creature an opponent controls and gain control of it
+	// until end of turn" (Commander 2011): Word of Seizing's change of control.
+	"Ray of Command": "a change of control, not a change to the target",
+	// "Untap target creature and gain control of it until end of turn"
+	// (Ravnica: City of Guilds; the white-mana rider grants the creature a
+	// lifegain trigger): Word of Seizing's change of control.
+	"Flash Conscription": "a change of control, not a change to the target",
 	// "At the beginning of the next end step, destroy that creature if it
 	// attacked this turn": the trample and power are a benefit, the
 	// destruction a harm that lasts.

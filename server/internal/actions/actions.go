@@ -3007,11 +3007,27 @@ func dispatch(g *game.Game, a Action) error {
 			// (PlayerView.mana_abilities[].source). Sent instead of
 			// card_id; the two together are refused.
 			PlayerAbility string `json:"player_ability,omitempty"`
+			// #6101 — chosen_player is the player a "Choose a player.
+			// That player adds one mana of any color they choose."
+			// ability names (Spectral Searchlight). Absent is the
+			// activator. See game.ManaAbilityParams.ChosenPlayer.
+			ChosenPlayer string `json:"chosen_player,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
+		var chosenPlayer uuid.UUID
+		if p.ChosenPlayer != "" {
+			id, err := uuid.Parse(p.ChosenPlayer)
+			if err != nil {
+				return fmt.Errorf("activate_mana_ability chosen_player: %w", err)
+			}
+			chosenPlayer = id
+		}
 		if p.PlayerAbility != "" {
+			if chosenPlayer != uuid.Nil {
+				return fmt.Errorf("activate_mana_ability: chosen_player names no player ability's choice: %w", game.ErrInvalidParam)
+			}
 			if p.CardID != "" {
 				return fmt.Errorf("activate_mana_ability: send card_id or player_ability, not both: %w", game.ErrInvalidParam)
 			}
@@ -3105,6 +3121,7 @@ func dispatch(g *game.Game, a Action) error {
 			PhyrexianLife:     p.PhyrexianLife,
 			XValue:            p.XValue,
 			CostBranch:        p.CostBranch,
+			ChosenPlayer:      chosenPlayer,
 		})
 
 	case TypeSetMaxHandSize:

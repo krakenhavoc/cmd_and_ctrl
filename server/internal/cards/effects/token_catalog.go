@@ -299,6 +299,12 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// Pursued Whale's Pirate (S82 GAP batch 222, #5948).
 	printedS82GapB222PursuedPirateToken,
 
+	// Deathpact Angel's Cleric (S82 OLD batch 416, #5565).
+	PrintedOldB416Cleric,
+
+	// Dragon Broodmother's Dragon (S82 OLD batch 503, #5586).
+	PrintedOldB503Dragon,
+
 	// Magic 2015 (S82 OLD batch 356, #5556): Brood Keeper's Dragon, Goblin
 	// Kaboomist's Land Mine and Kalonian Twingrove's Treefolk Warrior.
 	PrintedOldB356Dragon,
@@ -621,6 +627,13 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedOldB228IllusionToken,
 	// S82 OLD batch 276: Make Mischief's Devil.
 	printedS82OldB276DevilToken,
+	// S82 OLD batch 450: Gutter Grime's Ooze.
+	printedGutterGrimeOozeToken,
+	// S82 OLD batch 516: Skeletonize's Skeleton ("{B}: Regenerate this creature.").
+	printedOldB516SkeletonToken,
+	// S82 OLD batch 560: Sound the Call's Wolf ("gets +1/+1 for each card named
+	// Sound the Call in each graveyard").
+	PrintedOldB560SoundTheCallWolf,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

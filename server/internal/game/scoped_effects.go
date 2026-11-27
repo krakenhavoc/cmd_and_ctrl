@@ -416,6 +416,13 @@ const (
 	// reason: an older binary refuses the file instead of banning
 	// nothing. Reads Player.
 	ModCantPlayFromOwnGraveyard ModKind = "cantPlayFromOwnGraveyard"
+	// ModCantPlayLandsNamed is "lands with the chosen name can't be
+	// played" for a stated duration (S82 OLD batch 573, Conjurer's Ban;
+	// CR 101.2). Text is the chosen name (CR 201.2); every player is
+	// banned. Read by the land-play gate (landPlayNamedBanLocked). A
+	// ScopedEffect for ModCantPlayLands' reason: an older binary refuses
+	// the file instead of banning nothing. Reads Text.
+	ModCantPlayLandsNamed ModKind = "cantPlayLandsNamed"
 	// ModIgnoreEffect is "<player> ignores <the source's> effect until
 	// end of turn" (ADR 0109 §4 amendment 2026-10-23, #1986; CR 116.2d):
 	// Damping Engine's "That player may sacrifice a permanent of their
@@ -562,6 +569,13 @@ const (
 	// attacker(s). Pure data, and the blocker's power is read live as
 	// ModCantBeBlockedByPower's is. An on-disk identity: never renamed.
 	ModCantBeBlockedByPowerAtLeast ModKind = "cantBeBlockedByPowerAtLeast"
+	// ModCantBeBlockedByTokens is "<creature> can't be blocked by creature
+	// tokens this turn" (Legion Loyalist, CR 509.1b). Reads Text, the
+	// clause as the refusal sentence reads it. The pinned attacker(s) or
+	// the locked set of them. Pure data: whether a blocker is a token is
+	// read live as blockers are declared. An on-disk identity: never
+	// renamed.
+	ModCantBeBlockedByTokens ModKind = "cantBeBlockedByTokens"
 	// ModCantBeBlockedByColor bars blockers with Colors[0], read live.
 	// It uses existing Mod fields and is additive within this schema.
 	ModCantBeBlockedByColor ModKind = "cantBeBlockedByColor"
@@ -767,7 +781,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
 		ScopeCreatures, ScopeDealtDamageBy, ScopeCreaturesThatArentLands,
 		ScopeCreaturesOddManaValue, ScopeCreaturesEvenManaValue,
-		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects,
+		ScopeCreaturesPowerThreeOrLess, ScopeCreaturesExceptObjects, ScopeYourCreaturesExceptObjects,
 		ScopeCreaturesMatching, ScopeOpponentsCreaturesMatching:
 		return true
 	}
@@ -1356,6 +1370,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
 	// read by both gates.
 	ModCantPlayFromOwnGraveyard: {reader: readerRule},
+	// S82 OLD batch 573: Conjurer's Ban's named land-play ban.
+	ModCantPlayLandsNamed: {reader: readerRule},
 	// ADR 0109 §4 amendment 2026-10-23 (#1986): an ignored static
 	// ability, read by both gates.
 	ModIgnoreEffect: {reader: readerRule},
@@ -1392,6 +1408,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBlockPlayersCreatures:   {reader: readerBlockRule},
 	ModCantBeBlockedByPower:        {reader: readerBlockRule},
 	ModCantBeBlockedByPowerAtLeast: {reader: readerBlockRule},
+	ModCantBeBlockedByTokens:       {reader: readerBlockRule},
 	ModCantBeBlockedByColor:        {reader: readerBlockRule},
 	ModCantBeBlockedBySubtypes:     {reader: readerBlockRule},
 	ModCantBlockSubtypes:           {reader: readerBlockRule},
@@ -1474,6 +1491,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// #6244: "the next time you would lose the game this turn, instead
 	// …" (Stunning Reversal).
 	ModNextLossInstead: {reader: readerRule},
+	// S82 OLD b385: "this turn, creatures can't block unless their controller
+	// pays {X} for each" (War Cadence), block_tax_this_turn.go.
+	ModBlockTaxThisTurn: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -2077,6 +2097,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := skipThisTurnModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := blockTaxThisTurnModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := nextLossInsteadModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -2500,6 +2523,10 @@ func (g *Game) foldRuleScopedRestrictionsLocked() {
 		case e.Scope == ScopeCreaturesExceptObjects:
 			// #6087: the spared objects ride the record's mods.
 			applies = exceptObjectsPredicate(e.Mods)
+		case e.Scope == ScopeYourCreaturesExceptObjects:
+			// S82 OLD b411: the same spared objects, among the record
+			// controller's creatures only (your_creatures_except_objects.go).
+			applies = yourCreaturesExceptObjectsPredicate(e.Mods, e.Controller)
 		case scopeMatchesQueries(e.Scope):
 			// #6237: the filter rides the record's mods, as the spared
 			// objects do (scope_matching.go).

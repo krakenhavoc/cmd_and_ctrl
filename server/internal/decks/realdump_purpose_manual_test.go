@@ -366,6 +366,49 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 378 (#5559).
 	"Skyreaping": "damages only the creatures with flying, for an amount that is your devotion to green as it resolves: a partial sweep with no fixed amount a sweep can declare",
+
+	// S82 OLD batch 397 (#5561).
+	"Ashiok, Nightmare Weaver": "its -10 exiles the cards in the opponents' hands and graveyards, not permanents",
+
+	// S82 OLD batch 421 (#5566).
+	"Street Sweeper": "its \"destroy all Auras attached to target land\" reaches only the Auras on the one land it targets, not a board",
+
+	// S82 OLD batch 447 (#5572).
+	"Witchbane Orb": "its \"destroy all Curses attached to you\" reaches only the Curses on its controller, not a board",
+
+	// S82 OLD batch 449 (#5572).
+	"Hysterical Blindness": "a one-turn -4/-0 on the opponents' creatures that destroys nothing: a combat trick, not a board wipe",
+
+	// S82 OLD batch 458 (#5575).
+	"Cathedral Membrane": "its death trigger deals 6 damage only to the creature it blocked (one creature in combat), not to a board",
+
+	// S82 OLD batch 483 (#5581).
+	"Hellcarver Demon": "sacrifices only its own controller's other permanents, a cost it pays itself, and touches no opponent's board",
+
+	// S82 OLD batch 505 (#5586).
+	"Identity Crisis": "exiles the cards in one player's hand and graveyard, not permanents",
+
+	// S82 OLD batch 500 (#5585).
+	"Mirror of Fate": "it exiles its controller's own library, not permanents, and puts chosen exiled cards back on top: a library rearrangement, not a board wipe",
+
+	// S82 old sets, batch 525 (own group).
+	"Unnerving Assault": "-1/-0 to the opponents' creatures until end of turn kills nothing, and the other half pumps the caster's own creatures",
+
+	// S82 OLD batch 538 (#5591).
+	"Strip Bare": "destroys only the Auras and Equipment attached to one target creature, never a board",
+
+	// S82 OLD batch 548 (#5593).
+	"Ego Erasure": "-2/-0 and losing creature types to one player's creatures until end of turn kills nothing",
+
+	// S82 OLD batch 593 (#5601).
+	"Tomb of Urami": "sacrificing all lands you control is the cost of making Urami, paid by its own controller; the effect only creates a token",
+
+	// S82 OLD batch 591 (#5601).
+	"Meishin, the Mind Cage": "-X/-0 to every creature for as long as it stays out: it shrinks power only and kills nothing",
+
+	// S82 OLD batch 613 (#5607).
+	"Boil":       "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
+	"Flashfires": "destroys only the Plains, which are lands, and no sweep class names lands (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -266,6 +266,14 @@ type EntryCardChoice struct {
 	// is worth (PendingChoice.DevourOffer) to a seat that cannot read
 	// the entering card's text. Only meaningful with Devour.
 	DevourDraw, DevourLife int
+
+	// DevourTally is a creature type whose devoured creatures are counted
+	// apart from the rest (Voracious Dragon's "the number of Goblins it
+	// devoured"): each creature sacrificed to the devour that has the type
+	// adds one to ReplacementEvent.EntersDevouredTally, which the landing
+	// copies onto Card.DevouredTally. Data, read with DevouredTallyBy. Only
+	// meaningful with Devour; empty tallies nothing.
+	DevourTally string
 }
 
 // zone is where the choice's candidates live.
@@ -848,6 +856,32 @@ func (g *Game) applyEntersDevouredLocked(cardID uuid.UUID, n int) {
 	}
 }
 
+// applyEntersDevouredTallyLocked is applyEntersDevouredLocked's twin for the
+// tallied creature type (EntryCardChoice.DevourTally).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) applyEntersDevouredTallyLocked(cardID uuid.UUID, n int) {
+	if n <= 0 {
+		return
+	}
+	if c := findBattlefieldCard(g, cardID); c != nil {
+		c.DevouredTally = n
+	}
+}
+
+// DevouredTallyBy returns how many of the creatures the permanent devoured as
+// it entered had the type its devour clause tallies (Voracious Dragon's
+// Goblins): zero for a permanent that is not on the battlefield or tallied
+// none.
+//
+// Caller must hold either lock.
+func (g *Game) DevouredTallyBy(sourceID uuid.UUID) int {
+	if c := findBattlefieldCard(g, sourceID); c != nil {
+		return c.DevouredTally
+	}
+	return 0
+}
+
 // DevouredBy returns how many creatures the permanent devoured as it
 // entered (CR 702.82b): zero for a permanent that is not on the
 // battlefield or devoured nothing.
@@ -874,6 +908,13 @@ func (g *Game) runEntryThenLocked(spec *EntryCardChoice, ev *ReplacementEvent, m
 	}
 	if n := spec.devourPer(len(moved)); n > 0 && len(moved) > 0 {
 		ev.EntersDevoured += len(moved)
+		if spec.DevourTally != "" {
+			for _, id := range moved {
+				if z, pos := g.locateCardLocked(id); z != nil && pos >= 0 && z.Cards[pos].HasSubtypeWord(spec.DevourTally) {
+					ev.EntersDevouredTally++
+				}
+			}
+		}
 		ev.AddCounterAtETB(CounterPlusOne, n*len(moved))
 	}
 }

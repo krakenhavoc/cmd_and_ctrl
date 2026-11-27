@@ -8506,6 +8506,15 @@ type ManaAbilityParams struct {
 	// it never plans such an ability.
 	CostBranch *int
 
+	// ChosenPlayer is the player a "Choose a player. That player adds
+	// one mana of any color they choose." ability names (#6101,
+	// ManaAbilityShape.ChosenPlayerAdds): any player still in the game,
+	// the activator included. Nil is the activator. Refused on any other
+	// ability, and with Colors when it names someone else (the colour is
+	// theirs to choose), before anything is paid. On the wire as
+	// `chosen_player`. The auto-tapper never sets it.
+	ChosenPlayer uuid.UUID
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -8695,6 +8704,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// would have carried. Before any cost is validated, so a refused
 	// colour costs nothing and taps nothing.
 	if err := g.validateUpfrontManaColors(playerID, cardID, ab, params.Colors, params.XValue); err != nil {
+		return err
+	}
+	// #6101: "Choose a player" names a player still in the game, and
+	// only on the ability that prints it. Before any cost is paid.
+	chosen, err := g.manaChosenPlayerLocked(playerID, ab, params)
+	if err != nil {
 		return err
 	}
 	// --- validate every cost before paying any ------------------
@@ -9380,6 +9395,16 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		})
 		return nil
 	}
+	// #6101: "That player adds one mana of any color they choose" with
+	// someone other than the activator chosen. The cost is paid; the
+	// ability pauses on that player's colour pick, and their answer
+	// adds the mana to their pool (mana_chosen_player.go). Nothing is
+	// left for the slots below.
+	forChosen := false
+	if chosen != playerID {
+		forChosen = g.queueManaForChosenPlayerLocked(playerID, chosen, cardID, &ab, slots, srcKinds)
+		slots = nil
+	}
 	// The commander's colour identity, read once for every slot — and
 	// only when a slot could use it, because the read walks every zone
 	// and a Forest's "{G}" has nothing to narrow or order.
@@ -9592,7 +9617,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// #5644: with no colour left to pick the ability has resolved, and
 	// what it produced is known. One that queued a pick announces this
 	// from ResolveManaChoice instead (PendingChoice.ManaAbilityRun).
-	if len(picks) == 0 {
+	if len(picks) == 0 && !forChosen {
 		g.emitManaAbilityResolvedLocked(playerID, cardID, ab.Label, len(addedColors))
 	}
 	// --- triggered mana abilities (#763, CR 605.1b) ---------------

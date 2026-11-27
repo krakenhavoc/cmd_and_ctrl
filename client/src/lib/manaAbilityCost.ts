@@ -30,6 +30,8 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
     !!ability.exile_permanent_options ||
     // #5397: an either/or cost (forage) asks which way to pay.
     (ability.cost_branches?.length ?? 0) > 0 ||
+    // #6101: "Choose a player" (Spectral Searchlight) asks which player.
+    !!ability.chosen_player ||
     counterCostNeedsPrompt(ability)
   );
 }
@@ -64,6 +66,45 @@ export function manaTapPayment(tapIDs: string[]): { tap_ids?: string[] } {
 // payload is unchanged.
 export function manaExilePermanentPayment(ids: string[]): { exile_permanent_ids?: string[] } {
   return ids.length > 0 ? { exile_permanent_ids: [...ids] } : {};
+}
+
+// #6101: the player a "Choose a player. That player adds …" row names,
+// on activate_mana_ability's `chosen_player`. Absent when none was asked,
+// so every other mana ability's payload is unchanged.
+export function manaChosenPlayerPayment(id: string | undefined): { chosen_player?: string } {
+  return id ? { chosen_player: id } : {};
+}
+
+// #6101: a colour named up front rides the activation only when the
+// activator chose themselves: anyone else chooses their own colour.
+export function manaColorsForChosenPlayer(
+  colors: string[],
+  chosen: string | undefined,
+  activator: string | undefined,
+): string[] {
+  return chosen && chosen !== activator ? [] : colors;
+}
+
+// #6101: the players a "Choose a player" row offers: everyone still in
+// the game, the activator first (as "You"), then the others in seat
+// order.
+export interface ChosenPlayerOption {
+  id: string;
+  name: string;
+  you: boolean;
+}
+
+export function chosenPlayerOptions(
+  seats: readonly { id: string; name: string; eliminated?: boolean }[],
+  activator: string | undefined,
+): ChosenPlayerOption[] {
+  const live = seats.filter((s) => !s.eliminated);
+  const me = live.filter((s) => s.id === activator);
+  const others = live.filter((s) => s.id !== activator);
+  return [
+    ...me.map((s) => ({ id: s.id, name: s.name, you: true })),
+    ...others.map((s) => ({ id: s.id, name: s.name, you: false })),
+  ];
 }
 
 // #5397: the branch of an either/or cost (forage) the activation pays,

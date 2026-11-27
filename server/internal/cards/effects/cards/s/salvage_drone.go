@@ -28,15 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.OldB305Ingest(name),
 			effects.WhenThisDies(name+" — you may draw a card. If you do, discard a card",
-				func(g *game.Game, item *game.StackItem) error {
-					return effects.MayChoice{
-						Question: name + " — draw a card, then discard a card?",
-						Draws:    1,
-						YesLabel: "Draw",
-						NoLabel:  "Decline",
-						Then:     effects.CelestusAnswer,
-					}.Apply(effects.NewContext(g, item))
-				}),
+				effects.S82OldB420MayLoot(name)),
 		},
 	})
 }
