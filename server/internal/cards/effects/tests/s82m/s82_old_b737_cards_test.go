@@ -221,7 +221,9 @@ func TestS82OldB737KeeperOfTheBeastsNeedsAnOpponentWithMoreCreaturesAsYouActivat
 	}
 	// More: the activation is legal.
 	second := effectstest.B12Creature(g, opp.ID, "Their Ox", "Creature — Ox", 2, 2)
-	effectstest.ApaActivate(t, g, me, keeper, 0, game.ActivateAbilityParams{Targets: o737Foe(opp)})
+	if err := g.ActivateCatalogAbility(me.ID, keeper, 0, game.ActivateAbilityParams{Targets: o737Foe(opp), Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
 	// As you activate: losing a creature in response does not stop it.
 	if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneBattlefield}, game.ZoneRef{Kind: game.ZoneGraveyard, Owner: opp.ID}, second); err != nil {
 		t.Fatalf("MoveCardByID: %v", err)
