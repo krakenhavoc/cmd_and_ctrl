@@ -691,6 +691,7 @@ body until-then/lagrella-two-plus-one-counters-on-it
 body until/return-to-battlefield
 body uss-farragut/bottom-of-library
 body venom-deadly-devourer/counters
+body vigorous-charge/gain-that-much
 body villainous-syndication/return
 body vivien-monsters-advocate/search-lesser-creature
 body vraska-the-unseen/destroy-the-damaging-creature
@@ -2063,6 +2064,7 @@ condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-dealt-combat-damage
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
+condition combat/vigorous-charge-creature-dealt-combat-damage
 condition combat/your-creature-hit-a-player
 condition combat/your-creature-hit-a-player-or-planeswalker
 condition combat/your-creature-hit-the-player
