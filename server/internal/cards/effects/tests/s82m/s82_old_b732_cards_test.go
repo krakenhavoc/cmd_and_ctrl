@@ -61,8 +61,6 @@ func b732CountNamed(g *game.Game, controller uuid.UUID, name string) int {
 	return n
 }
 
-func b732Target(id uuid.UUID) game.TargetRef { return game.TargetRef{Kind: game.TargetCard, ID: id} }
-
 func TestOldB732SilentAttendantGainsOneLifeByTapping(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me := g.Seats[0]
