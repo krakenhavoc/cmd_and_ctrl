@@ -412,6 +412,12 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 602 (#5606).
 	"Spoils of the Vault": "exiles only the cards it reveals from the top of its controller's own library, never a permanent",
+
+	// S82 OLD batch 627 (#5611).
+	"Wormfang Behemoth": "exiles the cards in its controller's own hand, not permanents, and returns them to hand when it leaves",
+
+	// S82 OLD batch 619 (#5607).
+	"Death Pit Offering": "sacrifices only its own controller's creatures as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -535,6 +535,7 @@ body rose-room-treasurer/damage
 body rot-tide-gargantua/edict
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
+body rukh-egg/create-bird
 body ruthless-lawbringer/destroy
 body s82-bns-b02/back-for-more-fight
 body s82-bns-b05/mistbind-clique-tap-lands
@@ -1718,6 +1719,10 @@ choose choose-cards/s82-old-b581-sisters-of-stone-death-return
 choose choose-cards/s82-old-b599-chisei-remove-counter
 choose choose-cards/s82-old-b600-tomorrow-take
 choose choose-cards/s82-old-b602-lumengrid-augur-discarded
+choose choose-cards/s82-old-b626-mist-of-stagnation-untap
+choose choose-cards/s82-old-b626-wormfang-crab-exile
+choose choose-cards/s82-old-b626-wormfang-newt-land
+choose choose-cards/s82-old-b626-wormfang-turtle-land
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2021,6 +2026,9 @@ coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/s82-old-b602-fiery-gambit-flip
+coinflip coin-flip/s82-old-b626-planar-chaos-counter
+coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
+coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2048,6 +2056,7 @@ condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
+condition block/s82-old-b632-zombie-boa-blocked-by-color
 condition cast/any-player-casts
 condition cast/opening-hand-reveal-that-players-first-spell
 condition cast/the-named-spell-first-time-this-turn
@@ -2370,6 +2379,7 @@ confirm confirm/s82-old-b464-vedalken-infuser-counter
 confirm confirm/s82-old-b602-fiery-gambit-again
 confirm confirm/s82-old-b602-liars-pendulum-guess
 confirm confirm/s82-old-b602-liars-pendulum-reveal
+confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -2655,6 +2665,7 @@ number number/s82-old-b281-void-number
 number number/s82-old-b408-vizkopa-confessor-paid
 number number/s82-old-b411-bioshift-move
 number number/s82-old-b459-hex-parasite-remove
+number number/s82-old-b629-squees-revenge
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -2875,6 +2886,7 @@ option option-pick/plargg-and-nassari-opponent
 option option-pick/polygraph-orb-punisher
 option option-pick/polymorphous-rush-model
 option option-pick/practiced-offense-keyword
+option option-pick/primeval-force-three-forests-or-this
 option option-pick/prince-of-thralls-pay-or-take
 option option-pick/protection-racket-answer
 option option-pick/psychic-puppetry-tap-or-untap
@@ -2927,6 +2939,7 @@ option option-pick/s82-old-b599-chisei-counter-kind
 option option-pick/s82-old-b602-fatespinner-skip
 option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
+option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3305,6 +3318,7 @@ payunless pay-unless/old-b554-tapped-attacking-kithkin-soldier
 payunless pay-unless/old-b579-blood-funnel-counter
 payunless pay-unless/old-b580-perplex-counter
 payunless pay-unless/old-b608-gain-1-life
+payunless pay-unless/old-b623-dwarven-scorcher-1
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3369,6 +3383,7 @@ payunless pay-unless/s82-old-b564-recover
 payunless pay-unless/s82-old-b609-crystal-rod-life
 payunless pay-unless/s82-old-b609-iron-star-life
 payunless pay-unless/s82-old-b609-throne-of-bone-life
+payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3757,6 +3772,8 @@ run prompt-run/old-b586-blood-clock-return
 run prompt-run/old-b586-sacrifice-all-but
 run prompt-run/old-b587-akuta-sacrifice-a-swamp
 run prompt-run/old-b606-rust-elemental
+run prompt-run/old-b621-grave-consequences-exile
+run prompt-run/old-b637-urzas-guilt-lose-life
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -3771,6 +3788,7 @@ run prompt-run/pox-plague-sacrifice
 run prompt-run/pox-sacrifice-creatures
 run prompt-run/pox-sacrifice-lands
 run prompt-run/priest-of-forgotten-gods-payout
+run prompt-run/primeval-force-three-forests
 run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
 run prompt-run/provisions-merchant-sacrifice-pump
@@ -3932,6 +3950,7 @@ searchrule search/different-powers
 searchrule search/one-card-per-color
 searchrule search/s82-old-b428-island-swamp-mountain
 searchrule search/s82-old-b506-plains-island-swamp-mountain
+searchrule search/s82-old-b629-land-of-each-basic-type
 searchrule search/total-mana-value-at-most
 searchrule search/yasharn-forest-and-plains
 steps steps/ad-nauseam-pass
@@ -4164,6 +4183,7 @@ tail budding-insurgent/draw-if-legendary-enchantment
 tail budoka-gardener/flip-with-ten-lands
 tail burn-down-the-house/haste
 tail cait-sith-fortune-teller/impulse-exile
+tail caldera-kavu/color-chosen
 tail caldera-pyremaw/damage
 tail call-a-surprise-witness/flying-spirit
 tail call-of-the-death-dweller/counters
@@ -4984,6 +5004,8 @@ tail old-b579/eye-of-the-storm-copies
 tail old-b587/iname-exiled-return-a-spirit
 tail old-b587/sacrifice-that-creature-at-the-next-end-step
 tail old-b607/lightning-coils-exile-the-elementals
+tail old-b621/grave-consequences-then
+tail old-b623/scalpelexis-repeat
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5456,6 +5478,8 @@ tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/s82-old-b005-karn-silver
 tail tail/s82-old-b110-idol-of-endurance-hold
+tail tail/s82-old-b627-morality-shift-library-moved
+tail tail/s82-old-b628-funeral-pyre-spirit
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
@@ -5883,6 +5907,7 @@ tail then/s82-old-b602-liars-pendulum-named
 tail then/s82-old-b602-spoils-of-the-vault-named
 tail then/s82-old-b603-detonate-damage
 tail then/s82-old-b603-molten-rain-damage
+tail then/s82-old-b632-zombie-boa-color
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
@@ -6099,6 +6124,7 @@ tail vis/s82-gap-b143-trevas-ruins-after-return
 tail vision-quest/haste
 tail vivien-monsters-advocate/beast-counter-choice
 tail viviens-invocation/rest-then-damage
+tail vodalian-mystic/color-chosen
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
 tail wake-to-slaughter/entered

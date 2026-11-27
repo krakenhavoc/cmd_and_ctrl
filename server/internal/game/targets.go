@@ -1179,6 +1179,15 @@ type TargetSpec struct {
 	// effects.AttachedToThis.
 	AttachedToSource bool
 
+	// SourceAttachedTo limits a SACRIFICE clause to the permanent the
+	// object paying the cost is attached to: "Sacrifice enchanted creature"
+	// (Bloodfire Infusion, S82 OLD batch 631): the inverse of
+	// AttachedToSource, answered by the same Game.AttachedToSourceOKForEffect
+	// so the payment validator, the legal enumerator and the protocol view
+	// agree. Build it with effects.SacrificeEnchantedCreature. Additive
+	// within the snapshot schema version.
+	SourceAttachedTo bool
+
 	// AllowSame permits the same player / card in more than one
 	// slot. Off for every ordinary clause; reserved for effects
 	// whose wording uses separate "target" words that may coincide.

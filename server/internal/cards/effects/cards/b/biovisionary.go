@@ -20,12 +20,7 @@ import (
 // No simplification.
 func init() {
 	t := effects.On(game.EventBeginEndStep, func(game.Event, *game.Card, game.Characteristic, *game.Game) bool { return true },
-		"Biovisionary — you win the game", func(g *game.Game, item *game.StackItem) error {
-			if item.Controller == uuid.Nil {
-				return nil
-			}
-			return effects.WinTheGame{Player: item.Controller}.Apply(effects.NewContext(g, item))
-		})
+		"Biovisionary — you win the game", effects.S82OldB626YouWinTheGame)
 	effects.Register(effects.Spec{
 		OracleID:     "e99fde0d-ca28-4a49-abe0-d01cf4e322b6",
 		Name:         "Biovisionary",
