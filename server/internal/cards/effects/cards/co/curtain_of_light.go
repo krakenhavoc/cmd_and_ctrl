@@ -1,8 +1,6 @@
 package cardsco
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -27,17 +25,11 @@ import (
 // No simplification.
 func init() {
 	effects.Register(effects.Spec{
-		OracleID:     "d6efbbf9-1449-45ce-b187-30041eb36d93",
-		Name:         "Curtain of Light",
-		Completeness: effects.CompletenessFull,
-		Purpose:      game.Purpose{Draws: 1},
-		CastCondition: func(g *game.Game, _ uuid.UUID, _ game.Card) bool {
-			switch g.Turn.Step {
-			case game.StepDeclareBlockers, game.StepCombatDamage, game.StepFirstStrikeDamage, game.StepEndCombat:
-				return true
-			}
-			return false
-		},
+		OracleID:           "d6efbbf9-1449-45ce-b187-30041eb36d93",
+		Name:               "Curtain of Light",
+		Completeness:       effects.CompletenessFull,
+		Purpose:            game.Purpose{Draws: 1},
+		CastCondition:      effects.DuringCombatAfterBlockers,
 		CastConditionLabel: "Cast this spell only during combat after blockers are declared.",
 		Targets:            effects.TargetCreature("target unblocked attacking creature", effects.OldB585UnblockedAttacker()),
 		OnResolve:          effects.OldB585CurtainOfLightResolve,
