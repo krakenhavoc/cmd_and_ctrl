@@ -28,7 +28,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{2}, Return a land you control to its owner's hand: Target creature gets -X/-0 until end of turn, where X is the number of cards in your hand.",
-			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Purpose: game.Purpose{Answers: game.AnswerRemove, Targets: game.ForTargets(effects.HarmUntilEOT(0, 0, 0))},
 			Cost:    effects.Plus(effects.ManaCost("{2}"), effects.ReturnAPermanentToHand("a land you control", effects.Land())),
 			Targets: effects.TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
