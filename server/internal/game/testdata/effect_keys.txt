@@ -2608,6 +2608,7 @@ drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
+drawinstead pursuit-of-knowledge/study-counter-instead
 drawinstead s82-old-b600-tomorrow
 drawinstead s82-old-b602-shared-fate
 drawinstead sages-of-the-anima
@@ -3499,6 +3500,7 @@ payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
 payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
 payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-old-b696-rishadan-sacrifice
+payunless pay-unless/s82-old-b748-crovax-the-cursed
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3952,6 +3954,7 @@ run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-old-b723-wildfire-damage
+run prompt-run/s82-old-b748-cannibalize-exile
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw

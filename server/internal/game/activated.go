@@ -203,6 +203,16 @@ type AbilityCost struct {
 	// charge it.
 	ManaValueOfExiledWith bool
 
+	// ManaPerCounter is "Pay {1} for each <kind> counter on this creature"
+	// (Skeleton Scavengers): the mana component is generic mana equal to the
+	// number of counters of this kind on the ability's source as the
+	// activation is announced (CR 602.2b), {0} with none. The count is
+	// defined by the text, so the activator doesn't choose it and nothing
+	// asks for an X; the one pricer (AbilityManaCostAtXForEffect) writes
+	// "{N}" in, so the activation, the menu row, the enumerator and the
+	// auto-tap preview all charge it. Empty is no such component.
+	ManaPerCounter string
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'

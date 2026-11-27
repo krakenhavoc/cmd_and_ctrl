@@ -220,6 +220,12 @@ var knownUnmatchedTokens = map[string]string{
 	// creature tokens". The only black Minion token card in the dump is a */*
 	// one; no 1/1 black Minion was printed. The template follows the oracle text.
 	"1/1 black Minion": "no 1/1 black Minion token card was printed for Infernal Genesis",
+
+	// Spike Breeder (Stronghold, S82 OLD batch 748) creates "a 1/1 green Spike
+	// creature token". The card is from 1998 and its token was never printed as
+	// a token card; the dump has no Spike token. The template follows the oracle
+	// text.
+	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
