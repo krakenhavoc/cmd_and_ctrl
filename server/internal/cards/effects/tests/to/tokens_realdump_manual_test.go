@@ -205,6 +205,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Oracle text says Bird; the only printed token card is the older "Rukh" (Token Creature — Rukh),
 	// so no 4/4 red Bird token card exists. The template follows the oracle text.
 	"4/4 red Bird with flying": "no 4/4 red Bird token card was printed for Rukh Egg (the printed token is named Rukh)",
+	// Penumbra Kavu (Apocalypse) creates "a 3/3 black Kavu creature token" and Haunted Angel
+	// "a 3/3 black Angel creature token with flying"; neither was ever printed as a token card
+	// (the only Kavu token is the all-colours one, and the Angel tokens are white or blue).
+	"3/3 black Kavu":              "no 3/3 black Kavu token card was printed; Penumbra Kavu's oracle text says 3/3 black",
+	"3/3 black Angel with flying": "no 3/3 black Angel token card was printed; Haunted Angel's oracle text says 3/3 black with flying",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
