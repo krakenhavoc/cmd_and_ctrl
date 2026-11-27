@@ -29,7 +29,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{4}: Target creature gets +X/+0 until end of turn, where X is its power. Sacrifice this artifact at the beginning of the next end step.",
-			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(effects.PowerXUntilEOT(0))},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(effects.BenefitUntilEOT(0, 0, 0))},
 			Cost:    effects.ManaCost("{4}"),
 			Targets: effects.TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
