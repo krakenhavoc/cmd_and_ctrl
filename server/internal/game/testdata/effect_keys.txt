@@ -3928,6 +3928,7 @@ run prompt-run/s82-old-b662-global-ruin-keep
 run prompt-run/s82-old-b674-overburden-return-land
 run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-old-b699-enslaved-horror-return
+run prompt-run/s82-old-b745-oath-of-ghouls-return
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw

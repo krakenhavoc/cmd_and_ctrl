@@ -968,6 +968,18 @@ type TargetSpec struct {
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
 
+	// FewerCreatureCardsInGraveyardThanChooser is "target player whose
+	// graveyard has fewer creature cards in it than their graveyard does and
+	// is their opponent" on a ChosenByTriggerActor clause, they being the
+	// player who chooses (Oath of Ghouls): a player candidate must be someone
+	// other than the chooser whose graveyard holds fewer creature cards than
+	// the chooser's. DATA, judged beside PlayerOK in the player walk
+	// (playerChooserAdmits), so the legal set, the announce check (CR 601.2c)
+	// and the resolution re-check (CR 608.2b) are one answer. Meaningless
+	// without ChosenByTriggerActor; effects.Register refuses it alone. Build
+	// it with effects.WithFewerCreatureCardsInGraveyardThanTheChooser.
+	FewerCreatureCardsInGraveyardThanChooser bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the
