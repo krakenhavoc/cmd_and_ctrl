@@ -1,8 +1,6 @@
 package cardshu
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -30,14 +28,7 @@ func init() {
 			Key:               "invigorate",
 			Label:             "If you control a Forest, have an opponent gain 3 life rather than pay this spell's mana cost",
 			OpponentGainsLife: 3,
-			Condition: func(g *game.Game, controller uuid.UUID) bool {
-				for _, c := range g.Battlefield.Cards {
-					if c.Controller == controller && c.HasSubtypeWord("Forest") {
-						return true
-					}
-				}
-				return false
-			},
+			Condition:         effects.OldB679YouControlAForest,
 		}},
 		OnResolve: func(item *game.StackItem, ctx *effects.Context) error {
 			return effects.PumpAndGrantFirstTarget(4, 4, "Invigorate — +4/+4")(ctx.Game, item)

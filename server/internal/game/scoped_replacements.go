@@ -190,6 +190,8 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a landManaOfChosenColor replacement names no player"
 		}
+	case ModNonbasicLandManaColorless:
+		// Pale Moon: no parameters.
 	case ModExileInsteadOfYourGraveyard:
 		if m.Player == uuid.Nil {
 			return "an exileInsteadOfYourGraveyard replacement names no player"
@@ -254,7 +256,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModNextEntersAsCopies:
 		// #6160: Mystic Reflection's one-shot entry copy.
 		return watchZoneMove
-	case ModLandManaIsColor, ModLandManaOfChosenColor:
+	case ModLandManaIsColor, ModLandManaOfChosenColor, ModNonbasicLandManaColorless:
 		return watchManaAdded
 	}
 	return nil
@@ -714,6 +716,11 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 				// controller (S17's Fog).
 				return uuid.Nil
 			}
+			if kind == ModNonbasicLandManaColorless {
+				// Pale Moon reaches every player's lands: the one whose land
+				// is making the mana orders it (CR 616.1).
+				return ev.ManaPlayer
+			}
 			e, _, ok := g.scopedReplacementModLocked(seq, mod, kind)
 			if !ok {
 				return uuid.Nil
@@ -851,6 +858,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return landManaColorAppliesLocked(g, m, ev)
 	case ModLandManaOfChosenColor:
 		return landManaOfChosenColorAppliesLocked(g, m, ev)
+	case ModNonbasicLandManaColorless:
+		return nonbasicLandManaColorlessAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, m, ev)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
@@ -975,6 +984,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	case ModLandManaOfChosenColor:
 		// #6210: one mana of the colour chosen at the tap.
 		ev.ManaColors = []string{ManaOfChosenColor}
+	case ModNonbasicLandManaColorless:
+		// Pale Moon: every mana of the production is colourless.
+		applyNonbasicLandManaColorlessLocked(ev)
 	case ModExileInsteadOfGraveyard:
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil

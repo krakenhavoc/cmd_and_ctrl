@@ -440,6 +440,8 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 717 (#5623).
 	"Impending Disaster": "destroys only lands, which no sweep class names alone (Armageddon declares none)",
 	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
+	// S82 OLD batch 679 (#5618).
+	"Overlaid Terrain": "sacrifices only its own controller's lands as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

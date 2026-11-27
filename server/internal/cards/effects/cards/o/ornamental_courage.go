@@ -21,13 +21,7 @@ func init() {
 		Targets:      effects.TargetCreature("target creature"),
 		Purpose:      effects.ForTargets(effects.BenefitUntilEOT(0, 1, 3)),
 		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				id, ok := effects.B16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return effects.UntapTarget{Target: id}.Apply(ctx)
-			}),
+			effects.Instruction(func(ctx *effects.Context) error { return effects.OldB718UntapTheTarget(ctx.Item, ctx) }),
 			effects.Instruction(func(ctx *effects.Context) error {
 				id, ok := effects.B16FirstLegalTargetCard(ctx)
 				if !ok {
