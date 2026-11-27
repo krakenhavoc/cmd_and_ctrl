@@ -565,6 +565,7 @@ body s82-old-b370/destroy-all-permanents
 body s82-old-b389/triton-tactics-tap-blocked
 body s82-old-b408/obzedat-return
 body s82-old-b464/virulent-wound-poison
+body s82-old-b581/gaze-of-the-gorgon-destroy
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1705,6 +1706,7 @@ choose choose-cards/s82-old-b556-thoughtweft-trio-champion
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
 choose choose-cards/s82-old-b568-jokulmorder-lands
+choose choose-cards/s82-old-b581-sisters-of-stone-death-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3736,6 +3738,7 @@ run prompt-run/put-chosen-permanent-on-top-of-library
 run prompt-run/pyroclastic-hellion-return-land
 run prompt-run/ragefire-hellkite-double-strike
 run prompt-run/ravenous-rotbelly-sacrifice
+run prompt-run/razias-purification-sacrifice-the-rest
 run prompt-run/reactor-raid-draw
 run prompt-run/redcap-gutter-dweller-sacrificed
 run prompt-run/reign-of-the-pit-demon
@@ -4132,6 +4135,7 @@ tail capricious-hellraiser/choose-and-copy
 tail card-name/day-of-the-moon-goad
 tail card-name/s82-old-b321-infinite-obliteration
 tail card-name/s82-old-b426-slaughter-games
+tail card-name/s82-old-b581-tunnel-vision
 tail card-name/wood-sage-reveal
 tail card/break-the-spell-draw
 tail card/deepfathom-echo-then
