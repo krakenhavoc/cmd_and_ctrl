@@ -221,6 +221,7 @@ body exile/glimpse-the-impossible-bin
 body exile/listed-cards
 body exile/mnemonic-betrayal-return
 body exile/s82-old-b061-fire-giants-fury
+body exile/s82-old-b673-psychic-theft-return
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
@@ -570,6 +571,7 @@ body s82-old-b464/virulent-wound-poison
 body s82-old-b581/gaze-of-the-gorgon-destroy
 body s82-old-b585/discard-three-at-next-end-step
 body s82-old-b614/destroy-the-named-creature
+body s82-old-b673/return-this-to-hand-at-end-of-combat
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -3489,6 +3491,7 @@ pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/perish-the-thought-shuffle
 pick revealed-pick/pick-the-brain-search
 pick revealed-pick/psychic-intrusion-may-cast
+pick revealed-pick/psychic-theft-may-cast
 pick revealed-pick/reap-intellect-search
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
