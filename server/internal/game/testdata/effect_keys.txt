@@ -2573,6 +2573,7 @@ milluntil until/instant-or-sorcery-card
 milluntil until/land-card
 milluntil until/legendary-card
 milluntil until/nonland-card
+milluntil until/s82-old-b590-group-of-three-ends-on-a-land
 milluntil until/starrix-n-permanent-cards
 milluntil until/strago-and-relm-hit
 milluntil until/total-mana-value
@@ -4499,6 +4500,7 @@ tail fecund-greenshell/land-declined-into-hand
 tail feldon-of-the-third-path/haste-and-sacrifice-copy
 tail felhide-spiritbinder/haste-and-exile-copy
 tail fell-gravship/after-mill
+tail feral-lightning/exile-the-elementals
 tail fetch-quest/after-mill
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
@@ -4987,6 +4989,7 @@ tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
 tail ragnarok-divine-deliverance/return
+tail rally-the-horde/warriors
 tail rampaging-growth/animate
 tail rampant-frogantua/after-mill
 tail random-encounter/entered
@@ -5959,6 +5962,7 @@ tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle
 tail underrealm-lich/taken
 tail underworld-cerberus/after-exile
+tail undying-flames/damage
 tail unexpected-results/return-to-hand
 tail unlucky-cabbage-merchant/after-search
 tail urborg-scavengers/counter
