@@ -46,8 +46,10 @@ import (
 // of the clash have moved (CR 701.30c). Actor is that player, Target the
 // player they clashed with, Source the card whose effect told them to, and
 // Label where their revealed card went: ClashPutOnBottom, ClashKeptOnTop,
-// or "" when their library was empty and they revealed nothing. One per
-// clashing player, the effect's controller first.
+// or "" when their library was empty and they revealed nothing. Amount is 1
+// when Actor won the clash (CR 701.30d), 0 otherwise, so "whenever you
+// clash ... if you won" reads it. One per clashing player, the effect's
+// controller first.
 const EventClashed EventKind = "clashed"
 
 // EventClashWon records that a player won a clash (CR 701.30d): Actor is
@@ -318,7 +320,11 @@ func (g *Game) clashFinishLocked(run clashRun) error {
 		if !g.playerInGameLocked(id) {
 			continue
 		}
-		g.EmitEvent(Event{Kind: EventClashed, Actor: id, Target: run.players[1-i], Source: run.source, Label: where[i]})
+		won := 0
+		if run.winner == i {
+			won = 1
+		}
+		g.EmitEvent(Event{Kind: EventClashed, Actor: id, Target: run.players[1-i], Source: run.source, Label: where[i], Amount: won})
 	}
 	if w := run.winner; w >= 0 && g.playerInGameLocked(run.players[w]) {
 		g.EmitEvent(Event{Kind: EventClashWon, Actor: run.players[w], Target: run.players[1-w], Source: run.source})
