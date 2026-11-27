@@ -5125,6 +5125,7 @@ tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
 tail s82-old-b498/living-tsunami-after-return
+tail s82-old-b647/blind-seer-color-chosen
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
