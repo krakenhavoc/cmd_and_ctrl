@@ -1823,6 +1823,8 @@ choose choose-cards/the-wedding-of-river-song-opponent
 choose choose-cards/the-wedding-of-river-song-you
 choose choose-cards/the-world-spell-take
 choose choose-cards/the-wrath-of-khan-exile-from-hand
+choose choose-cards/thieving-sprite-discard
+choose choose-cards/thieving-sprite-reveal
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/thousand-moons-smithy-tap-five
