@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // attack_not_alone.go is "this creature can't attack alone" (Pet
 // Sehlat, #4973): the AttackLimitNotAlone scope of attack_limits.go.
@@ -29,12 +33,22 @@ import "github.com/google/uuid"
 type companionRule struct {
 	need    int
 	greater bool
+	// colors, when set, narrows a companion to a creature of one of these
+	// colors (Scarred Puma's "a black or green creature also attacks").
+	colors []string
 }
 
 // tighter is the stricter of two rules on one creature: it must meet
 // both, so the larger count and either power condition.
+//
+// One creature never has two different color conditions in the catalog, so
+// the first rule that names colors is the one kept.
 func (r companionRule) tighter(o companionRule) companionRule {
-	return companionRule{need: max(r.need, o.need), greater: r.greater || o.greater}
+	colors := r.colors
+	if len(colors) == 0 {
+		colors = o.colors
+	}
+	return companionRule{need: max(r.need, o.need), greater: r.greater || o.greater, colors: colors}
 }
 
 // countsAsCompanion reports whether `other` keeps `src` company under
@@ -44,7 +58,20 @@ func (r companionRule) countsAsCompanion(src, other *Card) bool {
 	if other == nil || src == nil || other.InstanceID == src.InstanceID {
 		return false
 	}
-	return !r.greater || other.PowerForComparison() > src.PowerForComparison()
+	if r.greater && other.PowerForComparison() <= src.PowerForComparison() {
+		return false
+	}
+	if len(r.colors) == 0 {
+		return true
+	}
+	for _, have := range other.EffectiveColors() {
+		for _, want := range r.colors {
+			if strings.EqualFold(have, want) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // notAloneSourcesLocked is every creature an active "can't attack
@@ -61,7 +88,7 @@ func (g *Game) notAloneSourcesLocked() map[uuid.UUID]companionRule {
 		if out == nil {
 			out = map[uuid.UUID]companionRule{}
 		}
-		r := companionRule{need: l.limit.companionsNeeded(), greater: l.limit.OthersPowerGreater}
+		r := companionRule{need: l.limit.companionsNeeded(), greater: l.limit.OthersPowerGreater, colors: l.limit.OthersColors}
 		if prev, ok := out[l.source.InstanceID]; ok {
 			r = r.tighter(prev)
 		}
@@ -147,7 +174,7 @@ func (g *Game) notAloneDeadEndLocked(l attackLimitSource, before, after map[uuid
 	if l.source == nil || !l.sourceAttacksIn(after) || l.sourceAttacksIn(before) {
 		return false
 	}
-	r := companionRule{need: l.limit.companionsNeeded(), greater: l.limit.OthersPowerGreater}
+	r := companionRule{need: l.limit.companionsNeeded(), greater: l.limit.OthersPowerGreater, colors: l.limit.OthersColors}
 	return !g.companionsReachableLocked(l.source, r, after, false)
 }
 
@@ -257,6 +284,7 @@ func (g *Game) attackAloneUnmetLocked() (*AttackLimitError, uuid.UUID) {
 		e.MinOthers = r.need
 	}
 	e.OthersPowerGreater = r.greater
+	e.OthersColors = r.colors
 	return e, c.InstanceID
 }
 
