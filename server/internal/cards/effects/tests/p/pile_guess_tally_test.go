@@ -174,6 +174,7 @@ var pgReviewed = map[string]string{
 	"43e1b053-2cb9-4b1d-9e38-100cfa7267b6": "The Seventh Doctor — notes the defending player's guess",
 	"8e93ea21-5e3f-448e-a175-96c8438c328e": "The Toymaker's Trap — notes the opponent's guess",
 	"503447d9-2489-46d7-b5aa-a14bbb22dcc8": "Master of Predicaments — notes the damaged player's guess",
+	"4f88ddfa-5478-426a-a978-dfc64c687db1": "Liar's Pendulum — notes the opponent's guess",
 	// The reader, which also makes piles of its own.
 	"388fe92a-0bc0-4c0a-a7c6-910c5e71e342": "The Celestial Toymaker — notes its attack piles and reads the tally",
 }

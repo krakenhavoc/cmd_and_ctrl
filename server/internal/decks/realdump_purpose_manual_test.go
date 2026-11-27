@@ -409,6 +409,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 613 (#5607).
 	"Boil":       "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
 	"Flashfires": "destroys only the Plains, which are lands, and no sweep class names lands (Armageddon declares none)",
+
+	// S82 OLD batch 602 (#5606).
+	"Spoils of the Vault": "exiles only the cards it reveals from the top of its controller's own library, never a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
