@@ -1495,6 +1495,8 @@ choose choose-cards/old-b387-order-of-succession-pick
 choose choose-cards/old-b447-graveyard-shovel-exile
 choose choose-cards/old-b493-attach-equipment
 choose choose-cards/old-b499-sphinx-picked
+choose choose-cards/old-b607-wrench-mind-the-one
+choose choose-cards/old-b607-wrench-mind-two-or-artifact
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -4923,6 +4925,7 @@ tail old-b332/mirror-mockery-exile
 tail old-b541/minus-counter-on-each-next
 tail old-b543/clash-counter-on-this
 tail old-b544/clash-counter-on-this
+tail old-b607/lightning-coils-exile-the-elementals
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5712,6 +5715,8 @@ tail then/old-b443-seance-copy
 tail then/old-b499-shuffle-carried
 tail then/old-b499-sphinx-found
 tail then/old-b499-sphinx-named
+tail then/old-b607-myr-incubator
+tail then/old-b607-timesifter-judge
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
