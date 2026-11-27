@@ -2825,6 +2825,7 @@ option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
 option option-pick/old-b240-unesh-splitter
 option option-pick/old-b387-order-of-succession-direction
+option option-pick/old-b606-loxodon-peacekeeper
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -3707,6 +3708,7 @@ run prompt-run/neo-invoke-despair-after
 run prompt-run/nyssa-of-traken-sacrifice
 run prompt-run/old-b178-consume-gain-power
 run prompt-run/old-b516-archdemon-of-unx-zombie
+run prompt-run/old-b606-rust-elemental
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
