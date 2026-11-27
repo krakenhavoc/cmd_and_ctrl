@@ -89,3 +89,14 @@ func OldB559DrawTwoThenPutOneBack(g *game.Game, item *game.StackItem) error {
 		Ref: oldB559SurvivorPutBack, Player: item.Controller, Source: item.SourceCardID, N: 1,
 	})
 }
+
+// YouLoseTwoLifePerAgeCounterAsItLeft is "you lose 2 life for each age counter
+// on it" read as the permanent left the battlefield (Phyrexian Etchings,
+// Krovikan Whispers).
+func YouLoseTwoLifePerAgeCounterAsItLeft(g *game.Game, item *game.StackItem) error {
+	n := AgeCountersAsItLeft(g, item)
+	if n <= 0 {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -2*n)
+}

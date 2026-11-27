@@ -30,13 +30,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.CumulativeUpkeep("Krovikan Whispers — cumulative upkeep {U} or {B}", "{U/B}"),
 			effects.WhenThisDies("Krovikan Whispers — you lose 2 life for each age counter on it",
-				func(g *game.Game, item *game.StackItem) error {
-					n := effects.AgeCountersAsItLeft(g, item)
-					if n <= 0 {
-						return nil
-					}
-					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -2*n)
-				}),
+				effects.YouLoseTwoLifePerAgeCounterAsItLeft),
 		},
 	})
 }
