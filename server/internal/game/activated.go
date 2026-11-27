@@ -2363,7 +2363,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// only; an "of an opponent's choice" clause is the opponent's, and
 	// its answer rides params.opponentPicks (opponent_target.go).
 	// #4497: a pick that names no clause is filed by what it can target.
-	params.Targets = g.fitAnnouncedSlotsLocked(SourceObject(playerID, source), StepsChosenByController(steps), params.Targets, params.TargetsStamped)
+	params.Targets = g.fitAnnouncedSlotsLocked(SourceActivating(playerID, source), StepsChosenByController(steps), params.Targets, params.TargetsStamped)
 	ownTargets := params.Targets
 	oppTargets, err := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
 	if err != nil {
@@ -2373,7 +2373,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #4051, CR 602.2b / 601.2c: a "target … chosen at random" clause is
 	// drawn here, as part of activating, from the clause's legal set; the
 	// payload names nothing for it. A re-made run reuses the first draw.
-	params.Targets, params.randomTargets, err = g.announceRandomTargetsLocked(SourceObject(playerID, source),
+	params.Targets, params.randomTargets, err = g.announceRandomTargetsLocked(SourceActivating(playerID, source),
 		RandomDraw{Player: playerID, Source: cardID}, oppTargets.check, params.Targets, params.randomTargets)
 	if err != nil {
 		return err
@@ -2387,12 +2387,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// that has it, not its controller. A red player activating a
 	// colourless Equipment's ability may still target a pro-red
 	// creature; a red permanent's ability may not (#662).
-	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
+	if err := g.validateAnnouncedTargetsLocked(SourceActivating(playerID, source), oppTargets.check, params.Targets); err != nil {
 		return err
 	}
 	// #6236, CR 601.2c via CR 602.2b: the Flagbearer rule.
 	g.RecomputeLayersIfStaleLocked()
-	if err := g.checkFlagbearerTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
+	if err := g.checkFlagbearerTargetsLocked(SourceActivating(playerID, source), oppTargets.check, params.Targets); err != nil {
 		return err
 	}
 	// #1563, CR 601.2d via CR 602.2b: the division, with the targets.
@@ -2487,7 +2487,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		parked.Targets = ownTargets
 		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
 			parkedAnnouncement: activationAnnouncement(playerID, cardID, source.Name, wireIndex, withWireRef(parked, wireParams)),
-		}, SourceObject(playerID, source), oppTargets)
+		}, SourceActivating(playerID, source), oppTargets)
 	}
 	// The announcement a CR 903.9b answer makes again (#4361 S13: as
 	// data). The payload's own picks: the opponents' answers ride
