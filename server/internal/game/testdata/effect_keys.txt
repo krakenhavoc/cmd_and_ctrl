@@ -366,6 +366,7 @@ body leyline-tyrant/damage
 body library-of-lat-nam/draw-three
 body lichs-relic/destroy
 body life/aphelia-half-their-life
+body lifeline/return-the-card-to-its-owner
 body lithobraking/damage-each-creature
 body loamcrafter-faun/return-to-hand
 body loathsome-curator/destroy
@@ -754,6 +755,7 @@ choose avatar-b30/azula-experience-after-discard
 choose avatar-b30/jet-rebel-leader-put-attacking
 choose choose-cards/abandon-attachments-draw
 choose choose-cards/abdel-adrian-exile
+choose choose-cards/academy-researchers-aura
 choose choose-cards/acquisitions-expert-discard
 choose choose-cards/acquisitions-expert-reveal
 choose choose-cards/adventure-awaits-take
