@@ -1723,6 +1723,7 @@ choose choose-cards/s82-old-b626-mist-of-stagnation-untap
 choose choose-cards/s82-old-b626-wormfang-crab-exile
 choose choose-cards/s82-old-b626-wormfang-newt-land
 choose choose-cards/s82-old-b626-wormfang-turtle-land
+choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -5908,6 +5909,7 @@ tail then/s82-old-b602-spoils-of-the-vault-named
 tail then/s82-old-b603-detonate-damage
 tail then/s82-old-b603-molten-rain-damage
 tail then/s82-old-b632-zombie-boa-color
+tail then/s82-old-b675-infernal-genesis-milled
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

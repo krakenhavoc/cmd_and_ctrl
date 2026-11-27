@@ -205,6 +205,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Oracle text says Bird; the only printed token card is the older "Rukh" (Token Creature — Rukh),
 	// so no 4/4 red Bird token card exists. The template follows the oracle text.
 	"4/4 red Bird with flying": "no 4/4 red Bird token card was printed for Rukh Egg (the printed token is named Rukh)",
+
+	// Infernal Genesis (Prophecy, S82 OLD batch 675) creates "1/1 black Minion
+	// creature tokens". The only black Minion token card in the dump is a */*
+	// one; no 1/1 black Minion was printed. The template follows the oracle text.
+	"1/1 black Minion": "no 1/1 black Minion token card was printed for Infernal Genesis",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
