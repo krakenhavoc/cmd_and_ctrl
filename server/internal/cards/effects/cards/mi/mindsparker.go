@@ -1,8 +1,6 @@
 package cardsmi
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -31,15 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventCast, effects.AnOpponentCast(effects.And(effects.Or(effects.OfColor("W"), effects.OfColor("U")), effects.Or(effects.Instant(), effects.Sorcery()))),
 				"Mindsparker — 2 damage to that player",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					caster := ctx.Trigger().Event.Actor
-					ref, ok := ctx.SourceRef()
-					if !ok || caster == uuid.Nil {
-						return nil
-					}
-					return effects.DealDamage{SourceObject: &ref, Target: caster, Amount: 2}.Apply(ctx)
-				}),
+				effects.SourceDealsTwoToThatPlayer),
 		},
 	})
 }
