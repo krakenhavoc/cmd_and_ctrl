@@ -317,6 +317,7 @@ body head-of-the-hunt/wolf
 body heart-piercer-manticore/damage
 body heroic-sacrifice/its-counters-and-draw
 body hidetsugu-devouring-chaos/damage
+body horn-of-plenty/draw
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
 body hurska-sweet-tooth/pump
@@ -790,6 +791,7 @@ choose choose-cards/as-enters-permanent
 choose choose-cards/ashiok-nightmare-weaver-return
 choose choose-cards/ashiok-wicked-manipulator-take
 choose choose-cards/ashling-flame-dancer-then
+choose choose-cards/assembly-hall-reveal
 choose choose-cards/assimilation-assessor-assimilate
 choose choose-cards/astor-bearer-of-blades-take
 choose choose-cards/atraxa-grand-unifier-card-type
@@ -936,6 +938,7 @@ choose choose-cards/court-of-ambition-discarded-6
 choose choose-cards/coveted-prize-cast
 choose choose-cards/crashing-wave-stun-among
 choose choose-cards/crashing-wave-stun-two
+choose choose-cards/credit-voucher-shuffle
 choose choose-cards/creeping-inn-exile
 choose choose-cards/cunning-wish-take
 choose choose-cards/currency-converter-put-away
@@ -2867,6 +2870,7 @@ option option-pick/hostile-negotiations-pile
 option option-pick/hunters-axe-keyword
 option option-pick/ilharg-the-raze-boar-attacks
 option option-pick/immard-the-stormcleaver-charge
+option option-pick/indentured-djinn-draw
 option option-pick/indulgent-tormentor-answer
 option option-pick/infernal-offering-first-chosen
 option option-pick/infernal-offering-second-chosen
@@ -3192,6 +3196,7 @@ payunless pay-unless/crystal-shard-return-to-hand
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cumulative-upkeep-paid-or-sacrificed
 payunless pay-unless/curious-forager-return
+payunless pay-unless/customs-depot-loot
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/darigaaz-the-igniter-hand
 payunless pay-unless/death-priest-of-myrkul-skeleton
@@ -3287,6 +3292,7 @@ payunless pay-unless/hero-of-leina-tower-counters
 payunless pay-unless/heroism-prevent-combat-damage
 payunless pay-unless/hexgold-slith-first-strike
 payunless pay-unless/hired-heist-draw
+payunless pay-unless/horn-of-plenty-draw
 payunless pay-unless/human-torch-share-damage
 payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown

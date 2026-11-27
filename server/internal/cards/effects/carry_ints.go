@@ -10,7 +10,7 @@ import "github.com/google/uuid"
 // intsToCarry writes each number (0 to 254) as an ID, so they can ride a
 // prompt's Carry: n is the ID whose last byte is n+1, which is never
 // uuid.Nil, the separator packIDLists uses.
-func intsToCarry(ns []int) []uuid.UUID {
+func IntsToCarry(ns []int) []uuid.UUID {
 	ids := make([]uuid.UUID, len(ns))
 	for i, n := range ns {
 		ids[i][15] = byte(n + 1)
@@ -19,7 +19,7 @@ func intsToCarry(ns []int) []uuid.UUID {
 }
 
 // carryToInts is the inverse of intsToCarry.
-func carryToInts(ids []uuid.UUID) []int {
+func CarryToInts(ids []uuid.UUID) []int {
 	out := make([]int, len(ids))
 	for i, id := range ids {
 		out[i] = int(id[15]) - 1
