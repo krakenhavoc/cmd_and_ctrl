@@ -291,7 +291,11 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	if HasKeyword(attacker, "intimidate") && !blocker.IsArtifact() && !sharesColor(attacker, blocker) {
 		return BlockRefusal{Reason: BlockReasonIntimidate, Source: attacker.InstanceID}
 	}
-	if attackerShadow, blockerShadow := HasKeyword(attacker, "shadow"), HasKeyword(blocker, "shadow"); attackerShadow != blockerShadow {
+	if attackerShadow, blockerShadow := HasKeyword(attacker, "shadow"), HasKeyword(blocker, "shadow"); attackerShadow != blockerShadow &&
+		// "Can block creatures with shadow as though it had shadow" (Wall of
+		// Diffusion): the blocker is treated as having shadow against this
+		// attacker, so a shadow attacker is blockable by it.
+		!(attackerShadow && g.blockerShadowAgainstLocked(blocker, attacker)) {
 		source := attacker.InstanceID
 		if !attackerShadow {
 			source = blocker.InstanceID
