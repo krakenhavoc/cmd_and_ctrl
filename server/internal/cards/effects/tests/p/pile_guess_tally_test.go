@@ -176,6 +176,8 @@ var pgReviewed = map[string]string{
 	"503447d9-2489-46d7-b5aa-a14bbb22dcc8": "Master of Predicaments — notes the damaged player's guess",
 	// The reader, which also makes piles of its own.
 	"388fe92a-0bc0-4c0a-a7c6-910c5e71e342": "The Celestial Toymaker — notes its attack piles and reads the tally",
+
+	"4362efe4-339d-40e1-bd72-3cc9e41bf93f": "Bend or Break — SeparateIntoPiles",
 }
 
 // Every catalog card whose printed text says "pile" or "guess" is
