@@ -4864,6 +4864,7 @@ tail old-b051/kasmina-cast
 tail old-b330/sunbringers-touch-trample
 tail old-b331/return-face-down
 tail old-b332/mirror-mockery-exile
+tail old-b543/clash-counter-on-this
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5425,9 +5426,11 @@ tail then/braids-arisen-nightmare-ask-opponents
 tail then/braids-arisen-nightmare-next-opponent
 tail then/breeches-the-blastmaker-flip
 tail then/bringer-of-the-last-gift-return
+tail then/broken-ambitions-clashed
 tail then/c17-put-found-hammer-of-nazahn-onto-battlefield
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
+tail then/captivating-glance-clashed
 tail then/cascade-finish
 tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
@@ -5514,6 +5517,7 @@ tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
 tail then/firemind-s-foresight-second
 tail then/firemind-s-foresight-third
+tail then/fistful-of-force-clashed
 tail then/flamespeaker-s-will-destroy
 tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
@@ -5686,6 +5690,7 @@ tail then/reckless-endeavor-treasures
 tail then/reflections-of-littjara-type-chosen
 tail then/remorseless-punishment-sacrificed
 tail then/ringsight-search
+tail then/ringskipper-clashed
 tail then/ripples-of-potential-proliferated
 tail then/risky-research-draw-two-lose-two
 tail then/rith-the-awakener-saprolings
@@ -5752,6 +5757,7 @@ tail then/scrap-mastery-put
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
+tail then/sentry-oak-clashed
 tail then/servant-of-the-stinger-search
 tail then/shadow-kin-mill-step
 tail then/shadow-mysterious-assassin-sacrificed
@@ -5853,6 +5859,7 @@ tail then/whirlpool-whelm-clashed
 tail then/whispering-specter-discard
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
+tail then/woodland-guidance-clashed
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
 tail then/zaffai-after-scry
