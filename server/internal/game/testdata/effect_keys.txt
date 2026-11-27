@@ -582,6 +582,7 @@ body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b688/tuck-at-end-of-combat
 body s82-old-b751/return-the-objects-to-hands
+body s82-old-b778/phase-out-listed
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2471,6 +2472,7 @@ confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-old-b698-ley-line-put
 confirm confirm/s82-old-b698-put-counters-on-this
+confirm confirm/s82-old-b778-angelic-renewal-sacrifice
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -5336,6 +5338,7 @@ tail s82-old-b694-renounce/gain
 tail s82-old-b697/clear-the-land-exile
 tail s82-old-b699/midnight-ritual-zombies
 tail s82-old-b705/academy-rector-exiled
+tail s82-old-b778/return-the-died-card
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
