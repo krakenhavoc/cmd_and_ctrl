@@ -4591,6 +4591,7 @@ tail eager-construct/ask-next
 tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
+tail echo-chamber/exile-the-copy
 tail echoing-assault/sacrifice-at-next-end-step
 tail ecological-appreciation/choose
 tail ecological-appreciation/exile-self
