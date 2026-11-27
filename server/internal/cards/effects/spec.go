@@ -1162,6 +1162,13 @@ type Spec struct {
 	// it with no CastableZones entry; Register refuses the pair. Additive.
 	CastsOnlyFromGraveyard bool
 
+	// CastWhileSearchingLibrary is "While you're searching your library, you
+	// may cast this card from your library." (Panglacial Wurm, CR 701.23a,
+	// 608.2g, #6216): while its owner has an open search of their own library
+	// inside a resolution the card may be cast from the library, ignoring its
+	// type's timing (game/search_cast.go). Additive.
+	CastWhileSearchingLibrary bool
+
 	// CantSpendManaToCast is "You can't spend mana to cast this spell"
 	// (Hogaak, Arisen Necropolis): the cast is refused, in every mode, while
 	// any mana remains in its total cost after convoke and delve, and the

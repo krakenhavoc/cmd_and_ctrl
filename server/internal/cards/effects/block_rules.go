@@ -362,6 +362,9 @@ type CantBeBlockedThisTurnExceptBy struct {
 	// Subtypes is an any-of: a blocker with one of these effective
 	// creature types is allowed (a changeling passes for any of them).
 	Subtypes []string
+	// Supertypes is an any-of: a blocker that is a creature with one of these
+	// supertypes is allowed ("except by snow creatures", Rime Transfusion).
+	Supertypes []string
 	// Text is the allowed set as the card prints it — "creatures with
 	// haste", "Spirits" — read by the refusal sentence.
 	Text string
@@ -372,12 +375,14 @@ type CantBeBlockedThisTurnExceptBy struct {
 // Apply registers the record. Caller is inside the resolution frame
 // (holds g.mu write).
 func (r CantBeBlockedThisTurnExceptBy) Apply(ctx *Context) error {
-	if len(r.Keywords) == 0 && len(r.Subtypes) == 0 {
+	if len(r.Keywords) == 0 && len(r.Subtypes) == 0 && len(r.Supertypes) == 0 {
 		return nil
 	}
+	mod := game.CantBeBlockedExceptByMod(r.Keywords, r.Subtypes, r.Text)
+	mod.Supertypes = append([]string(nil), r.Supertypes...)
 	return ScopedEffectFor{
 		Target:   r.Target,
-		Mods:     []game.Mod{game.CantBeBlockedExceptByMod(r.Keywords, r.Subtypes, r.Text)},
+		Mods:     []game.Mod{mod},
 		Duration: DurationUntilEndOfTurn(ctx),
 		Label:    eotLabel(r.Label, "can't be blocked this turn except by "+r.Text),
 	}.Apply(ctx)

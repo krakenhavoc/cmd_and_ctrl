@@ -65,8 +65,8 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedExceptBy rule needs Text, the printed allowed set"
 		}
-		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 {
-			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype or object"
+		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 && len(m.Supertypes) == 0 {
+			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype, supertype or object"
 		}
 	case ModCantBeBlockedByPlayer:
 		if m.Player == uuid.Nil {
@@ -135,6 +135,14 @@ func blockRuleModProblem(m Mod) string {
 // the refusal sentence.
 func CantBeBlockedExceptByMod(keywords, subtypes []string, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedExceptBy, Keywords: copyStrings(keywords), Subtypes: copyStrings(subtypes), Text: text}
+}
+
+// CantBeBlockedExceptBySupertypesMod is "<creature> can't be blocked except by
+// <supertype> creatures" (Rime Transfusion's "except by snow creatures"): a
+// blocker that is a creature with one of `supertypes` may block. `text` is the
+// allowed set as the card prints it.
+func CantBeBlockedExceptBySupertypesMod(supertypes []string, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedExceptBy, Supertypes: copyStrings(supertypes), Text: text}
 }
 
 // CantBeBlockedExceptByObjectsMod is CantBeBlockedExceptByMod whose
@@ -264,6 +272,25 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 	case ModCantBeBlockedExceptBy:
 		affected := affectedPredicate(e.Affected)
 		byTrait := blockRuleAllowedPredicate(m.Keywords, m.Subtypes)
+		if len(m.Supertypes) > 0 {
+			// Rime Transfusion's "except by snow creatures": a blocker that is a
+			// creature with one of the supertypes is allowed too.
+			byKind, supers := byTrait, copyStrings(m.Supertypes)
+			byTrait = func(c *Card) bool {
+				if byKind(c) {
+					return true
+				}
+				if c == nil || !c.IsCreature() {
+					return false
+				}
+				for _, st := range supers {
+					if c.HasSupertype(st) {
+						return true
+					}
+				}
+				return false
+			}
+		}
 		// #6200: Raging River's piles. A blocker named by one of the
 		// record's Objects, as the object it was when the piles were
 		// made (CR 400.7), is allowed too.
