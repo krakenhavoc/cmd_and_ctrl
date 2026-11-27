@@ -1821,6 +1821,7 @@ choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-old-b734-sacrifice-unless-discard-creature
 choose choose-cards/s82-old-b735-goblin-war-cry
 choose choose-cards/s82-old-b735-harmony-of-nature
+choose choose-cards/s82-old-b752-phyrexian-grimoire-picked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2572,6 +2573,7 @@ confirm confirm/uss-enterprise-c-discard-hand
 confirm confirm/valiant-endeavor-result
 confirm confirm/vaultguard-trooper-discard-hand
 confirm confirm/verazol-the-split-current-copy
+confirm confirm/vhati-il-dal-base-pt
 confirm confirm/vrondiss-dragon-spirit
 confirm confirm/vrondiss-self-damage
 confirm confirm/wandering-archaic-copy
@@ -3539,6 +3541,7 @@ payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-old-b696-rishadan-sacrifice
 payunless pay-unless/s82-old-b742-fade-away-sacrifice
 payunless pay-unless/s82-old-b748-crovax-the-cursed
+payunless pay-unless/s82-old-b752-carrionette-exile
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
