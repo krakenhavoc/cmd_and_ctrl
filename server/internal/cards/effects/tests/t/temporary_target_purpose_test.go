@@ -131,6 +131,12 @@ var untilEndOfTurnExempt = map[string]string{
 	// which is true; the check reads the "gets -" of the second clause as a
 	// harm on every target.
 	"Drooling Groodion": "the first target benefits; the 'gets -' the check reads belongs to the second target",
+
+	// Planeshift (S82 OLD batch 639): the first target is the opponent who reveals
+	// a card; the creature that gets +X/+X or -X/-X is the second target, whose
+	// entry (slot 1) declares the direction. The check reads slot 0 only.
+	"Planeswalker's Favor": "the first target is the opponent who reveals a card; the pump's direction is declared on slot 1",
+	"Planeswalker's Scorn": "the first target is the opponent who reveals a card; the shrink's direction is declared on slot 1",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
