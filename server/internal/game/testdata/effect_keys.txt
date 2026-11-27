@@ -1016,6 +1016,7 @@ choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/emperor-of-bones-reanimate
+choose choose-cards/enchantment-alteration-attach
 choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/endless-horizons-take
 choose choose-cards/ensign-pavel-chekov-picked
@@ -3726,6 +3727,7 @@ run prompt-run/cornered-crook-sacrifice
 run prompt-run/covetous-elegy-keep
 run prompt-run/creeping-dread-compare
 run prompt-run/cruel-grimnarch-gain
+run prompt-run/curfew-return-a-creature
 run prompt-run/cycle-of-renewal-fetch
 run prompt-run/dahar-master-sacrifice
 run prompt-run/danse-macabre-roll
@@ -6299,6 +6301,7 @@ tail wand-of-wonder/after-exile
 tail wand-of-wonder/after-tuck
 tail wanderwine-farewell/merfolk-tokens
 tail waste-management/rogue-per-creature
+tail waylay/exile-the-knights
 tail wheel-of-potential/exiled-hand
 tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures

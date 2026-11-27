@@ -112,6 +112,7 @@ var reviewedNotAWipe = map[string]string{
 	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
 	"Retract":               "returns only its caster's own artifacts to hand, not a board",
 	"Armageddon":            "destroys lands, which no sweep class holds alone",
+	"Sunder":                "returns lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent. #5802:
 	// Saproling Burst's leaves trigger is the same link, destroying only

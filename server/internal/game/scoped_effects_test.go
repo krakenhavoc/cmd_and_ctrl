@@ -496,6 +496,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// "assign combat damage as though it weren't blocked" for a
 		// duration: assigns_as_unblocked_mod_test.go.
 		ModAssignsAsThoughUnblocked: true,
+		// Outmaneuver: the mandatory sibling, same file.
+		ModMustAssignAsThoughUnblocked: true,
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,
