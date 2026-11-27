@@ -97,7 +97,7 @@ func TestOldB600IsaoCantBeCounteredAndRegeneratesSamurai(t *testing.T) {
 	isao := effectstest.PushCatalogPermanent(g, me.ID, "Isao, Enlightened Bushi", "Legendary Creature — Human Samurai", oldB600Isao, false)
 	samurai := effectstest.B12Creature(g, opp.ID, "Their Samurai", "Creature — Human Samurai", 2, 2)
 	bear := effectstest.B12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-	if err := effectstest.RavB2Activate(t, g, me.ID, isao, 1-1, game.ActivateAbilityParams{Targets: effectstest.CardTarget(bear)}, "C", "C"); err == nil {
+	if err := effectstest.RavB2Activate(t, g, me.ID, isao, 0, game.ActivateAbilityParams{Targets: effectstest.CardTarget(bear)}, "C", "C"); err == nil {
 		t.Fatal("a non-Samurai was a legal target")
 	}
 	effectstest.B06AddMana(me, "C", "C")
