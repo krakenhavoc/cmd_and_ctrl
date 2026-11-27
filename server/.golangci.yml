@@ -86,6 +86,8 @@ linters:
         # "daed" is a run of hex digits in Stranglehold's Scryfall oracle id
         # (b66c6e3a-daed-...), not a word.
         - daed
+        # Sun Ce, Young Conquerer (Portal Three Kingdoms) is a printed card name.
+        - conquerer
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is

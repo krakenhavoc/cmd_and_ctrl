@@ -855,6 +855,19 @@ type TargetSpec struct {
 	// divided clause. Build it with effects.OfThatPlayersChoice.
 	ChosenByTriggerActor bool
 
+	// ChosenByDefendingPlayer is "target … of defending player's choice"
+	// on an attack trigger (Erithizon, S82 OLD b698): the defending player,
+	// the player the attacking creature attacks (or the controller of the
+	// planeswalker, or the protector of the battle, it attacks; CR 506.2),
+	// chooses this clause's targets, not the ability's controller. Like
+	// ChosenByTriggerActor the controller still controls the ability and is
+	// still the player targeting, so legality is judged for the controller;
+	// unlike it, the chooser is read off the attack the event announced, not
+	// off the event's Actor (the attacking player). Triggers whose event is
+	// an attack only; effects.Register refuses it elsewhere. Build it with
+	// effects.OfDefendingPlayersChoice.
+	ChosenByDefendingPlayer bool
+
 	// Harmful says the clause's effect hurts the permanent it picks:
 	// The Abyss's "destroy target nonartifact creature that player
 	// controls of their choice" (#4249). Nothing else on a pick_target

@@ -87,6 +87,26 @@ func (g *Game) SkipNextCombatPhaseForEffect(player, source uuid.UUID, label stri
 	return g.RegisterScopedRuleEffectForEffect(source, ScopeGame, uuid.Nil, []Mod{m}, IndefiniteDuration(), label)
 }
 
+// SkipNextCombatPhaseThisTurnForEffect is "<player> skips their next
+// combat phase this turn" (Moment of Silence): the same record as
+// SkipNextCombatPhaseForEffect, but it ends with the turn, so a player
+// whose combat has passed (or who is not the active player) loses
+// nothing, and it never waits for a later turn (CR 614.10: a phase that
+// has begun is not skipped).
+//
+// Returns false, writing nothing, for a player who is not seated or has
+// left the game (CR 800.4a).
+//
+// Caller must hold g.mu (write).
+func (g *Game) SkipNextCombatPhaseThisTurnForEffect(player, source uuid.UUID, label string) bool {
+	p := g.playerByIDLocked(player)
+	if p == nil || p.Eliminated {
+		return false
+	}
+	m := Mod{Kind: ModSkipNextCombatPhase, Player: player}
+	return g.RegisterScopedRuleEffectForEffect(source, ScopeGame, uuid.Nil, []Mod{m}, g.UntilEndOfTurnDuration(), label)
+}
+
 // nextCombatSkipRecord reports whether e is a next-combat-phase skip
 // record, and its one mod.
 func nextCombatSkipRecord(e ScopedEffect) (Mod, bool) {

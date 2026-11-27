@@ -33,15 +33,8 @@ func init() {
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil
 			},
-			Key: "Oppression — the spell's caster discards a card",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player: item.Trigger.Event.Actor,
-					Source: item.SourceCardID,
-					N:      1,
-				})
-				return nil
-			},
+			Key:    "Oppression — the spell's caster discards a card",
+			Effect: effects.TheCastersDiscardsACard,
 		}},
 	})
 }

@@ -143,6 +143,11 @@ var untilEndOfTurnExempt = map[string]string{
 	// removal-for-a-turn it is; a benefit declaration would aim it at the
 	// bot's own creatures.
 	"Overtaker": "gains control of its target until end of turn; the target is an opposing creature, not a recipient",
+
+	// Urza's Legacy (S82 OLD batch 716): takes flying, first strike or trample
+	// from its target until end of turn, which is a harm; the pattern reads
+	// "loses" as a benefit (Urborg's case).
+	"Walking Sponge": "removes an ability from its target; the check reads 'loses' as a benefit",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
