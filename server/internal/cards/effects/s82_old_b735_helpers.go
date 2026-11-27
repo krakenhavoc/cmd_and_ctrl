@@ -116,7 +116,7 @@ var s82OldB735HarmonyTapped = AskedPick("choose-cards/s82-old-b735-harmony-of-na
 func S82OldB735ReturnNightstalkers(_ *game.StackItem, ctx *Context) error {
 	return ReturnFromGraveyardTogether{
 		Targets: GraveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
-			return c.IsPermanent() && c.HasSubtype("Nightstalker")
+			return c.IsPermanent() && c.HasSubtype(ctx.TextSubtype("Nightstalker"))
 		}),
 		ThenTail: s82OldB735NightstalkersThen,
 	}.Apply(ctx)

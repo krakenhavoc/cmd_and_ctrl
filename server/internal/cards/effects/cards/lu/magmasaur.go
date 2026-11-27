@@ -60,6 +60,9 @@ var magmasaurAnswer = effects.MayYesNo("confirm/s82-old-b760-magmasaur",
 		if c, ok := ctx.Game.LookupCardForEffect(ctx.Source()); !ok || c.Counters[game.CounterPlusOne] <= 0 {
 			return magmasaurBlowsUp(ctx)
 		}
+		if effects.SourceIsNewObject(ctx.Game, ctx.Item) {
+			return nil
+		}
 		return ctx.Game.AddCounterForEffect(ctx.Source(), game.CounterPlusOne, -1)
 	},
 	func(ctx *effects.Context, _ game.ConfirmAnswer) error {
