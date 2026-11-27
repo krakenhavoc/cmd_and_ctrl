@@ -1901,6 +1901,7 @@ choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/verdant-mastery-mine
 choose choose-cards/verdant-mastery-opponents-land
 choose choose-cards/vessel-of-nascency-take
+choose choose-cards/vexing-arcanix-take
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/visions-of-dread
 choose choose-cards/vivien-arkbow-ranger-creature
@@ -6048,6 +6049,7 @@ tail vengeance-mission/loss
 tail verdant-mastery/after-opponent
 tail verdant-mastery/found
 tail verdant-mastery/to-hand
+tail vexing-arcanix/named
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
 tail vindictive-triumph/exile-at-end-step
