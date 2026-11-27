@@ -580,6 +580,7 @@ body s82-old-b671/fickle-efreet-flip
 body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b688/tuck-at-end-of-combat
+body s82-old-b751/return-the-objects-to-hands
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -4970,6 +4971,7 @@ tail mass/krenkos-buzzcrusher-search
 tail mass/legions-end-name-sweep
 tail mass/march-of-souls-spirits
 tail mass/mass-polymorph-reveal
+tail mass/mogg-infestation-goblins
 tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
 tail mass/overwhelming-forces-draw
