@@ -139,6 +139,7 @@ body counter/plus-one-and-haste-for-the-payload
 body counter/plus-one-on-the-attacking-assassin
 body counter/plus-one-on-the-payload-creature
 body craig-boone/damage
+body cunning/sacrifice-at-next-cleanup
 body curious-forager/return-from-graveyard
 body curse-of-the-werefox/fight
 body cyclops-superconductor/damage
