@@ -439,6 +439,7 @@ body old-b356/return-listed-tapped
 body old-b386/reincarnation-return
 body old-b507/quenchable-fire-damage
 body old-b516-skeletonize/skeleton
+body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
