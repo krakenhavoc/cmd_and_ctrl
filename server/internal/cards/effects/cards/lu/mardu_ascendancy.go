@@ -27,13 +27,7 @@ func init() {
 		Name:         "Mardu Ascendancy",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if !effects.AttackDeclaredByYou(ev, source.Controller) {
-					return false
-				}
-				attacker, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && !attacker.IsToken()
-			}, "Mardu Ascendancy — create a 1/1 red Goblin creature token that's tapped and attacking",
+			effects.On(game.EventAttack, effects.ANontokenCreatureYouControlAttacked, "Mardu Ascendancy — create a 1/1 red Goblin creature token that's tapped and attacking",
 				effects.OldB351TappedAttackingTokenLikeTheAttacker("1/1 red Goblin")),
 		},
 		Activated: []effects.ActivatedAbility{{
