@@ -43,6 +43,7 @@ anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/vexing-devil-sacrifice
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
+anyplayer s82-old-b635/ice-cave-counter
 anyplayer sword-point-diplomacy/card
 body aang-at-the-crossroads/transform
 body ace-fearless-rebel/counter-and-fight
@@ -568,6 +569,7 @@ body s82-old-b408/obzedat-return
 body s82-old-b464/virulent-wound-poison
 body s82-old-b581/gaze-of-the-gorgon-destroy
 body s82-old-b585/discard-three-at-next-end-step
+body s82-old-b635/suppress-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -5125,6 +5127,7 @@ tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
 tail s82-old-b498/living-tsunami-after-return
+tail s82-old-b635/suppress-schedule
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards

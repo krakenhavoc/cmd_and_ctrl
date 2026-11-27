@@ -806,4 +806,10 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 535 (#5591): Din of the Fireherd's Elemental.
 	"5/5 black and red Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"B", "R"}},
+
+	// S82 OLD batch 635 (#5614): Penumbra Kavu's Kavu, Penumbra Wurm's Wurm and
+	// Haunted Angel's Angel.
+	"3/3 black Kavu":              {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"B"}},
+	"6/6 black Wurm with trample": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"trample"}},
+	"3/3 black Angel with flying": {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying"}},
 }

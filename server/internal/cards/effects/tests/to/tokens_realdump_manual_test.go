@@ -200,6 +200,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
 	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
 	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
+	// Penumbra Kavu (Apocalypse) creates "a 3/3 black Kavu creature token" and Haunted Angel
+	// "a 3/3 black Angel creature token with flying"; neither was ever printed as a token card
+	// (the only Kavu token is the all-colours one, and the Angel tokens are white or blue).
+	"3/3 black Kavu":              "no 3/3 black Kavu token card was printed; Penumbra Kavu's oracle text says 3/3 black",
+	"3/3 black Angel with flying": "no 3/3 black Angel token card was printed; Haunted Angel's oracle text says 3/3 black with flying",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
