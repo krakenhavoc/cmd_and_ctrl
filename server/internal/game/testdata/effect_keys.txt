@@ -1608,6 +1608,7 @@ choose choose-cards/resplendent-marshal-exile
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
 choose choose-cards/revival-experiment-chosen
+choose choose-cards/reviving-vapors-settle
 choose choose-cards/ring-bearer
 choose choose-cards/rinoa-angel-wing-return
 choose choose-cards/rip-spawn-hunter-different-powers
@@ -2651,6 +2652,7 @@ number number/incinerator-of-the-guilty-collect-evidence-x
 number number/life-bidding-opening-bid
 number number/life-bidding-raise
 number number/localized-destruction-destroy-all
+number number/mages-contest-won
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/medicine-runner-remove-counter
@@ -5871,6 +5873,7 @@ tail then/reality-scramble-reveal
 tail then/reckless-endeavor-treasures
 tail then/reflections-of-littjara-type-chosen
 tail then/remorseless-punishment-sacrificed
+tail then/reviving-vapors-in-hand
 tail then/ringsight-search
 tail then/ringskipper-clashed
 tail then/ripples-of-potential-proliferated
