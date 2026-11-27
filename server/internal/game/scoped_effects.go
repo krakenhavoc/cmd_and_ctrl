@@ -1465,6 +1465,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// "You may have this creature assign its combat damage as though it
 	// weren't blocked" granted for a duration (assigns_as_unblocked_mod.go).
 	ModAssignsAsThoughUnblocked: {layer: Layer6Ability},
+	// Outmaneuver: the same with no "you may" (assigns_as_unblocked_mod.go).
+	ModMustAssignAsThoughUnblocked: {layer: Layer6Ability},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
 	// #5869: its life-priced sibling (Sivitri, Dragon Master).
@@ -2618,6 +2620,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModAssignsAsThoughUnblocked:
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.AssignsAsThoughUnblocked = true
+		}
+	case ModMustAssignAsThoughUnblocked:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.MustAssignAsThoughUnblocked = true
 		}
 	case ModSetCreatureTypes:
 		subtypes := m.Subtypes

@@ -1,8 +1,6 @@
 package cardsth
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -43,17 +41,9 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
 			return effects.ChoosePermanents{
-				Question: "Time Wipe — return a creature you control to its owner's hand",
-				Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-					var out []uuid.UUID
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == of && c.IsCreature() {
-							out = append(out, c.InstanceID)
-						}
-					}
-					return out, 1, 1
-				},
-				Keyed: timeWipeChosen,
+				Question:   "Time Wipe — return a creature you control to its owner's hand",
+				Candidates: effects.OldB729OwnCreatureCandidates,
+				Keyed:      timeWipeChosen,
 			}.Apply(ctx)
 		},
 	})
