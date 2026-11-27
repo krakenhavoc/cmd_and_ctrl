@@ -576,6 +576,7 @@ body s82-old-b614/destroy-the-named-creature
 body s82-old-b635/suppress-return
 body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
+body s82-old-b671/fickle-efreet-flip
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2073,6 +2074,7 @@ coinflip coin-flip/s82-old-b602-fiery-gambit-flip
 coinflip coin-flip/s82-old-b626-planar-chaos-counter
 coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/s82-old-b629-squees-revenge
+coinflip coin-flip/s82-old-b671-fickle-efreet
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2992,6 +2994,7 @@ option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-old-b662-death-or-glory-chosen
+option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3441,6 +3444,7 @@ payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
 payunless pay-unless/s82-old-b670-death-charmer-lose-life
 payunless pay-unless/s82-old-b670-plague-fiend-destroy
 payunless pay-unless/s82-old-b670-soul-charmer-gain-life
+payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
