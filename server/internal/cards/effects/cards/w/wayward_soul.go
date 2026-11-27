@@ -29,16 +29,7 @@ func init() {
 			Label:   "{U}: Put this creature on top of its owner's library.",
 			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    effects.ManaCost("{U}"),
-			Effect:  putThisPermanentOnTopOfOwnersLibrary,
+			Effect:  effects.PutThisPermanentOnTopOfOwnersLibrary,
 		}},
 	})
-}
-
-// putThisPermanentOnTopOfOwnersLibrary is "Put this creature on top of
-// its owner's library" as an ability's whole effect.
-func putThisPermanentOnTopOfOwnersLibrary(g *game.Game, item *game.StackItem) error {
-	if effects.SourceIsNewObject(g, item) || !effects.OnBattlefield(g, item.SourceCardID) {
-		return nil
-	}
-	return g.TuckToLibraryForEffect(item.SourceCardID, false)
 }
