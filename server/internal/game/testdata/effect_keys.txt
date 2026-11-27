@@ -5865,6 +5865,7 @@ tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
 tail then/provoke-the-trolls-pump
 tail then/pucas-eye-color-chosen
+tail then/pure-reflection-create-token
 tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
 tail then/put-found-lands-onto-battlefield-tapped
 tail then/pygmy-hippo-schedule-lost-mana
