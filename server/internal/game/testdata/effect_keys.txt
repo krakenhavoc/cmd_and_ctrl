@@ -3042,6 +3042,7 @@ option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/sacrifice-this-unless-you-sacrifice-a-mountain
 option option-pick/sacrifice-this-unless-you-sacrifice-a-pegasus
+option option-pick/sacrifice-this-unless-you-sacrifice-an-enchantment
 option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
 option option-pick/scrying-sheets-top-card
