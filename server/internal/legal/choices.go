@@ -216,7 +216,9 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, label, p)
 			}
 
-		case game.PendingChoiceMana:
+		case game.PendingChoiceMana, game.PendingChoiceManaForPlayer:
+			// #6101: a mana_pick_for_player is answered the same way,
+			// with the colour the chosen seat adds to its own pool.
 			for _, color := range c.ColorOptions {
 				p := base()
 				p.Color = color

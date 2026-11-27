@@ -106,6 +106,7 @@ export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean
     case "coin_call":
     case "loop_shortcut":
     case "mana_pick":
+    case "mana_pick_for_player":
     case "choose_color":
     case "pay_amount":
       return true;
@@ -371,6 +372,15 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         hint: `It has resolved ${n} ${n === 1 ? "time" : "times"} this turn with nobody doing anything in between. Say how many more times to run it; Stop here leaves auto-pass paused so you can step through by hand.`,
       };
     }
+    case "mana_pick_for_player": {
+      // #6101: another player's Spectral Searchlight chose the viewer.
+      const by = (ctx.seats ?? []).find((s) => s.id === c.from_player)?.name ?? "Another player";
+      return {
+        title: `${by} chose you: ${ctx.sourceName}`,
+        tag: "mana",
+        hint: "Choose a color. You add one mana of that color to your mana pool.",
+      };
+    }
     case "mana_pick":
       return {
         title: reason || "Pick a color",
@@ -606,7 +616,8 @@ function answersFor(
       }
       return { primary: null, secondary: [] };
     default:
-      // mana_pick, choose_color: the symbols in the body are the answer.
+      // mana_pick, mana_pick_for_player, choose_color: the symbols in the
+      // body are the answer.
       return { primary: null, secondary: [] };
   }
 }

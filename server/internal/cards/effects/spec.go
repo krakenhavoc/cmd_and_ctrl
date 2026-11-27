@@ -2566,6 +2566,12 @@ type ManaAbility struct {
 	// the board.
 	AnyPlayer bool
 
+	// ChosenPlayerAdds is "Choose a player. That player adds one mana of
+	// any color they choose." (Spectral Searchlight, #6101): the
+	// activator names a player, and that player picks the colour of
+	// Produced and gets the mana. See game.ManaAbilityShape.ChosenPlayerAdds.
+	ChosenPlayerAdds bool
+
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals
 	// 1 damage to you", Ancient Tomb's "deals 2 damage to you". It

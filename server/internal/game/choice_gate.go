@@ -326,6 +326,9 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// the turn change itself: the old turn is over and the next has not
 	// begun, so there is nothing a table could walk on to.
 	PendingChoiceTurnSkipOrder: true,
+	// #6101: the chosen player's colour is the rest of the activator's
+	// mana ability, as a mana_pick's is.
+	PendingChoiceManaForPlayer: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

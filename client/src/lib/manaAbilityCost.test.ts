@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  chosenPlayerOptions,
   manaAbilityNeedsPrompt,
+  manaChosenPlayerPayment,
+  manaColorsForChosenPlayer,
   manaTapNeedsPicker,
   manaTapPayment,
   manaXPayment,
@@ -127,5 +130,34 @@ describe("modesUnderChoices for Choose X", () => {
     const m = modesUnderChoices(card, { xValue: 3 }).modes;
     expect(m?.min).toBe(3);
     expect(m?.max).toBe(3);
+  });
+});
+
+// #6101: Spectral Searchlight's "Choose a player".
+describe("a chosen-player mana row", () => {
+  it("asks before it is sent", () => {
+    expect(manaAbilityNeedsPrompt(ability({ chosen_player: true }))).toBe(true);
+  });
+
+  it("offers every player still in the game, you first", () => {
+    const seats = [
+      { id: "a", name: "Ann" },
+      { id: "b", name: "Bea" },
+      { id: "c", name: "Cy", eliminated: true },
+      { id: "d", name: "Dee" },
+    ];
+    expect(chosenPlayerOptions(seats, "b")).toEqual([
+      { id: "b", name: "Bea", you: true },
+      { id: "a", name: "Ann", you: false },
+      { id: "d", name: "Dee", you: false },
+    ]);
+  });
+
+  it("sends chosen_player, and a colour only for yourself", () => {
+    expect(manaChosenPlayerPayment(undefined)).toEqual({});
+    expect(manaChosenPlayerPayment("b")).toEqual({ chosen_player: "b" });
+    expect(manaColorsForChosenPlayer(["G"], "a", "a")).toEqual(["G"]);
+    expect(manaColorsForChosenPlayer(["G"], undefined, "a")).toEqual(["G"]);
+    expect(manaColorsForChosenPlayer(["G"], "b", "a")).toEqual([]);
   });
 });

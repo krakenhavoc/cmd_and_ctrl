@@ -5979,6 +5979,14 @@ type ManaAbilityView struct {
 	// of the row stamped with that seat as the activator
 	// (stampAnyPlayerOffers): its condition, cost options and price.
 	AnyPlayer bool `json:"any_player,omitempty"`
+	// ChosenPlayer marks "Choose a player. That player adds one mana of
+	// any color they choose." (Spectral Searchlight, #6101): the client
+	// asks the activator for a player and sends it as
+	// activate_mana_ability's `chosen_player`. With the activator chosen
+	// the row is an ordinary colour pick (color_options apply); with
+	// anyone else no colour is sent, and that player is asked a
+	// mana_pick_for_player.
+	ChosenPlayer bool `json:"chosen_player,omitempty"`
 	// TapCost reflects the "{T}:" portion of the ability. Drives
 	// the client's greying of the menu entry when the source is
 	// tapped — or, for a creature source like Birds of Paradise,
@@ -11606,7 +11614,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// filtered against the chooser's commander identity (see
 		// ActivateManaAbility). Clone the slice so post-wire
 		// mutations on the engine's copy don't leak onto the view.
-		if c.Kind == game.PendingChoiceMana && len(c.ColorOptions) > 0 {
+		// #6101: a mana_pick_for_player carries the same list, asked of
+		// the chosen player; from_player is the activator.
+		if (c.Kind == game.PendingChoiceMana || c.Kind == game.PendingChoiceManaForPlayer) && len(c.ColorOptions) > 0 {
 			v.ColorOptions = append([]string(nil), c.ColorOptions...)
 			if len(c.ManaAmounts) > 0 {
 				v.ColorAmounts = make(map[string]int, len(c.ManaAmounts))
@@ -15618,6 +15628,7 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
 			AnyPlayer:     a.AnyPlayer,
+			ChosenPlayer:  a.ChosenPlayerAdds,
 		})
 	}
 	return out

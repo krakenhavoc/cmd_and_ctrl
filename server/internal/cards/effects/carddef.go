@@ -117,6 +117,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Exhaust:                   a.Exhaust,
 			OncePerTurn:               a.OncePerTurn,
 			AnyPlayer:                 a.AnyPlayer,
+			ChosenPlayerAdds:          a.ChosenPlayerAdds,
 			Rider:                     manaRider(a),
 			RiderSelfDamage:           a.PainToYou,
 			RiderSelfLifeGain:         a.GainLife,

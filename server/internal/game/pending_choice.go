@@ -1998,12 +1998,17 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		return ErrPendingChoiceNotFound
 	}
 	choice := g.PendingChoices[idx]
-	if choice.Kind != PendingChoiceMana {
+	// #6101: a mana_pick_for_player is answered the same way, by the
+	// chosen player, into their own pool.
+	if !isManaPickKind(choice.Kind) {
 		return ErrInvalidParam
 	}
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
+	// #6101: the player who activated the ability. The chooser, except
+	// for a mana_pick_for_player, whose chooser only names the colour.
+	actor := manaPickActor(choice)
 	// Validate color is in the pre-materialised option set.
 	matched := false
 	for _, o := range choice.ColorOptions {
@@ -2075,8 +2080,8 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	// choice carried the ability's restrictions so the minted tokens
 	// get them (#352); copyRestrictions because the choice is about to
 	// be dequeued and the tokens outlive it.
-	colors := g.produceManaLocked(
-		p, choice.Source,
+	colors := g.produceManaTappedByLocked(
+		actor, p, choice.Source,
 		produced,
 		copyRestrictions(choice.ManaRestrictions),
 		// #1547: and its spend riders, carried the same way.
@@ -2097,7 +2102,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	// #5644: this pick was the output of a mana ability, which has now
 	// finished resolving unless it still has a pick open. Before the
 	// triggered mana abilities below, which resolve after it.
-	g.manaAbilityPickAnsweredLocked(run, chooserID, source, runLabel, runBase, len(colors))
+	g.manaAbilityPickAnsweredLocked(run, actor, source, runLabel, runBase, len(colors))
 	// #763, CR 605.1b / 605.4a: the second of the three production
 	// sites, and the ONLY one that knows the colour a
 	// Birds-of-Paradise-style source produced — which is what "one
@@ -2112,7 +2117,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		if card := g.findCardByIDLocked(source); card != nil {
 			g.fireManaTriggersLocked(ManaProduced{
 				Source:     *card,
-				Controller: chooserID,
+				Controller: actor,
 				Colors:     colors,
 			}, nil, nil)
 		}
