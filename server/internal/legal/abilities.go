@@ -243,7 +243,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// #660, the HAND CARD — that has it, which is what CR 702.16b tests
 	// protection against. Never the seat: a red player's colourless
 	// artifact ability may still point at a pro-red creature.
-	abilitySrc := game.SourceObject(e.seat, source)
+	abilitySrc := game.SourceActivating(e.seat, source)
 	defer func() {
 		e.rowOrigin, e.rowPowerUp, e.rowEquip, e.rowClassLevel, e.rowCostHasX, e.rowCostHasC = game.AbilityOrigin{}, false, false, false, false, false
 	}()

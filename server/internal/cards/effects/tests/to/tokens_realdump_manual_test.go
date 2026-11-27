@@ -220,6 +220,10 @@ var knownUnmatchedTokens = map[string]string{
 	// creature tokens". The only black Minion token card in the dump is a */*
 	// one; no 1/1 black Minion was printed. The template follows the oracle text.
 	"1/1 black Minion": "no 1/1 black Minion token card was printed for Infernal Genesis",
+
+	// Keeper of the Beasts (Exodus, 1998) creates "a 2/2 green Beast creature
+	// token"; no Beast token card of that size was printed for it.
+	"2/2 green Beast": "no 2/2 green Beast token card was printed for Keeper of the Beasts",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
