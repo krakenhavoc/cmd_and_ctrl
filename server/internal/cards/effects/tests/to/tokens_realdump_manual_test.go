@@ -220,6 +220,13 @@ var knownUnmatchedTokens = map[string]string{
 	// creature tokens". The only black Minion token card in the dump is a */*
 	// one; no 1/1 black Minion was printed. The template follows the oracle text.
 	"1/1 black Minion": "no 1/1 black Minion token card was printed for Infernal Genesis",
+
+	// Spirit Mirror (Tempest, S82 OLD batch 769) creates "a 2/2 white Reflection creature
+	// token" and Mongrel Pack "four 1/1 green Dog creature tokens". Neither was printed as
+	// a token card (the dump's Reflection is a 3/2 blue one and its Dogs are white). The
+	// templates follow the oracle text.
+	"2/2 white Reflection": "no 2/2 white Reflection token card was printed for Spirit Mirror",
+	"1/1 green Dog":        "no 1/1 green Dog token card was printed for Mongrel Pack",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

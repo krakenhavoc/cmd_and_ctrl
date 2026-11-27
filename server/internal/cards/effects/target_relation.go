@@ -54,3 +54,12 @@ func SharesACreatureTypeWithTargetCard(spec *game.TargetSpec, slot int) *game.Ta
 	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetCardSharesCreatureType}
 	return spec
 }
+
+// SharesAnArtifactOrCreatureTypeWithTarget is "that shares one of those types
+// with it" over "artifact or creature" (Legerdemain), where slot names the
+// earlier target permanent: both are artifacts or both are creatures, judged
+// as the spell is cast (CR 601.2c) and again as it resolves (CR 608.2b).
+func SharesAnArtifactOrCreatureTypeWithTarget(spec *game.TargetSpec, slot int) *game.TargetSpec {
+	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetSharesArtifactOrCreatureType}
+	return spec
+}
