@@ -1719,6 +1719,10 @@ choose choose-cards/s82-old-b581-sisters-of-stone-death-return
 choose choose-cards/s82-old-b599-chisei-remove-counter
 choose choose-cards/s82-old-b600-tomorrow-take
 choose choose-cards/s82-old-b602-lumengrid-augur-discarded
+choose choose-cards/s82-old-b626-mist-of-stagnation-untap
+choose choose-cards/s82-old-b626-wormfang-crab-exile
+choose choose-cards/s82-old-b626-wormfang-newt-land
+choose choose-cards/s82-old-b626-wormfang-turtle-land
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2022,6 +2026,8 @@ coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
 coinflip coin-flip/s82-old-b602-fiery-gambit-flip
+coinflip coin-flip/s82-old-b626-planar-chaos-counter
+coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2929,6 +2935,7 @@ option option-pick/s82-old-b599-chisei-counter-kind
 option option-pick/s82-old-b602-fatespinner-skip
 option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
+option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3372,6 +3379,7 @@ payunless pay-unless/s82-old-b564-recover
 payunless pay-unless/s82-old-b609-crystal-rod-life
 payunless pay-unless/s82-old-b609-iron-star-life
 payunless pay-unless/s82-old-b609-throne-of-bone-life
+payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
