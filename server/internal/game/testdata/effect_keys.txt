@@ -1723,6 +1723,7 @@ choose choose-cards/s82-old-b626-mist-of-stagnation-untap
 choose choose-cards/s82-old-b626-wormfang-crab-exile
 choose choose-cards/s82-old-b626-wormfang-newt-land
 choose choose-cards/s82-old-b626-wormfang-turtle-land
+choose choose-cards/s82-old-b678-exile-linked
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3384,6 +3385,8 @@ payunless pay-unless/s82-old-b609-crystal-rod-life
 payunless pay-unless/s82-old-b609-iron-star-life
 payunless pay-unless/s82-old-b609-throne-of-bone-life
 payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
+payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
+payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3825,6 +3828,7 @@ run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-old-b339-abzan-advantage-bolster
 run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-old-b552-crush-underfoot
+run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
