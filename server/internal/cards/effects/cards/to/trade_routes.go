@@ -29,7 +29,7 @@ func init() {
 			},
 			{
 				Label:   "{1}, Discard a land card: Draw a card.",
-				Purpose: game.Purpose{Draws: 1},
+				Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue}, // ADR 0142: a draw answers nothing on the stack
 				Cost:    effects.Plus(effects.ManaCost("{1}"), effects.DiscardCardsMatching(1, "a land card", game.Card.IsLand)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return effects.DrawCards{Player: item.Controller, N: 1}.Apply(effects.NewContext(g, item))

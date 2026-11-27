@@ -21,7 +21,7 @@ func init() {
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
 			Label:   "{6}, {T}: Search your library for a card, put that card into your hand, then shuffle.",
-			Purpose: game.Purpose{Tutors: 1},
+			Purpose: game.Purpose{Tutors: 1, Answers: game.AnswerValue}, // ADR 0142: a tutor answers nothing on the stack
 			Cost:    effects.Plus(effects.ManaCost("{6}"), effects.TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return effects.SearchLibrary{
