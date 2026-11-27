@@ -5772,6 +5772,7 @@ tail then/patient-rebuilding-draw
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
 tail then/perish-the-thought-shuffled
+tail then/persecute-color-chosen
 tail then/phenomenon-investigators-draw
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
