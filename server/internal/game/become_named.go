@@ -114,7 +114,7 @@ var knownSupertypes = []string{"Basic", "Legendary", "Ongoing", "Snow", "World"}
 // two kinds, and for the one field only ModSetTypes reads. "" when the
 // mod is sound.
 func becomeNamedModProblem(m Mod) string {
-	if m.Kind != ModSetTypes && m.Kind != ModAddSupertypes && m.Kind != ModRemoveSupertypes && len(m.Supertypes) > 0 {
+	if m.Kind != ModSetTypes && m.Kind != ModAddSupertypes && m.Kind != ModRemoveSupertypes && m.Kind != ModCantBeBlockedExceptBy && len(m.Supertypes) > 0 {
 		return fmt.Sprintf("mod %q names supertypes, which only a setTypes, addSupertypes or removeSupertypes mod reads", m.Kind)
 	}
 	switch m.Kind {
@@ -125,6 +125,12 @@ func becomeNamedModProblem(m Mod) string {
 		for _, s := range m.Supertypes {
 			if !typeIn(s, knownSupertypes) {
 				return fmt.Sprintf("an %s mod names %q, which is not a supertype", m.Kind, s)
+			}
+		}
+	case ModCantBeBlockedExceptBy:
+		for _, s := range m.Supertypes {
+			if !typeIn(s, knownSupertypes) {
+				return fmt.Sprintf("a %s mod names %q, which is not a supertype", m.Kind, s)
 			}
 		}
 	case ModSetName:
