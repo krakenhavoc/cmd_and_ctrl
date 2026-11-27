@@ -1723,6 +1723,7 @@ choose choose-cards/s82-old-b626-mist-of-stagnation-untap
 choose choose-cards/s82-old-b626-wormfang-crab-exile
 choose choose-cards/s82-old-b626-wormfang-newt-land
 choose choose-cards/s82-old-b626-wormfang-turtle-land
+choose choose-cards/s82-old-b694-renounce-sacrifice
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3319,6 +3320,7 @@ payunless pay-unless/old-b579-blood-funnel-counter
 payunless pay-unless/old-b580-perplex-counter
 payunless pay-unless/old-b608-gain-1-life
 payunless pay-unless/old-b623-dwarven-scorcher-1
+payunless pay-unless/old-b694-gain-2-life
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -5172,6 +5174,7 @@ tail s82-old-b600/tomorrow-done
 tail s82-old-b600/tomorrow-taken
 tail s82-old-b602-spoils-of-the-vault/exiled
 tail s82-old-b602-spoils-of-the-vault/taken
+tail s82-old-b694-renounce/gain
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
