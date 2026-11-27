@@ -3312,6 +3312,7 @@ payunless pay-unless/satya-sacrifice-token
 payunless pay-unless/savai-thundermane-damage
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/screeching-bat-transform
+payunless pay-unless/searing-meditation-damage
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/serene-steward-counter
 payunless pay-unless/seymour-flux-draw-and-counter
