@@ -121,6 +121,12 @@ var untilEndOfTurnExempt = map[string]string{
 	// player dealt damage; the "until end of turn" is the source's own
 	// indestructible, not a change to the target.
 	"Ellie, Vengeful Hunter": "the target is a player dealt damage; the until end of turn is the source's",
+
+	// Ravnica: City of Guilds (S82 OLD batch 575): the first target gets +2/+2
+	// and the second gets -2/-2. The first target's entry declares the benefit,
+	// which is true; the check reads the "gets -" of the second clause as a
+	// harm on every target.
+	"Drooling Groodion": "the first target benefits; the 'gets -' the check reads belongs to the second target",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
