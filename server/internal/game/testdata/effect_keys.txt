@@ -1766,6 +1766,8 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-forest
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
+choose choose-cards/s82-old-b705-scent-of-ivy
+choose choose-cards/s82-old-b705-scent-of-nightshade
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2548,6 +2550,8 @@ confirm s82-bro-b07/sarinth-take-land
 confirm s82-bro-b07/sarinth-to-graveyard
 confirm s82-dmu-b16/ajani-bottom
 confirm s82-old-b199/dryad-greenseeker-take-land
+confirm s82-old-b705/rayne-additional-draw
+confirm s82-old-b705/rayne-first-draw
 confirm s82-rpr-b04/aid-from-the-cowl-bottom
 confirm s82-rpr-b04/aid-from-the-cowl-put
 confirm spark-of-creativity/damage-or-play
@@ -2714,6 +2718,7 @@ number number/s82-old-b408-vizkopa-confessor-paid
 number number/s82-old-b411-bioshift-move
 number number/s82-old-b459-hex-parasite-remove
 number number/s82-old-b629-squees-revenge
+number number/s82-old-b705-scrying-glass
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -5245,6 +5250,7 @@ tail s82-old-b647/blind-seer-color-chosen
 tail s82-old-b677/divining-witch-exiled
 tail s82-old-b677/divining-witch-taken
 tail s82-old-b677/eye-of-yawgmoth-taken
+tail s82-old-b705/academy-rector-exiled
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5992,6 +5998,7 @@ tail then/s82-old-b603-molten-rain-damage
 tail then/s82-old-b632-zombie-boa-color
 tail then/s82-old-b662-desperate-research-named
 tail then/s82-old-b677-divining-witch-named
+tail then/s82-old-b705-scrying-glass-color
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
