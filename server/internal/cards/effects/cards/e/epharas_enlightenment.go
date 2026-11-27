@@ -36,12 +36,7 @@ func init() {
 				}),
 			effects.Optional(effects.On(game.EventETB, effects.CreatureEnteredUnderYourControl,
 				"Ephara's Enlightenment — you may return this Aura to its owner's hand",
-				func(g *game.Game, item *game.StackItem) error {
-					if effects.SourceIsNewObject(g, item) {
-						return nil
-					}
-					return effects.BounceToHand{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
-				}),
+				effects.OldB731ReturnThisToOwnersHand),
 				"Ephara's Enlightenment — return this Aura to its owner's hand?"),
 		},
 	})
