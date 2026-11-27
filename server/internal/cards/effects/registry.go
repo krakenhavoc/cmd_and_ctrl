@@ -2229,6 +2229,15 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	if c.Harmful && !slices.Contains(c.Zones, game.ZoneBattlefield) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is marked Harmful but cannot pick a permanent (#4249)", name, i))
 	}
+	if c.ChosenByDefendingPlayer {
+		// S82 OLD b698: the defending player's choice is one plain clause.
+		switch {
+		case c.ChosenByOpponent || c.ChosenByTriggerActor:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen by the defending player and by another player", name, i))
+		case c.ControlledByChooser, c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is the defending player's choice and is random, divided, related or \"they control\" — no printed card is", name, i))
+		}
+	}
 	if c.ChosenByTriggerActor {
 		// #1997: "of their choice" is one plain clause, like an
 		// opponent's.
@@ -2270,6 +2279,9 @@ func refuseOpponentChoice(name, owner string, spec *game.TargetSpec) {
 // player could be asked.
 func refuseTriggerActorChoice(name, owner string, spec *game.TargetSpec) {
 	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ChosenByDefendingPlayer {
+			panic(fmt.Sprintf("effects.Register: %q declares a defending player's-choice target on %s clause %d — only an attack trigger's own clause list has a defending player", name, owner, i))
+		}
 		if spec.Clause(i).ChosenByTriggerActor {
 			panic(fmt.Sprintf("effects.Register: %q declares a triggering player's-choice target on %s clause %d — only a trigger's own clause list has a triggering player", name, owner, i))
 		}

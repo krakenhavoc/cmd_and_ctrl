@@ -4051,6 +4051,27 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 				forPlayer = f.source.Controller
 			}
 		}
+		if clause.ChosenByDefendingPlayer {
+			// S82 OLD b698: "of defending player's choice" on an attack
+			// trigger: the player the attack was declared against chooses,
+			// its legal set still judged for the controller. No defending
+			// player in the game, nobody to choose (CR 603.3d).
+			who := uuid.Nil
+			if src.Trigger != nil && src.Trigger.Fired() && src.Trigger.Event.Kind == EventAttack {
+				who = g.defendingPlayerForAttackLocked(src.Trigger.Event.Target)
+			}
+			if who == uuid.Nil || !g.playerInGameLocked(who) {
+				if clause.Min > 0 {
+					return
+				}
+				f.step++
+				continue
+			}
+			chooser = who
+			if who != f.source.Controller {
+				forPlayer = f.source.Controller
+			}
+		}
 		if clause.ChosenByOpponent {
 			named := f.stepChooser(f.step)
 			if named == uuid.Nil {

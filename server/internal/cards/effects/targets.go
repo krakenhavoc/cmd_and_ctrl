@@ -793,6 +793,19 @@ func OfThatPlayersChoice(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// OfDefendingPlayersChoice is "target … of defending player's choice" on an
+// attack trigger (Erithizon, S82 OLD b698): the defending player chooses the
+// clause's targets, though the ability's controller still controls it and
+// still targets; legality is judged for the controller. It is data on the
+// clause (game.TargetSpec.ChosenByDefendingPlayer). Attack triggers only;
+// effects.Register refuses it elsewhere.
+//
+//	OfDefendingPlayersChoice(TargetCreature("target creature of defending player's choice"))
+func OfDefendingPlayersChoice(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ChosenByDefendingPlayer = true
+	return spec
+}
+
 // Harmful marks a clause whose effect hurts the permanent it picks
 // (game.TargetSpec.Harmful, #4249): The Abyss's destroy. Nothing else on a
 // pick_target prompt says which way the pick cuts, so a bot that has to
