@@ -1802,6 +1802,8 @@ choose choose-cards/s82-old-b714-wei-assassins-destroy
 choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-old-b734-sacrifice-unless-discard-creature
+choose choose-cards/s82-old-b735-goblin-war-cry
+choose choose-cards/s82-old-b735-harmony-of-nature
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -6237,6 +6239,7 @@ tail together/kardurs-vicious-return-boost
 tail together/revival-experiment-life
 tail together/s82-old-b054-chosen-returns
 tail together/s82-old-b170-bond-of-revival-haste
+tail together/s82-old-b735-return-of-the-nightstalkers
 tail token-and-attach-source/attach
 tail tokens-then/old-b072-reckless-crew-attach
 tail tomb-fortress/after-mill
