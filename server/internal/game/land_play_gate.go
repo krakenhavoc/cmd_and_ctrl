@@ -228,6 +228,9 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 			return &CantPlayLandError{Reason: reason, Source: e.Source.ID}
 		}
 	}
+	if reason, banSource, ok := g.landPlayNamedBanLocked(card); ok {
+		return &CantPlayLandError{Reason: reason, Source: banSource}
+	}
 	// #2559: "can't play cards from your hand" (Memory Vessel) bans a
 	// land played out of the hand and no other.
 	if fromZone == ZoneHand {

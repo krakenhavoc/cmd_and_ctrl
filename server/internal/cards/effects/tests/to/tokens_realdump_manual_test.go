@@ -192,6 +192,10 @@ var knownUnmatchedTokens = map[string]string{
 	// Kalitas, Bloodchief of Ghet creates "a black Vampire creature token" whose power and toughness are the
 	// destroyed creature's; the printed token card is */*, which a fixed size can never match.
 	"0/0 black Vampire": "the printed token card is */*; Kalitas, Bloodchief of Ghet sets its power and toughness as it creates it",
+
+	// Dune-Brood Nephilim (Guildpact) creates "a 1/1 colorless Sand creature token for each land you control". The
+	// token was never printed as a token card, so the dump has no Sand to match.
+	"1/1 colorless Sand": "no token card was ever printed for Dune-Brood Nephilim's Sand",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

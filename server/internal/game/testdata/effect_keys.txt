@@ -5503,6 +5503,7 @@ tail then/cmdr2-s43-tectonic-giant-choose
 tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others
 tail then/congregation-at-dawn-order
+tail then/conjurers-ban-named
 tail then/councils-deliberation-draw
 tail then/coveted-prize-free-cast
 tail then/created-gain-keyword-until-eot
