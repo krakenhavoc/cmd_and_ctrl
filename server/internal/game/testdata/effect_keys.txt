@@ -5316,6 +5316,7 @@ tail saheeli-the-gifted/haste-and-exile-copies
 tail saheeli-the-suns-brilliance/haste-and-sacrifice-copy
 tail salt-road-skirmish/warriors-haste-and-sacrifice
 tail sanwell-avenger-ace/after-exile
+tail saprazzan-breaker/after-mill
 tail saruman-of-many-colors/after-mill
 tail saruman-of-many-colors/copy-exiled
 tail sauron-lord-of-the-rings/mill-then-return
