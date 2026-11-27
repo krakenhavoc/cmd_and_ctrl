@@ -2634,6 +2634,7 @@ number esper-terra/lore-counters
 number number/aether-refinery-create-an-aetherborn
 number number/aether-spike-counter-unless-paid
 number number/arcane-denial-draw-up-to-two
+number number/bend-or-break-split
 number number/by-invitation-only-sacrifice
 number number/cemetery-desecrator-remove-counters
 number number/cmdr2-aetherborn-marauder-move
@@ -2718,6 +2719,8 @@ option option-pick/baleful-mastery-opponent-draws
 option option-pick/ballroom-brawlers-keyword
 option option-pick/beckoning-will-o-wisp-opponent
 option option-pick/bellowing-mauler-lose-or-sacrifice
+option option-pick/bend-or-break-opponent
+option option-pick/bend-or-break-pile
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
 option option-pick/blank-blank-rocketship-letter
@@ -6015,6 +6018,8 @@ tail then/transforming-flourish-cast
 tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
 tail then/tribal-unity-type-chosen
+tail then/tsabos-decree-destroy
+tail then/tsabos-decree-type-chosen
 tail then/tuktuk-scrapper-destroyed
 tail then/twisted-fates-counters
 tail then/tyrant-of-discord-repeat
