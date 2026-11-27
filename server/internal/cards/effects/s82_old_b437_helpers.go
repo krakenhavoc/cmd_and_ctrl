@@ -94,37 +94,7 @@ var _ = CardTail(s82OldB437RepeatKey, func(ctx *Context, o game.TailOutcome) err
 // first and every point is one simultaneous damage instance (CR 608.2). With
 // its one target illegal the spell does nothing (CR 608.2b).
 func S82OldB437XDamageToPlayerOrWalkerAndTheirCreatures(ctx *Context) error {
-	x := ctx.X()
-	targets := ctx.LegalTargets()
-	if x <= 0 || len(targets) == 0 {
-		return nil
-	}
-	t := targets[0]
-	player := t.ID
-	if t.Kind == game.TargetCard {
-		c, ok := ctx.Game.LookupCardForEffect(t.ID)
-		if !ok {
-			return nil
-		}
-		player = c.Controller
-	}
-	var creatures []uuid.UUID
-	for _, c := range MatchingBattlefield(ctx, Creature()) {
-		if c.Controller == player {
-			creatures = append(creatures, c.InstanceID)
-		}
-	}
-	return ctx.Game.DamageInstanceForEffect(func() error {
-		if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: x}).Apply(ctx); err != nil {
-			return err
-		}
-		for _, id := range creatures {
-			if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: x}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return S82OldB772DamageToPlayerOrWalkerAndTheirCreatures(ctx, ctx.X())
 }
 
 // S82OldB437CantAttackOrBlockUnlessPairedWithSoulbond is "This creature can't
