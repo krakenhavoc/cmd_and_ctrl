@@ -2377,6 +2377,7 @@ confirm confirm/s82-old-b464-vedalken-infuser-counter
 confirm confirm/s82-old-b602-fiery-gambit-again
 confirm confirm/s82-old-b602-liars-pendulum-guess
 confirm confirm/s82-old-b602-liars-pendulum-reveal
+confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -5471,6 +5472,7 @@ tail tail/s82-neo-b18-kirin-orochi-counter
 tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/s82-old-b005-karn-silver
 tail tail/s82-old-b110-idol-of-endurance-hold
+tail tail/s82-old-b627-morality-shift-library-moved
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
