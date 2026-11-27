@@ -5336,6 +5336,7 @@ tail s82-old-b694-renounce/gain
 tail s82-old-b697/clear-the-land-exile
 tail s82-old-b699/midnight-ritual-zombies
 tail s82-old-b705/academy-rector-exiled
+tail s82-old-b766/sacred-guide-taken
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -6088,6 +6089,7 @@ tail then/s82-old-b662-desperate-research-named
 tail then/s82-old-b675-infernal-genesis-milled
 tail then/s82-old-b677-divining-witch-named
 tail then/s82-old-b705-scrying-glass-color
+tail then/s82-old-b766-booby-trap-damage
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
