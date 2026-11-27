@@ -365,6 +365,9 @@ type CantBeBlockedThisTurnExceptBy struct {
 	// Supertypes is an any-of: a blocker that is a creature with one of these
 	// supertypes is allowed ("except by snow creatures", Rime Transfusion).
 	Supertypes []string
+	// Colors is an any-of of WUBRG letters: a creature blocker of one of these
+	// colors is allowed ("except by black creatures", Dread Charge).
+	Colors []string
 	// Text is the allowed set as the card prints it — "creatures with
 	// haste", "Spirits" — read by the refusal sentence.
 	Text string
@@ -375,11 +378,12 @@ type CantBeBlockedThisTurnExceptBy struct {
 // Apply registers the record. Caller is inside the resolution frame
 // (holds g.mu write).
 func (r CantBeBlockedThisTurnExceptBy) Apply(ctx *Context) error {
-	if len(r.Keywords) == 0 && len(r.Subtypes) == 0 && len(r.Supertypes) == 0 {
+	if len(r.Keywords) == 0 && len(r.Subtypes) == 0 && len(r.Supertypes) == 0 && len(r.Colors) == 0 {
 		return nil
 	}
 	mod := game.CantBeBlockedExceptByMod(r.Keywords, r.Subtypes, r.Text)
 	mod.Supertypes = append([]string(nil), r.Supertypes...)
+	mod.Colors = append([]string(nil), r.Colors...)
 	return ScopedEffectFor{
 		Target:   r.Target,
 		Mods:     []game.Mod{mod},
