@@ -3917,6 +3917,7 @@ run prompt-run/s82-old-b552-crush-underfoot
 run prompt-run/s82-old-b662-global-ruin-keep
 run prompt-run/s82-old-b674-overburden-return-land
 run prompt-run/s82-old-b678-rupture
+run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -5281,6 +5282,7 @@ tail s82-old-b677/divining-witch-taken
 tail s82-old-b677/eye-of-yawgmoth-taken
 tail s82-old-b694-renounce/gain
 tail s82-old-b697/clear-the-land-exile
+tail s82-old-b699/midnight-ritual-zombies
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
