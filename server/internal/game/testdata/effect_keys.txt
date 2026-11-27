@@ -1689,6 +1689,9 @@ choose choose-cards/s82-old-b472-discard-or-sacrifice
 choose choose-cards/s82-old-b472-glint-hawk-return
 choose choose-cards/s82-old-b497-chandra-ablaze-discard
 choose choose-cards/s82-old-b498-living-tsunami-return
+choose choose-cards/s82-old-b548-changeling-berserker-champion
+choose choose-cards/s82-old-b548-changeling-hero-champion
+choose choose-cards/s82-old-b548-changeling-titan-champion
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
