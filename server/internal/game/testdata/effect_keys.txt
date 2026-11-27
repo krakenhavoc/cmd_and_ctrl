@@ -2813,6 +2813,7 @@ option option-pick/nicol-bolas-the-deceiver-punisher
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/ob-nixilis-the-adversary-answer
+option option-pick/ogre-marauder-answer
 option option-pick/old-b071-cosima-voyage
 option option-pick/old-b081-fact-or-fiction-splitter
 option option-pick/old-b193-dream-cache-side
