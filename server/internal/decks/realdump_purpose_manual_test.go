@@ -440,6 +440,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 717 (#5623).
 	"Impending Disaster": "destroys only lands, which no sweep class names alone (Armageddon declares none)",
 	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
+
+	// S82 OLD batch 744 (#5626).
+	"Wall of Nets": "exiles only the creatures it blocked this combat and returns them when it leaves, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
