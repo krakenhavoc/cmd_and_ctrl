@@ -118,7 +118,7 @@ func pilesStep(ctx *Context, words []string, players, placed []uuid.UUID, head, 
 	for at < n {
 		who := players[at]
 		var left []uuid.UUID
-		for _, id := range PermanentsControlledByPlayer(g, who) {
+		for _, id := range pilesCandidates(g, who, words[0]) {
 			if !slices.Contains(placed, id) {
 				left = append(left, id)
 			}
@@ -130,8 +130,8 @@ func pilesStep(ctx *Context, words []string, players, placed []uuid.UUID, head, 
 				Chooser: who,
 				Owner:   who,
 				Source:  ctx.Source(),
-				Question: fmt.Sprintf("%s — separate the permanents you control into %d piles: choose pile %d of %d (the last pile is the rest)",
-					pilesCardName(ctx), count, pile+1, count),
+				Question: fmt.Sprintf("%s — separate the %s you control into %d piles: choose pile %d of %d (the last pile is the rest)",
+					pilesCardName(ctx), pilesNoun(words[0]), count, pile+1, count),
 				Cards:   left,
 				Min:     0,
 				Max:     len(left),

@@ -222,6 +222,7 @@ body exile/glimpse-the-impossible-bin
 body exile/listed-cards
 body exile/mnemonic-betrayal-return
 body exile/s82-old-b061-fire-giants-fury
+body exile/s82-old-b673-psychic-theft-return
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
@@ -573,6 +574,8 @@ body s82-old-b581/gaze-of-the-gorgon-destroy
 body s82-old-b585/discard-three-at-next-end-step
 body s82-old-b614/destroy-the-named-creature
 body s82-old-b635/suppress-return
+body s82-old-b673/return-this-to-hand-at-end-of-combat
+body s82-old-b677/destroy-listed-objects
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1608,6 +1611,7 @@ choose choose-cards/resplendent-marshal-exile
 choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
 choose choose-cards/revival-experiment-chosen
+choose choose-cards/reviving-vapors-settle
 choose choose-cards/ring-bearer
 choose choose-cards/rinoa-angel-wing-return
 choose choose-cards/rip-spawn-hunter-different-powers
@@ -1728,6 +1732,40 @@ choose choose-cards/s82-old-b626-mist-of-stagnation-untap
 choose choose-cards/s82-old-b626-wormfang-crab-exile
 choose choose-cards/s82-old-b626-wormfang-newt-land
 choose choose-cards/s82-old-b626-wormfang-turtle-land
+choose choose-cards/s82-old-b662-barrins-spite
+choose choose-cards/s82-old-b662-desperate-research-take
+choose choose-cards/s82-old-b662-global-ruin-keep-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-island
+choose choose-cards/s82-old-b662-global-ruin-keep-island-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-island-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-island-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-island-swamp
+choose choose-cards/s82-old-b662-global-ruin-keep-island-swamp-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-island-swamp-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-island-swamp-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-swamp
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-swamp-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-swamp-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-island-swamp-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-swamp
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-swamp-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-swamp-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-plains-swamp-mountain-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-swamp
+choose choose-cards/s82-old-b662-global-ruin-keep-swamp-forest
+choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
+choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
+choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2634,6 +2672,7 @@ number esper-terra/lore-counters
 number number/aether-refinery-create-an-aetherborn
 number number/aether-spike-counter-unless-paid
 number number/arcane-denial-draw-up-to-two
+number number/bend-or-break-split
 number number/by-invitation-only-sacrifice
 number number/cemetery-desecrator-remove-counters
 number number/cmdr2-aetherborn-marauder-move
@@ -2650,6 +2689,7 @@ number number/incinerator-of-the-guilty-collect-evidence-x
 number number/life-bidding-opening-bid
 number number/life-bidding-raise
 number number/localized-destruction-destroy-all
+number number/mages-contest-won
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/mat-distribute-counters-share
 number number/medicine-runner-remove-counter
@@ -2718,6 +2758,8 @@ option option-pick/baleful-mastery-opponent-draws
 option option-pick/ballroom-brawlers-keyword
 option option-pick/beckoning-will-o-wisp-opponent
 option option-pick/bellowing-mauler-lose-or-sacrifice
+option option-pick/bend-or-break-opponent
+option option-pick/bend-or-break-pile
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
 option option-pick/blank-blank-rocketship-letter
@@ -2828,6 +2870,7 @@ option option-pick/intellectual-offering-untap
 option option-pick/intrude-on-the-mind-chooser
 option option-pick/invasion-of-arcavios-zones
 option option-pick/itazura-lingering-wick-opponent
+option option-pick/jeweled-spirit-protection
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/khorvaths-fury-friend-or-foe
 option option-pick/kinscaer-sentry-attacks
@@ -2948,6 +2991,7 @@ option option-pick/s82-old-b602-fatespinner-skip
 option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-old-b626-wormfang-crab-opponent
+option option-pick/s82-old-b662-death-or-glory-chosen
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3141,6 +3185,7 @@ payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/cumulative-upkeep-paid-or-sacrificed
 payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
+payunless pay-unless/darigaaz-the-igniter-hand
 payunless pay-unless/death-priest-of-myrkul-skeleton
 payunless pay-unless/decree-of-justice-soldiers
 payunless pay-unless/descendant-of-storms-endure
@@ -3154,6 +3199,7 @@ payunless pay-unless/drake-haven-drake
 payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
+payunless pay-unless/dromar-the-banisher-bounce
 payunless pay-unless/drowner-initiate-mill
 payunless pay-unless/durable-handicraft-counter
 payunless pay-unless/dutiful-replicator-copy
@@ -3444,6 +3490,7 @@ payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
 payunless pay-unless/trail-of-crumbs-look-at-top-two
 payunless pay-unless/tranquil-frillback-pay-g
+payunless pay-unless/treva-the-renewer-life
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
 payunless pay-unless/tyrannize-discard-hand
@@ -3497,11 +3544,13 @@ pick revealed-pick/oildeep-gearhulk-draw
 pick revealed-pick/perish-the-thought-shuffle
 pick revealed-pick/pick-the-brain-search
 pick revealed-pick/psychic-intrusion-may-cast
+pick revealed-pick/psychic-theft-may-cast
 pick revealed-pick/reap-intellect-search
 pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/s82-old-b108-kitesail-freebooter-return
 pick revealed-pick/s82-old-b369-brain-maggot-return
+pick revealed-pick/s82-old-b662-lobotomy-search
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/soul-search-spirit
@@ -3834,6 +3883,8 @@ run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-old-b339-abzan-advantage-bolster
 run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-old-b552-crush-underfoot
+run prompt-run/s82-old-b662-global-ruin-keep
+run prompt-run/s82-old-b674-overburden-return-land
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -5052,6 +5103,7 @@ tail phthisis/controller-loses-life
 tail picklock-prankster/after-mill
 tail pile/boneyard-parley-dealt
 tail pile/s82-old-b518-brilliant-ultimatum-dealt
+tail pile/s82-old-b662-death-or-glory-settled
 tail pile/split-the-spoils-settled
 tail pinnacle-starcage/record-returns
 tail pinnacle-starcage/robots-then-sacrifice
@@ -5148,6 +5200,7 @@ tail role-tokens/attach-to-host
 tail rona-tolarian-obliterator/exiled
 tail rooms-b-helpers/after-mill
 tail rootborn-defenses/grant-indestructible
+tail rooting-kavu/exiled
 tail rosheen-roaring-prophet/after-mill
 tail rottenmouth-viper/punish
 tail rousing-refrain/three-time-counters
@@ -5189,6 +5242,9 @@ tail s82-old-b645/aerostat-return-this
 tail s82-old-b646/target-color-chosen
 tail s82-old-b646/this-color-chosen
 tail s82-old-b647/blind-seer-color-chosen
+tail s82-old-b677/divining-witch-exiled
+tail s82-old-b677/divining-witch-taken
+tail s82-old-b677/eye-of-yawgmoth-taken
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5639,6 +5695,7 @@ tail then/crosis-the-purger-discard-the-color
 tail then/crystal-spray-draw
 tail then/curse-of-silence-draw
 tail then/dance-with-calamity-exiled
+tail then/darigaaz-the-igniter-reveal
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-bargain-search
@@ -5668,6 +5725,7 @@ tail then/draw-a-card
 tail then/draw-n-cards
 tail then/dream-eater-reflexive-bounce
 tail then/dredge-sacrificed
+tail then/dromar-the-banisher-bounce
 tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
@@ -5687,6 +5745,7 @@ tail then/faiths-shield-fateful-hour-protection
 tail then/fandaniel-telophoroi-ascian-next-opponent
 tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
+tail then/fight-or-flight-chosen-pile
 tail then/firemind-s-foresight-second
 tail then/firemind-s-foresight-third
 tail then/fistful-of-force-clashed
@@ -5858,6 +5917,7 @@ tail then/promise-of-bunrei-spirits
 tail then/protection-from-chosen-color-until-eot
 tail then/provoke-the-trolls-pump
 tail then/pucas-eye-color-chosen
+tail then/pure-reflection-create-token
 tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
 tail then/put-found-lands-onto-battlefield-tapped
 tail then/pygmy-hippo-schedule-lost-mana
@@ -5868,6 +5928,7 @@ tail then/reality-scramble-reveal
 tail then/reckless-endeavor-treasures
 tail then/reflections-of-littjara-type-chosen
 tail then/remorseless-punishment-sacrificed
+tail then/reviving-vapors-in-hand
 tail then/ringsight-search
 tail then/ringskipper-clashed
 tail then/ripples-of-potential-proliferated
@@ -5929,6 +5990,8 @@ tail then/s82-old-b602-spoils-of-the-vault-named
 tail then/s82-old-b603-detonate-damage
 tail then/s82-old-b603-molten-rain-damage
 tail then/s82-old-b632-zombie-boa-color
+tail then/s82-old-b662-desperate-research-named
+tail then/s82-old-b677-divining-witch-named
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
@@ -5942,6 +6005,7 @@ tail then/scour-the-desert-birds
 tail then/scrap-mastery-exiled
 tail then/scrap-mastery-put
 tail then/screaming-nemesis-cant-gain-life
+tail then/searing-rays-chosen
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
 tail then/sentry-oak-clashed
@@ -5967,6 +6031,7 @@ tail then/split-the-spoils-exiled
 tail then/spring-cleaning-clashed
 tail then/springjack-knight-clashed
 tail then/stain-the-mind-named
+tail then/stand-or-fall-chosen-pile
 tail then/standstill-opponents-draw-three
 tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
@@ -6014,7 +6079,10 @@ tail then/torment-of-hailfire-punisher-sacrificed
 tail then/transforming-flourish-cast
 tail then/trench-gorger-searched
 tail then/trenzalore-clocktower-shuffle-draw
+tail then/treva-the-renewer-life
 tail then/tribal-unity-type-chosen
+tail then/tsabos-decree-destroy
+tail then/tsabos-decree-type-chosen
 tail then/tuktuk-scrapper-destroyed
 tail then/twisted-fates-counters
 tail then/tyrant-of-discord-repeat

@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // attack_limits.go is CR 508.1c's COUNT restrictions on an attack
 // declaration: "no more than one creature can attack each combat"
@@ -166,6 +170,14 @@ type AttackLimit struct {
 	// scope.
 	MinOthers          int
 	OthersPowerGreater bool
+
+	// OthersColors narrows the companion to a creature that is one of these
+	// colors (uppercase letters, "B", "G"): Scarred Puma's "can't attack
+	// unless a black or green creature also attacks". Read through the
+	// layers at declaration, with MinOthers and OthersPowerGreater, which it
+	// combines with. Empty is any creature. Plain data; ignored for any
+	// other scope.
+	OthersColors []string
 }
 
 // companionsNeeded is how many other attackers a NotAlone limit asks
@@ -266,6 +278,8 @@ type AttackLimitError struct {
 	// rule (#6197), for its sentence; zero for "can't attack alone".
 	MinOthers          int
 	OthersPowerGreater bool
+	// OthersColors is the companion's required colors, for its sentence.
+	OthersColors []string
 }
 
 // Error is the debug form: the sentence as a third party reads it.
@@ -298,7 +312,7 @@ func (e *AttackLimitError) Sentence(viewer uuid.UUID) string {
 	case AttackLimitOnlyAlone:
 		return nameOr(e.SourceName, "That creature") + " can only attack alone."
 	case AttackLimitNotAlone:
-		return nameOr(e.SourceName, "That creature") + notAloneAttackClause(e.MinOthers, e.OthersPowerGreater)
+		return nameOr(e.SourceName, "That creature") + notAloneAttackClause(e.MinOthers, e.OthersPowerGreater, e.OthersColors...)
 	}
 	s += " each combat"
 	if e.SourceName != "" {
@@ -311,8 +325,14 @@ func (e *AttackLimitError) Sentence(viewer uuid.UUID) string {
 // " can't attack alone.", " can't attack unless at least two other
 // creatures attack.", " can't attack unless a creature with greater
 // power also attacks." (#6197).
-func notAloneAttackClause(minOthers int, greater bool) string {
+func notAloneAttackClause(minOthers int, greater bool, colors ...string) string {
 	switch {
+	case len(colors) > 0 && !greater && minOthers <= 1:
+		words := make([]string, len(colors))
+		for i, c := range colors {
+			words[i] = ColorName(c)
+		}
+		return " can't attack unless a " + strings.Join(words, " or ") + " creature also attacks."
 	case greater:
 		return " can't attack unless a creature with greater power also attacks."
 	case minOthers > 1:
@@ -489,7 +509,7 @@ func (g *Game) attackLimitErrorLocked(l attackLimitSource, decls []AttackDeclara
 	if l.limit.Scope == AttackLimitNotAlone && l.source != nil {
 		// The creature that can't attack alone is the one to point at.
 		e.Attacker, e.AttackerName = e.Source, e.SourceName
-		e.MinOthers, e.OthersPowerGreater = l.limit.MinOthers, l.limit.OthersPowerGreater
+		e.MinOthers, e.OthersPowerGreater, e.OthersColors = l.limit.MinOthers, l.limit.OthersPowerGreater, l.limit.OthersColors
 		return e
 	}
 	for _, d := range decls {

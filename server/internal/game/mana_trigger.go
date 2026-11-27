@@ -189,6 +189,14 @@ type ManaTrigger struct {
 	// that has since gone still deals it, CR 608.2h). Plain data, so the
 	// rider adds no closure route. Zero for every other card.
 	LandDamagesTapper int
+
+	// SourceDamagesTapper is Overabundance's rider: "... and this
+	// enchantment deals N damage to the player." When the ability
+	// resolves, after its mana is added, the permanent carrying the
+	// trigger deals this much damage to the player whose pool the mana
+	// landed in. Plain data, so the rider adds no closure route. Zero for
+	// every other card.
+	SourceDamagesTapper int
 }
 
 // CatalogManaTriggers returns the registered triggered mana abilities
@@ -261,6 +269,8 @@ type manaTriggerFiring struct {
 	skip bool
 	// landDamage is ManaTrigger.LandDamagesTapper.
 	landDamage int
+	// sourceDamage is ManaTrigger.SourceDamagesTapper.
+	sourceDamage int
 }
 
 // addsMana reports whether p is a production that can trigger anything:
@@ -369,7 +379,8 @@ func (g *Game) manaTriggerFiringsLocked(prod ManaProduced) []manaTriggerFiring {
 				produced: produced,
 				skip:     t.TappedSkipsNextUntap,
 
-				landDamage: t.LandDamagesTapper,
+				landDamage:   t.LandDamagesTapper,
+				sourceDamage: t.SourceDamagesTapper,
 			})
 		}
 	}
@@ -463,6 +474,11 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 			// "Then that land deals N damage to that player": the tapped
 			// permanent is the source, the producing player the victim.
 			_ = g.dealDamageToPlayerLocked(prod.SourceID(), nil, prod.Controller, f.landDamage, DamageMarks{})
+		}
+		if f.sourceDamage > 0 {
+			// "... and this <permanent> deals N damage to that player": the
+			// permanent carrying the trigger is the source.
+			_ = g.dealDamageToPlayerLocked(f.source, nil, prod.Controller, f.sourceDamage, DamageMarks{})
 		}
 	}
 }

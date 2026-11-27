@@ -210,6 +210,11 @@ var knownUnmatchedTokens = map[string]string{
 	// (the only Kavu token is the all-colours one, and the Angel tokens are white or blue).
 	"3/3 black Kavu":              "no 3/3 black Kavu token card was printed; Penumbra Kavu's oracle text says 3/3 black",
 	"3/3 black Angel with flying": "no 3/3 black Angel token card was printed; Haunted Angel's oracle text says 3/3 black with flying",
+
+	// Pure Reflection (Invasion) creates "an X/X white Reflection creature token". No token card was
+	// ever printed for it (the dump's Reflection is a 3/2 blue one from Alirios); the template is 0/0 and
+	// the card sets X/X as it creates the token.
+	"0/0 white Reflection": "no token card was printed for Pure Reflection's X/X white Reflection; the card sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

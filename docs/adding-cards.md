@@ -4983,7 +4983,7 @@ refuses a clause with no label or no life.
 nontoken Rebels cost an additional "Sacrifice a land" to activate" (Brutal
 Suppression), "Spells cost an additional "Sacrifice a Swamp" to cast for
 each black mana symbol in their mana costs" (Drought; #6205, CR 601.2f,
-602.2b). A static of the permanent, `CardDef.ImposedSacrifices`:
+602.2b). A static of the permanent, `Spec.ImposedSacrifices` (carried to `CardDef.ImposedSacrifices`):
 
 ```go
 ImposedSacrifices: []game.ImposedSacrifice{{

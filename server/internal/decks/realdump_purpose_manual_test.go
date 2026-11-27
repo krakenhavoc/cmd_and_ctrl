@@ -418,6 +418,18 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 619 (#5607).
 	"Death Pit Offering": "sacrifices only its own controller's creatures as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 658 (#5616).
+	"Bend or Break": "destroys only the lands in the chosen piles, like Armageddon, which no sweep class holds alone",
+
+	// S82 OLD batch 667 (#5616).
+	"Pure Reflection": "destroys only Reflections, a creature type of token and a few cards, never the board's creatures as a class",
+
+	// S82 OLD batch 674 (#5617).
+	"Keldon Firebombers": "each player sacrifices only the lands past their third, which are lands, and no sweep class names lands (Armageddon declares none)",
+
+	// S82 OLD batch 677 (#5618).
+	"Divining Witch": "exiles only the top six cards and the cards it reveals from its controller's own library, never a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

@@ -1,0 +1,18 @@
+package cardsco
+
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+)
+
+// Crosis's Attendant — Artifact Creature — Golem {5}, 3/3 (Invasion, #5616):
+//
+//	"{1}, Sacrifice this creature: Add {U}{B}{R}."
+//
+// A mana ability (CR 605.1a): the cost pays {1} and sacrifices the Golem,
+// and the three colours come out together. No {T}, so summoning sickness
+// does not stop it.
+//
+// No simplification.
+func init() {
+	effects.Register(effects.S82OldB657Attendant("6223b1c0-bfe0-490c-b2d4-28537b05f571", "Crosis's Attendant", "{U}{B}{R}"))
+}
