@@ -2092,6 +2092,7 @@ coinflip coin-flip/s82-old-b626-planar-chaos-counter
 coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/s82-old-b671-fickle-efreet
+coinflip coin-flip/scoria-wurm-upkeep
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2794,6 +2795,7 @@ option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/bribe-taker-counter
 option option-pick/bucolic-ranch-top-card
 option option-pick/cabaretti-ascendancy-top-card
+option option-pick/catastrophe-lands-or-creatures
 option option-pick/celestial-toymaker-pile
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
