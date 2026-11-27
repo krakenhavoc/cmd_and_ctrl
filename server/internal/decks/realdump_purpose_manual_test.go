@@ -418,6 +418,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 619 (#5607).
 	"Death Pit Offering": "sacrifices only its own controller's creatures as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 690 (#5619).
+	"Warpath": "3 damage only to the creatures in combat (each blocking creature and each blocked creature), not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
