@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "633b541b-e37f-451a-be73-3398e61e0f75",
 		Name:         "Hibernation",
 		Completeness: effects.CompletenessFull,
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, Partial: true}}, // ADR 0126: bounces only the green permanents
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
 			return effects.BounceAllMatching{Match: effects.OfColor("G")}.Apply(ctx)
 		},
