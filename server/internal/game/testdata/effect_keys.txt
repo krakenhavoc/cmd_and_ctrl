@@ -446,6 +446,7 @@ body old-b507/quenchable-fire-damage
 body old-b516-skeletonize/skeleton
 body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
 body old-b639/planeswalkers-mischief-return
+body old-b793/sabertooth-cobra-poison
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink

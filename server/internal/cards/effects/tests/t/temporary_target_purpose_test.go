@@ -148,6 +148,11 @@ var untilEndOfTurnExempt = map[string]string{
 	// from its target until end of turn, which is a harm; the pattern reads
 	// "loses" as a benefit (Urborg's case).
 	"Walking Sponge": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Mirage (S82 OLD batch 793): deals damage to its target and takes flying
+	// from it until end of turn, which is a harm; the pattern reads "loses" as
+	// a benefit (Urborg's case).
+	"Burning Palm Efreet": "removes an ability from its target; the check reads 'loses' as a benefit",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
