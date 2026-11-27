@@ -27,14 +27,7 @@ func init() {
 			{
 				Layer:     game.Layer4Type,
 				AppliesTo: allLands,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					for _, t := range c.Types {
-						if effects.EqualFoldASCIIEffects(t, "Creature") {
-							return
-						}
-					}
-					c.Types = append(c.Types, "Creature")
-				},
+				Apply:     effects.OldB643AddCreatureType,
 			},
 			{
 				Layer:     game.Layer7PT,
