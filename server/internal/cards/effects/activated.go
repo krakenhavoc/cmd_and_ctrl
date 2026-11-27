@@ -317,6 +317,12 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.SacrificeOther != nil {
 			out.SacrificeOther = c.SacrificeOther
 		}
+		// #6208: "Sacrifice all lands you control" (Tomb of Urami) is
+		// SacrificeOther with this flag; dropped, the cost sacrifices
+		// nothing and the ability is free of it, stronger than printed.
+		if c.SacrificeAll {
+			out.SacrificeAll = true
+		}
 		if c.Mana != "" {
 			// #1310, CR 701.67b: a waterbend cost is PART of the
 			// total, so composing it with a mana component sums the

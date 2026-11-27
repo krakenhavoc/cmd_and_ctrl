@@ -192,6 +192,10 @@ var knownUnmatchedTokens = map[string]string{
 	// Kalitas, Bloodchief of Ghet creates "a black Vampire creature token" whose power and toughness are the
 	// destroyed creature's; the printed token card is */*, which a fixed size can never match.
 	"0/0 black Vampire": "the printed token card is */*; Kalitas, Bloodchief of Ghet sets its power and toughness as it creates it",
+
+	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
+	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
+	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
