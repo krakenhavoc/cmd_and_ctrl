@@ -2992,6 +2992,7 @@ option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-old-b662-death-or-glory-chosen
+option option-pick/s82-old-b716-walking-sponge-keyword
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
