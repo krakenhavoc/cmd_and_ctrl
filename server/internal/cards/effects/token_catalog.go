@@ -631,6 +631,9 @@ var TokenTemplates = []tokenTemplateBuilder{
 	printedGutterGrimeOozeToken,
 	// S82 OLD batch 516: Skeletonize's Skeleton ("{B}: Regenerate this creature.").
 	printedOldB516SkeletonToken,
+	// S82 OLD batch 560: Sound the Call's Wolf ("gets +1/+1 for each card named
+	// Sound the Call in each graveyard").
+	PrintedOldB560SoundTheCallWolf,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
