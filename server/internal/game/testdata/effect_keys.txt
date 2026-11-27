@@ -448,6 +448,7 @@ body old-b639/planeswalkers-mischief-return
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
+body oracle-en-vec/the-turn-begins
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
 body otherworldly-outburst/horror
 body overcharged-amalgam/counter
@@ -1796,6 +1797,7 @@ choose choose-cards/s82-old-b714-marshaling-the-troops-tap
 choose choose-cards/s82-old-b714-wei-assassins-destroy
 choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
+choose choose-cards/s82-old-b761-oracle-en-vec
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -5814,6 +5816,7 @@ tail then/epharas-dispersal-surveil
 tail then/epiphany-at-the-drownyard-take
 tail then/expose-the-culprit-cloak
 tail then/expressive-iteration-exile
+tail then/extinction-type-chosen
 tail then/face-down-piles-to-hand
 tail then/fact-or-fiction-take
 tail then/faiths-shield-fateful-hour-protection
