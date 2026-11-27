@@ -1767,6 +1767,7 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-forest
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
+choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -6000,6 +6001,7 @@ tail then/s82-old-b603-molten-rain-damage
 tail then/s82-old-b632-zombie-boa-color
 tail then/s82-old-b662-desperate-research-named
 tail then/s82-old-b677-divining-witch-named
+tail then/s82-old-b675-infernal-genesis-milled
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

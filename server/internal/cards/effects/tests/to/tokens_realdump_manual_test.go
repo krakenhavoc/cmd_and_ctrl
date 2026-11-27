@@ -215,6 +215,11 @@ var knownUnmatchedTokens = map[string]string{
 	// ever printed for it (the dump's Reflection is a 3/2 blue one from Alirios); the template is 0/0 and
 	// the card sets X/X as it creates the token.
 	"0/0 white Reflection": "no token card was printed for Pure Reflection's X/X white Reflection; the card sets X/X as it creates it",
+
+	// Infernal Genesis (Prophecy, S82 OLD batch 675) creates "1/1 black Minion
+	// creature tokens". The only black Minion token card in the dump is a */*
+	// one; no 1/1 black Minion was printed. The template follows the oracle text.
+	"1/1 black Minion": "no 1/1 black Minion token card was printed for Infernal Genesis",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

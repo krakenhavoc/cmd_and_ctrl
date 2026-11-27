@@ -454,6 +454,10 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
 
+	// Elephant Resurgence's Elephant: a green */* whose size is the creature
+	// cards in its controller's graveyard (Prophecy, S82 OLD batch 675, #5617).
+	printedS82OldB675ElephantToken,
+
 	// Ajani Goldmane's Avatar: a white */* whose size is its controller's life
 	// total (Secret Lair Drop, #5462).
 	printedOldB007AvatarToken,
