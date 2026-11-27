@@ -34,16 +34,7 @@ func init() {
 			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Condition: effects.AllConditions(effects.DuringYourUpkeep(),
 				effects.ControlsAtLeast(1, func(c game.Card) bool { return c.HasSubtypeWord("Swamp") })),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				return (effects.ReturnFromGraveyard{
-					Target:     item.SourceCardID,
-					Dest:       game.ZoneBattlefield,
-					Controller: item.Controller,
-				}).Apply(effects.NewContext(g, item))
-			},
+			Effect: effects.ReturnThisFromYourGraveyardToTheBattlefield,
 		}},
 	})
 }
