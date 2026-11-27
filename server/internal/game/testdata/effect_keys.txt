@@ -3481,8 +3481,8 @@ payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/phoenix-chick-return
 payunless pay-unless/phyrexian-tyranny-lose-two
 payunless pay-unless/pillar-tombs-of-aku-decline
-payunless pay-unless/power-taint-lose-2
 payunless pay-unless/power-sink-tap-lands
+payunless pay-unless/power-taint-lose-2
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/pyre-zombie-return
@@ -4000,11 +4000,11 @@ run prompt-run/s82-old-b678-rupture
 run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-old-b723-wildfire-damage
-run prompt-run/s82-old-b745-oath-of-ghouls-return
 run prompt-run/s82-old-b742-cataclysm-keep
 run prompt-run/s82-old-b743-mana-breach-return
 run prompt-run/s82-old-b744-crashing-boars-block
 run prompt-run/s82-old-b744-limited-resources-keep
+run prompt-run/s82-old-b745-oath-of-ghouls-return
 run prompt-run/s82-old-b748-cannibalize-exile
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
