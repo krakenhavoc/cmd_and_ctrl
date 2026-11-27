@@ -5473,6 +5473,7 @@ tail tail/s82-neo-b18-kirin-orochi-spirit
 tail tail/s82-old-b005-karn-silver
 tail tail/s82-old-b110-idol-of-endurance-hold
 tail tail/s82-old-b627-morality-shift-library-moved
+tail tail/s82-old-b628-funeral-pyre-spirit
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun
