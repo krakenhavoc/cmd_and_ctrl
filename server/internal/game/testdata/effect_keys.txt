@@ -578,6 +578,7 @@ body s82-old-b635/suppress-return
 body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b671/fickle-efreet-flip
+body s82-old-b688/tuck-at-end-of-combat
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -3001,6 +3002,7 @@ option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
+option option-pick/sacrifice-this-unless-you-sacrifice-a-mountain
 option option-pick/sacrifice-this-unless-you-sacrifice-a-pegasus
 option option-pick/sanctuary-warden-remove-a-counter
 option option-pick/saurons-ransom-splitter
