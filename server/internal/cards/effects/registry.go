@@ -2225,6 +2225,9 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	if c.ControlledByAnotherThanChooser && (!c.ChosenByTriggerActor || c.ControlledByChooser) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"another player controls\" relative to a chooser it does not have, or beside \"they control\" — wrap it as AnotherPlayerControls(OfThatPlayersChoice(...))", name, i))
 	}
+	if c.MoreLifeThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who has more life than they do\" with no triggering player choosing a player — wrap it as WithMoreLifeThanTheChooser(OfThatPlayersChoice(TargetPlayer(...))) (#5626)", name, i))
+	}
 	if c.MoreCreaturesThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who controls more creatures than they do\" with no triggering player choosing a player — wrap it as WithMoreCreaturesThanTheChooser(OfThatPlayersChoice(TargetPlayer(...))) (#6100)", name, i))
 	}

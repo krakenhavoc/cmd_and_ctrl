@@ -128,7 +128,8 @@ type TargetSource struct {
 	// announcing says the walk is the ANNOUNCEMENT of an activated
 	// ability (CR 602.2b / 601.2c): the activation gate, the legal set the
 	// picker and the bot see. SourceActivating sets it; the CR 608.2b
-	// re-check never does. Read only by moreCreaturesAsActivatedAdmits.
+	// re-check never does. Read only by moreCreaturesAsActivatedAdmits and
+	// moreLifeAdmits.
 	announcing bool
 
 	// spell says the walk's source is a SPELL — a card being cast, a
@@ -343,7 +344,8 @@ func SourceCast(controller uuid.UUID, obj *Card) TargetSource {
 
 // SourceActivating is SourceObject for the announcement of an activated
 // ability (activated.go, legal/abilities.go): the one walk a restriction
-// "as you activate this ability" reads (as_activated_more_creatures.go).
+// "as you activate this ability" reads (as_activated_more_creatures.go,
+// more_life.go).
 func SourceActivating(controller uuid.UUID, obj *Card) TargetSource {
 	return TargetSource{Controller: controller, Object: obj, announcing: true}
 }
@@ -980,6 +982,27 @@ type TargetSpec struct {
 	// Meaningless without ChosenByTriggerActor; effects.Register refuses it
 	// alone. Build it with effects.WithMoreCreaturesThanTheChooser.
 	MoreCreaturesThanChooser bool
+
+	// MoreLifeThanChooser is "target player who has more life than they do
+	// and is their opponent" on a ChosenByTriggerActor clause (Oath of
+	// Mages, #5626): a player candidate must be someone other than the
+	// chooser whose life total is higher than the chooser's. DATA, judged
+	// beside PlayerOK in the player walk (moreLifeAdmits, more_life.go), so
+	// the legal set, the announce check (CR 601.2c) and the resolution
+	// re-check (CR 608.2b) are one answer; a walk with no chooser admits
+	// nobody. Meaningless without ChosenByTriggerActor; effects.Register
+	// refuses it alone. Build it with effects.WithMoreLifeThanTheChooser.
+	MoreLifeThanChooser bool
+
+	// MoreLifeAsActivated is "target opponent who has more life than you
+	// do as you activate this ability" (Keeper of the Flame, #5626): a
+	// player candidate must be another player whose life total is higher
+	// than the activating controller's, judged only on the announcement's
+	// walk (TargetSource.announcing, CR 602.2b). The CR 608.2b re-check
+	// never reads it, so the ability still resolves if the totals change in
+	// response. DATA, judged in the one player walk (more_life.go). Build
+	// it with effects.WithMoreLifeAsActivated.
+	MoreLifeAsActivated bool
 
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
@@ -1706,7 +1729,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.PlayerOK != nil && !spec.PlayerOK(g, src.Controller, p) {
 				continue
 			}
-			if !spec.playerChooserAdmits(g, src, p) || !spec.moreCreaturesAsActivatedAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
+			if !spec.playerChooserAdmits(g, src, p) || !spec.moreCreaturesAsActivatedAdmits(g, src, p) || !spec.moreLifeAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 				continue
 			}
 			out.Players = append(out.Players, p.ID)
@@ -1982,7 +2005,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if targeting && !g.canPlayerBeTargetedByLocked(p, src) {
 			return false
 		}
-		if !spec.playerChooserAdmits(g, src, p) || !spec.moreCreaturesAsActivatedAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
+		if !spec.playerChooserAdmits(g, src, p) || !spec.moreCreaturesAsActivatedAdmits(g, src, p) || !spec.moreLifeAdmits(g, src, p) || !spec.playerDamagedBySourceAdmits(g, src, p) || !spec.notSourceOwnerAdmits(src, p) {
 			return false
 		}
 		return spec.PlayerOK == nil || spec.PlayerOK(g, src.Controller, p)
