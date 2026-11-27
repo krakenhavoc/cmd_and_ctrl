@@ -245,6 +245,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		CyclingCostAlternatives:             spec.CyclingCostAlternatives,
 		TargetTaxes:                         spec.TargetTaxes,
 		LifePerTarget:                       spec.LifePerTarget,
+		ImposedSacrifices:                   spec.ImposedSacrifices,
 		BlockRules:                          spec.BlockRules,
 		AttackLimits:                        spec.AttackLimits,
 		ExertOnAttack:                       spec.ExertOnAttack,
