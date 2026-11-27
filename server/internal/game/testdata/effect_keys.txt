@@ -2498,6 +2498,7 @@ confirm confirm/tempting-contract
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/territory-culler-take
 confirm confirm/territory-culler-to-graveyard
+confirm confirm/thalakos-deceiver-sacrifice
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others
 confirm confirm/the-everforger-copy
@@ -4118,6 +4119,7 @@ steps then-steps/summon-kujata-fire
 steps then-steps/sycorax-commander-wheel
 steps then-steps/sylvan-library-pay
 steps then-steps/temporary-truce-rest
+steps then-steps/thalakos-deceiver-steal
 steps then-steps/the-gitrog-ravenous-ride-draw
 steps then-steps/the-legend-of-yangchen-draws
 steps then-steps/tivit-seller-of-secrets-tokens
