@@ -5278,6 +5278,7 @@ tail s82-old-b677/divining-witch-exiled
 tail s82-old-b677/divining-witch-taken
 tail s82-old-b677/eye-of-yawgmoth-taken
 tail s82-old-b694-renounce/gain
+tail s82-old-b697/clear-the-land-exile
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
