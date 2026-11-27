@@ -31,25 +31,14 @@ func init() {
 				Label:   "{X}{G}, {T}: Arashi deals X damage to target creature with flying.",
 				Cost:    effects.Plus(effects.ManaCost("{X}{G}"), effects.TapCost()),
 				Targets: effects.TargetCreature("target creature with flying", effects.HasKeyword("flying")),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetCard {
-							return effects.DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: ctx.X()}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:  effects.OldB584SourceDealsXToTarget(),
 			},
 			{
 				Label:   "Channel — {X}{G}{G}, Discard this card: It deals X damage to each creature with flying.",
 				Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, Partial: true}},
 				Cost:    effects.Plus(effects.ManaCost("{X}{G}{G}"), effects.DiscardThis()),
 				Zones:   []game.ZoneKind{game.ZoneHand},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := effects.NewContext(g, item)
-					return effects.DamageEachMatching(ctx, effects.And(effects.Creature(), effects.HasKeyword("flying")), ctx.X())
-				},
+				Effect:  effects.OldB584SourceDealsXToEach(effects.HasKeyword("flying")),
 			},
 		},
 	})
