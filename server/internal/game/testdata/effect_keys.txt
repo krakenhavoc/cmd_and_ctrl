@@ -1708,6 +1708,10 @@ choose choose-cards/s82-old-b568-jokulmorder-lands
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
 choose choose-cards/s82-old-b581-sisters-of-stone-death-return
+choose choose-cards/s82-old-b626-mist-of-stagnation-untap
+choose choose-cards/s82-old-b626-wormfang-crab-exile
+choose choose-cards/s82-old-b626-wormfang-newt-land
+choose choose-cards/s82-old-b626-wormfang-turtle-land
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2008,6 +2012,8 @@ coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
+coinflip coin-flip/s82-old-b626-planar-chaos-counter
+coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2901,6 +2907,7 @@ option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-old-b522-canker-abomination
 option option-pick/s82-old-b568-jokulmorder-choice
+option option-pick/s82-old-b626-wormfang-crab-opponent
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3339,6 +3346,7 @@ payunless pay-unless/s82-old-b472-lifesmith-life
 payunless pay-unless/s82-old-b472-vigil-for-the-lost-life
 payunless pay-unless/s82-old-b549-bog-strider-ash
 payunless pay-unless/s82-old-b564-recover
+payunless pay-unless/s82-old-b626-telekinetic-bonds-tap-or-untap
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
