@@ -148,6 +148,7 @@ var pgReviewed = map[string]string{
 	"591edddc-3736-44cf-9719-117c24ff3980": "Make an Example — PileSplit",
 	"7ee394a2-84de-42e8-834e-6c1030be0aef": "Sphinx of Clear Skies — PileSplit",
 	"48ad5bd6-9568-4813-be29-99aef8b9327a": "Split the Spoils — PileSplit",
+	"b2ae0968-28ed-4ebb-a4e8-69ff6e6a6f1d": "Death or Glory — PileSplit",
 	"0ba134d8-ee7d-48ec-8dc6-57942b8e9261": "Liliana of the Veil — PileSplit",
 	"4b4f268d-34ae-416d-a412-66f4fe37659c": "Sphinx of Uthuun — PileSplit",
 	"7492ea06-24d5-4a1f-a6ac-c33743e91aa7": "Unesh, Criosphinx Sovereign — PileSplit",
