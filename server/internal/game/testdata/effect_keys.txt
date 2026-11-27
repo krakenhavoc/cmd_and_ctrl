@@ -1693,6 +1693,8 @@ choose choose-cards/s82-old-b497-chandra-ablaze-discard
 choose choose-cards/s82-old-b498-living-tsunami-return
 choose choose-cards/s82-old-b524-evershrike-aura
 choose choose-cards/s82-old-b531-exile-picked
+choose choose-cards/s82-old-b574-lurking-informant-graveyard
+choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
