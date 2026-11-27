@@ -399,6 +399,10 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 548 (#5593).
 	"Ego Erasure": "-2/-0 and losing creature types to one player's creatures until end of turn kills nothing",
+
+	// S82 OLD batch 613 (#5607).
+	"Boil":       "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
+	"Flashfires": "destroys only the Plains, which are lands, and no sweep class names lands (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
