@@ -15,6 +15,10 @@ import (
 // check refuses any blocker without horsemanship. It doesn't stop this
 // creature blocking.
 //
+// "Put into your graveyard" is a trip from the battlefield to the graveyard of
+// Guan Yu's controller: its owner, when it is also its controller (a stolen
+// one goes to its owner's graveyard, which is not "your" graveyard).
+//
 // No simplification.
 func init() {
 	effects.Register(effects.Spec{
@@ -24,7 +28,9 @@ func init() {
 		PrintedKeywords: []string{"horsemanship"},
 		Triggered: []game.TriggeredAbility{
 			effects.Optional(
-				effects.WhenThisDies("Guan Yu — shuffle Guan Yu into your library", effects.ShuffleThisCardIntoItsOwnersLibrary),
+				effects.On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+					return effects.CardDied(ev, source) && source.Owner == source.Controller
+				}, "Guan Yu — shuffle Guan Yu into your library", effects.ShuffleThisCardIntoItsOwnersLibrary),
 				"Guan Yu — shuffle Guan Yu into your library?"),
 		},
 	})

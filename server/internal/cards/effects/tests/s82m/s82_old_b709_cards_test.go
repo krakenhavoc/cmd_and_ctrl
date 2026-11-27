@@ -298,3 +298,19 @@ func TestOldB709ZhangHePumpsTheOthersWhenItAttacks(t *testing.T) {
 		t.Errorf("an opposing creature has power %d, want 2", p)
 	}
 }
+
+func TestOldB709GuanYuDoesNotTriggerWhenItDiesUnderAnotherPlayersControl(t *testing.T) {
+	g := effectstest.NewCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	id := effectstest.ApaPush(g, opp.ID, me.ID, game.Card{Name: "Guan Yu, Sainted Warrior", TypeLine: "Legendary Creature — Human Soldier Warrior",
+		OracleID: oldB709GuanYu, Power: 3, Toughness: 5})
+	effectstest.DestroyNow(t, g, id)
+	effectstest.B21SettleStack(t, g)
+	if effectstest.LatestChooseCardsFor(g, me.ID) != nil || effectstest.OwedMays(g, me.ID) > 0 {
+		t.Error("the thief was asked about shuffling Guan Yu into a library")
+	}
+	if !opp.Graveyard.Contains(id) || opp.Library.Contains(id) || me.Library.Contains(id) {
+		t.Errorf("a stolen Guan Yu is in its owner's graveyard %v, owner's library %v, thief's library %v; want the first only",
+			opp.Graveyard.Contains(id), opp.Library.Contains(id), me.Library.Contains(id))
+	}
+}
