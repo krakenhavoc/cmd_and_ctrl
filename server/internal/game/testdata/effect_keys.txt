@@ -2520,6 +2520,7 @@ drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
 drawthen old-b043-discard-two-unless-instant-or-sorcery
 drawthen old-b193/dream-cache-put-back
+drawthen old-b559/survivor-of-the-unseen-put-back
 drawthen rowans-grim-search/lose-life
 drawthen s82-bns-b27/cavalier-of-gales-put-back
 drawthen s82-old-b259/discard-if-no-artifacts
@@ -4176,7 +4177,11 @@ tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/earthen-goo-cumulative-upkeep-r-or-g
+tail cumulative-upkeep/freyalise-s-radiance-cumulative-upkeep-2
 tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/glacial-plating-cumulative-upkeep-s
+tail cumulative-upkeep/herald-of-leshrac-cumulative-upkeep-gain-control-of-a-land-you-don-t-control
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
@@ -4184,10 +4189,14 @@ tail cumulative-upkeep/jötun-grunt-cumulative-upkeep-put-two-cards-from-a-singl
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
+tail cumulative-upkeep/phobian-phantasm-cumulative-upkeep-b
+tail cumulative-upkeep/phyrexian-etchings-cumulative-upkeep-b
 tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creature
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
 tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
+tail cumulative-upkeep/ronom-hulk-cumulative-upkeep-1
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
+tail cumulative-upkeep/survivor-of-the-unseen-cumulative-upkeep-2
 tail cumulative-upkeep/sustaining-spirit-cumulative-upkeep-1-w
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
