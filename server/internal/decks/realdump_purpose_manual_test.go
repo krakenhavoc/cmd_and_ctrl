@@ -448,6 +448,10 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 744 (#5626).
 	"Wall of Nets": "exiles only the creatures it blocked this combat and returns them when it leaves, not a board",
+
+	// S82 OLD batch 761 (#5458).
+	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
+	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
