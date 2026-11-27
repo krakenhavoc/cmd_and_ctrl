@@ -1802,6 +1802,7 @@ choose choose-cards/s82-old-b714-wei-assassins-destroy
 choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-old-b734-sacrifice-unless-discard-creature
+choose choose-cards/s82-old-b783-sacrifice-unless-discard-land
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2471,6 +2472,7 @@ confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-old-b698-ley-line-put
 confirm confirm/s82-old-b698-put-counters-on-this
+confirm confirm/s82-old-b783-shuffle-then-draw
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3048,6 +3050,8 @@ option option-pick/s82-old-b662-death-or-glory-chosen
 option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-old-b716-walking-sponge-keyword
+option option-pick/s82-old-b783-discard-at-random-or-sacrifice
+option option-pick/s82-old-b783-sacrifice-this-unless-you-sacrifice-a-forest
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -5647,6 +5651,7 @@ tail tail/s82-old-b005-karn-silver
 tail tail/s82-old-b110-idol-of-endurance-hold
 tail tail/s82-old-b627-morality-shift-library-moved
 tail tail/s82-old-b628-funeral-pyre-spirit
+tail tail/s82-old-b783-ask-shuffle
 tail tail/seal-of-the-guildpact-first-color
 tail tail/seal-of-the-guildpact-second-color
 tail tail/sensational-spider-man-after-stun

@@ -24,14 +24,7 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			effects.WhenThisDies("Dark Revenant — put it on top of its owner's library",
-				func(g *game.Game, item *game.StackItem) error {
-					z := g.FindCardZoneForEffect(item.SourceCardID)
-					if z == nil || z.Kind != game.ZoneGraveyard || !effects.SameGraveyardObject(z, item) {
-						return nil
-					}
-					return effects.PutIntoLibrary{Card: item.SourceCardID}.Apply(effects.NewContext(g, item))
-				}),
+			effects.WhenThisDies("Dark Revenant — put it on top of its owner's library", effects.S82OldB783PutThisOnTopOfItsOwnersLibrary),
 		},
 	})
 }
