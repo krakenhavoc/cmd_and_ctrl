@@ -2772,6 +2772,7 @@ option option-pick/bend-or-break-pile
 option option-pick/benevolent-offering-life
 option option-pick/benevolent-offering-tokens
 option option-pick/blank-blank-rocketship-letter
+option option-pick/blood-oath-card-type
 option option-pick/boneyard-parley-chosen
 option option-pick/boreas-charger-search
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
