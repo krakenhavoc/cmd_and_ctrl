@@ -405,6 +405,7 @@ var TokenTable = map[string]game.Card{
 	"5/5 green Beast with trample":                                     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 5, Toughness: 5, Colors: []string{"G"}, Keywords: []string{"trample"}}, // Spawning Grounds (C18)
 	"4/4 green Phyrexian Beast":                                        {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
+	"4/4 red Bird with flying":                                         {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}}, // S82 older sets batch 620: Rukh Egg
 	"4/4 red Dinosaur Dragon with flying":                              {Name: "Dinosaur Dragon", TypeLine: "Token Creature — Dinosaur Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"4/4 red Scorpion Dragon with flying and haste":                    {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},

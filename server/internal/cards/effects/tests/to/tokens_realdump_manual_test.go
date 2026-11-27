@@ -200,6 +200,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
 	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
 	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
+
+	// Rukh Egg (Eighth Edition) creates "a 4/4 red Bird creature token with flying". Its current
+	// Oracle text says Bird; the only printed token card is the older "Rukh" (Token Creature — Rukh),
+	// so no 4/4 red Bird token card exists. The template follows the oracle text.
+	"4/4 red Bird with flying": "no 4/4 red Bird token card was printed for Rukh Egg (the printed token is named Rukh)",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
