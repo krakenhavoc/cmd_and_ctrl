@@ -1333,6 +1333,7 @@ choose choose-cards/mind-extraction-discard-wubrg
 choose choose-cards/mind-extraction-discard-wug
 choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
+choose choose-cards/mind-maggots-discard
 choose choose-cards/mind-raker-picked
 choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
@@ -5899,6 +5900,7 @@ tail then/memories-returning-bottomed
 tail then/memories-returning-taken
 tail then/metamorphosis-color-chosen
 tail then/midnight-clock-after-tuck
+tail then/mind-maggots-discarded
 tail then/mind-raker-then
 tail then/mindbreak-trap-exile-rest
 tail then/mirror-match-exile-at-end-of-combat
