@@ -1775,6 +1775,7 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b675-forgotten-harvest-exile-land
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
 choose choose-cards/s82-old-b678-exile-linked
+choose choose-cards/s82-old-b694-renounce-sacrifice
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3393,6 +3394,7 @@ payunless pay-unless/old-b580-perplex-counter
 payunless pay-unless/old-b608-gain-1-life
 payunless pay-unless/old-b623-dwarven-scorcher-1
 payunless pay-unless/old-b686-unnatural-hunger-damage
+payunless pay-unless/old-b694-gain-2-life
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -5274,6 +5276,7 @@ tail s82-old-b647/blind-seer-color-chosen
 tail s82-old-b677/divining-witch-exiled
 tail s82-old-b677/divining-witch-taken
 tail s82-old-b677/eye-of-yawgmoth-taken
+tail s82-old-b694-renounce/gain
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
