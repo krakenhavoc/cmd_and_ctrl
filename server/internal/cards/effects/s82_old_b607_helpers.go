@@ -223,29 +223,23 @@ func OldB607TimesifterUpkeep(g *game.Game, item *game.StackItem) error {
 			seats = append(seats, p.ID)
 		}
 	}
-	return oldB607TimesifterRound(g, item.Controller, item.SourceCardID, seats)
+	judge := game.KeyedTail{Ref: oldB607TimesifterJudge, Player: item.Controller, Source: item.SourceCardID}
+	return oldB607TimesifterRound(g, judge, seats)
 }
 
 // oldB607TimesifterRound has each of `players`, in APNAP order, exile the top
-// card of their library, then hands the cards to the judge.
-func oldB607TimesifterRound(g *game.Game, controller, source uuid.UUID, players []uuid.UUID) error {
-	judge := game.KeyedTail{Ref: oldB607TimesifterJudge, Player: controller, Source: source}
-	step := game.KeyedTail{Ref: tripleTriadExileStep, Player: controller, Source: source, Next: &judge}
+// card of their library, then hands the cards to the `judge` tail.
+func oldB607TimesifterRound(g *game.Game, judge game.KeyedTail, players []uuid.UUID) error {
+	step := game.KeyedTail{Ref: tripleTriadExileStep, Player: judge.Player, Source: judge.Source, Next: &judge}
 	return tripleTriadExileFrom(g, step, ApnapOrder(g, players), nil)
 }
 
 // oldB607TimesifterJudge: the player who exiled the card with the greatest mana
 // value takes an extra turn after this one; players whose cards tie repeat the
 // process until the tie is broken. A player with no card to exile has no card
-// to compare (CR 701.17 has no card to exile), so cannot win; with no cards at
-// all nobody takes the turn. An on-disk key.
-var oldB607TimesifterJudge game.TailRef
-
-func init() {
-	oldB607TimesifterJudge = game.RegisterTail("then/old-b607-timesifter-judge", oldB607TimesifterJudged)
-}
-
-func oldB607TimesifterJudged(g *game.Game, o game.TailOutcome) error {
+// to compare, so cannot win; with no cards at all nobody takes the turn. The
+// next round reuses this tail as its judge. An on-disk key.
+var oldB607TimesifterJudge = game.RegisterTail("then/old-b607-timesifter-judge", func(g *game.Game, o game.TailOutcome) error {
 	best := -1
 	var winners []uuid.UUID
 	for _, id := range o.IDs {
@@ -268,5 +262,5 @@ func oldB607TimesifterJudged(g *game.Game, o game.TailOutcome) error {
 		g.TakeExtraTurnsForEffect(winners[0], o.Tail.Source, 1)
 		return nil
 	}
-	return oldB607TimesifterRound(g, o.Tail.Player, o.Tail.Source, winners)
-}
+	return oldB607TimesifterRound(g, o.Tail, winners)
+})
