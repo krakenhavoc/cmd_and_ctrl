@@ -1793,6 +1793,8 @@ choose choose-cards/s82-old-b706-scent-of-brine
 choose choose-cards/s82-old-b706-scent-of-jasmine
 choose choose-cards/s82-old-b708-burning-of-xinye-mine
 choose choose-cards/s82-old-b708-burning-of-xinye-theirs
+choose choose-cards/s82-old-b711-eunuchs-intrigues-others-cant-block
+choose choose-cards/s82-old-b711-imperial-edict-destroy
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take

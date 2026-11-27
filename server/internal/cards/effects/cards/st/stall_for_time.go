@@ -28,17 +28,7 @@ func init() {
 		OptionalCosts: []game.AdditionalCost{effects.Kicker("{1}{U}")},
 		Targets:       effects.TargetCreature("up to two target creatures").WithCount(0, 2),
 		OnResolve: effects.ResolveSteps(
-			effects.Instruction(func(ctx *effects.Context) error {
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetCard {
-						continue
-					}
-					if err := (effects.TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			effects.Instruction(effects.OldB711TapTheTargets),
 			effects.Instruction(func(ctx *effects.Context) error {
 				if !ctx.WasKicked() {
 					return nil
