@@ -412,6 +412,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 602 (#5606).
 	"Spoils of the Vault": "exiles only the cards it reveals from the top of its controller's own library, never a permanent",
+
+	// S82 OLD batch 667 (#5616).
+	"Pure Reflection": "destroys only Reflections, a creature type of token and a few cards, never the board's creatures as a class",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

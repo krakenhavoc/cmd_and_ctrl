@@ -593,6 +593,10 @@ var TokenTable = map[string]game.Card{
 	// set to the total power exiled as it is created).
 	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 667: Pure Reflection's X/X white Reflection (no token card was printed; a 0/0
+	// placeholder, set to the mana value of the spell as it is created).
+	"0/0 white Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Colors: []string{"W"}, PrintedPTKnown: true},
+
 	// S82 OLD batch 85: Marath, Will of the Wild's X/X green Elemental (printed */*; a 0/0
 	// placeholder, set to X as it is created).
 	"0/0 green Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Colors: []string{"G"}, PrintedPTKnown: true},

@@ -200,6 +200,10 @@ var knownUnmatchedTokens = map[string]string{
 	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
 	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
 	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
+	// Pure Reflection (Invasion) creates "an X/X white Reflection creature token". No token card was
+	// ever printed for it (the dump's Reflection is a 3/2 blue one from Alirios); the template is 0/0 and
+	// the card sets X/X as it creates the token.
+	"0/0 white Reflection": "no token card was printed for Pure Reflection's X/X white Reflection; the card sets X/X as it creates it",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
