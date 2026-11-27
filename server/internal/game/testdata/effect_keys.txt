@@ -439,6 +439,7 @@ body old-b356/return-listed-tapped
 body old-b386/reincarnation-return
 body old-b507/quenchable-fire-damage
 body old-b516-skeletonize/skeleton
+body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
 body old-man-willow/shrink
 body ondu-rising/attacker-gains-lifelink
 body origin-of-the-hidden-ones/assassin-tapped-and-attacking
@@ -1693,6 +1694,9 @@ choose choose-cards/s82-old-b497-chandra-ablaze-discard
 choose choose-cards/s82-old-b498-living-tsunami-return
 choose choose-cards/s82-old-b524-evershrike-aura
 choose choose-cards/s82-old-b531-exile-picked
+choose choose-cards/s82-old-b548-changeling-berserker-champion
+choose choose-cards/s82-old-b548-changeling-hero-champion
+choose choose-cards/s82-old-b548-changeling-titan-champion
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -1830,6 +1834,8 @@ choose choose-cards/the-wedding-of-river-song-opponent
 choose choose-cards/the-wedding-of-river-song-you
 choose choose-cards/the-world-spell-take
 choose choose-cards/the-wrath-of-khan-exile-from-hand
+choose choose-cards/thieving-sprite-discard
+choose choose-cards/thieving-sprite-reveal
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
 choose choose-cards/thousand-moons-smithy-tap-five
@@ -1853,6 +1859,7 @@ choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-diviner-copy
 choose choose-cards/twilight-prophet-take
+choose choose-cards/twinning-glass-cast
 choose choose-cards/tymaret-calls-the-dead-exile
 choose choose-cards/ulamogs-nullifier-picked
 choose choose-cards/ulamogs-reclaimer-picked
@@ -1909,6 +1916,7 @@ choose choose-cards/winter-cynical-opportunist-put
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/wolf-of-devils-breach-damage
+choose choose-cards/worldpurge-kept
 choose choose-cards/worlds-within-worlds-pick
 choose choose-cards/worldsouls-rage-lands
 choose choose-cards/xenagos-the-reveler-put
@@ -3080,6 +3088,7 @@ payunless pay-unless/drake-haven-drake
 payunless pay-unless/draugrs-helm-zombie-and-attach
 payunless pay-unless/draw-a-card
 payunless pay-unless/dreamshaper-shaman-sacrifice
+payunless pay-unless/drowner-initiate-mill
 payunless pay-unless/durable-handicraft-counter
 payunless pay-unless/dutiful-replicator-copy
 payunless pay-unless/dwarven-hammer-dwarf-and-attach
@@ -3167,6 +3176,7 @@ payunless pay-unless/insidious-mist-transform
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
 payunless pay-unless/inti-seneschal-of-the-sun-discard
+payunless pay-unless/intimidator-initiate-cant-block
 payunless pay-unless/intrepid-adversary-times
 payunless pay-unless/invisible-woman-pump
 payunless pay-unless/isareth-x-reanimate
@@ -3483,6 +3493,7 @@ run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
 run prompt-run/aviary-mechanic-return
 run prompt-run/awaken-the-maelstrom-copy
+run prompt-run/balduvian-warlord-block
 run prompt-run/battle-for-bretagard-copies
 run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-anomaly-chosen
@@ -3734,6 +3745,7 @@ run prompt-run/s82-old-b314-slab-hammer-return-land
 run prompt-run/s82-old-b339-abzan-advantage-bolster
 run prompt-run/s82-old-b435-rite-of-ruin-next
 run prompt-run/s82-one-b04-vraskas-fall-poison
+run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
 run prompt-run/sculpted-sunburst-exile
@@ -4183,28 +4195,37 @@ tail creature-type/volos-journal-note
 tail crypt-incursion/gain-3-per-exiled
 tail cultivate/basic-land-to-hand
 tail cultivator-colossus/draw-and-repeat
+tail cumulative-upkeep/arctic-nishoba-cumulative-upkeep-g-or-w
 tail cumulative-upkeep/arctic-wolves-cumulative-upkeep-2
+tail cumulative-upkeep/balduvian-fallen-cumulative-upkeep-1
 tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/hibernation-s-end-cumulative-upkeep-1
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
 tail cumulative-upkeep/jötun-grunt-cumulative-upkeep-put-two-cards-from-a-single-graveyard-on-the-bottom-of-their-owner-s-library
+tail cumulative-upkeep/jötun-owl-keeper-cumulative-upkeep-w-or-u
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
+tail cumulative-upkeep/kjeldoran-javelineer-cumulative-upkeep-1
+tail cumulative-upkeep/krovikan-whispers-cumulative-upkeep-u-or-b
+tail cumulative-upkeep/magmatic-core-cumulative-upkeep-1
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
 tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creature
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
 tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
+tail cumulative-upkeep/sheltering-ancient-cumulative-upkeep-put-a-1-1-counter-on-a-creature-an-opponent-controls
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
 tail cumulative-upkeep/sustaining-spirit-cumulative-upkeep-1-w
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
 tail cumulative-upkeep/uktabi-efreet-cumulative-upkeep-g
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
+tail cumulative-upkeep/wall-of-shards-cumulative-upkeep-an-opponent-gains-1-life
 tail cumulative-upkeep/yavimaya-ants-cumulative-upkeep-g-g
 tail currency-converter/token-for-graveyarded-card
 tail curse-of-the-swine/boar-per-exiled
@@ -4779,6 +4800,7 @@ tail meek-attack/entered
 tail memory-jar/exile-hand-step
 tail memory-jar/schedule-return
 tail memory-vessel/ban-hands
+tail mercy-killing/elf-warriors
 tail mgb/bull-elephant-after-return
 tail mgb/ovinomancer-after-return
 tail mill-then-take/cache-grab
@@ -4879,6 +4901,7 @@ tail old-b330/sunbringers-touch-trample
 tail old-b331/return-face-down
 tail old-b332/mirror-mockery-exile
 tail old-b541/minus-counter-on-each-next
+tail old-b543/clash-counter-on-this
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5442,9 +5465,11 @@ tail then/braids-arisen-nightmare-ask-opponents
 tail then/braids-arisen-nightmare-next-opponent
 tail then/breeches-the-blastmaker-flip
 tail then/bringer-of-the-last-gift-return
+tail then/broken-ambitions-clashed
 tail then/c17-put-found-hammer-of-nazahn-onto-battlefield
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
+tail then/captivating-glance-clashed
 tail then/cascade-finish
 tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
@@ -5531,6 +5556,7 @@ tail then/fateful-tempest-past-then-present
 tail then/feral-encounter-bottom-then-permission
 tail then/firemind-s-foresight-second
 tail then/firemind-s-foresight-third
+tail then/fistful-of-force-clashed
 tail then/flamespeaker-s-will-destroy
 tail then/flaxen-intruder-sacrificed
 tail then/for-the-ancestors-type-chosen
@@ -5703,6 +5729,7 @@ tail then/reckless-endeavor-treasures
 tail then/reflections-of-littjara-type-chosen
 tail then/remorseless-punishment-sacrificed
 tail then/ringsight-search
+tail then/ringskipper-clashed
 tail then/ripples-of-potential-proliferated
 tail then/risky-research-draw-two-lose-two
 tail then/rith-the-awakener-saprolings
@@ -5771,6 +5798,7 @@ tail then/scrap-mastery-put
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
+tail then/sentry-oak-clashed
 tail then/servant-of-the-stinger-search
 tail then/shadow-kin-mill-step
 tail then/shadow-mysterious-assassin-sacrificed
@@ -5872,6 +5900,9 @@ tail then/whirlpool-whelm-clashed
 tail then/whispering-specter-discard
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
+tail then/woodland-guidance-clashed
+tail then/worldpurge-after-the-bounce
+tail then/worldpurge-shuffle
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
 tail then/zaffai-after-scry

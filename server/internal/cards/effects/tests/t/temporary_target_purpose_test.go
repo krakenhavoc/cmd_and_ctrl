@@ -121,6 +121,10 @@ var untilEndOfTurnExempt = map[string]string{
 	// player dealt damage; the "until end of turn" is the source's own
 	// indestructible, not a change to the target.
 	"Ellie, Vengeful Hunter": "the target is a player dealt damage; the until end of turn is the source's",
+
+	// Coldsnap (S82 OLD batch 561): takes flying from its target until end of
+	// turn, which is a harm; the pattern reads "loses" as a benefit (Urborg's case).
+	"Adarkar Windform": "removes an ability from its target; the check reads 'loses' as a benefit",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
