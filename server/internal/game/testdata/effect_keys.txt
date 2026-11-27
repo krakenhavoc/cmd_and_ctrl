@@ -568,6 +568,7 @@ body s82-old-b408/obzedat-return
 body s82-old-b464/virulent-wound-poison
 body s82-old-b581/gaze-of-the-gorgon-destroy
 body s82-old-b585/discard-three-at-next-end-step
+body s82-old-b614/destroy-the-named-creature
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1501,6 +1502,8 @@ choose choose-cards/old-b387-order-of-succession-pick
 choose choose-cards/old-b447-graveyard-shovel-exile
 choose choose-cards/old-b493-attach-equipment
 choose choose-cards/old-b499-sphinx-picked
+choose choose-cards/old-b607-wrench-mind-the-one
+choose choose-cards/old-b607-wrench-mind-two-or-artifact
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -1713,6 +1716,8 @@ choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
 choose choose-cards/s82-old-b581-sisters-of-stone-death-return
 choose choose-cards/s82-old-b599-chisei-remove-counter
+choose choose-cards/s82-old-b600-tomorrow-take
+choose choose-cards/s82-old-b602-lumengrid-augur-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2015,6 +2020,7 @@ coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
+coinflip coin-flip/s82-old-b602-fiery-gambit-flip
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2361,6 +2367,9 @@ confirm confirm/s82-old-b450-cloistered-youth-transform
 confirm confirm/s82-old-b450-thraben-sentry-transform
 confirm confirm/s82-old-b462-auriok-survivors-attach
 confirm confirm/s82-old-b464-vedalken-infuser-counter
+confirm confirm/s82-old-b602-fiery-gambit-again
+confirm confirm/s82-old-b602-liars-pendulum-guess
+confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -2504,6 +2513,8 @@ drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
+drawinstead s82-old-b600-tomorrow
+drawinstead s82-old-b602-shared-fate
 drawinstead sages-of-the-anima
 drawinstead scion-of-halaster
 drawinstead underrealm-lich
@@ -2563,6 +2574,7 @@ drawthen s82-old-b431/discard-a-card-at-random
 drawthen s82-old-b431/see-beyond-pick
 drawthen s82-old-b449-scholar-loot
 drawthen s82-old-b582/bloodletter-quill-lose-life
+drawthen s82-old-b602-lumengrid-augur-loot
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2845,6 +2857,7 @@ option option-pick/old-b193-dream-cache-side
 option option-pick/old-b240-unesh-splitter
 option option-pick/old-b387-order-of-succession-direction
 option option-pick/old-b586-blood-clock
+option option-pick/old-b606-loxodon-peacekeeper
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -2911,6 +2924,9 @@ option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-old-b522-canker-abomination
 option option-pick/s82-old-b568-jokulmorder-choice
 option option-pick/s82-old-b599-chisei-counter-kind
+option option-pick/s82-old-b602-fatespinner-skip
+option option-pick/s82-old-b602-shared-fate-library
+option option-pick/s82-old-b603-jinxed-choker-counter
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3288,6 +3304,7 @@ payunless pay-unless/old-b554-flamekin-elemental-shaman
 payunless pay-unless/old-b554-tapped-attacking-kithkin-soldier
 payunless pay-unless/old-b579-blood-funnel-counter
 payunless pay-unless/old-b580-perplex-counter
+payunless pay-unless/old-b608-gain-1-life
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3739,6 +3756,7 @@ run prompt-run/old-b579-draw-sacrificed-power
 run prompt-run/old-b586-blood-clock-return
 run prompt-run/old-b586-sacrifice-all-but
 run prompt-run/old-b587-akuta-sacrifice-a-swamp
+run prompt-run/old-b606-rust-elemental
 run prompt-run/old-doom-foretold-after
 run prompt-run/olorins-searing-light-exile
 run prompt-run/osseous-sticktwister-discarded
@@ -4392,6 +4410,7 @@ tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail dire-strain-rampage/search
 tail distant-memories/offer
+tail distorting-lens/color-chosen
 tail divine-gambit/after-exile
 tail dmu-b07/haste-then-sacrifice
 tail dominion-infiltration/haste-and-exile-copies
@@ -4964,6 +4983,7 @@ tail old-b579/draw-that-many
 tail old-b579/eye-of-the-storm-copies
 tail old-b587/iname-exiled-return-a-spirit
 tail old-b587/sacrifice-that-creature-at-the-next-end-step
+tail old-b607/lightning-coils-exile-the-elementals
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
@@ -5125,6 +5145,11 @@ tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
 tail s82-old-b498/living-tsunami-after-return
+tail s82-old-b600/heed-the-mists-after-mill
+tail s82-old-b600/tomorrow-done
+tail s82-old-b600/tomorrow-taken
+tail s82-old-b602-spoils-of-the-vault/exiled
+tail s82-old-b602-spoils-of-the-vault/taken
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5756,6 +5781,8 @@ tail then/old-b499-shuffle-carried
 tail then/old-b499-sphinx-found
 tail then/old-b499-sphinx-named
 tail then/old-b605-grim-reminder
+tail then/old-b607-myr-incubator
+tail then/old-b607-timesifter-judge
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
@@ -5770,6 +5797,7 @@ tail then/patient-rebuilding-draw
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
 tail then/perish-the-thought-shuffled
+tail then/persecute-color-chosen
 tail then/phenomenon-investigators-draw
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
@@ -5851,6 +5879,10 @@ tail then/s82-old-b461-impaler-shrike-draw
 tail then/s82-old-b518-brilliant-ultimatum-exiled
 tail then/s82-old-b524-evershrike-entered
 tail then/s82-old-b531-impromptu-raid-arrived
+tail then/s82-old-b602-liars-pendulum-named
+tail then/s82-old-b602-spoils-of-the-vault-named
+tail then/s82-old-b603-detonate-damage
+tail then/s82-old-b603-molten-rain-damage
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
