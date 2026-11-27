@@ -2541,6 +2541,7 @@ drawthen s82-old-b406/blast-of-genius-discard
 drawthen s82-old-b431/discard-a-card-at-random
 drawthen s82-old-b431/see-beyond-pick
 drawthen s82-old-b449-scholar-loot
+drawthen s82-old-b582/bloodletter-quill-lose-life
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
