@@ -109,6 +109,7 @@ var xMattersAllowlist = map[string]string{
 	"displacement_wave.go Displacement Wave": "at X=0 it still returns every nonland permanent with mana value 0 (a token, a free artifact), a real play: the X picks which permanents go back, it is not a quantity",
 
 	"gridlock.go Gridlock": "X is the target count (CountFromX on S82OldB411XTargetNonlandPermanents' targets), which the scan cannot see; at X=0 it targets nothing and taps nothing",
+	"ice_cave.go Ice Cave": "no X cost of its own: its trigger reads the triggering spell's XValue to price that spell's mana cost (CR 107.3b), not an X Ice Cave announced",
 }
 
 // xMattersFinding is one disagreement between a Spec's source and its
