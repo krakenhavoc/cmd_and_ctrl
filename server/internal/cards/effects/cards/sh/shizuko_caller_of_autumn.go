@@ -22,7 +22,7 @@ func init() {
 		Name:         "Shizuko, Caller of Autumn",
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.AtEachUpkeep("Shizuko — that player adds {G}{G}{G}, kept until end of turn", effects.OldB595ShizukoMana),
+			effects.AtEachUpkeep("Shizuko — that player adds {G}{G}{G}, kept until end of turn", effects.ShizukoMana),
 		},
 	})
 }

@@ -117,13 +117,3 @@ var ogreMarauderAnswer = OptionPickThen("option-pick/ogre-marauder-answer", func
 	}
 	return ogreMarauderUnblockable(ctx)
 })
-
-// OldB595ShizukoMana is "that player adds {G}{G}{G}, kept until end of turn" for the player
-// whose upkeep it is.
-func OldB595ShizukoMana(g *game.Game, item *game.StackItem) error {
-	player := TriggeringActor(item)
-	if player == uuid.Nil || g.PlayerByIDForEffect(player) == nil {
-		return nil
-	}
-	return AddMana{Player: player, Produced: "{G}{G}{G}", Riders: []game.ManaSpendRider{KeepManaUntilEndOfTurn()}}.Apply(NewContext(g, item))
-}
