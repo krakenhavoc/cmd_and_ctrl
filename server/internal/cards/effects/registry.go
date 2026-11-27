@@ -2237,6 +2237,9 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	if c.MoreCardsInHandThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who has more cards in hand than they do\" with no triggering player choosing a player — wrap it as WithMoreCardsInHandThanTheChooser(OfThatPlayersChoice(TargetPlayer(...)))", name, i))
 	}
+	if c.MoreLandsThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who controls more lands than they do\" with no triggering player choosing a player — wrap it as WithMoreLandsThanTheChooser(OfThatPlayersChoice(TargetPlayer(...)))", name, i))
+	}
 	if c.Harmful && !slices.Contains(c.Zones, game.ZoneBattlefield) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is marked Harmful but cannot pick a permanent (#4249)", name, i))
 	}

@@ -35,6 +35,9 @@ func (s *TargetSpec) playerChooserAdmits(g *Game, src TargetSource, p *Player) b
 	if !s.moreCardsInHandThanChooserAdmits(g, src, p) {
 		return false
 	}
+	if !s.moreLandsThanChooserAdmits(g, src, p) {
+		return false
+	}
 	if !s.MoreCreaturesThanChooser && !s.FewerCreatureCardsInGraveyardThanChooser {
 		return true
 	}

@@ -2490,6 +2490,7 @@ confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-old-b698-ley-line-put
 confirm confirm/s82-old-b698-put-counters-on-this
+confirm confirm/s82-old-b743-oath-of-lieges-search
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3069,6 +3070,7 @@ option option-pick/s82-old-b662-death-or-glory-chosen
 option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-old-b716-walking-sponge-keyword
+option option-pick/s82-old-b743-carnophage-pay-or-tap
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3990,6 +3992,7 @@ run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-old-b723-wildfire-damage
 run prompt-run/s82-old-b745-oath-of-ghouls-return
 run prompt-run/s82-old-b742-cataclysm-keep
+run prompt-run/s82-old-b743-mana-breach-return
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
