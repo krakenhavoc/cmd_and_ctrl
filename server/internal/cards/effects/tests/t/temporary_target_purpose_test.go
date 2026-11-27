@@ -225,6 +225,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// "Untap target creature an opponent controls and gain control of it
 	// until end of turn" (Commander 2011): Word of Seizing's change of control.
 	"Ray of Command": "a change of control, not a change to the target",
+	// "Untap target creature and gain control of it until end of turn"
+	// (Ravnica: City of Guilds; the white-mana rider grants the creature a
+	// lifegain trigger): Word of Seizing's change of control.
+	"Flash Conscription": "a change of control, not a change to the target",
 	// "At the beginning of the next end step, destroy that creature if it
 	// attacked this turn": the trample and power are a benefit, the
 	// destruction a harm that lasts.

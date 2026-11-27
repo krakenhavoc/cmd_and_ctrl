@@ -461,6 +461,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
 		// read by both gates. Its cases are in graveyard_play_ban_test.go.
 		ModCantPlayFromOwnGraveyard: true,
+		// S82 OLD batch 573: Conjurer's Ban's named land-play ban, read by
+		// the land-play gate. Its cases are in the card's test
+		// (tests/s82m/s82_old_b573_cards_test.go).
+		ModCantPlayLandsNamed: true,
 		// ADR 0109 §4 amendment 2026-10-23 (#1986): an ignored static
 		// ability, read by both gates. Its cases are in
 		// ignore_effect_test.go.

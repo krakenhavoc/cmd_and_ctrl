@@ -416,6 +416,13 @@ const (
 	// reason: an older binary refuses the file instead of banning
 	// nothing. Reads Player.
 	ModCantPlayFromOwnGraveyard ModKind = "cantPlayFromOwnGraveyard"
+	// ModCantPlayLandsNamed is "lands with the chosen name can't be
+	// played" for a stated duration (S82 OLD batch 573, Conjurer's Ban;
+	// CR 101.2). Text is the chosen name (CR 201.2); every player is
+	// banned. Read by the land-play gate (landPlayNamedBanLocked). A
+	// ScopedEffect for ModCantPlayLands' reason: an older binary refuses
+	// the file instead of banning nothing. Reads Text.
+	ModCantPlayLandsNamed ModKind = "cantPlayLandsNamed"
 	// ModIgnoreEffect is "<player> ignores <the source's> effect until
 	// end of turn" (ADR 0109 §4 amendment 2026-10-23, #1986; CR 116.2d):
 	// Damping Engine's "That player may sacrifice a permanent of their
@@ -1363,6 +1370,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
 	// read by both gates.
 	ModCantPlayFromOwnGraveyard: {reader: readerRule},
+	// S82 OLD batch 573: Conjurer's Ban's named land-play ban.
+	ModCantPlayLandsNamed: {reader: readerRule},
 	// ADR 0109 §4 amendment 2026-10-23 (#1986): an ignored static
 	// ability, read by both gates.
 	ModIgnoreEffect: {reader: readerRule},
