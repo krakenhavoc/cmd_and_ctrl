@@ -5900,9 +5900,9 @@ tail then/whirlpool-whelm-clashed
 tail then/whispering-specter-discard
 tail then/winds-of-change-shuffled
 tail then/witchs-vengeance-type-chosen
+tail then/woodland-guidance-clashed
 tail then/worldpurge-after-the-bounce
 tail then/worldpurge-shuffle
-tail then/woodland-guidance-clashed
 tail then/xenagos-the-reveler-exiled
 tail then/young-necromancer-when-you-do
 tail then/zaffai-after-scry
