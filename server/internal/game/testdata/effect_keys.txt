@@ -5387,6 +5387,7 @@ tail sunforger/cast-found
 tail surge-to-victory/exiled
 tail surprise-deployment/return-at-end-step
 tail survival-cache/compare
+tail sway-of-illusion/color-chosen
 tail swift-warkite/haste-and-return
 tail swirling-spriggan/colors-chosen
 tail sword-of-hearth-and-home/put-both
@@ -5625,6 +5626,7 @@ tail then/drain-power-add-lost-mana
 tail then/draw-a-card
 tail then/draw-n-cards
 tail then/dream-eater-reflexive-bounce
+tail then/dredge-sacrificed
 tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
