@@ -1104,6 +1104,7 @@ choose choose-cards/in-the-presence-of-ages-take
 choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/industrial-advancement-sacrifice
 choose choose-cards/infernal-tutor-reveal
+choose choose-cards/ink-treader-nephilim-copy-order
 choose choose-cards/inscribed-tablet-take
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-alara-put-one
@@ -2433,6 +2434,7 @@ confirm confirm/whispering-specter-sacrifice
 confirm confirm/wild-endeavor-result
 confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
+confirm confirm/witch-maw-nephilim-counters
 confirm confirm/zagorka-sanctum
 confirm confirm/zareth-san-reanimate
 confirm confirm/zealot-il-vec-damage
@@ -3330,6 +3332,7 @@ payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
 payunless pay-unless/speed-young-avenger-unblockable
 payunless pay-unless/spellbook-vendor-sorcerer
+payunless pay-unless/spelltithe-enforcer-sacrifice
 payunless pay-unless/spined-tyrranax-counter
 payunless pay-unless/spirit-bonds-spirit
 payunless pay-unless/spirit-cairn-spirit
@@ -4037,6 +4040,7 @@ tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
 tail biblioplex-kraken/unblockable
 tail bind-to-life/after-mill
+tail bioplasm/exiled-creature-pump
 tail bismuth-mindrender/after-exile
 tail blb/coiling-rebirth-copy
 tail blb/driftgloom-coyote-counter

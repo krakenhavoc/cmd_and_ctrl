@@ -101,6 +101,20 @@ type PermanentQuery struct {
 	// through the layers like Types, so an animated artifact is out. Additive
 	// within the snapshot schema (omitted when empty).
 	WithoutTypes []string `json:",omitempty"`
+	// HasManaValue asks for a permanent whose mana value is ManaValue:
+	// "each creature with mana value X can't attack or block this turn"
+	// (Droning Bureaucrats, S82 OLD b571). A flag beside the number because
+	// zero is a real mana value. Read live off the permanent (CR 202.3), a
+	// token's being 0. Additive within the snapshot schema (omitted when
+	// false). Set it with WithManaValue.
+	HasManaValue bool `json:",omitempty"`
+	ManaValue    int  `json:",omitempty"`
+}
+
+// WithManaValue is q that also asks for exactly mana value n.
+func (q PermanentQuery) WithManaValue(n int) PermanentQuery {
+	q.HasManaValue, q.ManaValue = true, n
+	return q
 }
 
 // WithExactPT is q that also asks for exactly power p and toughness t.
@@ -141,6 +155,7 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		q.Untapped == o.Untapped && q.ToughnessOverPower == o.ToughnessOverPower &&
 		q.Monocolored == o.Monocolored &&
 		slices.Equal(q.WithoutTypes, o.WithoutTypes) &&
+		q.HasManaValue == o.HasManaValue && q.ManaValue == o.ManaValue &&
 		q.WithoutKeyword == o.WithoutKeyword
 }
 
@@ -194,6 +209,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if len(q.WithoutTypes) > 0 && slices.ContainsFunc(q.WithoutTypes, c.HasCardType) {
+		return false
+	}
+	if q.HasManaValue && c.ManaValue() != q.ManaValue {
 		return false
 	}
 	if q.boundsPower() {
@@ -367,6 +385,9 @@ func (q PermanentQuery) Noun() string {
 	}
 	if q.ToughnessOverPower {
 		with = append(with, "toughness greater than its power")
+	}
+	if q.HasManaValue {
+		with = append(with, fmt.Sprintf("mana value %d", q.ManaValue))
 	}
 	if len(with) > 0 {
 		s += " with " + strings.Join(with, " and ")
