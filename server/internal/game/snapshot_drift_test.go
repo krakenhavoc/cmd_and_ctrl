@@ -486,6 +486,7 @@ var cardFields = plan(
 	// Blade. Not a counter, so it is its own field rather than a
 	// Counters entry (see Card.RegenerationShields).
 	"RegenerationShields", carried, "",
+	"RegenerationCounterShields", carried, "",
 	"FaceDown", carried, "",
 	// ADR 0069: carried — the kind is the rule. A restore that
 	// dropped it would bring back a face-down object with no viewers

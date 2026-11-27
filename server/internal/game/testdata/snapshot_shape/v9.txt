@@ -493,6 +493,7 @@ battlefield.cards[].provenance.phyrexianLife	number:int
 battlefield.cards[].provenance.x	number:int
 battlefield.cards[].putInGraveyardFrom	string
 battlefield.cards[].putInGraveyardThisTurn	bool
+battlefield.cards[].regenerationCounterShields	number:int
 battlefield.cards[].regenerationShields	number:int
 battlefield.cards[].renowned	bool
 battlefield.cards[].returnedAura	bool
@@ -1067,6 +1068,7 @@ delayedTriggers[].copiesSpell.card.provenance.phyrexianLife	number:int
 delayedTriggers[].copiesSpell.card.provenance.x	number:int
 delayedTriggers[].copiesSpell.card.putInGraveyardFrom	string
 delayedTriggers[].copiesSpell.card.putInGraveyardThisTurn	bool
+delayedTriggers[].copiesSpell.card.regenerationCounterShields	number:int
 delayedTriggers[].copiesSpell.card.regenerationShields	number:int
 delayedTriggers[].copiesSpell.card.renowned	bool
 delayedTriggers[].copiesSpell.card.returnedAura	bool
@@ -2046,6 +2048,7 @@ enteringTokens[].provenance.phyrexianLife	number:int
 enteringTokens[].provenance.x	number:int
 enteringTokens[].putInGraveyardFrom	string
 enteringTokens[].putInGraveyardThisTurn	bool
+enteringTokens[].regenerationCounterShields	number:int
 enteringTokens[].regenerationShields	number:int
 enteringTokens[].renowned	bool
 enteringTokens[].returnedAura	bool
@@ -2676,6 +2679,7 @@ exile.cards[].provenance.phyrexianLife	number:int
 exile.cards[].provenance.x	number:int
 exile.cards[].putInGraveyardFrom	string
 exile.cards[].putInGraveyardThisTurn	bool
+exile.cards[].regenerationCounterShields	number:int
 exile.cards[].regenerationShields	number:int
 exile.cards[].renowned	bool
 exile.cards[].returnedAura	bool
@@ -11768,6 +11772,7 @@ frozenEntries[].event.keywordActionTail.armyToken.provenance.phyrexianLife	numbe
 frozenEntries[].event.keywordActionTail.armyToken.provenance.x	number:int
 frozenEntries[].event.keywordActionTail.armyToken.putInGraveyardFrom	string
 frozenEntries[].event.keywordActionTail.armyToken.putInGraveyardThisTurn	bool
+frozenEntries[].event.keywordActionTail.armyToken.regenerationCounterShields	number:int
 frozenEntries[].event.keywordActionTail.armyToken.regenerationShields	number:int
 frozenEntries[].event.keywordActionTail.armyToken.renowned	bool
 frozenEntries[].event.keywordActionTail.armyToken.returnedAura	bool
@@ -14590,6 +14595,7 @@ frozenEntries[].event.millTail.run.planned[].provenance.phyrexianLife	number:int
 frozenEntries[].event.millTail.run.planned[].provenance.x	number:int
 frozenEntries[].event.millTail.run.planned[].putInGraveyardFrom	string
 frozenEntries[].event.millTail.run.planned[].putInGraveyardThisTurn	bool
+frozenEntries[].event.millTail.run.planned[].regenerationCounterShields	number:int
 frozenEntries[].event.millTail.run.planned[].regenerationShields	number:int
 frozenEntries[].event.millTail.run.planned[].renowned	bool
 frozenEntries[].event.millTail.run.planned[].returnedAura	bool
@@ -15094,6 +15100,7 @@ frozenEntries[].event.millTail.run.seen[].provenance.phyrexianLife	number:int
 frozenEntries[].event.millTail.run.seen[].provenance.x	number:int
 frozenEntries[].event.millTail.run.seen[].putInGraveyardFrom	string
 frozenEntries[].event.millTail.run.seen[].putInGraveyardThisTurn	bool
+frozenEntries[].event.millTail.run.seen[].regenerationCounterShields	number:int
 frozenEntries[].event.millTail.run.seen[].regenerationShields	number:int
 frozenEntries[].event.millTail.run.seen[].renowned	bool
 frozenEntries[].event.millTail.run.seen[].returnedAura	bool
@@ -17897,6 +17904,7 @@ frozenEntries[].event.tokenGroups[].template.provenance.phyrexianLife	number:int
 frozenEntries[].event.tokenGroups[].template.provenance.x	number:int
 frozenEntries[].event.tokenGroups[].template.putInGraveyardFrom	string
 frozenEntries[].event.tokenGroups[].template.putInGraveyardThisTurn	bool
+frozenEntries[].event.tokenGroups[].template.regenerationCounterShields	number:int
 frozenEntries[].event.tokenGroups[].template.regenerationShields	number:int
 frozenEntries[].event.tokenGroups[].template.renowned	bool
 frozenEntries[].event.tokenGroups[].template.returnedAura	bool
@@ -19180,6 +19188,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.phyrexianLi
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.x	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.putInGraveyardFrom	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.putInGraveyardThisTurn	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.regenerationCounterShields	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.regenerationShields	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.renowned	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.returnedAura	bool
@@ -19698,6 +19707,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.phyrexianLif
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.x	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].putInGraveyardFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].regenerationCounterShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].regenerationShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].renowned	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].returnedAura	bool
@@ -20202,6 +20212,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.phyrexianLife	n
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.x	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].putInGraveyardFrom	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].regenerationCounterShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].regenerationShields	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].renowned	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].returnedAura	bool
@@ -24641,6 +24652,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.phyrexianLife	numb
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.x	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].putInGraveyardFrom	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].putInGraveyardThisTurn	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].regenerationCounterShields	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].regenerationShields	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].renowned	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].returnedAura	bool
@@ -26310,6 +26322,7 @@ lastKnownStack[].card.provenance.phyrexianLife	number:int
 lastKnownStack[].card.provenance.x	number:int
 lastKnownStack[].card.putInGraveyardFrom	string
 lastKnownStack[].card.putInGraveyardThisTurn	bool
+lastKnownStack[].card.regenerationCounterShields	number:int
 lastKnownStack[].card.regenerationShields	number:int
 lastKnownStack[].card.renowned	bool
 lastKnownStack[].card.returnedAura	bool
@@ -27337,6 +27350,7 @@ match.decks[].fixed[].provenance.phyrexianLife	number:int
 match.decks[].fixed[].provenance.x	number:int
 match.decks[].fixed[].putInGraveyardFrom	string
 match.decks[].fixed[].putInGraveyardThisTurn	bool
+match.decks[].fixed[].regenerationCounterShields	number:int
 match.decks[].fixed[].regenerationShields	number:int
 match.decks[].fixed[].renowned	bool
 match.decks[].fixed[].returnedAura	bool
@@ -27839,6 +27853,7 @@ match.decks[].main[].provenance.phyrexianLife	number:int
 match.decks[].main[].provenance.x	number:int
 match.decks[].main[].putInGraveyardFrom	string
 match.decks[].main[].putInGraveyardThisTurn	bool
+match.decks[].main[].regenerationCounterShields	number:int
 match.decks[].main[].regenerationShields	number:int
 match.decks[].main[].renowned	bool
 match.decks[].main[].returnedAura	bool
@@ -28344,6 +28359,7 @@ match.decks[].side[].provenance.phyrexianLife	number:int
 match.decks[].side[].provenance.x	number:int
 match.decks[].side[].putInGraveyardFrom	string
 match.decks[].side[].putInGraveyardThisTurn	bool
+match.decks[].side[].regenerationCounterShields	number:int
 match.decks[].side[].regenerationShields	number:int
 match.decks[].side[].renowned	bool
 match.decks[].side[].returnedAura	bool
@@ -36367,6 +36383,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.provenance.phyrexianLife	numbe
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.x	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.putInGraveyardFrom	string
 movesAwaitingTokens[].keywordActionTail.armyToken.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.regenerationCounterShields	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.regenerationShields	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.renowned	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.returnedAura	bool
@@ -39189,6 +39206,7 @@ movesAwaitingTokens[].millTail.run.planned[].provenance.phyrexianLife	number:int
 movesAwaitingTokens[].millTail.run.planned[].provenance.x	number:int
 movesAwaitingTokens[].millTail.run.planned[].putInGraveyardFrom	string
 movesAwaitingTokens[].millTail.run.planned[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.run.planned[].regenerationCounterShields	number:int
 movesAwaitingTokens[].millTail.run.planned[].regenerationShields	number:int
 movesAwaitingTokens[].millTail.run.planned[].renowned	bool
 movesAwaitingTokens[].millTail.run.planned[].returnedAura	bool
@@ -39693,6 +39711,7 @@ movesAwaitingTokens[].millTail.run.seen[].provenance.phyrexianLife	number:int
 movesAwaitingTokens[].millTail.run.seen[].provenance.x	number:int
 movesAwaitingTokens[].millTail.run.seen[].putInGraveyardFrom	string
 movesAwaitingTokens[].millTail.run.seen[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].millTail.run.seen[].regenerationCounterShields	number:int
 movesAwaitingTokens[].millTail.run.seen[].regenerationShields	number:int
 movesAwaitingTokens[].millTail.run.seen[].renowned	bool
 movesAwaitingTokens[].millTail.run.seen[].returnedAura	bool
@@ -42496,6 +42515,7 @@ movesAwaitingTokens[].tokenGroups[].template.provenance.phyrexianLife	number:int
 movesAwaitingTokens[].tokenGroups[].template.provenance.x	number:int
 movesAwaitingTokens[].tokenGroups[].template.putInGraveyardFrom	string
 movesAwaitingTokens[].tokenGroups[].template.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].tokenGroups[].template.regenerationCounterShields	number:int
 movesAwaitingTokens[].tokenGroups[].template.regenerationShields	number:int
 movesAwaitingTokens[].tokenGroups[].template.renowned	bool
 movesAwaitingTokens[].tokenGroups[].template.returnedAura	bool
@@ -43779,6 +43799,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.phyrexianLi
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.x	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.putInGraveyardFrom	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.putInGraveyardThisTurn	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.regenerationCounterShields	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.regenerationShields	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.renowned	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.returnedAura	bool
@@ -44297,6 +44318,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.phyrexianLif
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.x	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].putInGraveyardFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].regenerationCounterShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].regenerationShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].renowned	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].returnedAura	bool
@@ -44801,6 +44823,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.phyrexianLife	n
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.x	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].putInGraveyardFrom	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].regenerationCounterShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].regenerationShields	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].renowned	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].returnedAura	bool
@@ -49240,6 +49263,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.phyrexianLife	numb
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.x	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].putInGraveyardFrom	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].putInGraveyardThisTurn	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].regenerationCounterShields	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].regenerationShields	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].renowned	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].returnedAura	bool
@@ -51394,6 +51418,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.provenance.phyrexianLife	
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.x	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.putInGraveyardFrom	string
 pendingChoices[].attackSplit.settled.chosen[].template.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.settled.chosen[].template.regenerationCounterShields	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.regenerationShields	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.renowned	bool
 pendingChoices[].attackSplit.settled.chosen[].template.returnedAura	bool
@@ -51918,6 +51943,7 @@ pendingChoices[].attackSplit.settled.groups[].template.provenance.phyrexianLife	
 pendingChoices[].attackSplit.settled.groups[].template.provenance.x	number:int
 pendingChoices[].attackSplit.settled.groups[].template.putInGraveyardFrom	string
 pendingChoices[].attackSplit.settled.groups[].template.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.settled.groups[].template.regenerationCounterShields	number:int
 pendingChoices[].attackSplit.settled.groups[].template.regenerationShields	number:int
 pendingChoices[].attackSplit.settled.groups[].template.renowned	bool
 pendingChoices[].attackSplit.settled.groups[].template.returnedAura	bool
@@ -53181,6 +53207,7 @@ pendingChoices[].attackSplit.template.provenance.phyrexianLife	number:int
 pendingChoices[].attackSplit.template.provenance.x	number:int
 pendingChoices[].attackSplit.template.putInGraveyardFrom	string
 pendingChoices[].attackSplit.template.putInGraveyardThisTurn	bool
+pendingChoices[].attackSplit.template.regenerationCounterShields	number:int
 pendingChoices[].attackSplit.template.regenerationShields	number:int
 pendingChoices[].attackSplit.template.renowned	bool
 pendingChoices[].attackSplit.template.returnedAura	bool
@@ -54126,6 +54153,7 @@ pendingChoices[].copyWalk.src.provenance.phyrexianLife	number:int
 pendingChoices[].copyWalk.src.provenance.x	number:int
 pendingChoices[].copyWalk.src.putInGraveyardFrom	string
 pendingChoices[].copyWalk.src.putInGraveyardThisTurn	bool
+pendingChoices[].copyWalk.src.regenerationCounterShields	number:int
 pendingChoices[].copyWalk.src.regenerationShields	number:int
 pendingChoices[].copyWalk.src.renowned	bool
 pendingChoices[].copyWalk.src.returnedAura	bool
@@ -68498,6 +68526,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.x	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.regenerationShields	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.renowned	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.returnedAura	bool
@@ -71320,6 +71349,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.phyre
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.x	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].renowned	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].returnedAura	bool
@@ -71824,6 +71854,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.phyrexia
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.x	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].renowned	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].returnedAura	bool
@@ -74627,6 +74658,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.phyre
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.x	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.regenerationShields	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.renowned	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.returnedAura	bool
@@ -75910,6 +75942,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pro
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.x	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.regenerationShields	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.renowned	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.returnedAura	bool
@@ -76428,6 +76461,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prov
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.x	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].renowned	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].returnedAura	bool
@@ -76932,6 +76966,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provena
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.x	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].renowned	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].returnedAura	bool
@@ -81371,6 +81406,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.x	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].putInGraveyardFrom	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].putInGraveyardThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].regenerationCounterShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].regenerationShields	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].renowned	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].returnedAura	bool
@@ -84192,6 +84228,7 @@ pendingChoices[].targetWalk.frame.source.provenance.phyrexianLife	number:int
 pendingChoices[].targetWalk.frame.source.provenance.x	number:int
 pendingChoices[].targetWalk.frame.source.putInGraveyardFrom	string
 pendingChoices[].targetWalk.frame.source.putInGraveyardThisTurn	bool
+pendingChoices[].targetWalk.frame.source.regenerationCounterShields	number:int
 pendingChoices[].targetWalk.frame.source.regenerationShields	number:int
 pendingChoices[].targetWalk.frame.source.renowned	bool
 pendingChoices[].targetWalk.frame.source.returnedAura	bool
@@ -85242,6 +85279,7 @@ pendingChoices[].triggerFrame.source.provenance.phyrexianLife	number:int
 pendingChoices[].triggerFrame.source.provenance.x	number:int
 pendingChoices[].triggerFrame.source.putInGraveyardFrom	string
 pendingChoices[].triggerFrame.source.putInGraveyardThisTurn	bool
+pendingChoices[].triggerFrame.source.regenerationCounterShields	number:int
 pendingChoices[].triggerFrame.source.regenerationShields	number:int
 pendingChoices[].triggerFrame.source.renowned	bool
 pendingChoices[].triggerFrame.source.returnedAura	bool
@@ -86606,6 +86644,7 @@ phasedOut.cards[].provenance.phyrexianLife	number:int
 phasedOut.cards[].provenance.x	number:int
 phasedOut.cards[].putInGraveyardFrom	string
 phasedOut.cards[].putInGraveyardThisTurn	bool
+phasedOut.cards[].regenerationCounterShields	number:int
 phasedOut.cards[].regenerationShields	number:int
 phasedOut.cards[].renowned	bool
 phasedOut.cards[].returnedAura	bool
@@ -87115,6 +87154,7 @@ planechase.deck.cards[].provenance.phyrexianLife	number:int
 planechase.deck.cards[].provenance.x	number:int
 planechase.deck.cards[].putInGraveyardFrom	string
 planechase.deck.cards[].putInGraveyardThisTurn	bool
+planechase.deck.cards[].regenerationCounterShields	number:int
 planechase.deck.cards[].regenerationShields	number:int
 planechase.deck.cards[].renowned	bool
 planechase.deck.cards[].returnedAura	bool
@@ -87622,6 +87662,7 @@ planechase.faceUp.cards[].provenance.phyrexianLife	number:int
 planechase.faceUp.cards[].provenance.x	number:int
 planechase.faceUp.cards[].putInGraveyardFrom	string
 planechase.faceUp.cards[].putInGraveyardThisTurn	bool
+planechase.faceUp.cards[].regenerationCounterShields	number:int
 planechase.faceUp.cards[].regenerationShields	number:int
 planechase.faceUp.cards[].renowned	bool
 planechase.faceUp.cards[].returnedAura	bool
@@ -88389,6 +88430,7 @@ resolving.card.provenance.phyrexianLife	number:int
 resolving.card.provenance.x	number:int
 resolving.card.putInGraveyardFrom	string
 resolving.card.putInGraveyardThisTurn	bool
+resolving.card.regenerationCounterShields	number:int
 resolving.card.regenerationShields	number:int
 resolving.card.renowned	bool
 resolving.card.returnedAura	bool
@@ -89608,6 +89650,7 @@ seats[].attractionDeck.cards[].provenance.phyrexianLife	number:int
 seats[].attractionDeck.cards[].provenance.x	number:int
 seats[].attractionDeck.cards[].putInGraveyardFrom	string
 seats[].attractionDeck.cards[].putInGraveyardThisTurn	bool
+seats[].attractionDeck.cards[].regenerationCounterShields	number:int
 seats[].attractionDeck.cards[].regenerationShields	number:int
 seats[].attractionDeck.cards[].renowned	bool
 seats[].attractionDeck.cards[].returnedAura	bool
@@ -90305,6 +90348,7 @@ seats[].command.cards[].provenance.phyrexianLife	number:int
 seats[].command.cards[].provenance.x	number:int
 seats[].command.cards[].putInGraveyardFrom	string
 seats[].command.cards[].putInGraveyardThisTurn	bool
+seats[].command.cards[].regenerationCounterShields	number:int
 seats[].command.cards[].regenerationShields	number:int
 seats[].command.cards[].renowned	bool
 seats[].command.cards[].returnedAura	bool
@@ -90814,6 +90858,7 @@ seats[].companion.cards[].provenance.phyrexianLife	number:int
 seats[].companion.cards[].provenance.x	number:int
 seats[].companion.cards[].putInGraveyardFrom	string
 seats[].companion.cards[].putInGraveyardThisTurn	bool
+seats[].companion.cards[].regenerationCounterShields	number:int
 seats[].companion.cards[].regenerationShields	number:int
 seats[].companion.cards[].renowned	bool
 seats[].companion.cards[].returnedAura	bool
@@ -91324,6 +91369,7 @@ seats[].departedPermanents[].source.provenance.phyrexianLife	number:int
 seats[].departedPermanents[].source.provenance.x	number:int
 seats[].departedPermanents[].source.putInGraveyardFrom	string
 seats[].departedPermanents[].source.putInGraveyardThisTurn	bool
+seats[].departedPermanents[].source.regenerationCounterShields	number:int
 seats[].departedPermanents[].source.regenerationShields	number:int
 seats[].departedPermanents[].source.renowned	bool
 seats[].departedPermanents[].source.returnedAura	bool
@@ -91837,6 +91883,7 @@ seats[].emblems.cards[].provenance.phyrexianLife	number:int
 seats[].emblems.cards[].provenance.x	number:int
 seats[].emblems.cards[].putInGraveyardFrom	string
 seats[].emblems.cards[].putInGraveyardThisTurn	bool
+seats[].emblems.cards[].regenerationCounterShields	number:int
 seats[].emblems.cards[].regenerationShields	number:int
 seats[].emblems.cards[].renowned	bool
 seats[].emblems.cards[].returnedAura	bool
@@ -92442,6 +92489,7 @@ seats[].graveyard.cards[].provenance.phyrexianLife	number:int
 seats[].graveyard.cards[].provenance.x	number:int
 seats[].graveyard.cards[].putInGraveyardFrom	string
 seats[].graveyard.cards[].putInGraveyardThisTurn	bool
+seats[].graveyard.cards[].regenerationCounterShields	number:int
 seats[].graveyard.cards[].regenerationShields	number:int
 seats[].graveyard.cards[].renowned	bool
 seats[].graveyard.cards[].returnedAura	bool
@@ -92947,6 +92995,7 @@ seats[].hand.cards[].provenance.phyrexianLife	number:int
 seats[].hand.cards[].provenance.x	number:int
 seats[].hand.cards[].putInGraveyardFrom	string
 seats[].hand.cards[].putInGraveyardThisTurn	bool
+seats[].hand.cards[].regenerationCounterShields	number:int
 seats[].hand.cards[].regenerationShields	number:int
 seats[].hand.cards[].renowned	bool
 seats[].hand.cards[].returnedAura	bool
@@ -93457,6 +93506,7 @@ seats[].junkyard.cards[].provenance.phyrexianLife	number:int
 seats[].junkyard.cards[].provenance.x	number:int
 seats[].junkyard.cards[].putInGraveyardFrom	string
 seats[].junkyard.cards[].putInGraveyardThisTurn	bool
+seats[].junkyard.cards[].regenerationCounterShields	number:int
 seats[].junkyard.cards[].regenerationShields	number:int
 seats[].junkyard.cards[].renowned	bool
 seats[].junkyard.cards[].returnedAura	bool
@@ -93988,6 +94038,7 @@ seats[].library.cards[].provenance.phyrexianLife	number:int
 seats[].library.cards[].provenance.x	number:int
 seats[].library.cards[].putInGraveyardFrom	string
 seats[].library.cards[].putInGraveyardThisTurn	bool
+seats[].library.cards[].regenerationCounterShields	number:int
 seats[].library.cards[].regenerationShields	number:int
 seats[].library.cards[].renowned	bool
 seats[].library.cards[].returnedAura	bool
@@ -94537,6 +94588,7 @@ seats[].sideboard.cards[].provenance.phyrexianLife	number:int
 seats[].sideboard.cards[].provenance.x	number:int
 seats[].sideboard.cards[].putInGraveyardFrom	string
 seats[].sideboard.cards[].putInGraveyardThisTurn	bool
+seats[].sideboard.cards[].regenerationCounterShields	number:int
 seats[].sideboard.cards[].regenerationShields	number:int
 seats[].sideboard.cards[].renowned	bool
 seats[].sideboard.cards[].returnedAura	bool
@@ -95463,6 +95515,7 @@ stack.cards[].provenance.phyrexianLife	number:int
 stack.cards[].provenance.x	number:int
 stack.cards[].putInGraveyardFrom	string
 stack.cards[].putInGraveyardThisTurn	bool
+stack.cards[].regenerationCounterShields	number:int
 stack.cards[].regenerationShields	number:int
 stack.cards[].renowned	bool
 stack.cards[].returnedAura	bool

@@ -1219,13 +1219,16 @@ type cardSnapshot struct {
 	// only when a file has no `goads` key (restoreGoads).
 	GoadedBy uuid.UUID `json:"goadedBy"`
 	// Goads is every goad on the card with its end (#1598).
-	Goads                []goadSnapshot     `json:"goads,omitempty"`
-	DamageMarked         int                `json:"damageMarked"`
-	RegenerationShields  int                `json:"regenerationShields,omitempty"`
-	FaceDown             bool               `json:"faceDown"`
-	FaceDownKind         FaceDownKind       `json:"faceDownKind,omitempty"`
-	KnownBy              map[uuid.UUID]bool `json:"knownBy,omitempty"`
-	EnteredBattlefieldAt int64              `json:"enteredBattlefieldAt"`
+	Goads               []goadSnapshot `json:"goads,omitempty"`
+	DamageMarked        int            `json:"damageMarked"`
+	RegenerationShields int            `json:"regenerationShields,omitempty"`
+	// RegenerationCounterShields is the shields that carry Skeleton Scavengers'
+	// rider; additive within the version.
+	RegenerationCounterShields int                `json:"regenerationCounterShields,omitempty"`
+	FaceDown                   bool               `json:"faceDown"`
+	FaceDownKind               FaceDownKind       `json:"faceDownKind,omitempty"`
+	KnownBy                    map[uuid.UUID]bool `json:"knownBy,omitempty"`
+	EnteredBattlefieldAt       int64              `json:"enteredBattlefieldAt"`
 	// EntryOrdinal is Card.EntryOrdinal (ADR 0109 §8): the order of
 	// battlefield entries the world rule reads. Absent from every
 	// earlier file, which restores it as 0; the world rule orders such
@@ -3354,6 +3357,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Goads:                      snapshotGoads(c.Goads),
 		DamageMarked:               c.DamageMarked,
 		RegenerationShields:        c.RegenerationShields,
+		RegenerationCounterShields: c.RegenerationCounterShields,
 		FaceDown:                   c.FaceDown,
 		FaceDownKind:               c.FaceDownKind,
 		FaceDownListed:             c.FaceDownListed.clone(),
@@ -4566,6 +4570,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Goads:                      restoreGoads(c.Goads, c.GoadedBy),
 		DamageMarked:               c.DamageMarked,
 		RegenerationShields:        c.RegenerationShields,
+		RegenerationCounterShields: c.RegenerationCounterShields,
 		FaceDown:                   c.FaceDown,
 		FaceDownKind:               c.FaceDownKind,
 		FaceDownListed:             c.FaceDownListed.clone(),

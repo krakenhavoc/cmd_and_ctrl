@@ -301,6 +301,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// that was never given one. A creature that dies with a shield
 		// unused and comes back does not come back protected.
 		c.RegenerationShields = 0
+		c.RegenerationCounterShields = 0
 		// S24 / ADR 0036 decision 12: an Equipment or Aura that
 		// leaves the battlefield stops being attached. This is the
 		// FORWARD direction only — permanents attached to a host

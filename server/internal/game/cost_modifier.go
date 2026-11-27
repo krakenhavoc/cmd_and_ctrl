@@ -1350,6 +1350,11 @@ func (g *Game) AbilityManaCostAtXForEffect(activator uuid.UUID, source Card, zon
 	if ab.Cost.ManaValueOfExiledWith && ab.Cost.Mana == "" {
 		ab.Cost.Mana = "{" + strconv.Itoa(g.exiledWithManaValueLocked(source)) + "}"
 	}
+	// Skeleton Scavengers: "pay {1} for each +1/+1 counter on this creature"
+	// is a number by now, read off the source as it is announced.
+	if ab.Cost.ManaPerCounter != "" && ab.Cost.Mana == "" {
+		ab.Cost.Mana = "{" + strconv.Itoa(source.Counters[ab.Cost.ManaPerCounter]) + "}"
+	}
 	base, err := ParseCost(ab.Cost.Mana)
 	if err != nil {
 		return ParsedCost{}, err
