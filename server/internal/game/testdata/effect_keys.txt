@@ -1766,6 +1766,14 @@ choose choose-cards/s82-old-b662-global-ruin-keep-swamp-forest
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain
 choose choose-cards/s82-old-b662-global-ruin-keep-swamp-mountain-forest
 choose choose-cards/s82-old-b677-eye-of-yawgmoth-pick
+choose choose-cards/s82-old-b706-brine-seer
+choose choose-cards/s82-old-b706-ivy-seer
+choose choose-cards/s82-old-b706-jasmine-seer
+choose choose-cards/s82-old-b706-nightshade-seer
+choose choose-cards/s82-old-b706-rofellos-gift-reveal
+choose choose-cards/s82-old-b706-rofellos-gift-take
+choose choose-cards/s82-old-b706-scent-of-brine
+choose choose-cards/s82-old-b706-scent-of-jasmine
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
