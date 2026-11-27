@@ -1703,6 +1703,7 @@ choose choose-cards/s82-old-b556-nova-chaser-champion
 choose choose-cards/s82-old-b556-thoughtweft-trio-champion
 choose choose-cards/s82-old-b574-lurking-informant-graveyard
 choose choose-cards/s82-old-b574-thoughtpicker-witch-exile
+choose choose-cards/s82-old-b602-lumengrid-augur-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2003,6 +2004,7 @@ coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/ral-monsoon-mage
 coinflip coin-flip/s82-old-b452-goblin-bangchuckers
+coinflip coin-flip/s82-old-b602-fiery-gambit-flip
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
 coinflip coin-flip/stitch-in-time
@@ -2348,6 +2350,9 @@ confirm confirm/s82-old-b450-cloistered-youth-transform
 confirm confirm/s82-old-b450-thraben-sentry-transform
 confirm confirm/s82-old-b462-auriok-survivors-attach
 confirm confirm/s82-old-b464-vedalken-infuser-counter
+confirm confirm/s82-old-b602-fiery-gambit-again
+confirm confirm/s82-old-b602-liars-pendulum-guess
+confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -2490,6 +2495,7 @@ drawinstead necrobloom-dredge-2
 drawinstead ormos-archive-keeper
 drawinstead out-of-the-tombs
 drawinstead pavel-chekov-first-posting
+drawinstead s82-old-b602-shared-fate
 drawinstead sages-of-the-anima
 drawinstead scion-of-halaster
 drawinstead underrealm-lich
@@ -2548,6 +2554,7 @@ drawthen s82-old-b406/blast-of-genius-discard
 drawthen s82-old-b431/discard-a-card-at-random
 drawthen s82-old-b431/see-beyond-pick
 drawthen s82-old-b449-scholar-loot
+drawthen s82-old-b602-lumengrid-augur-loot
 drawthen seasoned-cryomancer/discard-two
 drawthen serum-core-chimera/may-discard
 drawthen seven-of-nine-tertiary-adjunct/discard
@@ -2889,6 +2896,8 @@ option option-pick/s82-old-b459-apostles-blessing
 option option-pick/s82-old-b497-world-queller-type
 option option-pick/s82-old-b518-brilliant-ultimatum-chosen
 option option-pick/s82-old-b522-canker-abomination
+option option-pick/s82-old-b602-fatespinner-skip
+option option-pick/s82-old-b602-shared-fate-library
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -5082,6 +5091,8 @@ tail s82-old-b408/obzedat-haste
 tail s82-old-b408/obzedat-schedule-return
 tail s82-old-b472/glint-hawk-after-bounce
 tail s82-old-b498/living-tsunami-after-return
+tail s82-old-b602-spoils-of-the-vault/exiled
+tail s82-old-b602-spoils-of-the-vault/taken
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -5807,6 +5818,8 @@ tail then/s82-old-b461-impaler-shrike-draw
 tail then/s82-old-b518-brilliant-ultimatum-exiled
 tail then/s82-old-b524-evershrike-entered
 tail then/s82-old-b531-impromptu-raid-arrived
+tail then/s82-old-b602-liars-pendulum-named
+tail then/s82-old-b602-spoils-of-the-vault-named
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

@@ -399,6 +399,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 548 (#5593).
 	"Ego Erasure": "-2/-0 and losing creature types to one player's creatures until end of turn kills nothing",
+
+	// S82 OLD batch 602 (#5606).
+	"Spoils of the Vault": "exiles only the cards it reveals from the top of its controller's own library, never a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
