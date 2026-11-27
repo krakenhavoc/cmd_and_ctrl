@@ -489,6 +489,7 @@ body prevention/red-damage-source-controller
 body prevention/remove-a-counter-from-this
 body prevention/remove-that-many-counters-from-this
 body prevention/ria-ivor-create-mites
+body prevention/s82-old-b592-sekki-counters-for-spirits
 body prevention/shield-gain-life-equal
 body prevention/that-many-counters-on-it
 body prevention/that-many-counters-on-this
