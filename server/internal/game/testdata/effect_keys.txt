@@ -1802,6 +1802,8 @@ choose choose-cards/s82-old-b714-wei-assassins-destroy
 choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-old-b734-sacrifice-unless-discard-creature
+choose choose-cards/s82-old-b777-sacrifice-unless-discard-land
+choose choose-cards/s82-old-b777-thran-tome-chosen
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3048,6 +3050,7 @@ option option-pick/s82-old-b662-death-or-glory-chosen
 option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-old-b716-walking-sponge-keyword
+option option-pick/s82-old-b777-sacrifice-this-unless-you-sacrifice-a-forest
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3511,6 +3514,7 @@ payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
 payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
 payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-old-b696-rishadan-sacrifice
+payunless pay-unless/s82-old-b777-llanowar-sentinel
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3966,6 +3970,7 @@ run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-old-b723-wildfire-damage
 run prompt-run/s82-old-b745-oath-of-ghouls-return
+run prompt-run/s82-old-b777-flux
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -5073,6 +5078,7 @@ tail misfortune-teller/exiled-card-clause
 tail mission-briefing/choose
 tail mistbreath-elder/after-bounce
 tail mister-negative/draw
+tail mistmoon-griffin/exiled
 tail model-of-unity/ask-next
 tail moldgraf-monstrosity/after-exile
 tail mole-module/after-mill
