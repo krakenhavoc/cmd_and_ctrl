@@ -224,6 +224,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Keeper of the Beasts (Exodus, 1998) creates "a 2/2 green Beast creature
 	// token"; no Beast token card of that size was printed for it.
 	"2/2 green Beast": "no 2/2 green Beast token card was printed for Keeper of the Beasts",
+
+	// Diamond Kaleidoscope (Visions, 1997, S82 OLD batch 788) creates "a 0/1
+	// colorless Prism artifact creature token"; no Prism token card was ever
+	// printed, as token cards start in 2007. The template follows the oracle text.
+	"0/1 colorless Prism artifact": "no Prism token card was printed for Diamond Kaleidoscope",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

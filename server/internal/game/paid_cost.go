@@ -143,6 +143,18 @@ type PaidCost struct {
 	// the costs of the original".
 	SacrificedObjects []ObjectRef `json:"sacrificedObjects,omitempty"`
 
+	// SacrificedMana is, for each permanent a MANA ability's sacrifice
+	// took, the mana types it could produce as it stood on the
+	// battlefield (CR 106.7), as WUBRGC letters in that order, parallel
+	// to SacrificedObjects. It is written only for a mana ability whose
+	// output reads the payment (ProducedForPaid): Squandered Resources'
+	// "Add one mana of any type the sacrificed land could produce". The
+	// land is in a graveyard by the time the mana is made, and what a
+	// land could produce is a fact about the battlefield object (a
+	// Forest under Urborg), so it is read before the sacrifice moves it.
+	// Additive: an older record has none.
+	SacrificedMana []string `json:"sacrificedMana,omitempty"`
+
 	// AltCostObjects is WHICH objects the claimed alternative cost's
 	// card component paid with (ADR 0135 §4, #2416): emerge's sacrificed
 	// creature, Dread Return's three, a tapped Orim's Cure creature, a
@@ -575,7 +587,7 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 func (p PaidCost) IsZero() bool {
 	return len(p.Mana) == 0 && !p.OnPaper && p.PaperMana == 0 &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
-		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
+		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.SacrificedMana) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.ReturnedObjects) == 0 && len(p.OptionalCosts) == 0 &&
 		len(p.TappedOthers) == 0 && len(p.UntappedOthers) == 0 && len(p.Chosen) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
@@ -623,6 +635,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.SacrificedObjects) > 0 {
 		out.SacrificedObjects = append([]ObjectRef(nil), p.SacrificedObjects...)
+	}
+	if len(p.SacrificedMana) > 0 {
+		out.SacrificedMana = append([]string(nil), p.SacrificedMana...)
 	}
 	if len(p.AltCostObjects) > 0 {
 		out.AltCostObjects = append([]ObjectRef(nil), p.AltCostObjects...)
