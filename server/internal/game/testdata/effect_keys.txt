@@ -3602,6 +3602,7 @@ payunless pay-unless/s82-old-b800-merfolk-seer-draw
 payunless pay-unless/s82-old-b804-ravenous-vampire
 payunless pay-unless/s82-old-b805-energy-vortex-damage
 payunless pay-unless/s82-old-b805-purraj-counter
+payunless pay-unless/s82-old-b806-vaporous-djinn-phase-out
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
