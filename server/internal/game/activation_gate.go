@@ -330,6 +330,12 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 	if reason, source, ok := g.playerActivationBanLocked(activator); ok {
 		return &CantActivateError{Reason: reason, Source: source}
 	}
+	// Abeyance: a ban that spares mana abilities (CR 605.1a).
+	if !ability.Mana {
+		if reason, source, ok := g.playerNonManaActivationBanLocked(activator); ok {
+			return &CantActivateError{Reason: reason, Source: source}
+		}
+	}
 	// Revel in Silence: a loyalty ability of a planeswalker, refused to a
 	// player under a granted loyalty ban (CR 606.1).
 	if ability.Loyalty && card.IsPlaneswalker() {

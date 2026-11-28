@@ -94998,6 +94998,7 @@ seats[].statics[].nextSpell.reduce	number:int
 seats[].statics[].nextSpell.text	string
 seats[].statics[].nextSpell.undaunted	bool
 seats[].statics[].nextSpell.withoutPayingManaCost	bool
+seats[].statics[].nonManaOnly	bool
 seats[].statics[].source	custom(uuid.UUID)
 seats[].statics[].timing	object
 seats[].statics[].timing.affects	string
