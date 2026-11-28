@@ -81,6 +81,7 @@ body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
 body blitz/sacrifice
+body block/old-b835-the-blocker-gets-0-1
 body bloodthirsty-adversary/copy
 body bns-b52/slinza-fight
 body bns-b52/taeko-cant-be-blocked
@@ -599,6 +600,7 @@ body s82-old-b792/three-wishes-unplayed-to-graveyard
 body s82-old-b797/barreling-attack-boost-per-blocker
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
+body sacrifice/old-b835-the-object
 body saheeli-radiant-creator/copy
 body sakashima/return-listed-to-hand
 body sample-collector/counter
@@ -2190,6 +2192,7 @@ condition attack/that-creature-unblocked
 condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
+condition block/old-b835-a-creature-blocks
 condition block/s82-old-b632-zombie-boa-blocked-by-color
 condition blocked/s82-old-b797-that-creature-becomes-blocked
 condition cast/any-player-casts
