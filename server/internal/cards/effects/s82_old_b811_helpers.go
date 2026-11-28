@@ -66,11 +66,17 @@ func S82OldB811ReflectDamageToEnchantedCreaturesController(label string) game.Tr
 			}
 			return item
 		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Params.Player == uuid.Nil || item.Params.Amount <= 0 {
-				return nil
-			}
-			return DealDamage{Source: item.SourceCardID, Target: item.Params.Player, Amount: item.Params.Amount}.Apply(NewContext(g, item))
-		},
+		Effect: S82OldB811DealRecordedDamageToRecordedPlayer,
 	}
+}
+
+// S82OldB811DealRecordedDamageToRecordedPlayer is the resolution of "this deals that
+// much damage to that player": the source deals the amount and the player the trigger
+// recorded as it went on the stack (item.Params.Amount and item.Params.Player), so a
+// creature that died to the damage still costs its controller (Binding Agony, Justice).
+func S82OldB811DealRecordedDamageToRecordedPlayer(g *game.Game, item *game.StackItem) error {
+	if item.Params.Player == uuid.Nil || item.Params.Amount <= 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Params.Player, Amount: item.Params.Amount}.Apply(NewContext(g, item))
 }

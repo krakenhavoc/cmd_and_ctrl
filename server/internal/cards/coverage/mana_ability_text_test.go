@@ -28,6 +28,11 @@ var knownManaAbilityDisagreements = map[string]string{
 	// and its LEVEL 5+ grants the same bundle to every Elf you control, so
 	// the mana ability is a Grants row and not a ManaAbilities row (#5581).
 	"Joraga Treespeaker": "a level band's mana ability, granted to itself behind the band's level check",
+	// Ice Cauldron's "{T}, Remove a charge counter from this artifact: Add
+	// this artifact's last noted type and amount of mana." adds mana and has
+	// no target, so it is a mana ability (CR 605.1a); the classifier does not
+	// read "last noted type and amount of mana" as an amount of mana.
+	"Ice Cauldron": "adds this artifact's last noted type and amount of mana, which the classifier does not read as mana",
 }
 
 // intrinsicReminderRE is the reminder text Scryfall prints on a land

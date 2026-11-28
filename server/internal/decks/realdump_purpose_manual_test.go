@@ -474,6 +474,12 @@ var reviewedNotAWipe = map[string]string{
 	"Omen of Fire": "returns only the Islands, then each player sacrifices as many Plains or white permanents as they control white ones: no sweep class names Islands alone",
 	// S82 OLD batch 812 (#5633).
 	"Hakim, Loreweaver": "destroys only the Auras attached to Hakim himself, never another permanent",
+
+	// S82 OLD batch 842 (#5636).
+	"Kjeldoran Frostbeast": "destroys only the creatures blocking or blocked by itself at end of combat, never a board",
+
+	// S82 OLD batch 854 (#5637).
+	"Vodalian War Machine": "its dies trigger destroys only the Merfolk that were tapped to pay for its own abilities this turn, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

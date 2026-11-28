@@ -272,6 +272,11 @@ var knownUnmatchedTokens = map[string]string{
 	// set as it is created, so the template is 0/0. The dump has no black Spirit
 	// token card at all for it to match.
 	"0/0 black Spirit": "X/X: Broken Visage sets the Spirit's size as it is created, and no black Spirit token card was printed",
+
+	// Homarid Spawning Bed (Fallen Empires, 1994) creates "X 1/1 blue Camarid
+	// creature tokens". No Camarid token card was ever printed (token cards start in
+	// 2007) and the dump has none. The template follows the oracle text.
+	"1/1 blue Camarid": "no token card was ever printed for Homarid Spawning Bed's Camarid",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

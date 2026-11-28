@@ -90,6 +90,11 @@ type DelayedOnEvent struct {
 	// (game.DelayedTrigger.ThroughCleanup): "when you lose control of that
 	// Equipment this turn" must see the "until end of turn" theft end.
 	ThroughCleanup bool
+
+	// Duration, when set, ends a Repeats trigger with it instead of with the
+	// turn: "this combat" (Goblin Flotilla) is DurationUntilEndOfCombat. Nil is
+	// the turn.
+	Duration *game.Duration
 }
 
 func (d DelayedOnEvent) Apply(ctx *Context) error {
@@ -111,6 +116,7 @@ func (d DelayedOnEvent) Apply(ctx *Context) error {
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
 		ThroughCleanup:   d.ThroughCleanup,
+		Duration:         d.Duration,
 	})
 	return nil
 }
