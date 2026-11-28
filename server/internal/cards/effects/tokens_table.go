@@ -828,4 +828,8 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 799 (#5633): Goblin Scouts. No token card was printed for it (see
 	// knownUnmatchedTokens); the template follows the oracle text.
 	"1/1 red Goblin Scout with mountainwalk": {Name: "Goblin Scout", TypeLine: "Token Creature — Goblin Scout", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"mountainwalk"}},
+
+	// S82 OLD batch 813 (#5633): Jungle Patrol's Wood and Basalt Golem's Wall.
+	"0/1 green Wall with defender named Wood":   {Name: "Wood", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
+	"0/2 colorless Wall artifact with defender": {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 2, Keywords: []string{"defender"}},
 }

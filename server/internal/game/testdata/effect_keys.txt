@@ -454,6 +454,7 @@ body old-b793/sabertooth-cobra-poison
 body old-b795/acidic-dagger-destroy
 body old-b795/acidic-dagger-sacrifice
 body old-b804/cycle-of-life-counter
+body old-b813/basalt-golem-sacrifice-the-blocker
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -1559,6 +1560,8 @@ choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-b607-wrench-mind-the-one
 choose choose-cards/old-b607-wrench-mind-two-or-artifact
 choose choose-cards/old-b795-tainted-specter-damage
+choose choose-cards/old-b813-preferred-selection-bottom
+choose choose-cards/old-b813-preferred-selection-hand
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -3520,6 +3523,7 @@ payunless pay-unless/old-b694-gain-2-life
 payunless pay-unless/old-b719-sacrifice-the-enchanted-creature
 payunless pay-unless/old-b809-gain-1-life
 payunless pay-unless/old-b809-sirocco-discard
+payunless pay-unless/old-b813-preferred-selection
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -6128,6 +6132,8 @@ tail then/old-b499-sphinx-named
 tail then/old-b605-grim-reminder
 tail then/old-b607-myr-incubator
 tail then/old-b607-timesifter-judge
+tail then/old-b813-basalt-golem-wall
+tail then/old-b813-preferred-selection-take
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
