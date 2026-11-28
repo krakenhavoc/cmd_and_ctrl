@@ -296,6 +296,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// "+4/-4 until end of turn" (S82 GAP): the same trade as Spatial
 	// Contortion's, the power a benefit and the toughness a harm.
 	"Auger Spree": "partly a benefit and partly a harm",
+
+	// "+2/-1 until end of turn" (S82 OLD batch 789): the power a benefit and
+	// the toughness a harm.
+	"Funeral Charm": "partly a benefit and partly a harm",
 }
 
 var targetWord = regexp.MustCompile(`(?i)\btarget\b`)
