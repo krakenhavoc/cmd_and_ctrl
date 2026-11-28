@@ -2122,6 +2122,7 @@ coinflip coin-flip/the-gold-saucer-treasure
 coinflip coin-flip/viashino-sandswimmer
 coinflip coin-flip/volatile-rig-damaged
 coinflip coin-flip/volatile-rig-died
+coinflip coin-flip/wild-wurm-enters
 coinflip coin-flip/yusri-fortunes-flame
 condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
@@ -2999,6 +3000,7 @@ option option-pick/put-attacking-from-graveyard
 option option-pick/put-attacking-from-graveyard-finality
 option option-pick/put-attacking-from-hand
 option option-pick/put-attacking-from-library
+option option-pick/rathi-dragon-two-mountains-or-this
 option option-pick/rattleback-apothecary-keyword
 option option-pick/razor-barrier-protection
 option option-pick/read-the-runes-answer
@@ -3929,6 +3931,7 @@ run prompt-run/provisions-merchant-sacrifice-pump
 run prompt-run/put-chosen-permanent-on-top-of-library
 run prompt-run/pyroclastic-hellion-return-land
 run prompt-run/ragefire-hellkite-double-strike
+run prompt-run/rathi-dragon-two-mountains
 run prompt-run/ravenous-rotbelly-sacrifice
 run prompt-run/razias-purification-sacrifice-the-rest
 run prompt-run/reactor-raid-draw

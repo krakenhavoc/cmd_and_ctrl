@@ -731,6 +731,10 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 	// CR 702.136a (#1556): riot's "it gains haste", once the zone move
 	// has stamped the object the record pins, and before EventETB.
 	g.grantRiotHasteLocked(ev, l.entered)
+	// Dracoplasm: "its power becomes the total power ... of those
+	// creatures", a never-ending base size pinned to the permanent, in the
+	// same window and for the same reason.
+	g.grantEntryBasePTLocked(ev, l.entered)
 	// S16.5: the two jobs stack resolution does that no other entry
 	// site does. Both need the StackItem, which is why carrying it
 	// across the pause is what made the stack site resumable at all.
