@@ -4513,6 +4513,7 @@ tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/kjeldoran-javelineer-cumulative-upkeep-1
 tail cumulative-upkeep/krovikan-whispers-cumulative-upkeep-u-or-b
 tail cumulative-upkeep/magmatic-core-cumulative-upkeep-1
+tail cumulative-upkeep/mind-harness-cumulative-upkeep-1
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mwonvuli-ooze-cumulative-upkeep-2
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
