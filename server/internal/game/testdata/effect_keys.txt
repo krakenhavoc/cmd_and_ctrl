@@ -1881,6 +1881,7 @@ choose choose-cards/s82-old-b809-purgatory-return
 choose choose-cards/s82-old-b822-retribution
 choose choose-cards/s82-old-b826-forget-discarded
 choose choose-cards/s82-old-b844-forgotten-lore-chose
+choose choose-cards/s82-old-b856-thelons-curse-choose
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3690,6 +3691,7 @@ payunless pay-unless/s82-old-b842-minion-of-leshrac-damage
 payunless pay-unless/s82-old-b842-stench-of-evil-damage
 payunless pay-unless/s82-old-b844-forgotten-lore-repeat
 payunless pay-unless/s82-old-b852-tidal-flats
+payunless pay-unless/s82-old-b856-thelons-curse-untap
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
