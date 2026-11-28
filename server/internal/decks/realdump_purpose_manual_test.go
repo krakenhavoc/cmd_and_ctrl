@@ -461,6 +461,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 779 (#5629).
 	"Paradigm Shift": "exiles only its caster's own library, then shuffles their own graveyard into it; no permanent and no other player's cards",
+
+	// S82 OLD batch 812 (#5633).
+	"Hakim, Loreweaver": "destroys only the Auras attached to Hakim himself, never another permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
