@@ -335,12 +335,32 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 			}
 			tied, moves = probe()
 		}
+		var seededLands []uuid.UUID
+		if tied == 0 {
+			// A clause over snow lands (Avalanche: "Destroy X target snow
+			// lands") finds nothing among the shared board's plain
+			// Mountains. Give an opponent exactly the max affordable X of
+			// them (11), so the clause is fillable with one combination,
+			// for this probe alone; they are not the caster's, so they add
+			// no mana and leave X where it was.
+			for i := 0; i < 11; i++ {
+				seededLands = append(seededLands, battlefieldCard(g, opp, game.Card{
+					Name: "Their Snow-Covered Mountain", TypeLine: "Basic Snow Land — Mountain",
+				}))
+			}
+			tied, moves = probe()
+		}
 		if tied == 0 {
 			t.Errorf("%s: no cast of its X-defined clause was offered on a board that can pay for one", spec.Name)
 		}
 		dispatchAll(t, g, active.ID, moves)
 		removeFromHand(active, id)
 		removeFromGraveyard(active, seeded)
+		for _, land := range seededLands {
+			if _, err := g.Battlefield.Remove(land); err != nil {
+				t.Fatalf("removing a seeded snow land: %v", err)
+			}
+		}
 	}
 	if probed == 0 {
 		t.Fatal("no CountFromX clause in the catalog — the sweep is reading the wrong field")
