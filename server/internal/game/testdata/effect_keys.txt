@@ -3593,6 +3593,9 @@ payunless pay-unless/s82-old-b786-lightning-cloud-damage
 payunless pay-unless/s82-old-b788-dream-tides-untap
 payunless pay-unless/s82-old-b791-wand-of-denial-mill
 payunless pay-unless/s82-old-b798-flash-sacrifice
+payunless pay-unless/s82-old-b842-essence-vortex-destroy
+payunless pay-unless/s82-old-b842-minion-of-leshrac-damage
+payunless pay-unless/s82-old-b842-stench-of-evil-damage
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -5135,6 +5138,7 @@ tail mass/rain-of-daggers-lose-life
 tail mass/rampage-of-the-clans-centaurs
 tail mass/s82-old-b023-gain-two-life-for-each
 tail mass/s82-old-b672-calming-verse-then
+tail mass/s82-old-b842-stench-of-evil
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shai-hulud-search
 tail mass/shredders-technique-enchantment-loss

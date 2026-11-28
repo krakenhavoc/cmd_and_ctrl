@@ -195,6 +195,11 @@ var exitPayoutAllowlist = map[string]string{
 		"the player chose to exile out of the ones put back on top in any order. A picked card whose exile was " +
 		"replaced or that has left the library is simply not reordered, which is what the printed \"put the " +
 		"rest back\" asks; nothing is gained for the move.",
+	"s82_old_b842_helpers.go:140": "Icequake's and Thermokarst's `wasSnow` gates on the land's supertype, not " +
+		"on the destruction (S82 OLD b842): \"If that land was a snow land\" has no \"if you do\", so an " +
+		"indestructible or regenerated snow land still pays the rider. The supertype is read before " +
+		"the destroy because that is the last moment the land is guaranteed findable (CR 608.2h), " +
+		"Tainted Treats's gate over a land.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card
