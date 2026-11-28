@@ -29,7 +29,7 @@ const (
 
 func TestOldB785CardsAreFull(t *testing.T) {
 	for oracle, name := range map[string]string{
-		oldB785Matopi: "Matopi Golem", oldB785TinWing: "Tin-Wing Chimera", oldB785Aku: "Aku Djinn",
+		oldB785TinWing: "Tin-Wing Chimera", oldB785Aku: "Aku Djinn",
 		oldB785Brass: "Brass-Talon Chimera", oldB785Marauder: "Phyrexian Marauder", oldB785Phoenix: "Bogardan Phoenix",
 		oldB785Mine: "Magma Mine", oldB785Lead: "Lead-Belly Chimera", oldB785Lichen: "Lichenthrope",
 		oldB785Iron: "Iron-Heart Chimera",
@@ -42,6 +42,18 @@ func TestOldB785CardsAreFull(t *testing.T) {
 		if spec.Name != name || spec.Completeness != effects.CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: name %q, completeness %s, caveats %v", name, spec.Name, spec.Completeness, spec.Caveats)
 		}
+	}
+}
+
+// Matopi Golem rides develop's regeneration-rider seam, which spends the
+// rider shield first, so it declares that one caveat.
+func TestOldB785MatopiGolemDeclaresItsCaveat(t *testing.T) {
+	spec, ok := effects.Lookup(oldB785Matopi)
+	if !ok {
+		t.Fatal("Matopi Golem is not registered")
+	}
+	if spec.Completeness != effects.CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Errorf("Matopi Golem: completeness %s, caveats %v", spec.Completeness, spec.Caveats)
 	}
 }
 
