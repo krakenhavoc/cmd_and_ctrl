@@ -3508,6 +3508,7 @@ payunless pay-unless/old-b623-dwarven-scorcher-1
 payunless pay-unless/old-b686-unnatural-hunger-damage
 payunless pay-unless/old-b694-gain-2-life
 payunless pay-unless/old-b719-sacrifice-the-enchanted-creature
+payunless pay-unless/old-b830-mind-whip
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
