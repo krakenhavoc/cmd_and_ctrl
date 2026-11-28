@@ -65,8 +65,13 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedExceptBy rule needs Text, the printed allowed set"
 		}
-		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 && len(m.Supertypes) == 0 {
-			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype, supertype or object"
+		if len(m.Keywords) == 0 && len(m.Subtypes) == 0 && len(m.Objects) == 0 && len(m.Supertypes) == 0 && len(m.Colors) == 0 {
+			return "a cantBeBlockedExceptBy rule needs at least one keyword, subtype, supertype, color or object"
+		}
+		for _, c := range m.Colors {
+			if len(c) != 1 || !strings.Contains("WUBRG", c) {
+				return "a cantBeBlockedExceptBy rule's colors must be WUBRG letters"
+			}
 		}
 	case ModCantBeBlockedByPlayer:
 		if m.Player == uuid.Nil {
@@ -143,6 +148,13 @@ func CantBeBlockedExceptByMod(keywords, subtypes []string, text string) Mod {
 // allowed set as the card prints it.
 func CantBeBlockedExceptBySupertypesMod(supertypes []string, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedExceptBy, Supertypes: copyStrings(supertypes), Text: text}
+}
+
+// CantBeBlockedExceptByColorsMod is "<creature> can't be blocked this turn
+// except by <color> creatures" (Dread Charge): a blocker of one of `colors`
+// (WUBRG, an any-of) may block. `text` is the allowed set as printed.
+func CantBeBlockedExceptByColorsMod(colors []string, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedExceptBy, Colors: copyStrings(colors), Text: text}
 }
 
 // CantBeBlockedExceptByObjectsMod is CantBeBlockedExceptByMod whose
@@ -285,6 +297,25 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 				}
 				for _, st := range supers {
 					if c.HasSupertype(st) {
+						return true
+					}
+				}
+				return false
+			}
+		}
+		if len(m.Colors) > 0 {
+			// Dread Charge's "except by black creatures": a creature blocker
+			// of one of the colors is allowed too, read live.
+			byOther, colors := byTrait, copyStrings(m.Colors)
+			byTrait = func(c *Card) bool {
+				if byOther(c) {
+					return true
+				}
+				if c == nil || !c.IsCreature() {
+					return false
+				}
+				for _, col := range colors {
+					if c.HasColor(col) {
 						return true
 					}
 				}

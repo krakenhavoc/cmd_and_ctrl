@@ -1831,6 +1831,8 @@ choose choose-cards/s82-old-b772-ancestral-knowledge
 choose choose-cards/s82-old-b775-harvest-wurm-return
 choose choose-cards/s82-old-b777-sacrifice-unless-discard-land
 choose choose-cards/s82-old-b777-thran-tome-chosen
+choose choose-cards/s82-old-b781-ancestral-memories-take
+choose choose-cards/s82-old-b781-cruel-fate
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
