@@ -349,6 +349,7 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 		return
 	}
 	c.RegenerationShields--
+	g.spendRegenerationRiderLocked(c)
 	rider := 0
 	if c.RegenerationCounterShields > 0 {
 		c.RegenerationCounterShields--

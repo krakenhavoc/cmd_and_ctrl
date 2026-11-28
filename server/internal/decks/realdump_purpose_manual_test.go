@@ -458,6 +458,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 771 (#5629).
 	"Cinder Giant": "its upkeep trigger hurts only the other creatures its own controller controls, a drawback of the 5/3; no opponent's permanent is touched",
+
+	// S82 OLD batch 779 (#5629).
+	"Paradigm Shift": "exiles only its caster's own library, then shuffles their own graveyard into it; no permanent and no other player's cards",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
