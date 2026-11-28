@@ -83496,6 +83496,7 @@ pendingChoices[].targetWalk.divides	array
 pendingChoices[].targetWalk.divides[]	object
 pendingChoices[].targetWalk.divides[].doubleFromX	number:int
 pendingChoices[].targetWalk.divides[].fromX	bool
+pendingChoices[].targetWalk.divides[].plusFromX	number:int
 pendingChoices[].targetWalk.divides[].step	number:int
 pendingChoices[].targetWalk.divides[].total	number:int
 pendingChoices[].targetWalk.divides[].upTo	bool

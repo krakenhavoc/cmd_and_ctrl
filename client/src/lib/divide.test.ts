@@ -31,6 +31,10 @@ describe("divideTotal", () => {
     expect(divideTotal(d, 6)).toBe(12);
     expect(divideTotal({ from_x: true }, undefined)).toBe(0);
   });
+  it("reads X plus a fixed amount (Meteor Shower)", () => {
+    expect(divideTotal({ from_x: true, plus_from_x: 1 }, 2)).toBe(3);
+    expect(divideTotal({ from_x: true, plus_from_x: 1 }, 0)).toBe(1);
+  });
 });
 
 describe("evenSplit", () => {
