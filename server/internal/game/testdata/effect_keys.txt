@@ -1847,6 +1847,7 @@ choose choose-cards/s82-old-b783-sacrifice-unless-discard-land
 choose choose-cards/s82-old-b788-dream-tides-choose
 choose choose-cards/s82-old-b788-equipoise-phase-out
 choose choose-cards/s82-old-b791-waterspout-djinn-return-an-untapped-island
+choose choose-cards/s82-old-b798-sealed-fate-exile
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3591,6 +3592,7 @@ payunless pay-unless/s82-old-b780-liege-of-the-hollows
 payunless pay-unless/s82-old-b786-lightning-cloud-damage
 payunless pay-unless/s82-old-b788-dream-tides-untap
 payunless pay-unless/s82-old-b791-wand-of-denial-mill
+payunless pay-unless/s82-old-b798-flash-sacrifice
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3706,6 +3708,7 @@ pick revealed-pick/s82-old-b108-kitesail-freebooter-return
 pick revealed-pick/s82-old-b369-brain-maggot-return
 pick revealed-pick/s82-old-b662-lobotomy-search
 pick revealed-pick/s82-old-b779-agonizing-memories-put
+pick revealed-pick/s82-old-b798-painful-memories-top
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/soul-search-spirit
@@ -4058,6 +4061,7 @@ run prompt-run/s82-old-b772-psychic-vortex-discard
 run prompt-run/s82-old-b777-flux
 run prompt-run/s82-old-b779-tariff-picked
 run prompt-run/s82-old-b786-desolation-damage
+run prompt-run/s82-old-b798-natural-balance-keep
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -5325,6 +5329,7 @@ tail purphoros-bronze-blooded/entered
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
 tail put-from-hand/jadzi-journey-lands
+tail put-from-hand/s82-old-b798-flash-sacrifice-unless-paid
 tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/aspiring-champion-shuffle-then-demon-damage
 tail put-from-library/call-to-the-kindred-bottom
@@ -6211,6 +6216,8 @@ tail then/s82-old-b705-scrying-glass-color
 tail then/s82-old-b766-booby-trap-damage
 tail then/s82-old-b787-foreshadow-milled
 tail then/s82-old-b787-foreshadow-named
+tail then/s82-old-b798-natural-balance-search
+tail then/s82-old-b798-sealed-fate-order-rest
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
