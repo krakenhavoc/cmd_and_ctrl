@@ -164,6 +164,13 @@ type AbilityGrant struct {
 	// while it has the grant (game.CardDef.UntapCounterRemovals).
 	UntapCounterRemovals []game.UntapCounterRemoval
 
+	// UntapStepRestrictions are "this creature doesn't untap during your
+	// untap step if it has a <counter> counter on it" (Mindbender Spores'
+	// "fungus" restriction): the recipient has them while it has the grant
+	// (game.CardDef.UntapStepRestrictions), with the recipient as each
+	// one's source.
+	UntapStepRestrictions []game.UntapStepRestriction
+
 	CostModifiers   []game.CostModifier
 	CastPermissions []game.CastPermission
 
@@ -242,7 +249,8 @@ func BuildGrantDef(gr AbilityGrant) *game.CardDef {
 		CostModifiers:       gr.CostModifiers,
 		GrantedReplacements: gr.Replacements,
 
-		UntapCounterRemovals: gr.UntapCounterRemovals,
+		UntapCounterRemovals:  gr.UntapCounterRemovals,
+		UntapStepRestrictions: gr.UntapStepRestrictions,
 	}
 }
 
@@ -341,7 +349,7 @@ func CheckGrants(name string, grants []AbilityGrant) {
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
 			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 &&
-			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && len(gr.Replacements) == 0 && len(gr.UntapCounterRemovals) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
+			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && len(gr.Replacements) == 0 && len(gr.UntapCounterRemovals) == 0 && len(gr.UntapStepRestrictions) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

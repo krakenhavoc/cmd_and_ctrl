@@ -274,6 +274,15 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		if len(g.UntapCounterRemovals) > 0 {
 			merged.UntapCounterRemovals = append(append([]UntapCounterRemoval(nil), merged.UntapCounterRemovals...), g.UntapCounterRemovals...)
 		}
+		// A layer-6 grant may carry "this creature doesn't untap during
+		// your untap step if it has a fungus counter on it" (Mindbender
+		// Spores). The restriction is read live off the composite key by
+		// activeUntapStepRestrictionsLocked, so the recipient is its source
+		// and it ends with the grant; a bundle granted twice restricts
+		// twice, which changes nothing.
+		if len(g.UntapStepRestrictions) > 0 {
+			merged.UntapStepRestrictions = append(append([]UntapStepRestriction(nil), merged.UntapStepRestrictions...), g.UntapStepRestrictions...)
+		}
 		if len(g.TriggerDoublers) > 0 {
 			merged.TriggerDoublers = append(append([]TriggerDoubler(nil), merged.TriggerDoublers...), g.TriggerDoublers...)
 		}
