@@ -61,6 +61,16 @@ func ChooseColorOtherThanAsEnters(purpose game.ColorPurpose, label, color string
 	}
 }
 
+// ChooseOneOfColorsAsEnters is ChooseColorAsEnters for "As this enters, choose
+// black or red" (Mangara's Equity): only `colors` (one-letter wire colours) are
+// offered, and `words` is how the prompt names them ("black or red").
+func ChooseOneOfColorsAsEnters(purpose game.ColorPurpose, label, words string, colors ...string) func(*game.Card, *Context) error {
+	return func(card *game.Card, ctx *Context) error {
+		ctx.Game.QueueColorChoiceForEffect(card.Controller, card.InstanceID, label+" — choose "+words, colors, purpose)
+		return nil
+	}
+}
+
 // ChosenColorOf is the colour stored on the permanent `source`, or ""
 // while none has been chosen. Read-only; safe under either lock.
 func ChosenColorOf(g *game.Game, source uuid.UUID) string {

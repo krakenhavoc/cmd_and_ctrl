@@ -30,6 +30,7 @@ anyplayer any-player/distant-memories-outcome
 anyplayer any-player/icy-prison-sacrifice
 anyplayer any-player/innocent-traveler-transform
 anyplayer any-player/nakaya-shade-pump
+anyplayer any-player/old-b795-tainted-specter-discard
 anyplayer any-player/prowling-pangolin-sacrifice
 anyplayer any-player/reservoir-kraken-tap
 anyplayer any-player/rhystic-circle-shield
@@ -450,6 +451,8 @@ body old-b516-skeletonize/skeleton
 body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
 body old-b639/planeswalkers-mischief-return
 body old-b793/sabertooth-cobra-poison
+body old-b795/acidic-dagger-destroy
+body old-b795/acidic-dagger-sacrifice
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -1551,6 +1554,7 @@ choose choose-cards/old-b493-attach-equipment
 choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-b607-wrench-mind-the-one
 choose choose-cards/old-b607-wrench-mind-two-or-artifact
+choose choose-cards/old-b795-tainted-specter-damage
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -2213,6 +2217,7 @@ condition combat/your-creature-hit-a-player-or-planeswalker
 condition combat/your-creature-hit-the-player
 condition damage/a-creature-combat-to-you
 condition damage/a-creature-deals-combat-damage-to-this-planeswalker
+condition damage/acidic-dagger-non-wall
 condition damage/each-creature-dealt-damage
 condition damage/each-opponent-creature-dealt-damage
 condition damage/either-of-those-creatures-deals-combat-damage
@@ -2249,6 +2254,7 @@ condition good-king-mog/you-cast-a-noncreature-spell
 condition graveyard/card-into-an-opponents
 condition havengul-lich/you-cast-it
 condition loki-laufeyson/next-cast
+condition ltb/acidic-dagger-creature-left
 condition ltb/mechtitan-token
 condition ltb/the-listed-object
 condition ltb/ugin-the-ineffable-spirit
