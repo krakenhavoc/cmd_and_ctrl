@@ -516,6 +516,16 @@ type Card struct {
 	// battlefield exit). Not a counter (CR 122). Added in S82 OLD b748.
 	RegenerationCounterShields int
 
+	// RegenerationDrawers are the players Soldevi Sentry's shields name:
+	// "{1}: Choose target opponent. Regenerate this creature. When it
+	// regenerates this way, that player may draw a card." One entry per such
+	// shield, in the order the shields were made; a shield that is used up
+	// while any are left is read as the first of them, and the regeneration's
+	// EventRegenerated then carries that player as its Target. At most
+	// RegenerationShields long; cleared with them (the cleanup step and the
+	// battlefield exit). Added in S82 OLD b814.
+	RegenerationDrawers []uuid.UUID
+
 	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's

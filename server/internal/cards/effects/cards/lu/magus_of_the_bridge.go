@@ -32,12 +32,7 @@ func init() {
 				effects.Do(effects.CreateToken{Template: effects.TokenCard("2/2 black Zombie"), N: 1})),
 			effects.On(game.EventLTB, effects.OldB033CreatureToAnOpponentsGraveyard,
 				"Magus of the Bridge — exile this creature",
-				func(g *game.Game, item *game.StackItem) error {
-					if !effects.SourceIsStillThisPermanent(g, item) {
-						return nil
-					}
-					return effects.ExileTarget{Target: item.SourceCardID}.Apply(effects.NewContext(g, item))
-				}),
+				effects.OldB814ExileThisCreature),
 		},
 	})
 }

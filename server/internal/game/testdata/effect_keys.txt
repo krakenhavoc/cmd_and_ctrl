@@ -455,6 +455,8 @@ body old-b795/acidic-dagger-destroy
 body old-b795/acidic-dagger-sacrifice
 body old-b804/cycle-of-life-counter
 body old-b813/basalt-golem-sacrifice-the-blocker
+body old-b814/draw-n-at-next-upkeep
+body old-b814/return-the-object-under-its-owners-control
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -1562,6 +1564,8 @@ choose choose-cards/old-b607-wrench-mind-two-or-artifact
 choose choose-cards/old-b795-tainted-specter-damage
 choose choose-cards/old-b813-preferred-selection-bottom
 choose choose-cards/old-b813-preferred-selection-hand
+choose choose-cards/old-b814-discard-one-of-them
+choose choose-cards/old-b814-lat-nams-legacy-pick
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -2477,6 +2481,7 @@ confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/old-b271-covenant-of-minds
 confirm confirm/old-b586-choice-of-damnations
+confirm confirm/old-b814-that-player-may-draw
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -3782,6 +3787,7 @@ run engine/explore-each-pick
 run gap-b55-birthing-ritual/sacrifice
 run gap/tragic-lesson-return-a-land-or-discard
 run giant-opportunity/sacrifice-two-foods
+run old-b814/lord-of-tresserhorn-sacrifice-two
 run permanents-pick/s82-old-b432-sunken-hope-bounce
 run prompt-run/ace-fearless-rebel-sacrifice
 run prompt-run/acererak-the-archlich-sacrificed
@@ -6134,6 +6140,7 @@ tail then/old-b607-myr-incubator
 tail then/old-b607-timesifter-judge
 tail then/old-b813-basalt-golem-wall
 tail then/old-b813-preferred-selection-take
+tail then/old-b814-lat-nams-legacy-tucked
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill

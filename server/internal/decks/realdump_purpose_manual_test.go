@@ -468,6 +468,8 @@ var reviewedNotAWipe = map[string]string{
 	"Ivory Charm": "its first mode only gives every creature -2/-0 until end of turn, which shrinks power and destroys nothing",
 	// S82 OLD batch 805 (#5633).
 	"Zombie Mob": "exiles the creature cards in its controller's own graveyard as it enters: it touches no permanent, so there is no board to wipe",
+	// S82 OLD batch 814 (#5634).
+	"Scarab of the Unseen": "returns only the Auras attached to the one permanent its controller owns to their owners' hands, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
