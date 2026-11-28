@@ -1556,6 +1556,7 @@ choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-b607-wrench-mind-the-one
 choose choose-cards/old-b607-wrench-mind-two-or-artifact
 choose choose-cards/old-b795-tainted-specter-damage
+choose choose-cards/old-b831-crown-of-the-ages-attach
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
