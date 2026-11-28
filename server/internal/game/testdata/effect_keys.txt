@@ -610,6 +610,7 @@ body s82-old-b800/sapphire-charm-target-player-draws
 body s82-old-b808/grinning-totem-graveyard
 body s82-old-b824/source-deals-two-to-the-creature
 body s82-old-b843/krovikan-vampire-sacrifice
+body s82-old-b852/goblin-kites-flip
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body sacrifice/old-b834-the-object
@@ -2196,6 +2197,7 @@ coinflip coin-flip/s82-old-b780-goblin-bomb
 coinflip coin-flip/s82-old-b808-frenetic-efreet
 coinflip coin-flip/s82-old-b826-winter-sky
 coinflip coin-flip/s82-old-b851-game-of-chaos-flip
+coinflip coin-flip/s82-old-b852-goblin-kites
 coinflip coin-flip/scoria-wurm-upkeep
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
@@ -3173,6 +3175,7 @@ option option-pick/s82-old-b783-discard-at-random-or-sacrifice
 option option-pick/s82-old-b783-sacrifice-this-unless-you-sacrifice-a-forest
 option option-pick/s82-old-b784-sacrifice-this-unless-you-sacrifice-an-island
 option option-pick/s82-old-b818-natures-blessing
+option option-pick/s82-old-b852-sacrifice-unless-you-mill-two
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3678,6 +3681,7 @@ payunless pay-unless/s82-old-b842-essence-vortex-destroy
 payunless pay-unless/s82-old-b842-minion-of-leshrac-damage
 payunless pay-unless/s82-old-b842-stench-of-evil-damage
 payunless pay-unless/s82-old-b844-forgotten-lore-repeat
+payunless pay-unless/s82-old-b852-tidal-flats
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
