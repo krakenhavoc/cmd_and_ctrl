@@ -87,6 +87,7 @@ body bns-b52/taeko-cant-be-blocked
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body borborygmos-and-fblthp/damage
+body bounce/old-b833-the-object
 body brass-infiniscope/draw-and-gain-half-x
 body breathkeeper-seraph/may-return-the-object
 body breeches/blast
@@ -6105,6 +6106,7 @@ tail then/old-b499-sphinx-named
 tail then/old-b605-grim-reminder
 tail then/old-b607-myr-incubator
 tail then/old-b607-timesifter-judge
+tail then/old-b833-snowwalk-type-chosen
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
