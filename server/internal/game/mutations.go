@@ -3922,7 +3922,6 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if g.zoneChangePausedLocked(cardID) {
 		return
 	}
-	if g.ActivationGateLocked(p.ID, *card, zone, ActivationAbility{Label: ab.Label, Mana: true, TapCost: ab.TapCost}) != nil {
 	if g.ActivationGateLocked(p.ID, *card, zone, ManaActivationAbilityOf(*ab)) != nil {
 		return
 	}
@@ -8678,7 +8677,6 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Needle exempts mana abilities, Cursed Totem does not. See
 	// activation_gate.go on why the exemption is not a property of
 	// this call site.
-	if err := g.ActivationGateLocked(playerID, *card, srcZone, ActivationAbility{Label: ab.Label, Mana: true, TapCost: ab.TapCost}); err != nil {
 	if err := g.ActivationGateLocked(playerID, *card, srcZone, ManaActivationAbilityOf(ab)); err != nil {
 		return err
 	}

@@ -16,13 +16,13 @@ import (
 // the moment the Aura leaves or is moved); it refuses an ability of the
 // battlefield object it is attached to whose cost has {T} in it, mana
 // abilities included, and nothing else (CR 605.1a: a mana ability is an
-// activated ability). Read from ActivationAbility.Tap, which the engine
+// activated ability). Read from ActivationAbility.TapCost, which the engine
 // derives from the cost of the shape being activated.
 func EnchantedCreatureTapAbilitiesCantActivate(label string) game.ActivationRestriction {
 	return game.ActivationRestriction{
 		Label: label,
 		Forbids: func(q game.ActivationQuery) bool {
-			if q.FromZone != game.ZoneBattlefield || !q.Ability.Tap {
+			if q.FromZone != game.ZoneBattlefield || !q.Ability.TapCost {
 				return false
 			}
 			return q.Source.IsAttachedTo(q.Card.InstanceID)

@@ -134,16 +134,10 @@ type ActivationAbility struct {
 	// TapCost reports that the ability's cost includes {T} (CR 602.5; the
 	// cost's Tap bit, a mana ability's too), because Katabatic Winds'
 	// clause names it: "their activated abilities with {T} in their costs
-	// can't be activated". Derived from the shape's cost by
-	// ActivationAbilityOf and by each mana-ability call site, never set by
-	// a card file.
-	TapCost bool
-	// Tap marks an ability with {T} in its cost, because Serra
-	// Bestiary's clause names the cost: "its activated abilities with
-	// {T} in their costs can't be activated" (S82 OLD b825; CR 602.5).
-	// Derived from the shape's cost by ActivationAbilityOf and
+	// can't be activated" (Serra Bestiary's too, S82 OLD b825). Derived
+	// from the shape's cost by ActivationAbilityOf and
 	// ManaActivationAbilityOf, never set by a card file.
-	Tap bool
+	TapCost bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -164,14 +158,13 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		PowerUp:      ab.PowerUp,
 		Cycling:      ab.Cycling,
 		TapCost:      ab.Cost.Tap,
-		Tap:          ab.Cost.Tap,
 	}
 }
 
 // ManaActivationAbilityOf is ActivationAbilityOf for a mana ability's
-// shape: Mana is true by construction and Tap is its {T} cost.
+// shape: Mana is true by construction and TapCost is its {T} cost.
 func ManaActivationAbilityOf(ab ManaAbilityShape) ActivationAbility {
-	return ActivationAbility{Label: ab.Label, Mana: true, Tap: ab.TapCost}
+	return ActivationAbility{Label: ab.Label, Mana: true, TapCost: ab.TapCost}
 }
 
 // ActivationQuery is everything an activation restriction may look

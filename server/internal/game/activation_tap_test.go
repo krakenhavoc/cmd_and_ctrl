@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// activation_tap_test.go — S82 OLD b825 (#5635): ActivationAbility.Tap, the bit
+// activation_tap_test.go — S82 OLD b825 (#5635): ActivationAbility.TapCost, the bit
 // Serra Bestiary's "activated abilities with {T} in their costs can't be
 // activated" reads. It is derived from the cost of the shape being activated,
 // on the non-mana path (ActivationAbilityOf) and the mana path
@@ -16,21 +16,21 @@ import (
 func tapCostRule() ActivationRestriction {
 	return ActivationRestriction{
 		Label:   "Activated abilities with {T} in their costs can't be activated.",
-		Forbids: func(q ActivationQuery) bool { return q.FromZone == ZoneBattlefield && q.Ability.Tap },
+		Forbids: func(q ActivationQuery) bool { return q.FromZone == ZoneBattlefield && q.Ability.TapCost },
 	}
 }
 
 func TestActivationAbilityTapFollowsTheCost(t *testing.T) {
-	if !ActivationAbilityOf(ActivatedAbilityShape{Cost: AbilityCost{Tap: true}}).Tap {
+	if !ActivationAbilityOf(ActivatedAbilityShape{Cost: AbilityCost{Tap: true}}).TapCost {
 		t.Error("a {T} cost did not set Tap")
 	}
-	if ActivationAbilityOf(ActivatedAbilityShape{Cost: AbilityCost{}}).Tap {
+	if ActivationAbilityOf(ActivatedAbilityShape{Cost: AbilityCost{}}).TapCost {
 		t.Error("a cost without {T} set Tap")
 	}
-	if got := ManaActivationAbilityOf(ManaAbilityShape{TapCost: true, Label: "x"}); !got.Tap || !got.Mana || got.Label != "x" {
+	if got := ManaActivationAbilityOf(ManaAbilityShape{TapCost: true, Label: "x"}); !got.TapCost || !got.Mana || got.Label != "x" {
 		t.Errorf("tap mana ability = %+v, want Tap and Mana", got)
 	}
-	if got := ManaActivationAbilityOf(ManaAbilityShape{Label: "x"}); got.Tap || !got.Mana {
+	if got := ManaActivationAbilityOf(ManaAbilityShape{Label: "x"}); got.TapCost || !got.Mana {
 		t.Errorf("non-tap mana ability = %+v, want Mana without Tap", got)
 	}
 }

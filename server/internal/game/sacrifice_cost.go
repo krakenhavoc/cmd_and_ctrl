@@ -431,6 +431,7 @@ func (k SacrificeKind) Matches(c Card) bool {
 			}
 			return false
 		}
+	}
 	if len(k.Supertypes) > 0 {
 		for _, st := range k.Supertypes {
 			if !c.HasSupertype(st) {
