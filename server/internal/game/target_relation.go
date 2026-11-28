@@ -80,6 +80,13 @@ const (
 	// now (the power it has, CR 208.1), and the candidate a battlefield
 	// permanent whose power is no greater.
 	TargetPowerNoGreater TargetRelationKind = "power_no_greater"
+	// TargetSharesArtifactOrCreatureType is "that shares one of those types
+	// with it" over "artifact or creature" (Legerdemain's "another target
+	// permanent that shares one of those types with it"): both are on the
+	// battlefield and are both artifacts or both creatures after the layers
+	// (CR 205.2a). A card type they share that is not artifact or creature
+	// does not count.
+	TargetSharesArtifactOrCreatureType TargetRelationKind = "shares_artifact_or_creature_type"
 )
 
 // ManyPicks reports whether a dependent clause of this kind may pick
@@ -150,6 +157,10 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&
 			len(SharedCardTypes([]Card{*a, *c})) > 0
+	case TargetSharesArtifactOrCreatureType:
+		a := findBattlefieldCard(g, anchor.ID)
+		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&
+			((a.HasCardType("Artifact") && c.HasCardType("Artifact")) || (a.HasCardType("Creature") && c.HasCardType("Creature")))
 	case TargetCardSharesCreatureType:
 		if anchor.Kind != TargetCard {
 			return false

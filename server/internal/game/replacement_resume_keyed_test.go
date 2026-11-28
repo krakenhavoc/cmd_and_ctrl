@@ -64,7 +64,7 @@ func keyedFrameSample() *ReplacementEvent {
 		CardID: id("card"), OldZone: ZoneStack, NewZone: ZoneBattlefield, NewZoneOwner: id("owner"),
 		ShuffleDestinationLibrary: true, PutOnLibraryBottom: true, ExiledWith: PermissionCardRef{ID: id("ew"), Epoch: 2},
 		ExileCounter: "egg", ExileCounterCount: 3, Destruction: true, CantBeRegenerated: true, StateBasedDestruction: true, LeaveCause: LeaveCauseSacrifice,
-		EntersTapped: true, EntersPrepared: true, EntersDevoured: 2, EntersDevouredTally: 1, EntersWithHaste: true, EntersWithHasteTillEOT: true,
+		EntersTapped: true, EntersPrepared: true, EntersDevoured: 2, EntersDevouredTally: 1, EntersWithHaste: true, EntersWithHasteTillEOT: true, EntersWithBasePT: true, EntersBasePower: 6, EntersBaseToughness: 4,
 		TributeOpponent: id("tribute"), EntersTributePaid: true,
 		entryRefused: true, EntersUnlocked: DoorMask(3), EntersAttacking: id("defender"),
 		FaceDown: FaceDownKind("morph"), FaceDownListed: &FaceDownListing{Types: []string{"Creature"}, Subtypes: []string{"Elf"}, Power: 2, Toughness: 3},

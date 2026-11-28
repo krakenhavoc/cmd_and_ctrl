@@ -191,6 +191,10 @@ var exitPayoutAllowlist = map[string]string{
 		"indestructible target still costs the life (the card's rulings), and `if toughness <= 0` only skips " +
 		"a life change of nothing. The value is read before the destroy because that is the last moment " +
 		"the permanent is guaranteed findable (CR 608.2h).",
+	"s82_old_b772_helpers.go:145": "Ancestral Knowledge's `picked` is not a payout: it only keeps the cards " +
+		"the player chose to exile out of the ones put back on top in any order. A picked card whose exile was " +
+		"replaced or that has left the library is simply not reordered, which is what the printed \"put the " +
+		"rest back\" asks; nothing is gained for the move.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

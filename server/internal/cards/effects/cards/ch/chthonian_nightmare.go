@@ -38,15 +38,7 @@ func init() {
 			Targets: effects.TargetCardInGraveyard("target creature card with mana value X from your graveyard",
 				effects.Creature(), effects.YouOwn()).WithManaValueEqualsX(),
 			SorcerySpeed: true,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return effects.ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:       effects.OldB775ReturnTargetCreatureCardToBattlefield,
 		}},
 	})
 }

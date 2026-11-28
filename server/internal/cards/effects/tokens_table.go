@@ -821,4 +821,7 @@ var TokenTable = map[string]game.Card{
 	"3/3 black Kavu":              {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"B"}},
 	"6/6 black Wurm with trample": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"trample"}},
 	"3/3 black Angel with flying": {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	// S82 OLD batch 769 (#5628): Spirit Mirror's Reflection and Mongrel Pack's Dogs.
+	"2/2 white Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	"1/1 green Dog":        {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 }
