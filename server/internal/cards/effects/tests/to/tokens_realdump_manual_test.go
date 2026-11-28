@@ -229,6 +229,11 @@ var knownUnmatchedTokens = map[string]string{
 	// a token card; the dump has no Spike token. The template follows the oracle
 	// text.
 	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
+	// Wall of Kelp (Homelands, S82 OLD batch 821) creates "a 0/1 blue Plant Wall
+	// creature token with defender named Kelp". The card is from 1996 and its
+	// token was never printed as a token card. The template follows the oracle
+	// text.
+	"0/1 blue Plant Wall named Kelp with defender": "no Kelp token card was printed for Wall of Kelp",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
