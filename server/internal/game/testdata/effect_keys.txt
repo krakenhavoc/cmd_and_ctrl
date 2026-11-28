@@ -1824,6 +1824,7 @@ choose choose-cards/s82-old-b735-goblin-war-cry
 choose choose-cards/s82-old-b735-harmony-of-nature
 choose choose-cards/s82-old-b752-phyrexian-grimoire-picked
 choose choose-cards/s82-old-b761-oracle-en-vec
+choose choose-cards/s82-old-b809-purgatory-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2763,6 +2764,7 @@ number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
 number number/gremlin-mine-remove-charge-counters
+number number/illicit-auction-won
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/life-bidding-opening-bid
 number number/life-bidding-raise
@@ -3306,6 +3308,7 @@ payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
 payunless pay-unless/elven-bow-token-and-attach
 payunless pay-unless/embereth-skyblazer-pump
+payunless pay-unless/emberwilde-djinn-gain-control
 payunless pay-unless/emiel-the-blessed-counters
 payunless pay-unless/endless-ranks-of-hydra-return
 payunless pay-unless/energy-create-servo
@@ -3468,6 +3471,8 @@ payunless pay-unless/old-b623-dwarven-scorcher-1
 payunless pay-unless/old-b686-unnatural-hunger-damage
 payunless pay-unless/old-b694-gain-2-life
 payunless pay-unless/old-b719-sacrifice-the-enchanted-creature
+payunless pay-unless/old-b809-gain-1-life
+payunless pay-unless/old-b809-sirocco-discard
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3485,6 +3490,7 @@ payunless pay-unless/power-sink-tap-lands
 payunless pay-unless/power-taint-lose-2
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
+payunless pay-unless/purgatory-return
 payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
