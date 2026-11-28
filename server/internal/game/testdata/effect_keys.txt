@@ -1863,6 +1863,7 @@ choose choose-cards/s82-old-b788-equipoise-phase-out
 choose choose-cards/s82-old-b791-waterspout-djinn-return-an-untapped-island
 choose choose-cards/s82-old-b798-sealed-fate-exile
 choose choose-cards/s82-old-b809-purgatory-return
+choose choose-cards/s82-old-b844-forgotten-lore-chose
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3627,6 +3628,7 @@ payunless pay-unless/s82-old-b804-ravenous-vampire
 payunless pay-unless/s82-old-b805-energy-vortex-damage
 payunless pay-unless/s82-old-b805-purraj-counter
 payunless pay-unless/s82-old-b806-vaporous-djinn-phase-out
+payunless pay-unless/s82-old-b844-forgotten-lore-repeat
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
