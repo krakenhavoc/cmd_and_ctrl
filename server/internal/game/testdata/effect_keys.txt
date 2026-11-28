@@ -529,6 +529,7 @@ body pygmy-hippo/add-colorless
 body qarsi-sadist/drain
 body quantum-entanglement/blink
 body rad/mill
+body rainbow-vale/an-opponent-gains-control
 body rampage/pump
 body ratchet-field-medic/return
 body ratonhnhaketon/return-equipment
@@ -2581,6 +2582,7 @@ confirm confirm/s82-old-b783-shuffle-then-draw
 confirm confirm/s82-old-b843-shyft
 confirm confirm/s82-old-b851-game-of-chaos-again
 confirm confirm/s82-old-b854-necrite-sacrifice
+confirm confirm/s82-old-b855-mindstab-thrull-sacrifice
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3120,6 +3122,7 @@ option option-pick/put-attacking-from-graveyard
 option option-pick/put-attacking-from-graveyard-finality
 option option-pick/put-attacking-from-hand
 option option-pick/put-attacking-from-library
+option option-pick/rainbow-vale-opponent
 option option-pick/rathi-dragon-two-mountains-or-this
 option option-pick/rattleback-apothecary-keyword
 option option-pick/razor-barrier-protection
@@ -5596,6 +5599,7 @@ tail s82-old-b791/waterspout-djinn-after-return
 tail s82-old-b808/grinning-totem-grant
 tail s82-old-b843/shyft-colors
 tail s82-old-b854/necrite-destroy
+tail s82-old-b855/mindstab-thrull-discard
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
