@@ -96704,6 +96704,7 @@ turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.creaturesExiled	number:int
 turnTally.players{}.creaturesLeft	number:int
+turnTally.players{}.creaturesToGraveyard	number:int
 turnTally.players{}.damageTaken	number:int
 turnTally.players{}.earthbends	number:int
 turnTally.players{}.enchantmentsToGraveyard	number:int
