@@ -452,6 +452,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 761 (#5458).
 	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
 	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
+
+	// S82 OLD batch 817 (#5634).
+	"Omen of Fire": "returns only the Islands, then each player sacrifices as many Plains or white permanents as they control white ones: no sweep class names Islands alone",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

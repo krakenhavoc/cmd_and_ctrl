@@ -769,7 +769,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 			return true
 		}
 		discards += c.DiscardCards
-		if c.DiscardLand && c.DiscardCards > 0 {
+		if c.DiscardFiltered() && c.DiscardCards > 0 {
 			discardLand = c
 		}
 		if c.Sacrifice == nil {
