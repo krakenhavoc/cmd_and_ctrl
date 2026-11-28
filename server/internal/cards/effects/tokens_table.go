@@ -821,4 +821,8 @@ var TokenTable = map[string]game.Card{
 	"3/3 black Kavu":              {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"B"}},
 	"6/6 black Wurm with trample": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"trample"}},
 	"3/3 black Angel with flying": {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying"}},
+
+	// S82 OLD batch 813 (#5633): Jungle Patrol's Wood and Basalt Golem's Wall.
+	"0/1 green Wall with defender named Wood":   {Name: "Wood", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
+	"0/2 colorless Wall artifact with defender": {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 2, Keywords: []string{"defender"}},
 }
