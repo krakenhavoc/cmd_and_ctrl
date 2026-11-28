@@ -5064,6 +5064,7 @@ tail mass/rain-of-daggers-lose-life
 tail mass/rampage-of-the-clans-centaurs
 tail mass/s82-old-b023-gain-two-life-for-each
 tail mass/s82-old-b672-calming-verse-then
+tail mass/seeds-of-innocence-life
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shai-hulud-search
 tail mass/shredders-technique-enchantment-loss
