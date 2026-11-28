@@ -1537,7 +1537,7 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 			// already drops those, so this is belt-and-braces.
 			continue
 		}
-		variant := make([]ProducedManaEntry, 0, len(slots)-1+n)
+		variant := make([]ProducedManaEntry, 0, len(slots))
 		variant = append(variant, slots[:idx]...)
 		for k := 0; k < n; k++ {
 			variant = append(variant, ProducedManaEntry{Options: []string{color}})

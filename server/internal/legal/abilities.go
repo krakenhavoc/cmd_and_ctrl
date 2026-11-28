@@ -1523,7 +1523,7 @@ type sacrificePair struct{ sacs, discards []uuid.UUID }
 // `fixed` (possibly nil), so every ability but "Discard X cards" gets
 // exactly the pairs the sacrifice loop used to walk.
 func sacrificeDiscardPairs(sacrificeSets, discardSets [][]uuid.UUID, fixed []uuid.UUID) []sacrificePair {
-	out := make([]sacrificePair, 0, len(sacrificeSets)*len(discardSets))
+	out := make([]sacrificePair, 0, len(sacrificeSets))
 	for _, sacs := range sacrificeSets {
 		for _, ds := range discardSets {
 			if ds == nil {
@@ -1708,7 +1708,7 @@ type permanentCostPair struct {
 // ability with neither yields the one empty pair and the loop it feeds
 // runs exactly as it did before.
 func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, sourceID uuid.UUID, cost game.AbilityCost) []permanentCostPair {
-	spent := make(map[uuid.UUID]bool, len(sacs)+1)
+	spent := make(map[uuid.UUID]bool, len(sacs))
 	for _, id := range sacs {
 		spent[id] = true
 	}

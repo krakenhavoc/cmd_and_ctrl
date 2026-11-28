@@ -1008,7 +1008,7 @@ func (g *Game) noteBecameTappedLocked(cardID uuid.UUID) {
 		return
 	}
 	key := g.objectTallyKeyLocked(cardID, "tapped")
-	next := make(map[string]int, len(g.TurnTally.BecameTapped)+1)
+	next := make(map[string]int, len(g.TurnTally.BecameTapped))
 	maps.Copy(next, g.TurnTally.BecameTapped)
 	next[key]++
 	g.TurnTally.BecameTapped = next
@@ -1023,7 +1023,7 @@ func (g *Game) noteBlockedLocked(cardID uuid.UUID) {
 		return
 	}
 	key := g.objectTallyKeyLocked(cardID, "blocked")
-	next := make(map[string]int, len(g.TurnTally.Blocked)+1)
+	next := make(map[string]int, len(g.TurnTally.Blocked))
 	maps.Copy(next, g.TurnTally.Blocked)
 	next[key]++
 	g.TurnTally.Blocked = next
@@ -1046,7 +1046,7 @@ func (g *Game) BlockedThisTurn(cardID uuid.UUID) bool {
 // `cardID` names. Caller must hold g.mu.
 func (g *Game) noteCountersPutLocked(cardID uuid.UUID) {
 	key := g.objectTallyKeyLocked(cardID, "counters")
-	next := make(map[string]int, len(g.TurnTally.CountersPut)+1)
+	next := make(map[string]int, len(g.TurnTally.CountersPut))
 	maps.Copy(next, g.TurnTally.CountersPut)
 	next[key]++
 	g.TurnTally.CountersPut = next
@@ -1056,7 +1056,7 @@ func (g *Game) noteCountersPutLocked(cardID uuid.UUID) {
 // the object `cardID` names. Caller must hold g.mu.
 func (g *Game) notePlusOneCountersPutLocked(cardID uuid.UUID) {
 	key := g.objectTallyKeyLocked(cardID, "plusOneCounters")
-	next := make(map[string]int, len(g.TurnTally.PlusOneCountersPut)+1)
+	next := make(map[string]int, len(g.TurnTally.PlusOneCountersPut))
 	maps.Copy(next, g.TurnTally.PlusOneCountersPut)
 	next[key]++
 	g.TurnTally.PlusOneCountersPut = next
@@ -2683,7 +2683,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			// #5649: that the attack was on a battle, frozen now for
 			// the same reason.
 			rec.Battle = g.classifyAttackTargetLocked(ev.Target) == AttackTargetBattle
-			attacks := make([]AttackRecord, len(g.TurnTally.Attacks), len(g.TurnTally.Attacks)+1)
+			attacks := make([]AttackRecord, len(g.TurnTally.Attacks))
 			copy(attacks, g.TurnTally.Attacks)
 			g.TurnTally.Attacks = append(attacks, rec)
 			// #5368: and under the combat phase in progress.
