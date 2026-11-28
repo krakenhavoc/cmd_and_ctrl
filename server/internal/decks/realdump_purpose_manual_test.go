@@ -443,6 +443,9 @@ var reviewedNotAWipe = map[string]string{
 	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
 	// S82 OLD batch 679 (#5618).
 	"Overlaid Terrain": "sacrifices only its own controller's lands as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 784 (#5630).
+	"Boiling Seas": "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

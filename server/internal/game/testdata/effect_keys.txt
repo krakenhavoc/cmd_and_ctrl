@@ -3048,6 +3048,7 @@ option option-pick/s82-old-b662-death-or-glory-chosen
 option option-pick/s82-old-b671-fickle-efreet-hand-over
 option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-old-b716-walking-sponge-keyword
+option option-pick/s82-old-b784-sacrifice-this-unless-you-sacrifice-an-island
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
