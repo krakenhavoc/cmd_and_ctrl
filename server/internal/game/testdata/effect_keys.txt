@@ -3546,6 +3546,8 @@ payunless pay-unless/s82-old-b696-rishadan-sacrifice
 payunless pay-unless/s82-old-b742-fade-away-sacrifice
 payunless pay-unless/s82-old-b748-crovax-the-cursed
 payunless pay-unless/s82-old-b752-carrionette-exile
+payunless pay-unless/s82-old-b805-energy-vortex-damage
+payunless pay-unless/s82-old-b805-purraj-counter
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4486,6 +4488,7 @@ tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/kjeldoran-javelineer-cumulative-upkeep-1
 tail cumulative-upkeep/krovikan-whispers-cumulative-upkeep-u-or-b
 tail cumulative-upkeep/magmatic-core-cumulative-upkeep-1
+tail cumulative-upkeep/malignant-growth-cumulative-upkeep-1
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
 tail cumulative-upkeep/phobian-phantasm-cumulative-upkeep-b
