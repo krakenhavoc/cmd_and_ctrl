@@ -2501,6 +2501,7 @@ confirm confirm/pay-life-copy-that-ability
 confirm confirm/pay-life-draw
 confirm confirm/peace-in-our-time-draw
 confirm confirm/pemmins-aura-pump
+confirm confirm/phelddagrif-draw
 confirm confirm/phyrexian-dragon-engine-discard-hand
 confirm confirm/pias-revolution-opponent-answer
 confirm confirm/ponder-shuffle
@@ -3287,6 +3288,7 @@ payunless pay-unless/assimilate-essence-incubate
 payunless pay-unless/aurora-shifter-copy
 payunless pay-unless/avatar-b30-moku-pump-and-haste
 payunless pay-unless/azra-oddsmaker-choose
+payunless pay-unless/balduvian-horde-sacrifice
 payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/battlemages-bracers-copy-ability
@@ -3342,6 +3344,7 @@ payunless pay-unless/customs-depot-loot
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/darigaaz-the-igniter-hand
 payunless pay-unless/death-priest-of-myrkul-skeleton
+payunless pay-unless/death-spark-return
 payunless pay-unless/decree-of-justice-soldiers
 payunless pay-unless/descendant-of-storms-endure
 payunless pay-unless/digsite-conservator-discover
@@ -3441,6 +3444,7 @@ payunless pay-unless/hurska-sweet-tooth-pump
 payunless pay-unless/hylda-of-the-icy-crown
 payunless pay-unless/icewrought-sentry-tap
 payunless pay-unless/inalla-archmage-ritualist-copy
+payunless pay-unless/insidious-bookworms-discard
 payunless pay-unless/insidious-mist-transform
 payunless pay-unless/interceptor-shadows-hound-return
 payunless pay-unless/intet-the-dreamer-exile-top
@@ -3547,6 +3551,7 @@ payunless pay-unless/papercraft-decoy-draw
 payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/pendrell-flux-sacrifice
 payunless pay-unless/persistent-marshstalker-return
+payunless pay-unless/phantasmal-sphere-sacrifice
 payunless pay-unless/phoenix-chick-return
 payunless pay-unless/phyrexian-tyranny-lose-two
 payunless pay-unless/pillar-tombs-of-aku-decline
@@ -5345,6 +5350,7 @@ tail peregrination/basic-land-to-hand
 tail perilous-voyage/scry-if-small
 tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
+tail phantasmal-sphere/pay-upkeep
 tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
 tail phthisis/controller-loses-life
