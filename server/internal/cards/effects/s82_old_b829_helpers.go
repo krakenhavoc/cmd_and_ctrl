@@ -9,8 +9,9 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// OpponentControlsColorPermanent reports "an opponent controls a <color>
-// permanent" for source's controller (S82 OLD batch 829, #5636).
+// OpponentControlsColorPermanentB829 reports "an opponent controls a <color>
+// permanent" for source's controller (S82 OLD batch 829, #5636; batch 830's
+// Scarabs share it).
 func OpponentControlsColorPermanentB829(g *game.Game, source *game.Card, color string) bool {
 	if g == nil || g.Battlefield == nil {
 		return false
@@ -26,7 +27,7 @@ func OpponentControlsColorPermanentB829(g *game.Game, source *game.Card, color s
 
 // ScarabAuraSpecB829 is the Ice Age Scarab Aura: "Enchanted creature can't be
 // blocked by <color> creatures. Enchanted creature gets +2/+2 as long as an
-// opponent controls a <color> permanent."
+// opponent controls a <color> permanent." Batch 830's Scarabs share it.
 func ScarabAuraSpecB829(oracleID, name, color, word string) Spec {
 	return Spec{
 		OracleID:     oracleID,

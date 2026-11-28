@@ -16,5 +16,5 @@ import (
 //
 // No simplification.
 func init() {
-	effects.Register(effects.ScarabAuraSpecB830("ec9c3906-8628-48c6-96a7-8c6748cba816", "White Scarab", "W", "white"))
+	effects.Register(effects.ScarabAuraSpecB829("ec9c3906-8628-48c6-96a7-8c6748cba816", "White Scarab", "W", "white"))
 }

@@ -267,6 +267,11 @@ var knownUnmatchedTokens = map[string]string{
 	// a token card; the dump has no Caribou token. The template follows the oracle
 	// text.
 	"0/1 white Caribou": "no 0/1 white Caribou token card was printed for Caribou Range",
+	// Broken Visage (Homelands, S82 OLD batch 827) creates "a black Spirit
+	// creature token" whose power and toughness are the sacrificed creature's,
+	// set as it is created, so the template is 0/0. The dump has no black Spirit
+	// token card at all for it to match.
+	"0/0 black Spirit": "X/X: Broken Visage sets the Spirit's size as it is created, and no black Spirit token card was printed",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
