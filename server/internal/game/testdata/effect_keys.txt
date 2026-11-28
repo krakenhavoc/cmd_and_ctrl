@@ -599,6 +599,7 @@ body s82-old-b792/three-wishes-unplayed-to-graveyard
 body s82-old-b797/barreling-attack-boost-per-blocker
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
+body sacrifice/old-b834-the-object
 body saheeli-radiant-creator/copy
 body sakashima/return-listed-to-hand
 body sample-collector/counter

@@ -1309,6 +1309,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModLandManaOfChosenColor: {reader: readerReplacement},
 	// Pale Moon: nonbasic lands tapped for mana make colourless mana.
 	ModNonbasicLandManaColorless: {reader: readerReplacement},
+	// Chaos Moon: lands of one type tapped for mana make colourless mana.
+	ModLandSubtypeManaColorless: {reader: readerReplacement},
 	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// Don't Blink: creatures entering from exile are shuffled into their
