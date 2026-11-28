@@ -591,6 +591,7 @@ body s82-old-b778/phase-out-listed
 body s82-old-b779/gain-control-of-blocker
 body s82-old-b789/song-of-blood-attacker-pump
 body s82-old-b791/brood-of-cockroaches-return
+body s82-old-b792/three-wishes-unplayed-to-graveyard
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
