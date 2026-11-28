@@ -98,6 +98,7 @@ var TokenTable = map[string]game.Card{
 	"0/2 green Plant with defender":                                 {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"0/1 white Caribou":                                             {Name: "Caribou", TypeLine: "Token Creature — Caribou", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/1 green Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"3/3 green Hippo":                                               {Name: "Hippo", TypeLine: "Token Creature — Hippo", Power: 3, Toughness: 3, Colors: []string{"G"}},                                                    // Mouth // Feed
 	"1/1 green Hippo":                                               {Name: "Hippo", TypeLine: "Token Creature — Hippo", Power: 1, Toughness: 1, Colors: []string{"G"}},                                                    // Questing Phelddagrif
