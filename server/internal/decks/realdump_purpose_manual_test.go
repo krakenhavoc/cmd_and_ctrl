@@ -461,6 +461,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 779 (#5629).
 	"Paradigm Shift": "exiles only its caster's own library, then shuffles their own graveyard into it; no permanent and no other player's cards",
+
+	// S82 OLD batch 784 (#5630).
+	"Boiling Seas": "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

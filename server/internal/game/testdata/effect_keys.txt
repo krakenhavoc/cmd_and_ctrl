@@ -3102,6 +3102,7 @@ option option-pick/s82-old-b759-flowstone-sculpture
 option option-pick/s82-old-b777-sacrifice-this-unless-you-sacrifice-a-forest
 option option-pick/s82-old-b783-discard-at-random-or-sacrifice
 option option-pick/s82-old-b783-sacrifice-this-unless-you-sacrifice-a-forest
+option option-pick/s82-old-b784-sacrifice-this-unless-you-sacrifice-an-island
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
