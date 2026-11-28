@@ -2165,6 +2165,7 @@ coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/old-b033-goblin-traprunner
+coinflip coin-flip/old-b832-amulet-of-quoz
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/puppets-verdict
 coinflip coin-flip/ral-monsoon-mage
