@@ -455,6 +455,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 766 (#5628).
 	"Sacred Guide": "exiles only the cards it revealed from the top of its controller's own library, never a permanent",
+
+	// S82 OLD batch 771 (#5629).
+	"Cinder Giant": "its upkeep trigger hurts only the other creatures its own controller controls, a drawback of the 5/3; no opponent's permanent is touched",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

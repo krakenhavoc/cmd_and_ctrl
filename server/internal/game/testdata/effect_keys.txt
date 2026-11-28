@@ -585,6 +585,7 @@ body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b688/tuck-at-end-of-combat
 body s82-old-b751/return-the-objects-to-hands
+body s82-old-b771/damage-listed-cards
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
