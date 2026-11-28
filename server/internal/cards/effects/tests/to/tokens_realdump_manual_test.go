@@ -257,6 +257,11 @@ var knownUnmatchedTokens = map[string]string{
 	// creature token with banding"; no Knight token with banding was ever printed, as
 	// token cards start in 2007. The template follows the oracle text.
 	"1/1 white Knight with banding": "no Knight token with banding was printed for Errand of Duty",
+	// Wall of Kelp (Homelands, S82 OLD batch 821) creates "a 0/1 blue Plant Wall
+	// creature token with defender named Kelp". The card is from 1996 and its
+	// token was never printed as a token card. The template follows the oracle
+	// text.
+	"0/1 blue Plant Wall named Kelp with defender": "no Kelp token card was printed for Wall of Kelp",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

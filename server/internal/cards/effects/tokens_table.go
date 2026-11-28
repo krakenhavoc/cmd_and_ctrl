@@ -94,6 +94,7 @@ var TokenTable = map[string]game.Card{
 	"0/0 red Gremlin artifact":                                      {Name: "Gremlin", TypeLine: "Token Artifact Creature — Gremlin", Power: 0, Toughness: 0, Colors: []string{"R"}, PrintedPTKnown: true},
 	"0/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	"0/1 green Egg with defender":                                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
+	"0/1 blue Plant Wall named Kelp with defender":                  {Name: "Kelp", TypeLine: "Token Creature — Plant Wall", Power: 0, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"defender"}},
 	"0/2 green Plant with defender":                                 {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 1, Toughness: 1, Colors: []string{"G"}},
