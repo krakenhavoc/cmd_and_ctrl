@@ -10381,7 +10381,7 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// Pithing Needle never does.
 		if restricted {
 			views[i].CantActivate = g.CantActivateReasonLocked(controller, *card, game.ZoneBattlefield,
-				game.ActivationAbility{Label: raw[r].Label, Mana: true})
+				game.ManaActivationAbilityOf(raw[r]))
 		}
 		// #3976: a row whose spend restriction is computed (Cavern of
 		// Souls' chosen type) carries the list the mint would stamp now,

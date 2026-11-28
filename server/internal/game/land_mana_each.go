@@ -95,6 +95,7 @@ func (g *Game) LandManaOptionsForEffect(player, land uuid.UUID) (opts []LandMana
 			continue
 		}
 		if g.ActivationGateLocked(player, *card, ZoneBattlefield, ActivationAbility{Label: ab.Label, Mana: true, TapCost: ab.TapCost}) != nil {
+		if g.ActivationGateLocked(player, *card, ZoneBattlefield, ManaActivationAbilityOf(ab)) != nil {
 			continue
 		}
 		if !g.CanPayLifeForManaAbilityLocked(p, ab.LifeCost) || EnergyShortfall(p, ab.EnergyCost) != nil {

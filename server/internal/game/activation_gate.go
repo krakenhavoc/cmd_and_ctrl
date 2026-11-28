@@ -138,6 +138,12 @@ type ActivationAbility struct {
 	// ActivationAbilityOf and by each mana-ability call site, never set by
 	// a card file.
 	TapCost bool
+	// Tap marks an ability with {T} in its cost, because Serra
+	// Bestiary's clause names the cost: "its activated abilities with
+	// {T} in their costs can't be activated" (S82 OLD b825; CR 602.5).
+	// Derived from the shape's cost by ActivationAbilityOf and
+	// ManaActivationAbilityOf, never set by a card file.
+	Tap bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -158,7 +164,14 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		PowerUp:      ab.PowerUp,
 		Cycling:      ab.Cycling,
 		TapCost:      ab.Cost.Tap,
+		Tap:          ab.Cost.Tap,
 	}
+}
+
+// ManaActivationAbilityOf is ActivationAbilityOf for a mana ability's
+// shape: Mana is true by construction and Tap is its {T} cost.
+func ManaActivationAbilityOf(ab ManaAbilityShape) ActivationAbility {
+	return ActivationAbility{Label: ab.Label, Mana: true, Tap: ab.TapCost}
 }
 
 // ActivationQuery is everything an activation restriction may look

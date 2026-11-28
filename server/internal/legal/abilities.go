@@ -2627,7 +2627,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// function ActivateManaAbility calls, with Mana: true, so
 		// the restriction decides and not this call site (#544).
 		if restricted && g.ActivationGateLocked(e.seat, *source, zone,
-			game.ActivationAbility{Label: ab.Label, Mana: true}) != nil {
+			game.ManaActivationAbilityOf(ab)) != nil {
 			continue
 		}
 		// #352: the activation gate first, exactly as
