@@ -49,13 +49,7 @@ func init() {
 				item.Params.Object = game.ObjectRef{ID: other, Epoch: g.ObjectEpochForEffect(other)}
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				obj := item.Params.Object
-				if obj.ID == uuid.Nil || g.ObjectEpochForEffect(obj.ID) != obj.Epoch || !effects.OnBattlefield(g, obj.ID) {
-					return nil
-				}
-				return effects.DestroyTarget{Target: obj.ID}.Apply(effects.NewContext(g, item))
-			},
+			Effect: effects.DestroyTheObjectNamedByTheTrigger,
 		}},
 		Activated: []effects.ActivatedAbility{effects.EquipAbility("{2}")},
 	})
