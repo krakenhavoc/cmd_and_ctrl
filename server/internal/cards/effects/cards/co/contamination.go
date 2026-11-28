@@ -37,14 +37,8 @@ func init() {
 				effects.SacrificeThisUnlessYouSacrificeA("Contamination", "a creature", effects.Creature(), effects.SacrificeACreatureOrThisAnswer)),
 		},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventManaAdded},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) bool {
-				if ev.Kind != game.RepEventProduceMana || !ev.ManaFromTap || len(ev.ManaColors) == 0 {
-					return false
-				}
-				land, ok := g.LookupCardForEffect(ev.ManaSource)
-				return ok && land.IsLand()
-			},
+			Watches:   []game.EventKind{game.EventManaAdded},
+			AppliesTo: effects.OldB839LandTappedForMana,
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.ManaColors = []string{"B"}
 				return nil

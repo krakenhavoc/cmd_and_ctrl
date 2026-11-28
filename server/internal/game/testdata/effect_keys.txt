@@ -4592,8 +4592,10 @@ tail cumulative-upkeep/aboroth-cumulative-upkeep-put-a-1-1-counter-on-this-creat
 tail cumulative-upkeep/ancestral-knowledge-cumulative-upkeep-1
 tail cumulative-upkeep/arctic-nishoba-cumulative-upkeep-g-or-w
 tail cumulative-upkeep/arctic-wolves-cumulative-upkeep-2
+tail cumulative-upkeep/arnjlot-s-ascent-cumulative-upkeep-u
 tail cumulative-upkeep/balduvian-fallen-cumulative-upkeep-1
 tail cumulative-upkeep/blizzard-cumulative-upkeep-2
+tail cumulative-upkeep/brand-of-ill-omen-cumulative-upkeep-r
 tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cold-snap-cumulative-upkeep-2
 tail cumulative-upkeep/corrosion-cumulative-upkeep-1
@@ -4617,8 +4619,11 @@ tail cumulative-upkeep/heat-wave-cumulative-upkeep-r
 tail cumulative-upkeep/herald-of-leshrac-cumulative-upkeep-gain-control-of-a-land-you-don-t-control
 tail cumulative-upkeep/hibernation-s-end-cumulative-upkeep-1
 tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
+tail cumulative-upkeep/illusionary-presence-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
 tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
+tail cumulative-upkeep/illusions-of-grandeur-cumulative-upkeep-2
+tail cumulative-upkeep/infernal-darkness-cumulative-upkeep-pay-b-and-1-life
 tail cumulative-upkeep/inner-sanctum-cumulative-upkeep-pay-2-life
 tail cumulative-upkeep/juju-bubble-cumulative-upkeep-1
 tail cumulative-upkeep/jötun-grunt-cumulative-upkeep-put-two-cards-from-a-single-graveyard-on-the-bottom-of-their-owner-s-library
@@ -4626,13 +4631,17 @@ tail cumulative-upkeep/jötun-owl-keeper-cumulative-upkeep-w-or-u
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/kjeldoran-javelineer-cumulative-upkeep-1
 tail cumulative-upkeep/krovikan-whispers-cumulative-upkeep-u-or-b
+tail cumulative-upkeep/maddening-wind-cumulative-upkeep-g
 tail cumulative-upkeep/magmatic-core-cumulative-upkeep-1
 tail cumulative-upkeep/malignant-growth-cumulative-upkeep-1
 tail cumulative-upkeep/mind-harness-cumulative-upkeep-1
+tail cumulative-upkeep/mesmeric-trance-cumulative-upkeep-1
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/musician-cumulative-upkeep-1
 tail cumulative-upkeep/mwonvuli-ooze-cumulative-upkeep-2
+tail cumulative-upkeep/mystic-might-cumulative-upkeep-1-u
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
+tail cumulative-upkeep/naked-singularity-cumulative-upkeep-3
 tail cumulative-upkeep/phobian-phantasm-cumulative-upkeep-b
 tail cumulative-upkeep/phyrexian-etchings-cumulative-upkeep-b
 tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creature
@@ -4641,6 +4650,7 @@ tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
 tail cumulative-upkeep/psychic-vortex-cumulative-upkeep-draw-a-card
 tail cumulative-upkeep/reality-twist-cumulative-upkeep-1-u-u
 tail cumulative-upkeep/revered-unicorn-cumulative-upkeep-1
+tail cumulative-upkeep/ritual-of-subdual-cumulative-upkeep-2
 tail cumulative-upkeep/ronom-hulk-cumulative-upkeep-1
 tail cumulative-upkeep/royal-decree-cumulative-upkeep-w
 tail cumulative-upkeep/sheltering-ancient-cumulative-upkeep-put-a-1-1-counter-on-a-creature-an-opponent-controls
@@ -6110,6 +6120,7 @@ tail then/hold-for-ransom-draw
 tail then/horses-of-the-bruinen-scry
 tail then/huatli-warrior-poet-cant-block
 tail then/if-it-went-run-steps
+tail then/illusionary-presence-landwalk
 tail then/indomitable-creativity-shuffle
 tail then/industrial-advancement-sacrificed
 tail then/intrude-on-the-mind-take
