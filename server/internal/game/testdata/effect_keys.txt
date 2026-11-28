@@ -1495,6 +1495,7 @@ choose choose-cards/moorland-rescuer-total-power-unbounded
 choose choose-cards/mordor-on-the-march-exile
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
+choose choose-cards/mudslide-untap
 choose choose-cards/murk-strider-picked
 choose choose-cards/murmurs-from-beyond-chosen
 choose choose-cards/myr-battlesphere-tap
@@ -3496,6 +3497,7 @@ payunless pay-unless/mohiam-imperial-truthsayer-exile
 payunless pay-unless/monstrosity-of-the-lake-stun
 payunless pay-unless/mortarion-warriors
 payunless pay-unless/mtenda-lion-prevent-combat-damage
+payunless pay-unless/mudslide-untap
 payunless pay-unless/murasa-ranger-counters
 payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
