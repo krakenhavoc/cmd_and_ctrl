@@ -3553,6 +3553,7 @@ payunless pay-unless/old-b827-giant-albatross-destroy
 payunless pay-unless/old-b827-giant-albatross-paid
 payunless pay-unless/old-b829-errant-minion-damage
 payunless pay-unless/old-b829-seizures-damage
+payunless pay-unless/old-b830-mind-whip
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
