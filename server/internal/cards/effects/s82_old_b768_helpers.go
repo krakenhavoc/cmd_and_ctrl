@@ -10,7 +10,7 @@ import (
 // Tempest enters and dies triggers.
 
 // PutThisDiedCardOnTopOfItsOwnersLibrary is the body of "When this creature
-// dies, put it on top of its owner's library" (Dark Revenant, Avenging Angel):
+// dies, put it on top of its owner's library" (Dark Revenant, Avenging Angel, Undying Beast):
 // the card moves only if it is still in a graveyard as the same object that
 // died (CR 400.7), so a card exiled in response is left alone.
 func PutThisDiedCardOnTopOfItsOwnersLibrary(g *game.Game, item *game.StackItem) error {

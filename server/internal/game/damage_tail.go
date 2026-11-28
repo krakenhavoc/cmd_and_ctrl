@@ -512,6 +512,13 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 			ch.SourceIsSpell = true
 		}
 	}
+	// A spell that is resolving has left the stack's list and its meta
+	// (resolving_item.go parks it), and it is still a spell while it deals its
+	// damage (CR 608.2): "if a spell would deal damage" reads it so.
+	if ch != nil && g.resolving != nil && g.resolving.hasCard && g.resolving.card.InstanceID == c.InstanceID &&
+		g.resolving.item != nil && g.resolving.item.Kind == StackItemSpell {
+		ch.SourceIsSpell = true
+	}
 	return ch
 }
 

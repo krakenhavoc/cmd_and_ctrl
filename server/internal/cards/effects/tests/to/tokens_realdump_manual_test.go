@@ -235,6 +235,11 @@ var knownUnmatchedTokens = map[string]string{
 	// templates follow the oracle text.
 	"2/2 white Reflection": "no 2/2 white Reflection token card was printed for Spirit Mirror",
 	"1/1 green Dog":        "no 1/1 green Dog token card was printed for Mongrel Pack",
+
+	// Diamond Kaleidoscope (Visions, 1997, S82 OLD batch 788) creates "a 0/1
+	// colorless Prism artifact creature token"; no Prism token card was ever
+	// printed, as token cards start in 2007. The template follows the oracle text.
+	"0/1 colorless Prism artifact": "no Prism token card was printed for Diamond Kaleidoscope",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

@@ -175,8 +175,15 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	// catalog card declares a static that functions from the stack
 	// (Torrent of Lava). Gated on the boot-time index, so a catalog with
 	// no such card pays one slice read per event.
+	//
+	// Only the card that declares it moving matters (the static's source is
+	// the spell itself), so any other spell crossing the stack bumps nothing
+	// and a table without Torrent of Lava on it keeps its layer version. A
+	// card the index cannot find bumps, which is the safe side.
 	if (ev.OldZone == ZoneStack) != (ev.NewZone == ZoneStack) && staticZones.hasZone(ZoneStack) {
-		g.layerVersion.Add(1)
+		if c := g.findCardByIDLocked(ev.CardID); c == nil || staticZones.declares(catalogKeyOf(c)) {
+			g.layerVersion.Add(1)
+		}
 	}
 	// ADR 0100 sub-PR 2, a fifth CONDITIONAL bump in the hand one's
 	// mould: a card LEAVING exile, while something declares

@@ -106,6 +106,7 @@ var TokenTable = map[string]game.Card{
 	"0/1 white Goat":                                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/3 blue Crab":                                                 {Name: "Crab", TypeLine: "Token Creature — Crab", Power: 0, Toughness: 3, Colors: []string{"U"}},
 	"0/4 colorless Wall artifact with defender":                     {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
+	"0/1 colorless Prism artifact":                                  {Name: "Prism", TypeLine: "Token Artifact Creature — Prism", Power: 0, Toughness: 1}, // Diamond Kaleidoscope
 	"1/1 colorless Robot artifact with flying":                      {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 red Ape Villain with haste":                                {Name: "Ape Villain", TypeLine: "Token Creature — Ape Villain", Power: 3, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"haste"}},
 	"0/4 colorless Wall with defender":                              {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
