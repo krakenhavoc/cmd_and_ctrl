@@ -229,6 +229,11 @@ var knownUnmatchedTokens = map[string]string{
 	// a token card; the dump has no Spike token. The template follows the oracle
 	// text.
 	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
+
+	// Goblin Scouts (Mirage, 1996) creates "three 1/1 red Goblin Scout creature
+	// tokens with mountainwalk"; token cards start in 2007 and none was printed
+	// for it. The template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": "no Goblin Scout token card was printed for Goblin Scouts",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

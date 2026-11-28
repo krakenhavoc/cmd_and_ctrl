@@ -821,4 +821,7 @@ var TokenTable = map[string]game.Card{
 	"3/3 black Kavu":              {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"B"}},
 	"6/6 black Wurm with trample": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"trample"}},
 	"3/3 black Angel with flying": {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	// S82 OLD batch 799 (#5633): Goblin Scouts. No token card was printed for it (see
+	// knownUnmatchedTokens); the template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": {Name: "Goblin Scout", TypeLine: "Token Creature — Goblin Scout", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"mountainwalk"}},
 }
