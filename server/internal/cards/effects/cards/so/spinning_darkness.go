@@ -1,6 +1,8 @@
 package cardsso
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -31,12 +33,18 @@ func init() {
 				if t.Kind != game.TargetCard {
 					continue
 				}
-				if err := (effects.DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				return effects.GainLife{Amount: 3}.Apply(ctx)
+				return spinningDarknessResolve(ctx, t.ID)
 			}
 			return nil
 		},
 	})
+}
+
+// spinningDarknessResolve deals the 3 damage to the creature, then gains the
+// caster 3 life.
+func spinningDarknessResolve(ctx *effects.Context, target uuid.UUID) error {
+	if err := (effects.DealDamage{Source: ctx.Source(), Target: target, Amount: 3}).Apply(ctx); err != nil {
+		return err
+	}
+	return effects.GainLife{Amount: 3}.Apply(ctx)
 }

@@ -18,15 +18,17 @@ var S82OldB771DamageListedBody = game.SimpleDelayedBody("s82-old-b771/damage-lis
 
 func s82OldB771DamageListed(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, t := range item.Targets {
-		if t.Kind != game.TargetCard || t.ID == uuid.Nil || !OnBattlefield(g, t.ID) {
-			continue
+	return g.DamageInstanceForEffect(func() error {
+		for _, t := range item.Targets {
+			if t.Kind != game.TargetCard || t.ID == uuid.Nil || !OnBattlefield(g, t.ID) {
+				continue
+			}
+			if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-		if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // S82OldB771SawtoothTrigger is "Whenever this creature blocks or becomes blocked

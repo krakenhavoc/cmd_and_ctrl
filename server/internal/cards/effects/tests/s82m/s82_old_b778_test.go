@@ -57,15 +57,6 @@ func oldB778HasType(t *testing.T, g *game.Game, id uuid.UUID, want string) bool 
 	return false
 }
 
-func oldB778InZone(z *game.Zone, id uuid.UUID) bool {
-	for _, c := range z.Cards {
-		if c.InstanceID == id {
-			return true
-		}
-	}
-	return false
-}
-
 func TestOldB778FamiliarGroundLimitsEachOfYourCreaturesToOneBlocker(t *testing.T) {
 	g := effectstest.NewCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
