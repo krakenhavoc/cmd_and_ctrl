@@ -152,6 +152,11 @@ var untilEndOfTurnExempt = map[string]string{
 	// Weatherlight (S82 OLD batch 771): takes flying from its target until
 	// end of turn, a harm; the pattern reads "loses" as a benefit.
 	"Downdraft": "removes flying from its target; the check reads 'loses' as a benefit",
+
+	// Mirage (S82 OLD batch 793): deals damage to its target and takes flying
+	// from it until end of turn, which is a harm; the pattern reads "loses" as
+	// a benefit (Urborg's case).
+	"Burning Palm Efreet": "removes an ability from its target; the check reads 'loses' as a benefit",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
