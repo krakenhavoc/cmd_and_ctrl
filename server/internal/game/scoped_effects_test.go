@@ -496,6 +496,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// "assign combat damage as though it weren't blocked" for a
 		// duration: assigns_as_unblocked_mod_test.go.
 		ModAssignsAsThoughUnblocked: true,
+		// Outmaneuver: the mandatory sibling, same file.
+		ModMustAssignAsThoughUnblocked: true,
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,
@@ -537,6 +539,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #6210: Harvest Mage's chosen colour; cases in
 		// cards/effects/tests/m/mana_color_of_choice_test.go.
 		ModLandManaOfChosenColor: true,
+		// S82 OLD b679: Pale Moon's colourless nonbasic lands; cases in
+		// land_mana_colorless_test.go.
+		ModNonbasicLandManaColorless: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,
@@ -809,7 +814,7 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
 		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
 		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource, WhileSourceAttachedToPinned,
-		WhileSourceOnceItLands, WhilePlayerIsMonarch} {
+		WhileSourceOnceItLands, WhilePlayerIsMonarch, WhilePinnedIsEnchanted} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}

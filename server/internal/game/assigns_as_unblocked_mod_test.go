@@ -22,3 +22,18 @@ func TestAssignsAsThoughUnblockedModSetsTheFlag(t *testing.T) {
 		t.Error("an unaffected creature has the flag")
 	}
 }
+
+// The mandatory grant (Outmaneuver) sets its own flag, not the optional one.
+func TestMustAssignAsThoughUnblockedModSetsItsOwnFlag(t *testing.T) {
+	g := newActiveGame(t)
+	id := pushTypedTestPermanent(g, g.Seats[0].ID, "Creature — Beast")
+	other := pushTypedTestPermanent(g, g.Seats[0].ID, "Creature — Beast")
+	registerScopedEffectForTest(t, g, id, []Mod{MustAssignAsThoughUnblockedMod()}, IndefiniteDuration())
+	ch := scopedEffectChar(t, g, id)
+	if !ch.MustAssignAsThoughUnblocked || ch.AssignsAsThoughUnblocked {
+		t.Errorf("flags on the affected creature: must %v, may %v; want must only", ch.MustAssignAsThoughUnblocked, ch.AssignsAsThoughUnblocked)
+	}
+	if scopedEffectChar(t, g, other).MustAssignAsThoughUnblocked {
+		t.Error("an unaffected creature has the flag")
+	}
+}

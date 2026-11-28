@@ -112,6 +112,7 @@ var reviewedNotAWipe = map[string]string{
 	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
 	"Retract":               "returns only its caster's own artifacts to hand, not a board",
 	"Armageddon":            "destroys lands, which no sweep class holds alone",
+	"Sunder":                "returns lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent. #5802:
 	// Saproling Burst's leaves trigger is the same link, destroying only
@@ -409,6 +410,48 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 613 (#5607).
 	"Boil":       "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
 	"Flashfires": "destroys only the Plains, which are lands, and no sweep class names lands (Armageddon declares none)",
+
+	// S82 OLD batch 602 (#5606).
+	"Spoils of the Vault": "exiles only the cards it reveals from the top of its controller's own library, never a permanent",
+
+	// S82 OLD batch 627 (#5611).
+	"Wormfang Behemoth": "exiles the cards in its controller's own hand, not permanents, and returns them to hand when it leaves",
+
+	// S82 OLD batch 619 (#5607).
+	"Death Pit Offering": "sacrifices only its own controller's creatures as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 658 (#5616).
+	"Bend or Break": "destroys only the lands in the chosen piles, like Armageddon, which no sweep class holds alone",
+
+	// S82 OLD batch 667 (#5616).
+	"Pure Reflection": "destroys only Reflections, a creature type of token and a few cards, never the board's creatures as a class",
+
+	// S82 OLD batch 674 (#5617).
+	"Keldon Firebombers": "each player sacrifices only the lands past their third, which are lands, and no sweep class names lands (Armageddon declares none)",
+
+	// S82 OLD batch 677 (#5618).
+	"Divining Witch": "exiles only the top six cards and the cards it reveals from its controller's own library, never a permanent",
+
+	// S82 OLD batch 690 (#5619).
+	"Warpath": "3 damage only to the creatures in combat (each blocking creature and each blocked creature), not a board",
+	// S82 OLD batch 691 (#5619).
+	"Honor the Fallen":  "exiles the creature cards in graveyards, never a permanent",
+	"Saprazzan Bailiff": "exiles the artifact and enchantment cards in graveyards, never a permanent, and returns cards from graveyards to hands when it leaves",
+	"Venomous Breath":   "destroys only the creatures that blocked or were blocked by one chosen creature this turn, not a board",
+	// S82 OLD batch 717 (#5623).
+	"Impending Disaster": "destroys only lands, which no sweep class names alone (Armageddon declares none)",
+	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
+	// S82 OLD batch 679 (#5618).
+	"Overlaid Terrain": "sacrifices only its own controller's lands as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+	// S82 OLD batch 735 (#5625).
+	"Return of the Nightstalkers": "returns your Nightstalker cards, then destroys only the Swamps you control, which no sweep class names alone (Armageddon declares none)",
+
+	// S82 OLD batch 744 (#5626).
+	"Wall of Nets": "exiles only the creatures it blocked this combat and returns them when it leaves, not a board",
+
+	// S82 OLD batch 761 (#5458).
+	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
+	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

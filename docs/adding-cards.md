@@ -3921,8 +3921,16 @@ and the spell is remembered as it stood on the stack, as epic remembers it
 card is still that object in exile (`DelayedTrigger.WhileExiled`, CR
 603.4), a delay counter is removed; when none is left the card itself goes
 onto the stack with the original's targets, modes, X and paid costs. It is
-not cast, so cast triggers don't see it. "X can't be 0" is the card's own
-`MinX`.
+not cast, so cast triggers don't see it. "X can't be 0" is the spell's own
+`Spec.XFloor: 1` (`game/x_floor.go`, S82 OLD batch 759): the cast is refused
+below it, as `XCeiling` refuses above; declare `XMatters` too, so the bot is
+never offered X=0. The client's X picker does not yet start at the floor.
+
+A target "with power less than or equal to the number of <kind> counters on
+this" (Legacy's Allure) is `RelativeToSource(spec,
+effects.S82OldB759PowerNoGreaterThanCounters("treasure"))`: the source's
+counters are read live, and from its last-known record once an ability's cost
+sacrificed it (CR 608.2h).
 
 Tests: [delayed_recast_test.go](../server/internal/game/delayed_recast_test.go).
 
@@ -4983,7 +4991,7 @@ refuses a clause with no label or no life.
 nontoken Rebels cost an additional "Sacrifice a land" to activate" (Brutal
 Suppression), "Spells cost an additional "Sacrifice a Swamp" to cast for
 each black mana symbol in their mana costs" (Drought; #6205, CR 601.2f,
-602.2b). A static of the permanent, `CardDef.ImposedSacrifices`:
+602.2b). A static of the permanent, `Spec.ImposedSacrifices` (carried to `CardDef.ImposedSacrifices`):
 
 ```go
 ImposedSacrifices: []game.ImposedSacrifice{{
@@ -15999,6 +16007,13 @@ reading the `CardDef` and are not set by the catalog any more.
   (CR 508.1d, "attacks if some condition is met"). Declaring nothing stays legal; declaring the source owes an attack from
   every other creature that can attack for free. For another "if <it> attacks, <creatures> attack if able" card, set
   the same flag on a requirement from `requirementFrom(source, …)` and scope the static's `AppliesTo`.
+- **"If a creature with a <kind> counter on it attacks, all creatures with <kind> counters on them attack if able"**
+  (Magnetic Web, S82 OLD batch 760) is `S82OldB760AttackIfAnotherWithCounterAttacks(kind, label)`, a static on the
+  Web: each creature with a `kind` counter gets one requirement with
+  `game.AttackRequirement.IfAnotherWithCounterAttacks` set, which exists only in a declaration in which another
+  creature with such a counter is attacking. The matching "block that creature this turn if able" half is
+  `S82OldB760EachWithCounterBlocksTheAttacker(kind, label)` on an attack trigger: Provoke's block record on each
+  creature with the counter.
 - **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
   2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
   (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the

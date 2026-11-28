@@ -732,6 +732,11 @@ type CardDef struct {
 	// x_ceiling.go. Nil for nearly every card.
 	XCeiling *XCeiling
 
+	// XFloor is the spell's printed "X can't be 0" (Ertai's Meddling, CR
+	// 107.3a, 601.2b): the smallest X the caster may announce. Zero is no
+	// floor. Read at announce through XFloorFor; see x_floor.go.
+	XFloor int
+
 	// WantsDistinctColors marks a spell that READS the colours of the
 	// mana that paid for it — converge (CR 207.2c) and sunburst (CR
 	// 702.44), and nothing else today. It picks the colour-maximising
@@ -1613,6 +1618,12 @@ func init() {
 			return d.XCeiling
 		}
 		return nil
+	}
+	CatalogXFloor = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.XFloor
+		}
+		return 0
 	}
 	CatalogCastPermissions = func(key string) []CastPermission {
 		if d := catalogDef(key); d != nil {

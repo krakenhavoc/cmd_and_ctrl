@@ -525,6 +525,10 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaValueOfExiledWith {
 			out.ManaValueOfExiledWith = true
 		}
+		// Skeleton Scavengers: and "pay {1} for each counter on this".
+		if c.ManaPerCounter != "" {
+			out.ManaPerCounter = c.ManaPerCounter
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {

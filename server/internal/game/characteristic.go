@@ -571,6 +571,16 @@ type Characteristic struct {
 	// Card.assignsAsThoughUnblocked.
 	AssignsAsThoughUnblocked bool `json:",omitempty"`
 
+	// MustAssignAsThoughUnblocked is "this creature assigns its combat
+	// damage as though it weren't blocked" with no "you may" (CR 510.1c,
+	// Outmaneuver): a blocked creature that has it assigns all of its damage
+	// to the player, planeswalker or battle it is attacking, with no
+	// choice and no lethal damage owed to its blockers. It wins over the
+	// optional AssignsAsThoughUnblocked. Set only by a layer 6 scoped
+	// effect (ModMustAssignAsThoughUnblocked); the combat damage pass reads
+	// it through Card.mustAssignAsThoughUnblocked.
+	MustAssignAsThoughUnblocked bool `json:",omitempty"`
+
 	// LethalByPower is "lethal damage dealt to <this creature> is determined
 	// by its power rather than its toughness" (Zilortha, Strength Incarnate,
 	// IKO): CR 120.6 and 704.5g compare the damage marked on it (and the

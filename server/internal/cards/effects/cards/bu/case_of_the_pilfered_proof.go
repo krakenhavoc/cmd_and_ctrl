@@ -39,12 +39,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			effects.OnAny([]game.EventKind{game.EventETB, game.EventTurnedFaceUp}, pilferedProofDetectiveArrived,
 				"Case of the Pilfered Proof — put a +1/+1 counter on that Detective",
-				func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil || !effects.OnBattlefield(g, item.Trigger.Event.CardID) {
-						return nil
-					}
-					return effects.AddCounter{Target: item.Trigger.Event.CardID, Kind: game.CounterPlusOne, N: 1}.Apply(effects.NewContext(g, item))
-				}),
+				effects.PutPlusOneCounterOnEventCreature),
 			effects.ToSolve("Case of the Pilfered Proof — to solve: you control three or more Detectives", youControlThreeOrMoreDetectives),
 		},
 		Replacements: []game.ReplacementEffect{{

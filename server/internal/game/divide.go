@@ -223,10 +223,12 @@ func (g *Game) bindDivideAmountsLocked(steps []AnnouncedClause, a DivideAmountAr
 
 // bindMaxFromLocked fixes "up to X targets" for one announced clause: the
 // rule named by MaxFrom is read now and becomes the clause's Max, with a
-// Min of 0. A rule that answers below 1 is held to 1 (Max 0 reads as
-// unbounded everywhere else in a clause); the registered rules count the
-// activating permanent itself, so they never answer 0. An unregistered
-// key sizes the clause at 1, the smallest bound a clause can state.
+// Min of 0. Max 0 reads as unbounded everywhere else in a clause, so a rule
+// that answers below 1 ("up to 0 targets": a Vile Requiem or Recantation
+// with no verse counters) cannot be a Max of 0; the clause is held to a Max
+// of 1 and made to admit no target at all (no card zone, no player), so the
+// only legal pick is none, as printed. An unregistered key sizes the clause
+// at 1, the smallest bound a clause can state.
 //
 // Caller must hold g.mu.
 func (g *Game) bindMaxFromLocked(c *TargetSpec, a DivideAmountArgs) {
@@ -236,6 +238,9 @@ func (g *Game) bindMaxFromLocked(c *TargetSpec, a DivideAmountArgs) {
 		n = d.Total
 	}
 	c.Min, c.Max = 0, n
+	if d != nil && d.Total < 1 {
+		c.Zones, c.Players = nil, false
+	}
 	c.MaxFrom = DivideAmount{}
 }
 

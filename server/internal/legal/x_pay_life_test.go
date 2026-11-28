@@ -162,14 +162,14 @@ func TestEveryPayLifeXCastIsPricedAndSound(t *testing.T) {
 	active.Life = 7
 
 	probed := 0
-	for _, spec := range effectsWithPayLifeX() {
+	probe := func(spec payLifeXSpec, typeLine string) {
 		probed++
 		// A stand-in printed cost, for the reason the #619 sweep gives:
 		// a Spec carries an oracle ID and a name, not a mana cost. The
 		// rule under test is the X, so a cost the seat can obviously
 		// afford is the probe.
 		id := handCard(active, game.Card{
-			Name: spec.name, TypeLine: "Sorcery", ManaCost: "{1}{B}", OracleID: spec.oracleID,
+			Name: spec.name, TypeLine: typeLine, ManaCost: "{1}{B}", OracleID: spec.oracleID,
 		})
 		moves := legal.EnumerateFor(g, active.ID)
 		casts := castMovesFor(moves, id)
@@ -187,6 +187,25 @@ func TestEveryPayLifeXCastIsPricedAndSound(t *testing.T) {
 		}
 		dispatchAll(t, g, active.ID, moves)
 		removeFromHand(active, id)
+	}
+	// A card whose own cast condition refuses the main phase (Necrologia,
+	// "Cast this spell only during your end step") is probed afterwards,
+	// as an instant in the caster's end step, so its timing is honoured
+	// and its X is still checked.
+	var endStep []payLifeXSpec
+	for _, spec := range effectsWithPayLifeX() {
+		card := game.Card{Name: spec.name, OracleID: spec.oracleID}
+		if cond := game.CastConditionFor(card); cond != nil && !cond(g, active.ID, card) {
+			endStep = append(endStep, spec)
+			continue
+		}
+		probe(spec, "Sorcery")
+	}
+	if len(endStep) > 0 {
+		advanceTo(t, g, game.StepEnd)
+		for _, spec := range endStep {
+			probe(spec, "Instant")
+		}
 	}
 	if probed == 0 {
 		t.Fatal("no pay-X-life additional cost in the catalog — the sweep is reading the wrong field")

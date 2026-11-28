@@ -140,6 +140,17 @@ type GrantedAlternativeCost struct {
 	// no mana cost for the price to equal.
 	PricedAtManaCost bool
 
+	// PricedAtManaValue is Kentaro, the Smiling Cat's "You may pay {X}
+	// rather than pay the mana cost for Samurai spells you cast, where X
+	// is that spell's mana value": the derived offer's ManaCost is that
+	// many generic mana, read off the face being cast as each offer is
+	// derived (so the caster chooses nothing and a coloured symbol of the
+	// printed cost is not owed). {X} in the printed cost counts as 0
+	// (CR 107.3b), and a spell with no mana cost has mana value 0
+	// (CR 202.3a). Offer.ManaCost must be empty, and it may not be
+	// combined with PricedAtManaCost or LifeEqualToManaValue.
+	PricedAtManaValue bool
+
 	// ManaCostReducedBy is Aminatou, Veil Piercer's "its miracle cost is
 	// equal to its mana cost reduced by {4}" (CR 118.7): with
 	// PricedAtManaCost, the generic mana taken off the spell's mana cost
@@ -375,6 +386,16 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			if gr.PricedAtManaCost && !pricedAtManaCostOK(card) {
 				continue
 			}
+			mvPrice, mvOK := "", true
+			if gr.PricedAtManaValue {
+				mvPrice, mvOK = WaterbendManaValueCost(card), true
+				if _, ok := lifeEqualToManaValue(card); !ok {
+					mvOK = false
+				}
+			}
+			if !mvOK {
+				continue
+			}
 			life, lifeOK := 0, true
 			if gr.LifeEqualToManaValue {
 				life, lifeOK = lifeEqualToManaValue(card)
@@ -401,6 +422,10 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 					}
 				}
 				offer.Label += " " + offer.ManaCost
+			}
+			if gr.PricedAtManaValue {
+				offer.ManaCost = mvPrice
+				offer.Label += " " + mvPrice
 			}
 			if gr.LifeEqualToManaValue {
 				// #3174: Bolas's Citadel's price (CastPermission.

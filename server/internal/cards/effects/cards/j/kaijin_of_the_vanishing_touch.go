@@ -22,27 +22,11 @@ import (
 //
 // No simplification.
 func init() {
-	const label = "Kaijin of the Vanishing Touch — return that creature to its owner's hand at end of combat"
-	t := effects.On(game.EventBlock, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-		return effects.B28SelfBlocked(ev, source)
-	}, label, func(g *game.Game, item *game.StackItem) error {
-		return effects.ScheduleDelayedTrigger{
-			At:     game.StepEndCombat,
-			Label:  "Kaijin of the Vanishing Touch — return the creature it blocked to its owner's hand",
-			Body:   effects.ReturnObjectToHandBody,
-			Params: game.EffectParams{Object: item.Params.Object},
-		}.Apply(effects.NewContext(g, item))
-	})
-	t.Build = func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-		item := game.NewTriggeredItem(source, label)
-		item.Params.Object = game.ObjectRef{ID: ev.Target, Epoch: g.ObjectEpochForEffect(ev.Target)}
-		return item
-	}
 	effects.Register(effects.Spec{
 		OracleID:        "cd8bab2c-b04f-43a2-9786-df5f7411bf16",
 		Name:            "Kaijin of the Vanishing Touch",
 		Completeness:    effects.CompletenessFull,
 		PrintedKeywords: []string{"defender"},
-		Triggered:       []game.TriggeredAbility{t},
+		Triggered:       []game.TriggeredAbility{effects.OldB749WheneverThisBlocksReturnItAtEndOfCombat("Kaijin of the Vanishing Touch")},
 	})
 }

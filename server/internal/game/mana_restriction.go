@@ -165,6 +165,13 @@ const (
 	// command zone, a library top). A cast whose zone is not known is
 	// refused: weaker than printed, never stronger.
 	ManaRestrictNotFromHand = "not:cast-from-hand"
+	// ManaRestrictNotCast is a NEGATIVE clause — "this mana can't be spent
+	// to cast spells" (Thran Turbine). It admits an activated ability's
+	// cost and the other known non-cast payments (unlocking a Room, turning
+	// a permanent face up, foretelling, a cumulative upkeep) and refuses
+	// any cast. A payment whose purpose is not known is refused, as for
+	// every restricted mana: weaker than printed, never stronger.
+	ManaRestrictNotCast = "not:cast"
 	// ManaRestrictCastFromExile is a POSITIVE clause — "spend this mana
 	// only to cast spells from exile" (Interdimensional Web Watch,
 	// #4460). It admits a spell cast from the exile zone and nothing
@@ -1034,6 +1041,12 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// Decided per symbol by the solvers (noGeneric), not by the
 		// object being paid for: nothing here to refuse.
 		return true
+	case ManaRestrictNotCast:
+		switch ctx.Purpose {
+		case SpendPurposeActivate, SpendPurposeUnlock, SpendPurposeTurnFaceUp, SpendPurposeForetell, SpendPurposeCumulativeUpkeep:
+			return true
+		}
+		return false
 	case ManaRestrictNotFromHand:
 		switch ctx.Purpose {
 		case SpendPurposeActivate, SpendPurposeUnlock, SpendPurposeTurnFaceUp, SpendPurposeForetell:

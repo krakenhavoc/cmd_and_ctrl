@@ -39,17 +39,21 @@ func ExileOneOrMoreFromGraveyard(label string, match func(game.Card) bool) game.
 // Young, Gravepurge): the legal targets go on top, then the controller draws.
 func TuckTargetCreatureCardsOnTopThenDraw() func(*game.StackItem, *Context) error {
 	return ResolveSteps(
-		Instruction(func(ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := ctx.Game.TuckToLibraryForEffect(t.ID, false); err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
+		Instruction(TuckLegalCardTargetsOnTop),
 		DrawCards{N: 1},
 	)
+}
+
+// TuckLegalCardTargetsOnTop puts each still-legal card target on top of its
+// OWNER's library, in target order (Forever Young, Plow Under).
+func TuckLegalCardTargetsOnTop(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := ctx.Game.TuckToLibraryForEffect(t.ID, false); err != nil {
+			return err
+		}
+	}
+	return nil
 }

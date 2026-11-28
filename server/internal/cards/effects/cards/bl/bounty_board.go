@@ -33,14 +33,7 @@ func init() {
 			Cost:         effects.Plus(effects.ManaCost("{1}"), effects.TapCost()),
 			SorcerySpeed: true,
 			Targets:      effects.TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				id, ok := effects.B16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return effects.AddCounter{Target: id, Kind: "bounty", N: 1}.Apply(ctx)
-			},
+			Effect:       effects.S82OldB759PutABountyCounter,
 		}},
 		Triggered: []game.TriggeredAbility{
 			effects.On(game.EventLTB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -148,12 +148,15 @@ var pgReviewed = map[string]string{
 	"591edddc-3736-44cf-9719-117c24ff3980": "Make an Example — PileSplit",
 	"7ee394a2-84de-42e8-834e-6c1030be0aef": "Sphinx of Clear Skies — PileSplit",
 	"48ad5bd6-9568-4813-be29-99aef8b9327a": "Split the Spoils — PileSplit",
+	"b2ae0968-28ed-4ebb-a4e8-69ff6e6a6f1d": "Death or Glory — PileSplit",
 	"0ba134d8-ee7d-48ec-8dc6-57942b8e9261": "Liliana of the Veil — PileSplit",
 	"4b4f268d-34ae-416d-a412-66f4fe37659c": "Sphinx of Uthuun — PileSplit",
 	"7492ea06-24d5-4a1f-a6ac-c33743e91aa7": "Unesh, Criosphinx Sovereign — PileSplit",
 	"a3d048c8-e8df-4b50-a422-fc94a69f44bb": "Boneyard Parley — PileSplit",
 	"33befbd6-56ac-45a7-a4d0-448167162707": "Epiphany at the Drownyard — PileSplit",
 	"a9d58cad-c1c2-4bd2-80f2-da9ce60801df": "Brilliant Ultimatum — PileSplit",
+	"2fc42640-983a-49ca-9020-7756135077b4": "Fight or Flight — PileSplit",
+	"927d0085-9bd9-4454-8ac5-0e374237ed35": "Stand or Fall — PileSplit",
 	// The face-down pile family, which is PileSplit underneath.
 	"8b2b00ab-f1c5-4057-9957-d7daac95a847": "Atris, Oracle of Half-Truths — face-down piles",
 	"9baff93e-4ef9-404d-884b-f651a11f3742": "Fortune's Favor — face-down piles",
@@ -174,8 +177,11 @@ var pgReviewed = map[string]string{
 	"43e1b053-2cb9-4b1d-9e38-100cfa7267b6": "The Seventh Doctor — notes the defending player's guess",
 	"8e93ea21-5e3f-448e-a175-96c8438c328e": "The Toymaker's Trap — notes the opponent's guess",
 	"503447d9-2489-46d7-b5aa-a14bbb22dcc8": "Master of Predicaments — notes the damaged player's guess",
+	"4f88ddfa-5478-426a-a978-dfc64c687db1": "Liar's Pendulum — notes the opponent's guess",
 	// The reader, which also makes piles of its own.
 	"388fe92a-0bc0-4c0a-a7c6-910c5e71e342": "The Celestial Toymaker — notes its attack piles and reads the tally",
+
+	"4362efe4-339d-40e1-bd72-3cc9e41bf93f": "Bend or Break — SeparateIntoPiles",
 }
 
 // Every catalog card whose printed text says "pile" or "guess" is

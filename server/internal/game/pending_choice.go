@@ -633,6 +633,10 @@ type PendingChoice struct {
 	// retarget.
 	RetargetTo TargetRef
 
+	// RetargetNewCreature is RetargetOffer.NewTargetCreature: the answer
+	// must name a creature on the battlefield (Silver Wyvern).
+	RetargetNewCreature bool
+
 	// RetargetNext carries the uncommitted prefix of a related-target walk.
 	RetargetNext []TargetRef
 
@@ -4039,6 +4043,27 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			// one who has left, has nobody to choose: CR 603.3d removes
 			// the ability for a required clause.
 			who := triggerChooserOf(src)
+			if who == uuid.Nil || !g.playerInGameLocked(who) {
+				if clause.Min > 0 {
+					return
+				}
+				f.step++
+				continue
+			}
+			chooser = who
+			if who != f.source.Controller {
+				forPlayer = f.source.Controller
+			}
+		}
+		if clause.ChosenByDefendingPlayer {
+			// S82 OLD b698: "of defending player's choice" on an attack
+			// trigger: the player the attack was declared against chooses,
+			// its legal set still judged for the controller. No defending
+			// player in the game, nobody to choose (CR 603.3d).
+			who := uuid.Nil
+			if src.Trigger != nil && src.Trigger.Fired() && src.Trigger.Event.Kind == EventAttack {
+				who = g.defendingPlayerForAttackLocked(src.Trigger.Event.Target)
+			}
 			if who == uuid.Nil || !g.playerInGameLocked(who) {
 				if clause.Min > 0 {
 					return

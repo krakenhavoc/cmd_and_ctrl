@@ -39,19 +39,7 @@ func init() {
 			Cost:      effects.ManaCost("{6}{R}{R}{W}{W}"),
 			Zones:     []game.ZoneKind{game.ZoneGraveyard},
 			Condition: effects.DuringYourUpkeep(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				// CR 608.2b: the card may have left the graveyard since the
-				// ability was activated; then it does nothing. It returns
-				// under its owner's control (CR 400.3).
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				return (effects.ReturnFromGraveyard{
-					Target:     item.SourceCardID,
-					Dest:       game.ZoneBattlefield,
-					Controller: item.Controller,
-				}).Apply(effects.NewContext(g, item))
-			},
+			Effect:    effects.ReturnThisFromYourGraveyardToTheBattlefield,
 		}},
 	})
 }

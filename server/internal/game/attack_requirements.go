@@ -184,6 +184,16 @@ type AttackRequirement struct {
 	// than off one source, so staging an attacker can only raise reach.
 	// Additive in the snapshot for IfSourceAttacks's reason.
 	IfAnotherYouControlAttacks bool
+	// IfAnotherWithCounterAttacks, when set to a counter kind, makes the
+	// requirement exist only in a declaration in which a creature other than
+	// its own creature, with a counter of that kind on it, is attacking:
+	// Magnetic Web's "If a creature with a magnet counter on it attacks, all
+	// creatures with magnet counters on them attack if able" (S82 OLD batch
+	// 760, CR 508.1d). The same monotone gate as IfAnotherYouControlAttacks,
+	// with the condition read off the declaration, so staging an attacker
+	// can only raise reach. Additive in the snapshot for IfSourceAttacks's
+	// reason.
+	IfAnotherWithCounterAttacks string
 	// AtLeastOneCreature, when set, makes the requirement its creature's
 	// CONTROLLER's rather than the creature's own: "each opponent must
 	// attack with at least one creature each combat if able" (Seeker of
@@ -332,6 +342,9 @@ func (g *Game) attackRequirementsOfLocked(c *Card, assign map[uuid.UUID]uuid.UUI
 		if r.IfAnotherYouControlAttacks && !g.anotherOfControllerAttacksLocked(c, assign) {
 			continue
 		}
+		if r.IfAnotherWithCounterAttacks != "" && !g.anotherWithCounterAttacksLocked(c, assign, r.IfAnotherWithCounterAttacks) {
+			continue
+		}
 		out = append(out, r)
 	}
 	for _, gd := range c.Goads {
@@ -354,6 +367,23 @@ func (g *Game) anotherOfControllerAttacksLocked(c *Card, assign map[uuid.UUID]uu
 			continue
 		}
 		if o := findBattlefieldCard(g, id); o != nil && o.Controller == c.Controller {
+			return true
+		}
+	}
+	return false
+}
+
+// anotherWithCounterAttacksLocked reports whether `assign` has a creature
+// other than `c` attacking that has a counter of `kind` on it: the condition
+// of an IfAnotherWithCounterAttacks requirement.
+//
+// Caller must hold g.mu.
+func (g *Game) anotherWithCounterAttacksLocked(c *Card, assign map[uuid.UUID]uuid.UUID, kind string) bool {
+	for id, target := range assign {
+		if id == c.InstanceID || target == uuid.Nil {
+			continue
+		}
+		if o := findBattlefieldCard(g, id); o != nil && o.Counters[kind] > 0 {
 			return true
 		}
 	}
@@ -936,6 +966,8 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 		// #6197: owed only because another creature of the same
 		// controller is attacking.
 		return who + " must attack if able, because another creature its controller controls is attacking."
+	} else if r.IfAnotherWithCounterAttacks != "" {
+		return who + " must attack if able, because another creature with a " + r.IfAnotherWithCounterAttacks + " counter on it is attacking."
 	} else {
 		s = who + " must attack this combat if able"
 	}

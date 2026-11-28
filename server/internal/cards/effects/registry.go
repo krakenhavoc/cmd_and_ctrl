@@ -516,6 +516,8 @@ func Register(spec Spec) {
 	// #6206: the spell's own per-target life surcharge, the same guard
 	// one slot over.
 	checkLifePerTarget(spec.Name, spec.LifePerTarget)
+	// #6205: an imposed sacrifice names what it says and what it reaches.
+	CheckImposedSacrifices(spec.Name, spec.ImposedSacrifices)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
@@ -746,6 +748,9 @@ func Register(spec Spec) {
 	}
 	// #2581: a printed X ceiling with no count would read as "no
 	// ceiling", a card stronger than printed.
+	if spec.XFloor < 0 {
+		panic(fmt.Sprintf("effects.Register: %q declares a negative XFloor %d", spec.Name, spec.XFloor))
+	}
 	if xc := spec.XCeiling; xc != nil && (xc.Count == nil || xc.Label == "") {
 		panic(fmt.Sprintf("effects.Register: %q declares an X ceiling with no count or no label", spec.Name))
 	}
@@ -2223,11 +2228,32 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	if c.ControlledByAnotherThanChooser && (!c.ChosenByTriggerActor || c.ControlledByChooser) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"another player controls\" relative to a chooser it does not have, or beside \"they control\" — wrap it as AnotherPlayerControls(OfThatPlayersChoice(...))", name, i))
 	}
+	if c.MoreLifeThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who has more life than they do\" with no triggering player choosing a player — wrap it as WithMoreLifeThanTheChooser(OfThatPlayersChoice(TargetPlayer(...))) (#5626)", name, i))
+	}
 	if c.MoreCreaturesThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who controls more creatures than they do\" with no triggering player choosing a player — wrap it as WithMoreCreaturesThanTheChooser(OfThatPlayersChoice(TargetPlayer(...))) (#6100)", name, i))
 	}
+	if c.FewerCreatureCardsInGraveyardThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player whose graveyard has fewer creature cards\" with no triggering player choosing a player — wrap it as WithFewerCreatureCardsInGraveyardThanTheChooser(OfThatPlayersChoice(TargetPlayer(...)))", name, i))
+	}
+	if c.MoreCardsInHandThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who has more cards in hand than they do\" with no triggering player choosing a player — wrap it as WithMoreCardsInHandThanTheChooser(OfThatPlayersChoice(TargetPlayer(...)))", name, i))
+	}
+	if c.MoreLandsThanChooser && (!c.ChosenByTriggerActor || !c.Players) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is \"a player who controls more lands than they do\" with no triggering player choosing a player — wrap it as WithMoreLandsThanTheChooser(OfThatPlayersChoice(TargetPlayer(...)))", name, i))
+	}
 	if c.Harmful && !slices.Contains(c.Zones, game.ZoneBattlefield) {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d is marked Harmful but cannot pick a permanent (#4249)", name, i))
+	}
+	if c.ChosenByDefendingPlayer {
+		// S82 OLD b698: the defending player's choice is one plain clause.
+		switch {
+		case c.ChosenByOpponent || c.ChosenByTriggerActor:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen by the defending player and by another player", name, i))
+		case c.ControlledByChooser, c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, c.Total != nil, len(c.EachOf) > 0:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is the defending player's choice and is random, divided, related or \"they control\" — no printed card is", name, i))
+		}
 	}
 	if c.ChosenByTriggerActor {
 		// #1997: "of their choice" is one plain clause, like an
@@ -2270,6 +2296,9 @@ func refuseOpponentChoice(name, owner string, spec *game.TargetSpec) {
 // player could be asked.
 func refuseTriggerActorChoice(name, owner string, spec *game.TargetSpec) {
 	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ChosenByDefendingPlayer {
+			panic(fmt.Sprintf("effects.Register: %q declares a defending player's-choice target on %s clause %d — only an attack trigger's own clause list has a defending player", name, owner, i))
+		}
 		if spec.Clause(i).ChosenByTriggerActor {
 			panic(fmt.Sprintf("effects.Register: %q declares a triggering player's-choice target on %s clause %d — only a trigger's own clause list has a triggering player", name, owner, i))
 		}

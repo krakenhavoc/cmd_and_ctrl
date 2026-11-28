@@ -229,6 +229,14 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 			t.Logf("skipping %s: it has a cast condition the main-phase probe does not meet", spec.Name)
 			continue
 		}
+		if reason, ok := combatOnlyXTargets[spec.OracleID]; ok {
+			// The probe casts in the precombat main phase, where nothing is
+			// attacking or blocked, so a clause whose every candidate exists
+			// only during combat has nothing to pick here, which says nothing
+			// about its targets.
+			t.Logf("skipping %s: %s", spec.Name, reason)
+			continue
+		}
 		probed++
 		id := handCard(active, game.Card{
 			Name: spec.Name, TypeLine: "Sorcery", ManaCost: "{X}{R}", OracleID: spec.OracleID,
@@ -338,6 +346,13 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 		t.Fatal("no CountFromX clause in the catalog — the sweep is reading the wrong field")
 	}
 	t.Logf("probed %d X-defined target clauses", probed)
+}
+
+// combatOnlyXTargets names the X-defined clauses whose candidates exist only
+// during combat, keyed by oracle ID, with the reason the probe skips them.
+var combatOnlyXTargets = map[string]string{
+	// Outmaneuver: "X target blocked creatures" (CR 509.1h).
+	"42b44108-4a03-4333-bf5a-e42493f4d5e4": "its targets are blocked creatures, which exist only in combat",
 }
 
 // specCountsTargetsFromX reports whether a Spec's card-level clause or

@@ -1,8 +1,6 @@
 package cardsp
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -46,17 +44,9 @@ func init() {
 
 func plungeIntoDarknessSacrifice(_ *game.StackItem, ctx *effects.Context, _ int) error {
 	return effects.ChoosePermanents{
-		Question: "Plunge into Darkness — sacrifice any number of creatures (you gain 3 life for each)",
-		Keyed:    PlungeIntoDarknessSacrificed,
-		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-			var out []uuid.UUID
-			for _, c := range g.BattlefieldCardsForEffect() {
-				if c.Controller == of && c.IsCreature() {
-					out = append(out, c.InstanceID)
-				}
-			}
-			return out, 0, 0 // "any number": no floor, no ceiling
-		},
+		Question:   "Plunge into Darkness — sacrifice any number of creatures (you gain 3 life for each)",
+		Keyed:      PlungeIntoDarknessSacrificed,
+		Candidates: effects.OldB718AnyNumberOfYourCreatures,
 	}.Apply(ctx)
 }
 

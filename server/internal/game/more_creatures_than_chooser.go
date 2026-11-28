@@ -32,14 +32,44 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (s *TargetSpec) playerChooserAdmits(g *Game, src TargetSource, p *Player) bool {
-	if !s.MoreCreaturesThanChooser {
+	if !s.moreCardsInHandThanChooserAdmits(g, src, p) {
+		return false
+	}
+	if !s.moreLandsThanChooserAdmits(g, src, p) {
+		return false
+	}
+	if !s.MoreCreaturesThanChooser && !s.FewerCreatureCardsInGraveyardThanChooser {
 		return true
 	}
 	who := triggerChooserOf(src)
 	if who == uuid.Nil || p == nil || p.ID == who || p.Eliminated {
 		return false
 	}
-	return g.creaturesControlledByLocked(p.ID) > g.creaturesControlledByLocked(who)
+	if s.MoreCreaturesThanChooser && g.creaturesControlledByLocked(p.ID) <= g.creaturesControlledByLocked(who) {
+		return false
+	}
+	if s.FewerCreatureCardsInGraveyardThanChooser {
+		return g.creatureCardsInGraveyardLocked(p.ID) < g.creatureCardsInGraveyardLocked(who)
+	}
+	return true
+}
+
+// creatureCardsInGraveyardLocked is how many creature cards are in
+// `player`'s graveyard (Oath of Ghouls, CR 700.2 types read off the card).
+//
+// Caller must hold g.mu.
+func (g *Game) creatureCardsInGraveyardLocked(player uuid.UUID) int {
+	p := g.playerByIDLocked(player)
+	if p == nil || p.Graveyard == nil {
+		return 0
+	}
+	n := 0
+	for i := range p.Graveyard.Cards {
+		if p.Graveyard.Cards[i].IsCreature() {
+			n++
+		}
+	}
+	return n
 }
 
 // creaturesControlledByLocked is how many creatures `player` controls, by

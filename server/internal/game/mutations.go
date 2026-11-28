@@ -1215,6 +1215,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
+	// #6221, CR 107.3a / 601.2b: a printed "X can't be 0" is a floor on
+	// the announcement (Ertai's Meddling), refused rather than raised for
+	// the reason the ceiling above is.
+	if floor := XFloorFor(CatalogKey(card)); floor > 0 && params.XValue < floor {
+		slog.Warn("cast_spell rejected: X below the floor",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"x_value", params.XValue,
+			"x_floor", floor,
+		)
+		return ErrInvalidParam
+	}
 	// ADR 0073, CR 601.2b: the optional additional costs the caster
 	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
 	// with the modes and before the targets, for two reasons that
@@ -11505,6 +11517,14 @@ func (c *Card) assignsAsThoughUnblocked() bool {
 	return c.effective != nil && c.effective.AssignsAsThoughUnblocked
 }
 
+// mustAssignAsThoughUnblocked reports whether the creature must assign its
+// combat damage as though it weren't blocked (Characteristic.
+// MustAssignAsThoughUnblocked, CR 510.1c, Outmaneuver), read through the
+// layered view.
+func (c *Card) mustAssignAsThoughUnblocked() bool {
+	return c.effective != nil && c.effective.MustAssignAsThoughUnblocked
+}
+
 // combatDamagePower is the amount of combat damage a combatant assigns
 // (CR 510.1a): its power, or its toughness when an effect says it assigns
 // damage equal to its toughness rather than its power and its toughness
@@ -11700,7 +11720,15 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 			// #6192: Defensive Formation hands this attacker's division
 			// to the player it attacks, as banding would.
 			assigner, assignerBy := g.defenderAssignsByLocked(atk)
-			if len(liveBlockers) > 0 && (assigner != uuid.Nil || g.anyHasBandingLocked(liveBlockers)) {
+			if atkPower > 0 && atk.mustAssignAsThoughUnblocked() && g.attackerBlockedLocked(atkID) {
+				// CR 510.1c, Outmaneuver: told to assign its combat damage
+				// as though it weren't blocked, a blocked attacker assigns
+				// all of it to the player, planeswalker or battle it is
+				// attacking. Nothing is asked and no blocker is owed lethal
+				// damage; it needs no trample and wins over the optional
+				// "you may" and the banding division.
+				markAttackTarget(atk.AttackingTarget, atkID, atkPower)
+			} else if len(liveBlockers) > 0 && (assigner != uuid.Nil || g.anyHasBandingLocked(liveBlockers)) {
 				// ADR 0224, CR 702.22j: blocked by a creature with banding,
 				// the attacker's damage is divided by the DEFENDING player
 				// among the creatures blocking it — among them only, so

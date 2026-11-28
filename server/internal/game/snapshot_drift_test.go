@@ -486,6 +486,7 @@ var cardFields = plan(
 	// Blade. Not a counter, so it is its own field rather than a
 	// Counters entry (see Card.RegenerationShields).
 	"RegenerationShields", carried, "",
+	"RegenerationCounterShields", carried, "",
 	"FaceDown", carried, "",
 	// ADR 0069: carried — the kind is the rule. A restore that
 	// dropped it would bring back a face-down object with no viewers
@@ -1288,6 +1289,7 @@ var pendingChoiceFields = plan(
 	// #1743: a pinned retarget's destination, which is what makes the
 	// answer "which slot" rather than "where to".
 	"RetargetTo", carried, "",
+	"RetargetNewCreature", carried, "",
 	// #764 mode_pick. Carried for the same reason ChooseCards is:
 	// the offered options ARE the prompt, and a restored game that
 	// forgot them would put a question with no answers in front of a

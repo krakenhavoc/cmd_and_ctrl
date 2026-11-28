@@ -117,6 +117,7 @@ var TokenTable = map[string]game.Card{
 	"0/3 white Wall with defender":                                  {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/1 black Bat with flying":                                     {Name: "Bat", TypeLine: "Token Creature — Bat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 black Harpy with flying":                                   {Name: "Harpy", TypeLine: "Token Creature — Harpy", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}}, // Abhorrent Overlord
+	"1/1 black Minion":                                              {Name: "Minion", TypeLine: "Token Creature — Minion", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Horror":                                              {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat":                                                 {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -157,8 +158,10 @@ var TokenTable = map[string]game.Card{
 	"1/1 colorless Hero":                                            {Name: "Hero", TypeLine: "Token Creature — Hero", Power: 1, Toughness: 1},
 	"1/1 white Human":                                               {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 colorless Insect artifact with flying":                     {Name: "Insect", TypeLine: "Token Artifact Creature — Insect", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
+	"1/1 colorless Hornet Insect artifact with flying and haste":    {Name: "Hornet", TypeLine: "Token Artifact Creature — Insect", Power: 1, Toughness: 1, Keywords: []string{"flying", "haste"}}, // Hornet Cannon (#5627)
 	"1/1 colorless Myr artifact":                                    {Name: "Myr", TypeLine: "Token Artifact Creature — Myr", Power: 1, Toughness: 1},
 	"1/1 colorless Sliver":                                          {Name: "Sliver", TypeLine: "Token Creature — Sliver", Power: 1, Toughness: 1},
+	"1/1 green Spike":                                               {Name: "Spike", TypeLine: "Token Creature — Spike", Power: 1, Toughness: 1, Colors: []string{"G"}}, // Spike Breeder (#5627)
 	"1/1 black Assassin with deathtouch and haste":                  {Name: "Assassin", TypeLine: "Token Creature — Assassin", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch", "haste"}},
 	"1/1 black Assassin with menace":                                {Name: "Assassin", TypeLine: "Token Creature — Assassin", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace"}}, // Ratonhnhaké꞉ton (#5948)
 	"1/1 black Snake with deathtouch":                               {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
@@ -397,6 +400,7 @@ var TokenTable = map[string]game.Card{
 	"4/4 red Giant":                                                    {Name: "Giant", TypeLine: "Token Creature — Giant", Power: 4, Toughness: 4, Colors: []string{"R"}},                                 // #5594: Pact of the Titan
 	"4/4 blue Sphinx with flying":                                      {Name: "Sphinx", TypeLine: "Token Creature — Sphinx", Power: 4, Toughness: 4, Colors: []string{"U"}, Keywords: []string{"flying"}}, // S82 OLD batch 366: Hour of Need
 	"2/2 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}},
+	"2/2 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 2, Toughness: 2, Colors: []string{"G"}}, // Keeper of the Beasts (Exodus)
 	"4/4 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 blue Elemental Bird with flying":                              {Name: "Elemental Bird", TypeLine: "Token Creature — Elemental Bird", Power: 4, Toughness: 4, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"4/4 white Bird Soldier with flying":                               {Name: "Bird Soldier", TypeLine: "Token Creature — Bird Soldier", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -405,6 +409,7 @@ var TokenTable = map[string]game.Card{
 	"5/5 green Beast with trample":                                     {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 5, Toughness: 5, Colors: []string{"G"}, Keywords: []string{"trample"}}, // Spawning Grounds (C18)
 	"4/4 green Phyrexian Beast":                                        {Name: "Phyrexian Beast", TypeLine: "Token Creature — Phyrexian Beast", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"4/4 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
+	"4/4 red Bird with flying":                                         {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}}, // S82 older sets batch 620: Rukh Egg
 	"4/4 red Dinosaur Dragon with flying":                              {Name: "Dinosaur Dragon", TypeLine: "Token Creature — Dinosaur Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 red Dragon with flying":                                       {Name: "Dragon", TypeLine: "Token Creature — Dragon", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"4/4 red Scorpion Dragon with flying and haste":                    {Name: "Scorpion Dragon", TypeLine: "Token Creature — Scorpion Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying", "haste"}},
@@ -592,6 +597,10 @@ var TokenTable = map[string]game.Card{
 	// S82 RPR batch 32: Stitcher Geralf's X/X blue Zombie (printed */*; a 0/0 placeholder,
 	// set to the total power exiled as it is created).
 	"0/0 blue Zombie": {Name: "Zombie", TypeLine: "Token Creature — Zombie", Colors: []string{"U"}, PrintedPTKnown: true},
+
+	// S82 OLD batch 667: Pure Reflection's X/X white Reflection (no token card was printed; a 0/0
+	// placeholder, set to the mana value of the spell as it is created).
+	"0/0 white Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Colors: []string{"W"}, PrintedPTKnown: true},
 
 	// S82 OLD batch 85: Marath, Will of the Wild's X/X green Elemental (printed */*; a 0/0
 	// placeholder, set to X as it is created).
@@ -806,4 +815,10 @@ var TokenTable = map[string]game.Card{
 
 	// S82 OLD batch 535 (#5591): Din of the Fireherd's Elemental.
 	"5/5 black and red Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"B", "R"}},
+
+	// S82 OLD batch 635 (#5614): Penumbra Kavu's Kavu, Penumbra Wurm's Wurm and
+	// Haunted Angel's Angel.
+	"3/3 black Kavu":              {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"B"}},
+	"6/6 black Wurm with trample": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"trample"}},
+	"3/3 black Angel with flying": {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying"}},
 }

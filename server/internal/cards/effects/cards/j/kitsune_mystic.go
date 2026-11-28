@@ -61,16 +61,9 @@ func init() {
 		Name:         "Autumn-Tail, Kitsune Sage",
 		Completeness: effects.CompletenessFull,
 		Activated: []effects.ActivatedAbility{{
-			Label: "{1}: Attach target Aura attached to a creature to another creature.",
-			Cost:  effects.ManaCost("{1}"),
-			Targets: effects.BattlefieldSpec("permanent", "target Aura attached to a creature",
-				func(g *game.Game, _ uuid.UUID, c game.Card) bool {
-					if !c.IsAura() || c.AttachedTo.Kind != game.TargetCard {
-						return false
-					}
-					host, ok := g.LookupCardForEffect(c.AttachedTo.ID)
-					return ok && host.IsCreature()
-				}),
+			Label:   "{1}: Attach target Aura attached to a creature to another creature.",
+			Cost:    effects.ManaCost("{1}"),
+			Targets: effects.BattlefieldSpec("permanent", "target Aura attached to a creature", effects.OldB717AuraOnACreature),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := effects.NewContext(g, item)
 				for _, t := range ctx.LegalTargets() {

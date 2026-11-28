@@ -200,6 +200,35 @@ var knownUnmatchedTokens = map[string]string{
 	// Tomb of Urami (Saviors of Kamigawa) creates "Urami, a legendary 5/5 black Demon Spirit creature token
 	// with flying". No token card was printed for Urami (a 2005 card); the template follows the oracle text.
 	"5/5 black Legendary Demon Spirit named Urami with flying": "no Urami token card was printed for Tomb of Urami",
+
+	// Rukh Egg (Eighth Edition) creates "a 4/4 red Bird creature token with flying". Its current
+	// Oracle text says Bird; the only printed token card is the older "Rukh" (Token Creature — Rukh),
+	// so no 4/4 red Bird token card exists. The template follows the oracle text.
+	"4/4 red Bird with flying": "no 4/4 red Bird token card was printed for Rukh Egg (the printed token is named Rukh)",
+	// Penumbra Kavu (Apocalypse) creates "a 3/3 black Kavu creature token" and Haunted Angel
+	// "a 3/3 black Angel creature token with flying"; neither was ever printed as a token card
+	// (the only Kavu token is the all-colours one, and the Angel tokens are white or blue).
+	"3/3 black Kavu":              "no 3/3 black Kavu token card was printed; Penumbra Kavu's oracle text says 3/3 black",
+	"3/3 black Angel with flying": "no 3/3 black Angel token card was printed; Haunted Angel's oracle text says 3/3 black with flying",
+
+	// Pure Reflection (Invasion) creates "an X/X white Reflection creature token". No token card was
+	// ever printed for it (the dump's Reflection is a 3/2 blue one from Alirios); the template is 0/0 and
+	// the card sets X/X as it creates the token.
+	"0/0 white Reflection": "no token card was printed for Pure Reflection's X/X white Reflection; the card sets X/X as it creates it",
+
+	// Infernal Genesis (Prophecy, S82 OLD batch 675) creates "1/1 black Minion
+	// creature tokens". The only black Minion token card in the dump is a */*
+	// one; no 1/1 black Minion was printed. The template follows the oracle text.
+	"1/1 black Minion": "no 1/1 black Minion token card was printed for Infernal Genesis",
+
+	// Keeper of the Beasts (Exodus, 1998) creates "a 2/2 green Beast creature
+	// token"; no Beast token card of that size was printed for it.
+	"2/2 green Beast": "no 2/2 green Beast token card was printed for Keeper of the Beasts",
+	// Spike Breeder (Stronghold, S82 OLD batch 748) creates "a 1/1 green Spike
+	// creature token". The card is from 1998 and its token was never printed as
+	// a token card; the dump has no Spike token. The template follows the oracle
+	// text.
+	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

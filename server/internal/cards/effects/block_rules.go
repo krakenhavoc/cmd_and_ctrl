@@ -487,3 +487,11 @@ func BlockableAsThoughNoLandwalkAtAll() game.BlockRule {
 func CanBlockAsThoughItHadReach(queries ...game.PermanentQuery) game.BlockRule {
 	return game.BlockRule{ReachAgainst: queries}
 }
+
+// CanBlockShadowAsThoughItHadShadow — "This creature can block creatures with
+// shadow as though it had shadow" (Heartwood Dryad; CR 702.28b). The waiver is
+// about the permanent that prints it: it blocks a creature with shadow, still
+// blocks creatures without shadow as it always could, and does not gain shadow.
+func CanBlockShadowAsThoughItHadShadow() game.BlockRule {
+	return game.BlockRule{ShadowAgainstShadow: true}
+}

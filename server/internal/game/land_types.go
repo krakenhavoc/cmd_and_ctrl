@@ -236,6 +236,8 @@ func conditionPhrase(c DurationCondition, counterKind, sourceName string) string
 		return "it has " + counterArticle(counterKind) + " counter on it"
 	case WhilePinnedRemainsTapped:
 		return "that permanent remains tapped"
+	case WhilePinnedIsEnchanted:
+		return "that permanent is enchanted"
 	}
 	if sourceName == "" {
 		return ""

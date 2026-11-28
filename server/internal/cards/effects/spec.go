@@ -1024,6 +1024,14 @@ type Spec struct {
 	// card.
 	LifePerTarget game.LifePerTargetCost
 
+	// ImposedSacrifices are the "<spells / activated abilities> cost an
+	// additional "Sacrifice a <kind>"" statics of this permanent
+	// (Brutal Suppression, #6205, CR 601.2f, 602.2b). Passed to
+	// CardDef.ImposedSacrifices; the engine folds them into the object's
+	// own sacrifice clause (game/imposed_sacrifice.go). Nil for nearly
+	// every card.
+	ImposedSacrifices []game.ImposedSacrifice
+
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
 	// (ADR 0045 addendum, Decision 11): "can't be blocked except by
@@ -2262,6 +2270,12 @@ type Spec struct {
 	// ceilings in x_ceiling.go here. Spells only; nil for nearly every
 	// card.
 	XCeiling *game.XCeiling
+
+	// XFloor is the spell's printed "X can't be 0" (Ertai's Meddling, CR
+	// 107.3a, 601.2b): the cast is refused below it. Zero is no floor; a
+	// negative one panics at Register. Spells only: an activated ability's
+	// floor is Cost.MinX. S82 OLD batch 759.
+	XFloor int
 
 	// Discovers declares that the card's text discovers (CR 701.57, ADR
 	// 0099) — that some effect of the card calls Discover or DiscoverN.
