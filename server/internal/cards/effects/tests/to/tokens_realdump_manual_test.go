@@ -257,6 +257,21 @@ var knownUnmatchedTokens = map[string]string{
 	// creature token with banding"; no Knight token with banding was ever printed, as
 	// token cards start in 2007. The template follows the oracle text.
 	"1/1 white Knight with banding": "no Knight token with banding was printed for Errand of Duty",
+	// Wall of Kelp (Homelands, S82 OLD batch 821) creates "a 0/1 blue Plant Wall
+	// creature token with defender named Kelp". The card is from 1996 and its
+	// token was never printed as a token card. The template follows the oracle
+	// text.
+	"0/1 blue Plant Wall named Kelp with defender": "no Kelp token card was printed for Wall of Kelp",
+	// Caribou Range (Ice Age, S82 OLD batch 828) creates "a 0/1 white Caribou
+	// creature token". The card is from 1995 and its token was never printed as
+	// a token card; the dump has no Caribou token. The template follows the oracle
+	// text.
+	"0/1 white Caribou": "no 0/1 white Caribou token card was printed for Caribou Range",
+	// Broken Visage (Homelands, S82 OLD batch 827) creates "a black Spirit
+	// creature token" whose power and toughness are the sacrificed creature's,
+	// set as it is created, so the template is 0/0. The dump has no black Spirit
+	// token card at all for it to match.
+	"0/0 black Spirit": "X/X: Broken Visage sets the Spirit's size as it is created, and no black Spirit token card was printed",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

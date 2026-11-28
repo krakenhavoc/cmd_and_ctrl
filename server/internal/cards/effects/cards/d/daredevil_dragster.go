@@ -1,8 +1,6 @@
 package cardsd
 
 import (
-	"slices"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -59,15 +57,7 @@ func init() {
 //
 // Caller holds g.mu.
 func daredevilDragsterWasInCombat(g *game.Game, ref game.ObjectRef) bool {
-	if slices.Contains(g.AttackersThisCombatForEffect(), ref) {
-		return true
-	}
-	for _, b := range g.TurnTally.CombatBlocks {
-		if b.Blocker == ref && b.PhaseID == g.Turn.PhaseID {
-			return true
-		}
-	}
-	return false
+	return effects.OldB819WasInCombat(g, ref)
 }
 
 // daredevilDragsterEndOfCombat puts the velocity counter, then, as the same

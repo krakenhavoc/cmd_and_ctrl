@@ -1120,7 +1120,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// produce a plan the executor refuses" — without it the plan
 			// would SUCCEED and produce mana the rule forbids.
 			if g.ActivationGateLocked(controller, c, ZoneBattlefield,
-				ActivationAbility{Label: picked.Label, Mana: true, TapCost: picked.TapCost}) != nil {
+				ManaActivationAbilityOf(*picked)) != nil {
 				continue
 			}
 			// S32 (#352): a gated ability is only a source while its
@@ -1298,7 +1298,7 @@ func gatherManaZoneSources(
 			// ActivateManaAbility now makes, so a restriction that
 			// reaches a hand activation reaches the planner too.
 			if g.ActivationGateLocked(controller, c, kind,
-				ActivationAbility{Label: picked.Label, Mana: true, TapCost: picked.TapCost}) != nil {
+				ManaActivationAbilityOf(*picked)) != nil {
 				continue
 			}
 			if picked.Condition != nil && !picked.Condition(g, controller, c.InstanceID) {

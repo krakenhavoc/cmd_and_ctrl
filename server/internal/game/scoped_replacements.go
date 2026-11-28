@@ -192,6 +192,10 @@ func replacementModProblem(m Mod) string {
 		}
 	case ModNonbasicLandManaColorless:
 		// Pale Moon: no parameters.
+	case ModLandSubtypeManaColorless:
+		if len(m.Subtypes) != 1 {
+			return "a landSubtypeManaColorless replacement names no single land type"
+		}
 	case ModExileInsteadOfYourGraveyard:
 		if m.Player == uuid.Nil {
 			return "an exileInsteadOfYourGraveyard replacement names no player"
@@ -256,7 +260,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 	case ModNextEntersAsCopies:
 		// #6160: Mystic Reflection's one-shot entry copy.
 		return watchZoneMove
-	case ModLandManaIsColor, ModLandManaOfChosenColor, ModNonbasicLandManaColorless:
+	case ModLandManaIsColor, ModLandManaOfChosenColor, ModNonbasicLandManaColorless, ModLandSubtypeManaColorless:
 		return watchManaAdded
 	}
 	return nil
@@ -716,7 +720,7 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 				// controller (S17's Fog).
 				return uuid.Nil
 			}
-			if kind == ModNonbasicLandManaColorless {
+			if kind == ModNonbasicLandManaColorless || kind == ModLandSubtypeManaColorless {
 				// Pale Moon reaches every player's lands: the one whose land
 				// is making the mana orders it (CR 616.1).
 				return ev.ManaPlayer
@@ -860,6 +864,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return landManaOfChosenColorAppliesLocked(g, m, ev)
 	case ModNonbasicLandManaColorless:
 		return nonbasicLandManaColorlessAppliesLocked(g, m, ev)
+	case ModLandSubtypeManaColorless:
+		return landSubtypeManaColorlessAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, m, ev)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
@@ -984,8 +990,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	case ModLandManaOfChosenColor:
 		// #6210: one mana of the colour chosen at the tap.
 		ev.ManaColors = []string{ManaOfChosenColor}
-	case ModNonbasicLandManaColorless:
-		// Pale Moon: every mana of the production is colourless.
+	case ModNonbasicLandManaColorless, ModLandSubtypeManaColorless:
+		// Pale Moon, Chaos Moon: every mana of the production is colourless.
 		applyNonbasicLandManaColorlessLocked(ev)
 	case ModExileInsteadOfGraveyard:
 		ev.NewZone = ZoneExile

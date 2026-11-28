@@ -545,6 +545,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// S82 OLD b679: Pale Moon's colourless nonbasic lands; cases in
 		// land_mana_colorless_test.go.
 		ModNonbasicLandManaColorless: true,
+		// Chaos Moon (S82 OLD b834): cases in land_mana_colorless_test.go.
+		ModLandSubtypeManaColorless: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,
