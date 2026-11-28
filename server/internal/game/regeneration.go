@@ -332,6 +332,7 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 		return
 	}
 	c.RegenerationShields--
+	g.spendRegenerationRiderLocked(c)
 	g.regenerateLocked(ev, c)
 }
 

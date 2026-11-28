@@ -479,6 +479,13 @@ const (
 	// PinnedTo the duration (CR 400.7, 514.2). Read at one gate,
 	// permanentCantBeRegeneratedLocked (regeneration.go). Reads nothing.
 	ModCantBeRegenerated ModKind = "cantBeRegenerated"
+	// ModRegenerationGainsControl is the rider of one regeneration shield:
+	// "You gain control of that creature if it regenerates this way" (Debt
+	// of Loyalty, CR 701.19a). Pinned to the permanent, until end of turn
+	// like the shield it belongs to (CR 514.2); Player is who gains control.
+	// Read, and spent, by the shield's own replacement
+	// (regeneration_rider.go). Reads Player.
+	ModRegenerationGainsControl ModKind = "regenerationGainsControl"
 	// ModAssignsNoCombatDamage is "<that creature> assigns no combat
 	// damage this turn" (ADR 0187 §4, #3569; CR 510.1a): Carrion Rats,
 	// Carrion Wurm. It is a rule about how damage is ASSIGNED, not a
@@ -1387,6 +1394,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
+	// Debt of Loyalty: the shield's rider.
+	ModRegenerationGainsControl: {reader: readerRule},
 	// ADR 0187 §4 (#3569): the combat-damage assignment gate.
 	ModAssignsNoCombatDamage: {reader: readerRule},
 	// #3275: the sacrifice gate.

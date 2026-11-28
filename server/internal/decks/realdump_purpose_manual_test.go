@@ -443,6 +443,9 @@ var reviewedNotAWipe = map[string]string{
 	"Treefolk Mystic":    "destroys only the Auras attached to the one creature it blocks or is blocked by, not a board",
 	// S82 OLD batch 679 (#5618).
 	"Overlaid Terrain": "sacrifices only its own controller's lands as it enters, a drawback the controller chooses by casting it; no opponent loses a permanent",
+
+	// S82 OLD batch 779 (#5629).
+	"Paradigm Shift": "exiles only its caster's own library, then shuffles their own graveyard into it; no permanent and no other player's cards",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

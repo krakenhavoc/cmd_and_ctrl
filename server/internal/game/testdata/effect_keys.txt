@@ -582,6 +582,7 @@ body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b688/tuck-at-end-of-combat
 body s82-old-b751/return-the-objects-to-hands
+body s82-old-b779/gain-control-of-blocker
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2471,6 +2472,7 @@ confirm confirm/s82-old-b602-liars-pendulum-reveal
 confirm confirm/s82-old-b627-dwarven-driller
 confirm confirm/s82-old-b698-ley-line-put
 confirm confirm/s82-old-b698-put-counters-on-this
+confirm confirm/s82-old-b779-goblin-grenadiers-sacrifice
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3511,6 +3513,7 @@ payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
 payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
 payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-old-b696-rishadan-sacrifice
+payunless pay-unless/s82-old-b779-tariff-sacrifice
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3624,6 +3627,7 @@ pick revealed-pick/revealing-eye-draw
 pick revealed-pick/s82-old-b108-kitesail-freebooter-return
 pick revealed-pick/s82-old-b369-brain-maggot-return
 pick revealed-pick/s82-old-b662-lobotomy-search
+pick revealed-pick/s82-old-b779-agonizing-memories-put
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/soul-search-spirit
@@ -3966,6 +3970,7 @@ run prompt-run/s82-old-b699-enslaved-horror-return
 run prompt-run/s82-old-b704-landslide-sacrifice
 run prompt-run/s82-old-b723-wildfire-damage
 run prompt-run/s82-old-b745-oath-of-ghouls-return
+run prompt-run/s82-old-b779-tariff-picked
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -5336,6 +5341,8 @@ tail s82-old-b694-renounce/gain
 tail s82-old-b697/clear-the-land-exile
 tail s82-old-b699/midnight-ritual-zombies
 tail s82-old-b705/academy-rector-exiled
+tail s82-old-b779/destroy-the-two-targets
+tail s82-old-b779/shuffle-graveyard-into-library
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
