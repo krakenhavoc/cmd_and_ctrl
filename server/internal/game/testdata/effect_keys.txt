@@ -3603,6 +3603,7 @@ payunless pay-unless/zhentarim-bandit-treasure
 payunless pay-unless/zoraline-cosmos-caller-return
 payunless pay-unless/zoyowa-lava-tongue-damage
 payunless pheres-band-raiders/paid
+payunless s82-old-b790/knight-of-the-mists-destroy-target-knight
 payunless satyr-nyx-smith/paid
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/check-for-traps-life-loss
