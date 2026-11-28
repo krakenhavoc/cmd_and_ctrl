@@ -82,19 +82,7 @@ func DestroyTheDamagedCreatureAtEndOfCombat(label string) game.TriggeredAbility 
 			item.Params.Object = DamagedCreatureRef(g, ev.Target)
 			return item
 		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			ref := item.Params.Object
-			if ref.ID == uuid.Nil {
-				return nil
-			}
-			return ScheduleDelayedTrigger{
-				At:     game.StepEndCombat,
-				Label:  label,
-				Cards:  []uuid.UUID{ref.ID},
-				Body:   DestroyTheObjectBody,
-				Params: game.EffectParams{Object: ref},
-			}.Apply(NewContext(g, item))
-		},
+		Effect: ScheduleDestroyRecordedObjectAtEndOfCombat(label),
 	}
 }
 
