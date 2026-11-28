@@ -2545,6 +2545,7 @@ confirm confirm/shard-of-broken-glass-mill-two
 confirm confirm/shessra-pay-life-draw
 confirm confirm/shirei-return
 confirm confirm/shorecrasher-elemental-pump
+confirm confirm/sibilant-spirit-draw
 confirm confirm/sita-varma-base-pt
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/smellerbee-rebel-fighter-discard-hand
@@ -3377,6 +3378,7 @@ payunless pay-unless/forlorn-pseudamma-zombie
 payunless pay-unless/foster-reveal-until-creature
 payunless pay-unless/fraying-line-upkeep
 payunless pay-unless/frenzied-goblin-cant-block
+payunless pay-unless/freyalises-charm-draw
 payunless pay-unless/furious-forebear-return
 payunless pay-unless/furnace-celebration-damage
 payunless pay-unless/furyblade-vampire-pump
