@@ -1059,6 +1059,13 @@ type TargetSpec struct {
 	// it with effects.TargetsOnlyThisCreature.
 	ItemTargetsOnlySource bool
 
+	// ItemTargetsSource is "target spell that targets this creature" on a
+	// stack clause (Mistfolk): the stack item the clause picks has the
+	// clause's own source object among its targets. The looser sibling of
+	// ItemTargetsOnlySource, judged by the same gate (a walk with no source
+	// admits nothing). Build it with effects.TargetsThisCreature.
+	ItemTargetsSource bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the

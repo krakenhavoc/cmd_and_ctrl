@@ -8,14 +8,16 @@ import "github.com/google/uuid"
 // qualifies when it has at least one target and every target is the source
 // object. A spell's item id is its card's instance id.
 
-// itemTargetsOnlySourceAdmits is ItemTargetsOnlySource's gate on one stack
-// item: true without the flag; with it, true only for an item whose targets
-// are all the walk's source. A walk with no source, and an id that is not on
-// the stack, admit nothing.
+// itemTargetsOnlySourceAdmits is ItemTargetsOnlySource's (and, looser,
+// ItemTargetsSource's) gate on one stack item: true without either flag; with
+// ItemTargetsOnlySource, true only for an item whose targets are all the
+// walk's source; with ItemTargetsSource, true for an item that has the source
+// among its targets. A walk with no source, and an id that is not on the
+// stack, admit nothing.
 //
 // Caller must hold g.mu.
 func (s *TargetSpec) itemTargetsOnlySourceAdmits(g *Game, src TargetSource, itemID uuid.UUID) bool {
-	if s == nil || !s.ItemTargetsOnlySource {
+	if s == nil || (!s.ItemTargetsOnlySource && !s.ItemTargetsSource) {
 		return true
 	}
 	self := src.DepartedID
@@ -24,6 +26,15 @@ func (s *TargetSpec) itemTargetsOnlySourceAdmits(g *Game, src TargetSource, item
 	}
 	item := g.StackMeta[itemID]
 	if self == uuid.Nil || item == nil {
+		return false
+	}
+	if s.ItemTargetsSource {
+		// "targets this creature": the source is among the targets (CR 115.1).
+		for _, t := range item.Targets {
+			if t.Kind == TargetCard && t.ID == self {
+				return true
+			}
+		}
 		return false
 	}
 	n := 0
