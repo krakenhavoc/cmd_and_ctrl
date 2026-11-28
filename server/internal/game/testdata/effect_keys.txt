@@ -1824,6 +1824,7 @@ choose choose-cards/s82-old-b735-goblin-war-cry
 choose choose-cards/s82-old-b735-harmony-of-nature
 choose choose-cards/s82-old-b752-phyrexian-grimoire-picked
 choose choose-cards/s82-old-b761-oracle-en-vec
+choose choose-cards/s82-old-b798-sealed-fate-exile
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3546,6 +3547,7 @@ payunless pay-unless/s82-old-b696-rishadan-sacrifice
 payunless pay-unless/s82-old-b742-fade-away-sacrifice
 payunless pay-unless/s82-old-b748-crovax-the-cursed
 payunless pay-unless/s82-old-b752-carrionette-exile
+payunless pay-unless/s82-old-b798-flash-sacrifice
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3659,6 +3661,7 @@ pick revealed-pick/revealing-eye-draw
 pick revealed-pick/s82-old-b108-kitesail-freebooter-return
 pick revealed-pick/s82-old-b369-brain-maggot-return
 pick revealed-pick/s82-old-b662-lobotomy-search
+pick revealed-pick/s82-old-b798-painful-memories-top
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
 pick revealed-pick/soul-search-spirit
@@ -4006,6 +4009,7 @@ run prompt-run/s82-old-b744-crashing-boars-block
 run prompt-run/s82-old-b744-limited-resources-keep
 run prompt-run/s82-old-b745-oath-of-ghouls-return
 run prompt-run/s82-old-b748-cannibalize-exile
+run prompt-run/s82-old-b798-natural-balance-keep
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
@@ -5257,6 +5261,7 @@ tail purphoros-bronze-blooded/entered
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
 tail put-from-hand/jadzi-journey-lands
+tail put-from-hand/s82-old-b798-flash-sacrifice-unless-paid
 tail put-from-library/aethermages-touch-grant-and-bottom
 tail put-from-library/aspiring-champion-shuffle-then-demon-damage
 tail put-from-library/call-to-the-kindred-bottom
@@ -6130,6 +6135,8 @@ tail then/s82-old-b662-desperate-research-named
 tail then/s82-old-b675-infernal-genesis-milled
 tail then/s82-old-b677-divining-witch-named
 tail then/s82-old-b705-scrying-glass-color
+tail then/s82-old-b798-natural-balance-search
+tail then/s82-old-b798-sealed-fate-order-rest
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
