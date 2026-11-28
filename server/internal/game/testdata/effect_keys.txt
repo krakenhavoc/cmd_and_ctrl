@@ -453,6 +453,7 @@ body old-b639/planeswalkers-mischief-return
 body old-b793/sabertooth-cobra-poison
 body old-b795/acidic-dagger-destroy
 body old-b795/acidic-dagger-sacrifice
+body old-b804/cycle-of-life-counter
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -3598,6 +3599,7 @@ payunless pay-unless/s82-old-b788-dream-tides-untap
 payunless pay-unless/s82-old-b791-wand-of-denial-mill
 payunless pay-unless/s82-old-b798-flash-sacrifice
 payunless pay-unless/s82-old-b800-merfolk-seer-draw
+payunless pay-unless/s82-old-b804-ravenous-vampire
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
