@@ -157,6 +157,11 @@ var untilEndOfTurnExempt = map[string]string{
 	// from it until end of turn, which is a harm; the pattern reads "loses" as
 	// a benefit (Urborg's case).
 	"Burning Palm Efreet": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Fallen Empires (S82 OLD batch 854): "Flip a coin. If you win the flip, target
+	// Orc creature gets +2/+0 until end of turn. If you lose the flip, it gets -0/-2":
+	// the flip, made as it resolves, picks the direction.
+	"Orcish Captain": "the coin flip chooses a pump or a shrink at resolution",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog

@@ -466,6 +466,9 @@ var reviewedNotAWipe = map[string]string{
 	"Boiling Seas": "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
 	// S82 OLD batch 797 (#5633).
 	"Ivory Charm": "its first mode only gives every creature -2/-0 until end of turn, which shrinks power and destroys nothing",
+
+	// S82 OLD batch 854 (#5637).
+	"Vodalian War Machine": "its dies trigger destroys only the Merfolk that were tapped to pay for its own abilities this turn, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
