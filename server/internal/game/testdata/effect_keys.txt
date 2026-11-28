@@ -5013,6 +5013,7 @@ tail mass/march-of-souls-spirits
 tail mass/mass-polymorph-reveal
 tail mass/mogg-infestation-goblins
 tail mass/necromantic-selection-return
+tail mass/old-b794-builders-bane-damage
 tail mass/oversimplify-exiled
 tail mass/overwhelming-forces-draw
 tail mass/overwrite-the-multiverse-empower
