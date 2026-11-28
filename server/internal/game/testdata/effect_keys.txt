@@ -2152,6 +2152,7 @@ coinflip coin-flip/creepy-doll-destroy
 coinflip coin-flip/crooked-scales
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-kaboomist
+coinflip coin-flip/goblin-lyre
 coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
@@ -2989,6 +2990,7 @@ option option-pick/gollum-scheming-guide-guesser
 option option-pick/guided-passage-opponent
 option option-pick/hand-of-vecna-creature
 option option-pick/hans-eriksson-attacks
+option option-pick/hecatomb-four-creatures-or-this
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/highway-robbery-cost
 option option-pick/hostile-negotiations-face-up
@@ -3489,6 +3491,7 @@ payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/miara-draw
 payunless pay-unless/minds-aglow-paid
+payunless pay-unless/minion-of-tevesh-szat-damage
 payunless pay-unless/mirrorworks-copy
 payunless pay-unless/mishras-self-replicator-copy
 payunless pay-unless/mizzix-replica-rider-copy
@@ -3648,6 +3651,7 @@ payunless pay-unless/smolder-initiate-lose-1
 payunless pay-unless/smothering-tithe-treasure
 payunless pay-unless/snaremaster-sprite-tap-and-stun
 payunless pay-unless/sorcerers-broom-copy
+payunless pay-unless/soul-barrier-damage
 payunless pay-unless/soul-tithe-sacrifice
 payunless pay-unless/sparktongue-dragon-damage
 payunless pay-unless/spectral-adversary-times
@@ -3965,6 +3969,7 @@ run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
 run prompt-run/harvester-troll-sacrifice-counters
 run prompt-run/heart-piercer-manticore-sacrifice
+run prompt-run/hecatomb-four-creatures
 run prompt-run/hei-bai-two-counters
 run prompt-run/hew-the-entwood-sacrifice
 run prompt-run/highcliff-felidar-destroy
