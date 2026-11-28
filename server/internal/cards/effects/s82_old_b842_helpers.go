@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"slices"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -62,33 +60,10 @@ func S82OldB842DestroyTargetCantRegenerate(g *game.Game, item *game.StackItem) e
 	return nil
 }
 
-// S82OldB842CombatPartners is "each creature blocking or blocked by this creature", read as the
-// ability resolves from the source as it is now or as it last existed on the battlefield
-// (CR 608.2h). A creature removed from combat is neither (CR 506.4).
-func S82OldB842CombatPartners(ctx *Context) []uuid.UUID {
-	self, ok := ctx.SourcePermanent()
-	if !ok {
-		return nil
-	}
-	src := ctx.Source()
-	var out []uuid.UUID
-	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if c.InstanceID == src || !c.IsCreature() {
-			continue
-		}
-		blocking := self.Attacking && c.IsBlockingAttacker(src)
-		blocked := c.AttackingTarget != uuid.Nil && slices.Contains(self.Blocking, c.InstanceID)
-		if blocking || blocked {
-			out = append(out, c.InstanceID)
-		}
-	}
-	return out
-}
-
 // S82OldB842DestroyCombatPartners is Kjeldoran Frostbeast's end-of-combat trigger: "destroy all
 // creatures blocking or blocked by this creature" (regeneration and indestructible apply).
 func S82OldB842DestroyCombatPartners(g *game.Game, item *game.StackItem) error {
-	ids := S82OldB842CombatPartners(NewContext(g, item))
+	ids := OldB822CombatPartners(NewContext(g, item))
 	if len(ids) == 0 {
 		return nil
 	}
