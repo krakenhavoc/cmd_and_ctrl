@@ -374,6 +374,10 @@ type SacrificeKind struct {
 	// names colors needs one of them in addition to its type or subtype
 	// words (S82 OLD batch 509, the Heralds of Alara).
 	Colors []string
+	// Supertypes, every one required, lower-case as Card.HasSupertype reads
+	// them: "a snow Swamp" is Subtypes {"Swamp"} with Supertypes {"snow"}
+	// (Viscerid Drone). Alone it names any permanent with them all.
+	Supertypes []string
 	// Any is "another card" (ADR 0135 §2, Foil): every object is of
 	// this kind. With the one-to-one matching, "an Island card and
 	// another card" is any two cards of which one is an Island card.
@@ -398,6 +402,16 @@ func (k SacrificeKind) Matches(c Card) bool {
 	}
 	if k.Any {
 		return true
+	}
+	if len(k.Supertypes) > 0 {
+		for _, st := range k.Supertypes {
+			if !c.HasSupertype(st) {
+				return false
+			}
+		}
+		if len(k.Colors) == 0 && len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			return true
+		}
 	}
 	if len(k.Colors) > 0 {
 		coloured := false

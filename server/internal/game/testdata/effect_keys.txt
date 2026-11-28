@@ -4321,6 +4321,7 @@ tail ayara-furnace-queen/entered
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
 tail bad-wolf-bay/return-at-next-end-step
+tail balduvian-dead/sacrifice-the-token
 tail ballad-of-the-black-flag/after-mill
 tail baral-and-kari-zev/ragavan-haste
 tail barrowgoyf/after-mill
@@ -4421,6 +4422,7 @@ tail chandra-dressed-to-kill/ultimate
 tail chandra-flamecaller/exile-the-elementals
 tail chandra-flameshaper/choose-exiled
 tail chandra-hopes-beacon/grant-cast
+tail chaos-harlequin/pump
 tail chaotic-transformation/exiled
 tail chaotic-transformation/put-then-shuffle
 tail charming-prince/after-exile
