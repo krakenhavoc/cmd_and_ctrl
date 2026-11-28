@@ -286,6 +286,26 @@ func (g *Game) controlsMatchingOtherThanLocked(player, self uuid.UUID, qs []Perm
 	return false
 }
 
+// battlefieldHasMatchingOtherThanLocked reports whether any permanent other
+// than `self`, whoever controls it, matches any of `qs`: "if there's another
+// creature on the battlefield" (Shauku, Endbringer).
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) battlefieldHasMatchingOtherThanLocked(self uuid.UUID, qs []PermanentQuery) bool {
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.InstanceID == self {
+			continue
+		}
+		for _, q := range qs {
+			if q.matchesLocked(g, c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // countMatchingLocked counts the permanents `player` controls on the
 // battlefield that match any of `qs`, each once: "you control more
 // creatures than defending player".

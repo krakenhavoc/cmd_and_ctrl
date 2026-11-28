@@ -71,6 +71,12 @@ type AdditionalCost struct {
 	// through DiscardAccepts, as DiscardLand is.
 	DiscardCreature bool
 
+	// DiscardColors narrows a discard to cards of one of these colours
+	// ("discard a red or green card", Surge of Strength; letters W U B R
+	// G). Data, read through DiscardAccepts like DiscardLand; the card is
+	// read as it sits in the hand. Mandatory slot only.
+	DiscardColors []string
+
 	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
 	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
 	// as a spec matched against the caster's permanents. The caster
@@ -1244,13 +1250,24 @@ func (c *AdditionalCost) DiscardAccepts(card Card) bool {
 	if c.DiscardLand && !card.IsLand() {
 		return false
 	}
-	return !c.DiscardCreature || card.IsCreature()
+	if c.DiscardCreature && !card.IsCreature() {
+		return false
+	}
+	if len(c.DiscardColors) > 0 {
+		for _, col := range c.DiscardColors {
+			if card.HasColor(col) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
 }
 
 // DiscardFiltered reports whether the discard takes only some cards
 // (DiscardLand, DiscardCreature). Nil-safe.
 func (c *AdditionalCost) DiscardFiltered() bool {
-	return c != nil && (c.DiscardLand || c.DiscardCreature)
+	return c != nil && (c.DiscardLand || c.DiscardCreature || len(c.DiscardColors) > 0)
 }
 
 // AdditionalDiscardOptionsForEffect lists the cards in `playerID`'s hand

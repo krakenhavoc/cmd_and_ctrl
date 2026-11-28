@@ -26,6 +26,9 @@ func Divide(total int) game.DivideSpec { return game.DivideSpec{Total: total} }
 // declare it — a trigger announces no X, and Register refuses it there.
 func DivideX() game.DivideSpec { return game.DivideSpec{FromX: true} }
 
+// DivideXPlus is "X plus n damage divided as you choose" (Meteor Shower).
+func DivideXPlus(n int) game.DivideSpec { return game.DivideSpec{FromX: true, PlusFromX: n} }
+
 // DivideXDoublingFrom is DivideX that becomes twice X once X reaches
 // `from` — Shatterskull Smashing's "If X is 6 or more, … deals twice X
 // damage divided as you choose among them instead."

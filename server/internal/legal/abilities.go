@@ -1523,7 +1523,7 @@ type sacrificePair struct{ sacs, discards []uuid.UUID }
 // `fixed` (possibly nil), so every ability but "Discard X cards" gets
 // exactly the pairs the sacrifice loop used to walk.
 func sacrificeDiscardPairs(sacrificeSets, discardSets [][]uuid.UUID, fixed []uuid.UUID) []sacrificePair {
-	out := make([]sacrificePair, 0, len(sacrificeSets)*len(discardSets))
+	out := make([]sacrificePair, 0, len(sacrificeSets))
 	for _, sacs := range sacrificeSets {
 		for _, ds := range discardSets {
 			if ds == nil {
@@ -1708,7 +1708,7 @@ type permanentCostPair struct {
 // ability with neither yields the one empty pair and the loop it feeds
 // runs exactly as it did before.
 func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, sourceID uuid.UUID, cost game.AbilityCost) []permanentCostPair {
-	spent := make(map[uuid.UUID]bool, len(sacs)+1)
+	spent := make(map[uuid.UUID]bool, len(sacs))
 	for _, id := range sacs {
 		spent[id] = true
 	}
@@ -2627,7 +2627,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// function ActivateManaAbility calls, with Mana: true, so
 		// the restriction decides and not this call site (#544).
 		if restricted && g.ActivationGateLocked(e.seat, *source, zone,
-			game.ActivationAbility{Label: ab.Label, Mana: true}) != nil {
+			game.ManaActivationAbilityOf(ab)) != nil {
 			continue
 		}
 		// #352: the activation gate first, exactly as

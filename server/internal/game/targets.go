@@ -55,6 +55,10 @@ import (
 // DECLARATION that this is not targeting, in the same way
 // SpecCandidatesForEffect is. See docs/decisions/0072-protection.md §2.
 type TargetSource struct {
+	// costHost is the permanent the cost's source is attached to, set by
+	// costSourceLocked for IsTheSourcesHost / NotTheSourcesHost (S82 OLD b816).
+	costHost uuid.UUID
+
 	// Controller is the player choosing. Always set.
 	Controller uuid.UUID
 
@@ -298,6 +302,13 @@ func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
 	if sourceID != uuid.Nil {
 		if c := findBattlefieldCard(g, sourceID); c != nil {
 			src.tribe = c.NamedTribe
+			// The permanent the cost's source is attached to, for the one
+			// source-relative gate a cost clause carries ("tap enchanted
+			// creature": IsTheSourcesHost). A cost walk still names no source
+			// object: it targets nothing and excludes nothing.
+			if c.AttachedTo.Kind == TargetCard {
+				src.costHost = c.AttachedTo.ID
+			}
 		}
 	}
 	return src
@@ -1059,6 +1070,13 @@ type TargetSpec struct {
 	// it with effects.TargetsOnlyThisCreature.
 	ItemTargetsOnlySource bool
 
+	// ItemTargetsSource is "target spell that targets this creature" on a
+	// stack clause (Mistfolk): the stack item the clause picks has the
+	// clause's own source object among its targets. The looser sibling of
+	// ItemTargetsOnlySource, judged by the same gate (a walk with no source
+	// admits nothing). Build it with effects.TargetsThisCreature.
+	ItemTargetsSource bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the
@@ -1284,6 +1302,23 @@ type TargetSpec struct {
 	// attachment falls off a host that leaves, CR 301.5c), nothing is
 	// admitted. Build one with effects.AttachedToTheSource.
 	AttachedToTheSource bool
+
+	// NotTheSourcesHost is "other than enchanted creature" / "other than
+	// equipped creature": the candidate is not the permanent the clause's
+	// source is attached to (Kjeldoran Pride's "target creature other than
+	// enchanted creature", S82 OLD b816). Like the other source gates it is
+	// judged in the one shared walk, so announce, resolution, the picker and
+	// the bot agree. A source that is attached to nothing has no host to
+	// leave out and admits every candidate; no source object at all admits
+	// none. Build one with effects.OtherThanEnchantedCreature.
+	NotTheSourcesHost bool
+
+	// IsTheSourcesHost is "enchanted creature" / "equipped creature" as a
+	// COST's object: the candidate is the permanent the clause's source is
+	// attached to ("Tap enchanted creature:", Veteran's Voice, Nature's
+	// Chosen, Krovikan Plague, S82 OLD b816). A source attached to nothing
+	// admits no candidate. Build one with effects.TapEnchantedCreature.
+	IsTheSourcesHost bool
 
 	// AttachedToSource limits a SACRIFICE clause to permanents attached
 	// to the object paying the cost: "Sacrifice an Aura attached to this
@@ -2697,7 +2732,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) || !s.itemTargetsOnlySourceAdmits(g, src, c.InstanceID) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) || !s.notTheSourcesHostAdmits(src, c) || !s.isTheSourcesHostAdmits(src, c) || !s.itemTargetsOnlySourceAdmits(g, src, c.InstanceID) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
@@ -2731,6 +2766,48 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 		}
 	}
 	return true
+}
+
+// notTheSourcesHostAdmits is NotTheSourcesHost's gate: true without the
+// flag; with it, any candidate but the permanent the source object is attached
+// to.
+func (s *TargetSpec) notTheSourcesHostAdmits(src TargetSource, c Card) bool {
+	if !s.NotTheSourcesHost {
+		return true
+	}
+	host, ok := src.hostOf()
+	if !ok {
+		// A source attached to nothing has no host to leave out; no source at
+		// all admits nothing.
+		return src.Object != nil
+	}
+	return host != c.InstanceID
+}
+
+// isTheSourcesHostAdmits is IsTheSourcesHost's gate: true without the flag;
+// with it, only the permanent the source object is attached to.
+func (s *TargetSpec) isTheSourcesHostAdmits(src TargetSource, c Card) bool {
+	if !s.IsTheSourcesHost {
+		return true
+	}
+	host, ok := src.hostOf()
+	return ok && host == c.InstanceID
+}
+
+// hostOf is the permanent the source is attached to: the source object's own
+// attachment, or, for a cost walk (which names no source object), the one
+// costSourceLocked recorded.
+func (src TargetSource) hostOf() (uuid.UUID, bool) {
+	if src.Object != nil {
+		if src.Object.AttachedTo.Kind == TargetCard {
+			return src.Object.AttachedTo.ID, true
+		}
+		return uuid.Nil, false
+	}
+	if src.costHost != uuid.Nil {
+		return src.costHost, true
+	}
+	return uuid.Nil, false
 }
 
 // attachedToTheSourceAdmits is AttachedToTheSource's gate: true without the

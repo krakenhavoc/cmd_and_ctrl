@@ -3922,7 +3922,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if g.zoneChangePausedLocked(cardID) {
 		return
 	}
-	if g.ActivationGateLocked(p.ID, *card, zone, ActivationAbility{Label: ab.Label, Mana: true}) != nil {
+	if g.ActivationGateLocked(p.ID, *card, zone, ManaActivationAbilityOf(*ab)) != nil {
 		return
 	}
 	if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
@@ -8677,7 +8677,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Needle exempts mana abilities, Cursed Totem does not. See
 	// activation_gate.go on why the exemption is not a property of
 	// this call site.
-	if err := g.ActivationGateLocked(playerID, *card, srcZone, ActivationAbility{Label: ab.Label, Mana: true}); err != nil {
+	if err := g.ActivationGateLocked(playerID, *card, srcZone, ManaActivationAbilityOf(ab)); err != nil {
 		return err
 	}
 	// #1183: "Activate each exhaust ability only once", the mana
@@ -8715,7 +8715,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// asked of the same list the view published and the mana_pick
 	// would have carried. Before any cost is validated, so a refused
 	// colour costs nothing and taps nothing.
-	if err := g.validateUpfrontManaColors(playerID, cardID, ab, params.Colors, params.XValue); err != nil {
+	if err := g.validateUpfrontManaColors(playerID, cardID, ab, params.Colors, params.XValue, params.SacrificeIDs); err != nil {
 		return err
 	}
 	// #6101: "Choose a player" names a player still in the game, and
@@ -9181,6 +9181,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// ADR 0113 §1 (#2072): which objects the sacrifice takes, named
 	// before they move.
 	paid.SacrificedObjects = g.sacrificeRefsLocked(sacrifices)
+	if ab.ProducedForPaid != nil {
+		paid.SacrificedMana = g.sacrificedProducibleLocked(sacrifices)
+	}
 	if len(sacrifices) > 0 {
 		// One payment, one simultaneous exit (#747): a Blood Artist
 		// paid in alongside another creature sees both deaths.
@@ -10062,6 +10065,23 @@ func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilit
 	// ignore whether the cost could be paid, so the clause's first Count
 	// candidates stand in for the payment, exactly as the counter
 	// ceiling above stands in for a variable removal.
+	// "Sacrifice a land: Add one mana of any type the sacrificed land could
+	// produce" (Squandered Resources): any permanent the clause could
+	// sacrifice may be the one, so the types any of them could produce
+	// stand in for the payment (PaidCost.SacrificedMana).
+	if ab.ProducedForPaid != nil && ab.SacrificeOther != nil && !ab.DemandsX() {
+		seen := map[string]bool{}
+		for _, id := range g.sacrificeCandidatesLocked(playerID, ab.SacrificeOther) {
+			if c := findBattlefieldCard(g, id); c != nil {
+				for _, m := range g.ProducibleManaLocked(*c) {
+					seen[m] = true
+				}
+			}
+		}
+		if letters := strings.Join(orderedManaSymbols(seen), ""); letters != "" {
+			paid.SacrificedMana = []string{letters}
+		}
+	}
 	if TapOthersUntaps(ab.TapOthers) {
 		for _, id := range g.TapOthersOptionsForEffect(playerID, sourceID, ab.TapOthers) {
 			if len(paid.UntappedOthers) >= ab.TapOthers.Count {
@@ -13221,4 +13241,20 @@ func afterPlusMinusCancel(c Card) Card {
 	}
 	c.Counters = counters
 	return c
+}
+
+// sacrificedProducibleLocked is, for each permanent in ids, the mana types it
+// could produce right now as WUBRGC letters ("" for one that is gone or could
+// produce none): PaidCost.SacrificedMana, read before the sacrifice moves
+// them. Caller must hold g.mu.
+func (g *Game) sacrificedProducibleLocked(ids []uuid.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		var types string
+		if sc, ok := g.battlefieldCardLocked(id); ok {
+			types = strings.Join(g.ProducibleManaLocked(*sc), "")
+		}
+		out = append(out, types)
+	}
+	return out
 }

@@ -148,6 +148,23 @@ var untilEndOfTurnExempt = map[string]string{
 	// from its target until end of turn, which is a harm; the pattern reads
 	// "loses" as a benefit (Urborg's case).
 	"Walking Sponge": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Weatherlight (S82 OLD batch 771): takes flying from its target until
+	// end of turn, a harm; the pattern reads "loses" as a benefit.
+	"Downdraft": "removes flying from its target; the check reads 'loses' as a benefit",
+
+	// Mirage (S82 OLD batch 793): deals damage to its target and takes flying
+	// from it until end of turn, which is a harm; the pattern reads "loses" as
+	// a benefit (Urborg's case).
+	"Burning Palm Efreet": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Ice Age (S82 OLD batch 840): "+3/-2" raises power and lowers toughness, a
+	// mixed change no single direction describes.
+	"Minion of Tevesh Szat": "the change is mixed: +3 power and -2 toughness",
+	// Fallen Empires (S82 OLD batch 854): "Flip a coin. If you win the flip, target
+	// Orc creature gets +2/+0 until end of turn. If you lose the flip, it gets -0/-2":
+	// the flip, made as it resolves, picks the direction.
+	"Orcish Captain": "the coin flip chooses a pump or a shrink at resolution",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
@@ -292,6 +309,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// "+4/-4 until end of turn" (S82 GAP): the same trade as Spatial
 	// Contortion's, the power a benefit and the toughness a harm.
 	"Auger Spree": "partly a benefit and partly a harm",
+
+	// "+2/-1 until end of turn" (S82 OLD batch 789): the power a benefit and
+	// the toughness a harm.
+	"Funeral Charm": "partly a benefit and partly a harm",
 }
 
 var targetWord = regexp.MustCompile(`(?i)\btarget\b`)

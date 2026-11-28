@@ -1,8 +1,6 @@
 package cardsap
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -12,8 +10,9 @@ import (
 //	"Whenever this creature attacks, it doesn't untap during its controller's
 //	 next untap step."
 //
-// An attack trigger that records the skip on the Apes as the object they are
-// (CR 502.3, CR 400.7): the marker belongs to whoever controls them when that
+// An attack trigger (OldB813DoesntUntapWhenThisAttacks, shared with Lead Golem)
+// that records the skip on the Apes as the object they are (CR 502.3, CR
+// 400.7): the marker belongs to whoever controls them when that
 // untap step comes. A vigilant or untapped Apes lose nothing, as the skip only
 // matters to a tapped permanent.
 //
@@ -25,13 +24,7 @@ func init() {
 		Name:         name,
 		Completeness: effects.CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			effects.WheneverThisAttacks(name+" — it doesn't untap during its controller's next untap step", func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				if ctx.SourceLeftBattlefield(item.SourceCardID) {
-					return nil
-				}
-				return effects.DoesntUntapNextUntapStep{Targets: []uuid.UUID{item.SourceCardID}, Label: name}.Apply(ctx)
-			}),
+			effects.OldB813DoesntUntapWhenThisAttacks(name),
 		},
 	})
 }

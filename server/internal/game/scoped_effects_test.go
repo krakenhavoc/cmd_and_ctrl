@@ -398,6 +398,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §1 and §2: a replacement and a rules gate. Their
 		// cases are in exile_if_dies_test.go.
 		ModExileIfWouldDie: true, ModCantBeRegenerated: true,
+		// Debt of Loyalty's regeneration rider. Its cases are in
+		// regeneration_rider_test.go.
+		ModRegenerationGainsControl: true,
 		// ADR 0187 §4: a rules gate read in the combat damage pass. Its
 		// cases are in assigns_no_combat_damage_test.go.
 		ModAssignsNoCombatDamage: true,
@@ -542,6 +545,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// S82 OLD b679: Pale Moon's colourless nonbasic lands; cases in
 		// land_mana_colorless_test.go.
 		ModNonbasicLandManaColorless: true,
+		// Chaos Moon (S82 OLD b834): cases in land_mana_colorless_test.go.
+		ModLandSubtypeManaColorless: true,
 		// Melira, the Living Cure: a rule gate on poison counters for one
 		// player. Its cases are in cant_get_poison_test.go.
 		ModCantGetPoisonCounters: true,

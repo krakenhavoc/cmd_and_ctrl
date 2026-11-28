@@ -130,6 +130,14 @@ type ActivationAbility struct {
 	// (#5843). Derived from ActivatedAbilityShape.Cycling by
 	// ActivationAbilityOf, never set by a card file.
 	Cycling bool
+
+	// TapCost reports that the ability's cost includes {T} (CR 602.5; the
+	// cost's Tap bit, a mana ability's too), because Katabatic Winds'
+	// clause names it: "their activated abilities with {T} in their costs
+	// can't be activated" (Serra Bestiary's too, S82 OLD b825). Derived
+	// from the shape's cost by ActivationAbilityOf and
+	// ManaActivationAbilityOf, never set by a card file.
+	TapCost bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -149,7 +157,14 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		Equip:        ab.Equip,
 		PowerUp:      ab.PowerUp,
 		Cycling:      ab.Cycling,
+		TapCost:      ab.Cost.Tap,
 	}
+}
+
+// ManaActivationAbilityOf is ActivationAbilityOf for a mana ability's
+// shape: Mana is true by construction and TapCost is its {T} cost.
+func ManaActivationAbilityOf(ab ManaAbilityShape) ActivationAbility {
+	return ActivationAbility{Label: ab.Label, Mana: true, TapCost: ab.TapCost}
 }
 
 // ActivationQuery is everything an activation restriction may look
@@ -329,6 +344,12 @@ func (g *Game) ActivationGateLocked(activator uuid.UUID, card Card, zone ZoneKin
 	// abilities too, so it is asked before anything about the ability.
 	if reason, source, ok := g.playerActivationBanLocked(activator); ok {
 		return &CantActivateError{Reason: reason, Source: source}
+	}
+	// Abeyance: a ban that spares mana abilities (CR 605.1a).
+	if !ability.Mana {
+		if reason, source, ok := g.playerNonManaActivationBanLocked(activator); ok {
+			return &CantActivateError{Reason: reason, Source: source}
+		}
 	}
 	// Revel in Silence: a loyalty ability of a planeswalker, refused to a
 	// player under a granted loyalty ban (CR 606.1).

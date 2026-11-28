@@ -31,6 +31,14 @@ func DiscardLandCost() *game.AdditionalCost {
 	return &game.AdditionalCost{DiscardCards: 1, DiscardLand: true, Label: "Discard a land card"}
 }
 
+// DiscardColorCost is "As an additional cost to cast this spell, discard
+// a red or green card" (Surge of Strength): DiscardCost(1) whose one card
+// must be of one of the colours (letters W U B R G). label is the clause
+// as printed after "discard", e.g. "a red or green card".
+func DiscardColorCost(label string, colors ...string) *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardCards: 1, DiscardColors: colors, Label: "Discard " + label}
+}
+
 // DiscardXCost is "As an additional cost to cast this spell, discard X
 // cards" (Channeled Force, Firestorm, #6145); DiscardXLandCost and
 // DiscardXCreatureCost are the "X land cards" (Scorched Earth) and "X
@@ -664,7 +672,7 @@ func CheckEitherCost(spec Spec) {
 	}
 	checkDiscardX(spec)
 	for _, oc := range spec.OptionalCosts {
-		if oc.DiscardLand || oc.DiscardCreature || oc.DiscardX {
+		if oc.DiscardFiltered() || oc.DiscardX {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q discards a land card — only the mandatory slot may (#5457)", spec.Name, oc.Key))
 		}
 		if oc.ExileFromHand != nil {
@@ -808,7 +816,7 @@ func CheckEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s beholds and exiles — only the mandatory slot may (BeholdAndExileCost, #4687)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):
 			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no creature type, or one narrowed by colour — a cast's reveal branch names a creature type only", spec.Name, where))
-		case b.DiscardLand || b.DiscardCreature || b.DiscardX:
+		case b.DiscardFiltered() || b.DiscardX:
 			panic(fmt.Sprintf("effects.Register: %q %s discards a land card — only the mandatory slot may (#5457)", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))

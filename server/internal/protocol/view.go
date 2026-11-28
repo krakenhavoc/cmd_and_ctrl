@@ -1462,6 +1462,7 @@ type DivideView struct {
 	Total       int            `json:"total,omitempty"`
 	FromX       bool           `json:"from_x,omitempty"`
 	DoubleFromX int            `json:"double_from_x,omitempty"`
+	PlusFromX   int            `json:"plus_from_x,omitempty"`
 	UpTo        bool           `json:"up_to,omitempty"`
 	ByUnattach  map[string]int `json:"by_unattach,omitempty"`
 }
@@ -1473,7 +1474,7 @@ func divideView(d *game.DivideSpec) *DivideView {
 	if d == nil {
 		return nil
 	}
-	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, UpTo: d.UpTo}
+	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, PlusFromX: d.PlusFromX, UpTo: d.UpTo}
 }
 
 // TargetDifferenceView is the wire shape of game.TargetDifference: the
@@ -10381,7 +10382,7 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// Pithing Needle never does.
 		if restricted {
 			views[i].CantActivate = g.CantActivateReasonLocked(controller, *card, game.ZoneBattlefield,
-				game.ActivationAbility{Label: raw[r].Label, Mana: true})
+				game.ManaActivationAbilityOf(raw[r]))
 		}
 		// #3976: a row whose spend restriction is computed (Cavern of
 		// Souls' chosen type) carries the list the mint would stamp now,
@@ -10891,9 +10892,9 @@ func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
 	if len(card.NextUntapSkips) == 0 && len(wide) == 0 {
 		return nil
 	}
-	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips)+len(wide))
-	players := make([]string, 0, len(card.NextUntapSkips)+len(wide))
-	keyed := make([]uuid.UUID, 0, len(card.NextUntapSkips)+len(wide))
+	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
+	players := make([]string, 0, len(card.NextUntapSkips))
+	keyed := make([]uuid.UUID, 0, len(card.NextUntapSkips))
 	for _, skip := range card.NextUntapSkips {
 		if skip.While != nil {
 			// A hold is projected as Static by stampNoUntap.

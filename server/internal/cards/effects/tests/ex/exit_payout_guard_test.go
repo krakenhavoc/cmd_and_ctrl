@@ -191,6 +191,24 @@ var exitPayoutAllowlist = map[string]string{
 		"indestructible target still costs the life (the card's rulings), and `if toughness <= 0` only skips " +
 		"a life change of nothing. The value is read before the destroy because that is the last moment " +
 		"the permanent is guaranteed findable (CR 608.2h).",
+	"s82_old_b772_helpers.go:145": "Ancestral Knowledge's `picked` is not a payout: it only keeps the cards " +
+		"the player chose to exile out of the ones put back on top in any order. A picked card whose exile was " +
+		"replaced or that has left the library is simply not reordered, which is what the printed \"put the " +
+		"rest back\" asks; nothing is gained for the move.",
+	"choking_sands.go:41": "Choking Sands' `nonbasic` is not gated on the destroy: \"If that land was " +
+		"nonbasic, Choking Sands deals 2 damage to the land's controller\" reads the land's characteristics, " +
+		"not whether it was destroyed, so an indestructible or regenerated nonbasic land still costs the 2. " +
+		"It is read before the destroy because that is the last moment the land is guaranteed findable " +
+		"(CR 608.2h).",
+	"cinder_cloud.go:39": "Cinder Cloud's `white` is the creature's last-known color (CR 608.2h), not the " +
+		"payout gate: the damage is gated on the zone check right after it, that the creature is in a " +
+		"graveyard (\"if a white creature dies this way\"), so a destroy that was replaced or not done pays " +
+		"nothing.",
+	"s82_old_b842_helpers.go:115": "Icequake's and Thermokarst's `wasSnow` gates on the land's supertype, not " +
+		"on the destruction (S82 OLD b842): \"If that land was a snow land\" has no \"if you do\", so an " +
+		"indestructible or regenerated snow land still pays the rider. The supertype is read before " +
+		"the destroy because that is the last moment the land is guaranteed findable (CR 608.2h), " +
+		"Tainted Treats's gate over a land.",
 }
 
 // exitVerb names one pausable exit and the continuation form a card

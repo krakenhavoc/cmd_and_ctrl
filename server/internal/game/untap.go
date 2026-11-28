@@ -167,6 +167,13 @@ type UntapStepRestriction struct {
 	Label     string
 	// CantBecomeUntapped makes the restriction hold for every untap.
 	CantBecomeUntapped bool
+	// ClearsCounter turns the restriction into "if it would untap during its
+	// controller's untap step, remove all <kind> counters from it instead"
+	// (Freyalise's Winds, #5636, CR 614.1a): the permanent the restriction
+	// holds through that step loses every counter of this kind, and the
+	// untap does not happen. Data, not a func, so it adds nothing the
+	// closure ratchet counts. Empty is the plain "doesn't untap".
+	ClearsCounter string
 }
 
 // UntapSkip is one reason a permanent does not untap during an untap
@@ -803,6 +810,20 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 	permissions := g.activeUntapStepPermissionsLocked(activePlayer)
 	restrictions := g.activeUntapStepRestrictionsLocked()
 	var ids []uuid.UUID
+	type counterClear struct {
+		id   uuid.UUID
+		kind string
+	}
+	var clears []counterClear
+	defer func() {
+		// The counters come off after the set is chosen: removing one emits,
+		// and the walk holds pointers into the battlefield.
+		for _, cl := range clears {
+			if cur := findBattlefieldCard(g, cl.id); cur != nil && cur.Counters[cl.kind] > 0 {
+				_ = g.applyCounterLocked(cl.id, cl.kind, -cur.Counters[cl.kind])
+			}
+		}
+	}()
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if !c.Tapped {
@@ -810,8 +831,15 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		}
 		// CR 502.3: the active player's own permanents, always.
 		if c.Controller == activePlayer {
-			if untapStepRestrictedBy(c, g, restrictions, false) || g.untapSkippedForLocked(c, activePlayer) ||
-				g.playerUntapSkippedLocked(c, activePlayer) {
+			if untapStepRestrictedBy(c, g, restrictions, false) {
+				for _, bound := range restrictions {
+					if k := bound.restriction.ClearsCounter; k != "" && bound.restriction.Restricts(c, g, bound.source) {
+						clears = append(clears, counterClear{c.InstanceID, k})
+					}
+				}
+				continue
+			}
+			if g.untapSkippedForLocked(c, activePlayer) || g.playerUntapSkippedLocked(c, activePlayer) {
 				continue
 			}
 			ids = append(ids, c.InstanceID)

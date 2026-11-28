@@ -211,6 +211,13 @@ type AttackTargetRestriction struct {
 	// over the controller's other permanents. Read live at declaration, like
 	// every clause here.
 	ControllerMustControlAnother []PermanentQuery `json:",omitempty"`
+	// AnotherOnBattlefieldForbids forbids attacking anything while some
+	// OTHER permanent, controlled by anyone, matches ANY of these queries:
+	// "can't attack if there's another creature on the battlefield"
+	// (Shauku, Endbringer, S82 OLD b804, CR 508.1c). A fact about the
+	// battlefield alone, read live at declaration, so it refuses every
+	// target while it holds. Additive within the snapshot version.
+	AnotherOnBattlefieldForbids []PermanentQuery `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -301,6 +308,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.ControllerHandAtMost == o.ControllerHandAtMost &&
 		samePermanentQueries(r.ControllerMustControl, o.ControllerMustControl) &&
 		samePermanentQueries(r.ControllerMustControlAnother, o.ControllerMustControlAnother) &&
+		samePermanentQueries(r.AnotherOnBattlefieldForbids, o.AnotherOnBattlefieldForbids) &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn &&
 		r.NotAnAbility == o.NotAnAbility && r.PowerAtMostHandOf == o.PowerAtMostHandOf
 }
@@ -326,7 +334,7 @@ func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || len(r.DefenderMustNotControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
 		r.ControllerMustHaveCitysBlessing || r.ControllerMustHaveCastNoncreature || r.ControllerMustHaveCastCreature || r.OpponentMustHaveBeenDealtDamage || r.CantAttackDuringExtraTurns || r.MustBePairedWithKeyword != "" || r.ControllerHandAtLeast > 0 || r.ControllerGraveyardAtLeast > 0 || r.ControllerHandAtMost > 0 || len(r.ControllerMustControl) > 0 ||
-		len(r.ControllerMustControlAnother) > 0
+		len(r.ControllerMustControlAnother) > 0 || len(r.AnotherOnBattlefieldForbids) > 0
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -405,6 +413,10 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	}
 	if qs := r.ControllerMustControlAnother; len(qs) > 0 && !g.controlsMatchingOtherThanLocked(you, self, qs) {
 		return g.playerNameLocked(you) + " controls no other " + PermanentQueriesNoun(qs)
+	}
+	if qs := r.AnotherOnBattlefieldForbids; len(qs) > 0 && g.battlefieldHasMatchingOtherThanLocked(self, qs) {
+		n := PermanentQueriesNoun(qs)
+		return "there is another " + n + " on the battlefield"
 	}
 	return ""
 }

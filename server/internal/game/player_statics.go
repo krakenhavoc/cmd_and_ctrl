@@ -343,6 +343,12 @@ type PlayerStatic struct {
 	// asks.
 	CantActivateAbilities bool `json:"cantActivateAbilities,omitempty"`
 
+	// NonManaOnly narrows a CantActivateAbilities grant to abilities that
+	// aren't mana abilities (Abeyance's "that player can't activate
+	// abilities that aren't mana abilities", CR 605.1a). Additive: unset
+	// is the whole-ban Sen Triplets reads.
+	NonManaOnly bool `json:"nonManaOnly,omitempty"`
+
 	// CantActivateLoyaltyAbilities is a granted "<player> can't activate
 	// planeswalkers' loyalty abilities" for a duration (Revel in Silence,
 	// #5502), player_activation_ban.go. The SIXTEENTH payload, told apart

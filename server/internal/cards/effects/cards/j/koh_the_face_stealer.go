@@ -75,12 +75,7 @@ const (
 // kohExileTheDead is "you may exile it": the card that died, linked to
 // Koh, while it is still that object in its graveyard (CR 400.7).
 func kohExileTheDead(g *game.Game, item *game.StackItem) error {
-	ctx := effects.NewContext(g, item)
-	dead := item.Trigger.Event.CardID
-	if !effects.DiedCardStillInGraveyard(ctx, dead) {
-		return nil
-	}
-	return effects.ExileTarget{Target: dead, Linked: true}.Apply(ctx)
+	return effects.ExileTheDeadLinked(g, item)
 }
 
 // kohChooseExiledCreatureCard is "Choose a creature card exiled with

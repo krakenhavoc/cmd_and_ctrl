@@ -452,6 +452,34 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 761 (#5458).
 	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
 	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
+
+	// S82 OLD batch 766 (#5628).
+	"Sacred Guide": "exiles only the cards it revealed from the top of its controller's own library, never a permanent",
+
+	// S82 OLD batch 771 (#5629).
+	"Cinder Giant": "its upkeep trigger hurts only the other creatures its own controller controls, a drawback of the 5/3; no opponent's permanent is touched",
+
+	// S82 OLD batch 779 (#5629).
+	"Paradigm Shift": "exiles only its caster's own library, then shuffles their own graveyard into it; no permanent and no other player's cards",
+
+	// S82 OLD batch 784 (#5630).
+	"Boiling Seas": "destroys only the Islands, which are lands, and no sweep class names lands (Armageddon declares none)",
+	// S82 OLD batch 797 (#5633).
+	"Ivory Charm": "its first mode only gives every creature -2/-0 until end of turn, which shrinks power and destroys nothing",
+	// S82 OLD batch 805 (#5633).
+	"Zombie Mob": "exiles the creature cards in its controller's own graveyard as it enters: it touches no permanent, so there is no board to wipe",
+	// S82 OLD batch 814 (#5634).
+	"Scarab of the Unseen": "returns only the Auras attached to the one permanent its controller owns to their owners' hands, not a board",
+	// S82 OLD batch 817 (#5634).
+	"Omen of Fire": "returns only the Islands, then each player sacrifices as many Plains or white permanents as they control white ones: no sweep class names Islands alone",
+	// S82 OLD batch 812 (#5633).
+	"Hakim, Loreweaver": "destroys only the Auras attached to Hakim himself, never another permanent",
+
+	// S82 OLD batch 842 (#5636).
+	"Kjeldoran Frostbeast": "destroys only the creatures blocking or blocked by itself at end of combat, never a board",
+
+	// S82 OLD batch 854 (#5637).
+	"Vodalian War Machine": "its dies trigger destroys only the Merfolk that were tapped to pay for its own abilities this turn, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

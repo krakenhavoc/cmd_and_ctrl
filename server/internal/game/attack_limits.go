@@ -178,6 +178,13 @@ type AttackLimit struct {
 	// combines with. Empty is any creature. Plain data; ignored for any
 	// other scope.
 	OthersColors []string
+
+	// OnAttached makes the limit bind the creature the source is attached
+	// to rather than the source itself: Errantry's "enchanted creature can
+	// only attack alone" (#5636, CR 506.5, 508.1c). It is read as the
+	// limits are collected, so a source attached to nothing on the
+	// battlefield limits nobody. Plain data.
+	OnAttached bool
 }
 
 // companionsNeeded is how many other attackers a NotAlone limit asks
@@ -246,7 +253,13 @@ func (g *Game) activeAttackLimitsLocked() []attackLimitSource {
 			if l.Max <= 0 || (l.While != nil && !l.While(g, src)) {
 				continue
 			}
-			out = append(out, attackLimitSource{limit: l, source: src})
+			bound := src
+			if l.OnAttached {
+				if bound = g.AttachedHostOf(src); bound == nil {
+					continue
+				}
+			}
+			out = append(out, attackLimitSource{limit: l, source: bound})
 		}
 	}
 	return out

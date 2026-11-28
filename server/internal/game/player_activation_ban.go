@@ -49,7 +49,49 @@ func (g *Game) playerActivationBanLocked(player uuid.UUID) (label string, source
 		return "", uuid.Nil, false
 	}
 	for _, s := range p.Statics {
-		if !s.CantActivateAbilities || g.durationExpiredLocked(s.Duration, false) {
+		if !s.CantActivateAbilities || s.NonManaOnly || g.durationExpiredLocked(s.Duration, false) {
+			continue
+		}
+		return s.Label, s.Source, true
+	}
+	return "", uuid.Nil, false
+}
+
+// GrantCantActivateNonManaAbilitiesForEffect makes `player` unable to
+// activate abilities that aren't mana abilities for duration d (Abeyance).
+// Mana abilities (CR 605.1a) stay available. The zero Duration is "until end
+// of turn".
+//
+// The *ForEffect surface: caller must hold g.mu (write).
+func (g *Game) GrantCantActivateNonManaAbilitiesForEffect(player uuid.UUID, label string, source uuid.UUID, d Duration) {
+	p := g.playerByIDLocked(player)
+	if p == nil || p.Eliminated {
+		return
+	}
+	if d.IsZero() {
+		d = g.UntilEndOfTurnDuration()
+	}
+	p.Statics = append(p.Statics, PlayerStatic{
+		CantActivateAbilities: true,
+		NonManaOnly:           true,
+		Source:                source,
+		Label:                 label,
+		Duration:              d,
+	})
+}
+
+// playerNonManaActivationBanLocked is playerActivationBanLocked's twin for a
+// grant that spares mana abilities: the gate asks it only of an ability that
+// isn't one.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) playerNonManaActivationBanLocked(player uuid.UUID) (label string, source uuid.UUID, banned bool) {
+	p := g.playerByIDLocked(player)
+	if p == nil {
+		return "", uuid.Nil, false
+	}
+	for _, s := range p.Statics {
+		if !s.CantActivateAbilities || !s.NonManaOnly || g.durationExpiredLocked(s.Duration, false) {
 			continue
 		}
 		return s.Label, s.Source, true
@@ -68,6 +110,9 @@ func (g *Game) anyPlayerActivationBanLocked() bool {
 			continue
 		}
 		if _, _, ok := g.playerActivationBanLocked(p.ID); ok {
+			return true
+		}
+		if _, _, ok := g.playerNonManaActivationBanLocked(p.ID); ok {
 			return true
 		}
 		if _, _, ok := g.playerLoyaltyBanLocked(p.ID); ok {

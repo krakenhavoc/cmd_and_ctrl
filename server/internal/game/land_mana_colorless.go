@@ -61,3 +61,41 @@ func applyNonbasicLandManaColorlessLocked(ev *ReplacementEvent) {
 	}
 	ev.ManaColors = out
 }
+
+// ModLandSubtypeManaColorless is "if a player taps a <land type> for mana,
+// that land produces colorless mana instead of any other type" until end of
+// turn (Chaos Moon's even count): Pale Moon's replacement narrowed by the
+// land type in Subtypes[0], read as a word of the source's text (CR 612.2).
+// Scope ScopeGame. A replacement kind (readerReplacement), never the layer
+// pass. An on-disk identity: never renamed, never reused.
+const ModLandSubtypeManaColorless ModKind = "landSubtypeManaColorless"
+
+// LandSubtypeProducesColorlessThisTurnForEffect registers the replacement for
+// lands of `subtype` until end of turn, controlled by `controller`. Reports
+// whether a record was written.
+//
+// Caller must hold g.mu (write).
+func (g *Game) LandSubtypeProducesColorlessThisTurnForEffect(sourceID, controller uuid.UUID, subtype, label string) bool {
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, controller,
+		[]Mod{{Kind: ModLandSubtypeManaColorless, Subtypes: []string{subtype}}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// landSubtypeManaColorlessAppliesLocked: a land of the mod's type tapped for
+// mana (CR 106.12) that is producing some mana that is not already colourless.
+func landSubtypeManaColorlessAppliesLocked(g *Game, m Mod, ev *ReplacementEvent) bool {
+	if ev.Kind != RepEventProduceMana || !ev.ManaFromTap || len(m.Subtypes) != 1 {
+		return false
+	}
+	changes := false
+	for _, c := range ev.ManaColors {
+		if c != "C" {
+			changes = true
+			break
+		}
+	}
+	if !changes {
+		return false
+	}
+	land, ok := g.LookupCardForEffect(ev.ManaSource)
+	return ok && land.IsLand() && land.HasSubtype(m.Subtypes[0])
+}

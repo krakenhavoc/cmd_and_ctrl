@@ -374,6 +374,16 @@ type SacrificeKind struct {
 	// names colors needs one of them in addition to its type or subtype
 	// words (S82 OLD batch 509, the Heralds of Alara).
 	Colors []string
+	// Names, any of, narrows the kind to permanents with that name, read
+	// as the card's own name (CR 201.2): "a creature named Feral Shadow" is
+	// CardTypes {"creature"} with Names {"Feral Shadow"}. A kind that names a
+	// card also needs its type or subtype words when it has any (S82 OLD batch
+	// 800, Urborg Panther). Additive: a kind with no Names reads as before.
+	Names []string
+	// Supertypes, every one required, lower-case as Card.HasSupertype reads
+	// them: "a snow Swamp" is Subtypes {"Swamp"} with Supertypes {"snow"}
+	// (Viscerid Drone). Alone it names any permanent with them all.
+	Supertypes []string
 	// Any is "another card" (ADR 0135 §2, Foil): every object is of
 	// this kind. With the one-to-one matching, "an Island card and
 	// another card" is any two cards of which one is an Island card.
@@ -398,6 +408,39 @@ func (k SacrificeKind) Matches(c Card) bool {
 	}
 	if k.Any {
 		return true
+	}
+	if len(k.Names) > 0 {
+		named := false
+		for _, n := range k.Names {
+			if HasName(c, n) {
+				named = true
+				break
+			}
+		}
+		if !named {
+			return false
+		}
+		if len(k.Colors) == 0 && len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			return true
+		}
+		if len(k.Subtypes) == 0 && len(k.CardTypes) > 0 && len(k.Colors) == 0 {
+			for _, ct := range k.CardTypes {
+				if c.HasCardType(ct) {
+					return true
+				}
+			}
+			return false
+		}
+	}
+	if len(k.Supertypes) > 0 {
+		for _, st := range k.Supertypes {
+			if !c.HasSupertype(st) {
+				return false
+			}
+		}
+		if len(k.Colors) == 0 && len(k.Subtypes) == 0 && len(k.CardTypes) == 0 {
+			return true
+		}
 	}
 	if len(k.Colors) > 0 {
 		coloured := false

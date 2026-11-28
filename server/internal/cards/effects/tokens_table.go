@@ -82,6 +82,7 @@ var TokenTable = map[string]game.Card{
 	"1/1 green and white Elf Warrior":                               {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"3/3 blue Serpent named Koma's Coil":                            {Name: "Koma's Coil", TypeLine: "Token Creature — Serpent", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"1/1 blue Faerie Dragon with flying":                            {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
+	"1/1 blue Camarid":                                              {Name: "Camarid", TypeLine: "Token Creature — Camarid", Power: 1, Toughness: 1, Colors: []string{"U"}},
 	"1/1 blue Faerie with flying":                                   {Name: "Faerie", TypeLine: "Token Creature — Faerie", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Djinn Monk with flying":                               {Name: "Djinn Monk", TypeLine: "Token Creature — Djinn Monk", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Homunculus":                                           {Name: "Homunculus", TypeLine: "Token Creature — Homunculus", Power: 2, Toughness: 2, Colors: []string{"U"}},
@@ -94,9 +95,11 @@ var TokenTable = map[string]game.Card{
 	"0/0 red Gremlin artifact":                                      {Name: "Gremlin", TypeLine: "Token Artifact Creature — Gremlin", Power: 0, Toughness: 0, Colors: []string{"R"}, PrintedPTKnown: true},
 	"0/1 black Insect":                                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 0, Toughness: 1, Colors: []string{"B"}},
 	"0/1 green Egg with defender":                                   {Name: "Egg", TypeLine: "Token Creature — Egg", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
+	"0/1 blue Plant Wall named Kelp with defender":                  {Name: "Kelp", TypeLine: "Token Creature — Plant Wall", Power: 0, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"defender"}},
 	"0/2 green Plant with defender":                                 {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"defender"}},
 	"0/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Plant":                                               {Name: "Plant", TypeLine: "Token Creature — Plant", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"0/1 white Caribou":                                             {Name: "Caribou", TypeLine: "Token Creature — Caribou", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/1 green Sheep":                                               {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 0, Toughness: 1, Colors: []string{"G"}},
 	"3/3 green Hippo":                                               {Name: "Hippo", TypeLine: "Token Creature — Hippo", Power: 3, Toughness: 3, Colors: []string{"G"}},                                                    // Mouth // Feed
 	"1/1 green Hippo":                                               {Name: "Hippo", TypeLine: "Token Creature — Hippo", Power: 1, Toughness: 1, Colors: []string{"G"}},                                                    // Questing Phelddagrif
@@ -106,6 +109,7 @@ var TokenTable = map[string]game.Card{
 	"0/1 white Goat":                                                {Name: "Goat", TypeLine: "Token Creature — Goat", Power: 0, Toughness: 1, Colors: []string{"W"}},
 	"0/3 blue Crab":                                                 {Name: "Crab", TypeLine: "Token Creature — Crab", Power: 0, Toughness: 3, Colors: []string{"U"}},
 	"0/4 colorless Wall artifact with defender":                     {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
+	"0/1 colorless Prism artifact":                                  {Name: "Prism", TypeLine: "Token Artifact Creature — Prism", Power: 0, Toughness: 1}, // Diamond Kaleidoscope
 	"1/1 colorless Robot artifact with flying":                      {Name: "Robot", TypeLine: "Token Artifact Creature — Robot", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
 	"3/3 red Ape Villain with haste":                                {Name: "Ape Villain", TypeLine: "Token Creature — Ape Villain", Power: 3, Toughness: 3, Colors: []string{"R"}, Keywords: []string{"haste"}},
 	"0/4 colorless Wall with defender":                              {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"}},
@@ -302,6 +306,7 @@ var TokenTable = map[string]game.Card{
 	"2/4 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 4, Colors: []string{"W"}},
 	"2/2 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}}, // Signaling Roar (#5175)
+	"1/1 white Knight with banding":                                    {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"banding"}},
 	"2/2 white Knight":                                                 {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight Ally":                                            {Name: "Knight Ally", TypeLine: "Token Creature — Knight Ally", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight with vigilance":                                  {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
@@ -606,6 +611,10 @@ var TokenTable = map[string]game.Card{
 	// placeholder, set to X as it is created).
 	"0/0 green Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Colors: []string{"G"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 827: Broken Visage's black Spirit (no token card was printed; a 0/0
+	// placeholder, set to the destroyed creature's power and toughness as it is created).
+	"0/0 black Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"B"}, PrintedPTKnown: true},
+
 	// S82 OLD batch 350: Kin-Tree Invocation's X/X black and green Spirit Warrior (printed */*; a
 	// 0/0 placeholder, set to the greatest toughness among your creatures as it is created).
 	"0/0 black and green Spirit Warrior": {Name: "Spirit Warrior", TypeLine: "Token Creature — Spirit Warrior", Colors: []string{"B", "G"}, PrintedPTKnown: true},
@@ -821,4 +830,14 @@ var TokenTable = map[string]game.Card{
 	"3/3 black Kavu":              {Name: "Kavu", TypeLine: "Token Creature — Kavu", Power: 3, Toughness: 3, Colors: []string{"B"}},
 	"6/6 black Wurm with trample": {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 6, Toughness: 6, Colors: []string{"B"}, Keywords: []string{"trample"}},
 	"3/3 black Angel with flying": {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"B"}, Keywords: []string{"flying"}},
+	// S82 OLD batch 769 (#5628): Spirit Mirror's Reflection and Mongrel Pack's Dogs.
+	"2/2 white Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 2, Toughness: 2, Colors: []string{"W"}},
+	"1/1 green Dog":        {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	// S82 OLD batch 799 (#5633): Goblin Scouts. No token card was printed for it (see
+	// knownUnmatchedTokens); the template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": {Name: "Goblin Scout", TypeLine: "Token Creature — Goblin Scout", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"mountainwalk"}},
+
+	// S82 OLD batch 813 (#5633): Jungle Patrol's Wood and Basalt Golem's Wall.
+	"0/1 green Wall with defender named Wood":   {Name: "Wood", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
+	"0/2 colorless Wall artifact with defender": {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 2, Keywords: []string{"defender"}},
 }

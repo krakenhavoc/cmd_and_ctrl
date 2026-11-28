@@ -17,12 +17,7 @@ import (
 //
 // No simplification.
 func init() {
-	scoriaWurmFlipped = effects.CoinFlipThen("coin-flip/scoria-wurm-upkeep", func(ctx *effects.Context, r game.CoinFlipped) error {
-		if effects.WonFirstFlip(r) || effects.SourceIsNewObject(ctx.Game, ctx.Item) {
-			return nil
-		}
-		return effects.BounceToHand{Target: ctx.Source()}.Apply(ctx)
-	})
+	scoriaWurmFlipped = effects.CoinFlipThen("coin-flip/scoria-wurm-upkeep", effects.ReturnThisToHandUnlessYouWonTheFlip)
 	effects.Register(effects.Spec{
 		OracleID:     "ee45c80c-699c-4e37-97e6-1859c6601c99",
 		Name:         "Scoria Wurm",

@@ -172,7 +172,7 @@ func ManaAbilityAddsDifferentColors(g *Game, playerID, cardID uuid.UUID, ab Mana
 // #6125: `x` is the X the activation announces. An X ability's slots are
 // counted at that X (Wizard's Rockets at X = 3 picks three colours), not
 // at the "could produce" stand-in.
-func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbilityShape, colors []string, x int) error {
+func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbilityShape, colors []string, x int, sacrificeIDs []uuid.UUID) error {
 	if len(colors) == 0 {
 		return nil
 	}
@@ -183,6 +183,11 @@ func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbil
 	payment := g.maxManaPaymentLocked(playerID, cardID, &ab)
 	if ab.DemandsX() {
 		payment.XValue = x
+	}
+	if ab.ProducedForPaid != nil && ab.SacrificeOther != nil && !ab.DemandsX() && len(sacrificeIDs) > 0 {
+		// The colours the named sacrifice could produce, not the
+		// stand-in's union over every candidate (Squandered Resources).
+		payment.SacrificedMana = g.sacrificedProducibleLocked(sacrificeIDs)
 	}
 	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, payment)
 	if err == nil {

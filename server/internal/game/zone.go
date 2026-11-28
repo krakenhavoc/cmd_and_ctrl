@@ -302,6 +302,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// unused and comes back does not come back protected.
 		c.RegenerationShields = 0
 		c.RegenerationCounterShields = 0
+		c.RegenerationDrawers = nil
 		// S24 / ADR 0036 decision 12: an Equipment or Aura that
 		// leaves the battlefield stops being attached. This is the
 		// FORWARD direction only — permanents attached to a host

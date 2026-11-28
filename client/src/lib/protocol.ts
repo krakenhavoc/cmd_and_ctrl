@@ -5030,6 +5030,8 @@ export interface DivideView {
   total?: number;
   from_x?: boolean;
   double_from_x?: number;
+  // "X plus N" (Meteor Shower): N is added to the announced X.
+  plus_from_x?: number;
   // #1657: "distribute UP TO that many" (Lathiel) — the shares may add
   // up to less than the amount, each pick still at least 1. An amount
   // read off the board (Ureni's lands, Orca's power, Avacyn's

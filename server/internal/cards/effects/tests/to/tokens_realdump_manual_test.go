@@ -229,6 +229,54 @@ var knownUnmatchedTokens = map[string]string{
 	// a token card; the dump has no Spike token. The template follows the oracle
 	// text.
 	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
+	// Spirit Mirror (Tempest, S82 OLD batch 769) creates "a 2/2 white Reflection creature
+	// token" and Mongrel Pack "four 1/1 green Dog creature tokens". Neither was printed as
+	// a token card (the dump's Reflection is a 3/2 blue one and its Dogs are white). The
+	// templates follow the oracle text.
+	"2/2 white Reflection": "no 2/2 white Reflection token card was printed for Spirit Mirror",
+	"1/1 green Dog":        "no 1/1 green Dog token card was printed for Mongrel Pack",
+
+	// Diamond Kaleidoscope (Visions, 1997, S82 OLD batch 788) creates "a 0/1
+	// colorless Prism artifact creature token"; no Prism token card was ever
+	// printed, as token cards start in 2007. The template follows the oracle text.
+	"0/1 colorless Prism artifact": "no Prism token card was printed for Diamond Kaleidoscope",
+
+	// Goblin Scouts (Mirage, 1996) creates "three 1/1 red Goblin Scout creature
+	// tokens with mountainwalk"; token cards start in 2007 and none was printed
+	// for it. The template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": "no Goblin Scout token card was printed for Goblin Scouts",
+
+	// Mirage (1996) predates token cards: Jungle Patrol makes "a 0/1 green
+	// Wall creature token with defender named Wood" and Basalt Golem "a 0/2
+	// colorless Wall artifact creature token with defender". Neither was ever
+	// printed as a token card; the templates follow the oracle text.
+	"0/1 green Wall with defender named Wood":   "no Wood token card was printed for Jungle Patrol (S82 OLD b813)",
+	"0/2 colorless Wall artifact with defender": "no 0/2 Wall artifact token card was printed for Basalt Golem (S82 OLD b813)",
+
+	// Errand of Duty (Alliances, 1996, S82 OLD batch 817) creates "a 1/1 white Knight
+	// creature token with banding"; no Knight token with banding was ever printed, as
+	// token cards start in 2007. The template follows the oracle text.
+	"1/1 white Knight with banding": "no Knight token with banding was printed for Errand of Duty",
+	// Wall of Kelp (Homelands, S82 OLD batch 821) creates "a 0/1 blue Plant Wall
+	// creature token with defender named Kelp". The card is from 1996 and its
+	// token was never printed as a token card. The template follows the oracle
+	// text.
+	"0/1 blue Plant Wall named Kelp with defender": "no Kelp token card was printed for Wall of Kelp",
+	// Caribou Range (Ice Age, S82 OLD batch 828) creates "a 0/1 white Caribou
+	// creature token". The card is from 1995 and its token was never printed as
+	// a token card; the dump has no Caribou token. The template follows the oracle
+	// text.
+	"0/1 white Caribou": "no 0/1 white Caribou token card was printed for Caribou Range",
+	// Broken Visage (Homelands, S82 OLD batch 827) creates "a black Spirit
+	// creature token" whose power and toughness are the sacrificed creature's,
+	// set as it is created, so the template is 0/0. The dump has no black Spirit
+	// token card at all for it to match.
+	"0/0 black Spirit": "X/X: Broken Visage sets the Spirit's size as it is created, and no black Spirit token card was printed",
+
+	// Homarid Spawning Bed (Fallen Empires, 1994) creates "X 1/1 blue Camarid
+	// creature tokens". No Camarid token card was ever printed (token cards start in
+	// 2007) and the dump has none. The template follows the oracle text.
+	"1/1 blue Camarid": "no token card was ever printed for Homarid Spawning Bed's Camarid",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
