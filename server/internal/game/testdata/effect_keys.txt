@@ -1546,6 +1546,9 @@ choose choose-cards/old-b493-attach-equipment
 choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-b607-wrench-mind-the-one
 choose choose-cards/old-b607-wrench-mind-two-or-artifact
+choose choose-cards/old-b815-ashnods-cylix-pick
+choose choose-cards/old-b815-gusthas-scepter-exile
+choose choose-cards/old-b815-gusthas-scepter-return
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
