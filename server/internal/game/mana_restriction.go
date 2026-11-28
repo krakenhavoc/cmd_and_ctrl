@@ -727,7 +727,20 @@ type ManaSpendContext struct {
 	// purpose: it is read while the cast is being paid for and never stored
 	// (a stored AssistPrompt.Spend reads without it, the weaker direction).
 	spellName string
+
+	// spellCard is the instance of the card being cast, for
+	// ManaRestrictSpellCard (Ice Cauldron, #5636). Unexported like spellName:
+	// read while the cast is being paid for, never stored, so a stored
+	// AssistPrompt.Spend reads without it, the weaker direction.
+	spellCard uuid.UUID
 }
+
+// ManaRestrictSpellCard permits the token only on the cast of one card: "Spend
+// this mana only to cast the last card exiled with this artifact". The card
+// is named by instance, so a second card of the same name is not it.
+func ManaRestrictSpellCard(id uuid.UUID) string { return spellCardKey + ":" + id.String() }
+
+const spellCardKey = "castcard"
 
 // spellNameForSpend is the name a cast's payment context carries.
 func spellNameForSpend(c Card) string {
@@ -914,6 +927,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		SpellOwner:       c.Owner,
 		spellName:        spellNameForSpend(c),
+		spellCard:        c.InstanceID,
 		wish:             newSpendWish(c),
 	}.withCastManaValue(c)
 }
@@ -1146,6 +1160,9 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 		return ctx.matchesManaValue(value)
 	case colorCountKey:
 		return ctx.matchesColorCount(value)
+	case spellCardKey:
+		// #5636: a clause about which card is being cast.
+		return ctx.Purpose == SpendPurposeCast && ctx.spellCard != uuid.Nil && ctx.spellCard.String() == value
 	case altCostKey:
 		// #5680: a clause about the cost a spell is cast for.
 		return ctx.Purpose == SpendPurposeCast && ctx.AltCost == value

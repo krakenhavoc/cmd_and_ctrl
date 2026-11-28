@@ -139,6 +139,7 @@ body copy/the-spell-you-just-cast-twice
 body copy/the-x-spell-or-ability-you-just-used
 body copy/token-copy-of-the-payload
 body cornered-crook/damage
+body counter/mountain-titan-plus-one
 body counter/plus-one-and-haste-for-the-payload
 body counter/plus-one-on-the-attacking-assassin
 body counter/plus-one-on-the-payload-creature
@@ -1167,6 +1168,7 @@ choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/hurkyl-master-wizard-card-type
 choose choose-cards/hypothesizzle-discarded
+choose choose-cards/ice-cauldron-exile
 choose choose-cards/ilharg-the-raze-boar-put
 choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
@@ -2227,6 +2229,7 @@ condition blocked/s82-old-b797-that-creature-becomes-blocked
 condition cast/any-player-casts
 condition cast/opening-hand-reveal-that-players-first-spell
 condition cast/the-named-spell-first-time-this-turn
+condition cast/you-cast-a-black-spell
 condition cast/you-next-cast
 condition cast/you-next-cast-a-lesson
 condition cast/you-next-cast-a-noncreature-spell
