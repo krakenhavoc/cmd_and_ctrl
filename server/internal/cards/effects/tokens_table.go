@@ -825,4 +825,7 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 769 (#5628): Spirit Mirror's Reflection and Mongrel Pack's Dogs.
 	"2/2 white Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"1/1 green Dog":        {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	// S82 OLD batch 799 (#5633): Goblin Scouts. No token card was printed for it (see
+	// knownUnmatchedTokens); the template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": {Name: "Goblin Scout", TypeLine: "Token Creature — Goblin Scout", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"mountainwalk"}},
 }

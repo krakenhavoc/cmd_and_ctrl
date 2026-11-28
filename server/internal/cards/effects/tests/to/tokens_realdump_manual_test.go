@@ -240,6 +240,11 @@ var knownUnmatchedTokens = map[string]string{
 	// colorless Prism artifact creature token"; no Prism token card was ever
 	// printed, as token cards start in 2007. The template follows the oracle text.
 	"0/1 colorless Prism artifact": "no Prism token card was printed for Diamond Kaleidoscope",
+
+	// Goblin Scouts (Mirage, 1996) creates "three 1/1 red Goblin Scout creature
+	// tokens with mountainwalk"; token cards start in 2007 and none was printed
+	// for it. The template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": "no Goblin Scout token card was printed for Goblin Scouts",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
