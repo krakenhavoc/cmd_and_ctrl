@@ -229,6 +229,12 @@ var knownUnmatchedTokens = map[string]string{
 	// a token card; the dump has no Spike token. The template follows the oracle
 	// text.
 	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
+	// Spirit Mirror (Tempest, S82 OLD batch 769) creates "a 2/2 white Reflection creature
+	// token" and Mongrel Pack "four 1/1 green Dog creature tokens". Neither was printed as
+	// a token card (the dump's Reflection is a 3/2 blue one and its Dogs are white). The
+	// templates follow the oracle text.
+	"2/2 white Reflection": "no 2/2 white Reflection token card was printed for Spirit Mirror",
+	"1/1 green Dog":        "no 1/1 green Dog token card was printed for Mongrel Pack",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
