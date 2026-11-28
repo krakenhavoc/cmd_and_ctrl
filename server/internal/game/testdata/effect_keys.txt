@@ -585,6 +585,7 @@ body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b688/tuck-at-end-of-combat
 body s82-old-b751/return-the-objects-to-hands
+body s82-old-b797/barreling-attack-boost-per-blocker
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2165,6 +2166,7 @@ condition attack/you-attack
 condition block/an-opponents-creature-blocks
 condition block/each-creature-blocks
 condition block/s82-old-b632-zombie-boa-blocked-by-color
+condition blocked/s82-old-b797-that-creature-becomes-blocked
 condition cast/any-player-casts
 condition cast/opening-hand-reveal-that-players-first-spell
 condition cast/the-named-spell-first-time-this-turn

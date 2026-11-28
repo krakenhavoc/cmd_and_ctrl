@@ -452,6 +452,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 761 (#5458).
 	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
 	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
+
+	// S82 OLD batch 797 (#5633).
+	"Ivory Charm": "its first mode only gives every creature -2/-0 until end of turn, which shrinks power and destroys nothing",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
