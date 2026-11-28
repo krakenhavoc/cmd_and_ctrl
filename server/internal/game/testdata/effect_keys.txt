@@ -3573,6 +3573,7 @@ payunless pay-unless/s82-old-b752-carrionette-exile
 payunless pay-unless/s82-old-b777-llanowar-sentinel
 payunless pay-unless/s82-old-b779-tariff-sacrifice
 payunless pay-unless/s82-old-b780-liege-of-the-hollows
+payunless pay-unless/s82-old-b786-lightning-cloud-damage
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -4038,6 +4039,7 @@ run prompt-run/s82-old-b748-cannibalize-exile
 run prompt-run/s82-old-b772-psychic-vortex-discard
 run prompt-run/s82-old-b777-flux
 run prompt-run/s82-old-b779-tariff-picked
+run prompt-run/s82-old-b786-desolation-damage
 run prompt-run/s82-one-b04-vraskas-fall-poison
 run prompt-run/sacrifice-enchanted-and-attach-granting-aura
 run prompt-run/saw-sacrifice-draw
