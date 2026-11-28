@@ -472,6 +472,8 @@ var reviewedNotAWipe = map[string]string{
 	"Scarab of the Unseen": "returns only the Auras attached to the one permanent its controller owns to their owners' hands, not a board",
 	// S82 OLD batch 817 (#5634).
 	"Omen of Fire": "returns only the Islands, then each player sacrifices as many Plains or white permanents as they control white ones: no sweep class names Islands alone",
+	// S82 OLD batch 812 (#5633).
+	"Hakim, Loreweaver": "destroys only the Auras attached to Hakim himself, never another permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
