@@ -597,6 +597,7 @@ body s82-old-b789/song-of-blood-attacker-pump
 body s82-old-b791/brood-of-cockroaches-return
 body s82-old-b792/three-wishes-unplayed-to-graveyard
 body s82-old-b797/barreling-attack-boost-per-blocker
+body s82-old-b800/sapphire-charm-target-player-draws
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -3593,6 +3594,7 @@ payunless pay-unless/s82-old-b786-lightning-cloud-damage
 payunless pay-unless/s82-old-b788-dream-tides-untap
 payunless pay-unless/s82-old-b791-wand-of-denial-mill
 payunless pay-unless/s82-old-b798-flash-sacrifice
+payunless pay-unless/s82-old-b800-merfolk-seer-draw
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -6220,6 +6222,7 @@ tail then/s82-old-b798-natural-balance-search
 tail then/s82-old-b798-sealed-fate-order-rest
 tail then/s82-old-b799-prismatic-lace-becomes-colors
 tail then/s82-old-b799-stupor-discard-a-card
+tail then/s82-old-b800-zirilan-haste-and-exile
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
