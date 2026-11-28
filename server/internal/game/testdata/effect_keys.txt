@@ -1802,6 +1802,7 @@ choose choose-cards/s82-old-b714-wei-assassins-destroy
 choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-old-b734-sacrifice-unless-discard-creature
+choose choose-cards/s82-old-b775-harvest-wurm-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -5336,6 +5337,8 @@ tail s82-old-b694-renounce/gain
 tail s82-old-b697/clear-the-land-exile
 tail s82-old-b699/midnight-ritual-zombies
 tail s82-old-b705/academy-rector-exiled
+tail s82-old-b775/barishi-after-exile
+tail s82-old-b775/sylvan-hierophant-after-exile
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
