@@ -167,6 +167,14 @@ type PlayerTurnTally struct {
 	// it last existed (CR 608.2h). Read through
 	// Game.EnchantmentToGraveyardThisTurn. Additive within the schema version.
 	EnchantmentsToGraveyard int `json:"enchantmentsToGraveyard,omitempty"`
+	// CreaturesToGraveyard counts the creatures put into this player's
+	// graveyard from the battlefield this turn (S82 OLD b805, Asmira, Holy
+	// Avenger's "for each creature put into your graveyard from the
+	// battlefield this turn"). The graveyard is the OWNER's (CR 404.1),
+	// whoever controlled the creature, and a token counts as it is put
+	// there (CR 111.7). The creature is read as it last existed (CR
+	// 608.2h). Additive within the schema version.
+	CreaturesToGraveyard int `json:"creaturesToGraveyard,omitempty"`
 	// CardsToGraveyardFromHandOrLibrary counts the cards put into this
 	// player's graveyard from their hand or their library this turn:
 	// discarded, milled, or put there by any other route (Welcome the
@@ -1588,6 +1596,12 @@ type NoncombatDamageRecord struct {
 	// not dealt this damage (Grisly Sigil). Additive (S82).
 	Object      uuid.UUID `json:"object,omitempty"`
 	ObjectEpoch int       `json:"objectEpoch,omitempty"`
+	// SpellTypes are the source's card types as it dealt the damage, set
+	// only when the source was a spell on the stack (CR 608.2h last known
+	// information): "the last red instant or sorcery spell that dealt damage
+	// to you this turn" (Suffocation) reads it after the spell has left the
+	// stack. Empty for damage from a permanent or an ability. Additive (S82).
+	SpellTypes []string `json:"spellTypes,omitempty"`
 }
 
 // recordNoncombatDamageLocked notes `amount` of noncombat damage dealt
@@ -1613,6 +1627,10 @@ func (g *Game) recordNoncombatDamageLocked(ev *ReplacementEvent, amount int) {
 		object = ev.DamageTarget
 		epoch = g.cardObjectEpochLocked(object)
 	}
+	var spellTypes []string
+	if src.SourceIsSpell {
+		spellTypes = append(spellTypes, src.Types...)
+	}
 	g.TurnTally.NoncombatDamage = append(g.TurnTally.NoncombatDamage, NoncombatDamageRecord{
 		Source:      ev.DamageSource,
 		Controller:  src.Controller,
@@ -1621,6 +1639,7 @@ func (g *Game) recordNoncombatDamageLocked(ev *ReplacementEvent, amount int) {
 		Victim:      victim,
 		Object:      object,
 		ObjectEpoch: epoch,
+		SpellTypes:  spellTypes,
 	})
 }
 
@@ -1673,6 +1692,30 @@ func (g *Game) NoncombatDamageThisTurnForEffect(controller uuid.UUID, color stri
 		n += r.Amount
 	}
 	return n
+}
+
+// LastSpellDamageToPlayerThisTurnForEffect is "the last <color> <types> spell
+// that dealt damage to you this turn" (Suffocation): the controller of the
+// most recent noncombat damage dealt to `victim` this turn by a spell that was
+// `color` ("R") and had one of `types` ("Instant", "Sorcery") as it dealt it
+// (CR 608.2h). ok is false when no such spell dealt damage to victim.
+// Caller must hold g.mu.
+func (g *Game) LastSpellDamageToPlayerThisTurnForEffect(victim uuid.UUID, color string, types ...string) (controller uuid.UUID, ok bool) {
+	for i := len(g.TurnTally.NoncombatDamage) - 1; i >= 0; i-- {
+		r := g.TurnTally.NoncombatDamage[i]
+		if r.Victim != victim || len(r.SpellTypes) == 0 {
+			continue
+		}
+		if color != "" && !slices.Contains(r.Colors, color) {
+			continue
+		}
+		for _, t := range types {
+			if slices.ContainsFunc(r.SpellTypes, func(have string) bool { return strings.EqualFold(have, t) }) {
+				return r.Controller, true
+			}
+		}
+	}
+	return uuid.Nil, false
 }
 
 // recordDamageDealerLocked notes that the creature `dealer` dealt
@@ -2783,6 +2826,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if !wasCreature {
 			return
 		}
+		g.bumpPlayerTally(c.Owner, func(p *PlayerTurnTally) { p.CreaturesToGraveyard++ })
 		g.TurnTally.CreaturesDied++
 		if !c.IsToken() {
 			g.TurnTally.NontokenCreaturesDied++
@@ -3024,6 +3068,14 @@ func (g *Game) LandToGraveyardThisTurn(playerID uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) EnchantmentToGraveyardThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).EnchantmentsToGraveyard > 0
+}
+
+// CreaturesToGraveyardThisTurn is how many creatures were put into
+// playerID's graveyard from the battlefield this turn (Asmira, Holy Avenger).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesToGraveyardThisTurn(playerID uuid.UUID) int {
+	return g.TurnTallyFor(playerID).CreaturesToGraveyard
 }
 
 // CardsToGraveyardFromHandOrLibraryThisTurn is how many cards were put into

@@ -163,6 +163,24 @@ func (g *Game) RegenerateWithCounterRiderForEffect(cardID uuid.UUID) error {
 	return nil
 }
 
+// RegenerateWithOpponentMayDrawForEffect is RegenerateForEffect for a shield
+// that carries Soldevi Sentry's rider: "Regenerate this creature. When it
+// regenerates this way, that player may draw a card." `player` is the
+// opponent the activation named; the regeneration's EventRegenerated carries
+// them as its Target when the shield is used up.
+//
+// Caller must hold g.mu (write).
+func (g *Game) RegenerateWithOpponentMayDrawForEffect(cardID, player uuid.UUID) error {
+	idx := findCardOnBattlefield(g, cardID)
+	if idx < 0 {
+		return ErrCardNotFound
+	}
+	c := &g.Battlefield.Cards[idx]
+	c.RegenerationShields++
+	c.RegenerationDrawers = append(c.RegenerationDrawers, player)
+	return nil
+}
+
 // RegenerationShieldsOn reports how many regeneration shields a
 // permanent is carrying. Zero for a card that is not on the
 // battlefield.
@@ -300,7 +318,7 @@ func (g *Game) RegenerateInsteadForEffect(ev *ReplacementEvent) {
 	if idx < 0 {
 		return
 	}
-	g.regenerateLocked(ev, &g.Battlefield.Cards[idx], 0)
+	g.regenerateLocked(ev, &g.Battlefield.Cards[idx], 0, uuid.Nil)
 }
 
 // applyRegenerationShieldLocked is the built-in's Replace: spend one
@@ -355,7 +373,12 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 		c.RegenerationCounterShields--
 		rider = 1
 	}
-	g.regenerateLocked(ev, c, rider)
+	var drawer uuid.UUID
+	if len(c.RegenerationDrawers) > 0 {
+		drawer = c.RegenerationDrawers[0]
+		c.RegenerationDrawers = c.RegenerationDrawers[1:]
+	}
+	g.regenerateLocked(ev, c, rider, drawer)
 }
 
 // regenerateLocked is what regenerating DOES (CR 701.19a/b), shield or
@@ -363,7 +386,7 @@ func (g *Game) applyRegenerationShieldLocked(ev *ReplacementEvent) {
 // damage is removed and it leaves combat.
 //
 // Caller must hold g.mu (write).
-func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card, rider int) {
+func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card, rider int, drawer uuid.UUID) {
 	ev.Cancel()
 	// CR 701.19a/b: "its controller taps it". The creature BECOMES
 	// tapped, so "whenever ~ becomes tapped" sees it, as every other tap
@@ -385,6 +408,9 @@ func (g *Game) regenerateLocked(ev *ReplacementEvent, c *Card, rider int) {
 		// Amount is 1 when the shield carried a counter rider
 		// (RegenerateWithCounterRiderForEffect), 0 for every other.
 		Amount: rider,
+		// Target is the player Soldevi Sentry's shield named, uuid.Nil for
+		// every other regeneration.
+		Target: drawer,
 	})
 }
 
@@ -404,5 +430,6 @@ func (g *Game) clearRegenerationShieldsLocked() {
 	for i := range g.Battlefield.Cards {
 		g.Battlefield.Cards[i].RegenerationShields = 0
 		g.Battlefield.Cards[i].RegenerationCounterShields = 0
+		g.Battlefield.Cards[i].RegenerationDrawers = nil
 	}
 }

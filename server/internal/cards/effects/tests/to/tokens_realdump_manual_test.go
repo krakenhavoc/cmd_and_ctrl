@@ -240,6 +240,23 @@ var knownUnmatchedTokens = map[string]string{
 	// colorless Prism artifact creature token"; no Prism token card was ever
 	// printed, as token cards start in 2007. The template follows the oracle text.
 	"0/1 colorless Prism artifact": "no Prism token card was printed for Diamond Kaleidoscope",
+
+	// Goblin Scouts (Mirage, 1996) creates "three 1/1 red Goblin Scout creature
+	// tokens with mountainwalk"; token cards start in 2007 and none was printed
+	// for it. The template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": "no Goblin Scout token card was printed for Goblin Scouts",
+
+	// Mirage (1996) predates token cards: Jungle Patrol makes "a 0/1 green
+	// Wall creature token with defender named Wood" and Basalt Golem "a 0/2
+	// colorless Wall artifact creature token with defender". Neither was ever
+	// printed as a token card; the templates follow the oracle text.
+	"0/1 green Wall with defender named Wood":   "no Wood token card was printed for Jungle Patrol (S82 OLD b813)",
+	"0/2 colorless Wall artifact with defender": "no 0/2 Wall artifact token card was printed for Basalt Golem (S82 OLD b813)",
+
+	// Errand of Duty (Alliances, 1996, S82 OLD batch 817) creates "a 1/1 white Knight
+	// creature token with banding"; no Knight token with banding was ever printed, as
+	// token cards start in 2007. The template follows the oracle text.
+	"1/1 white Knight with banding": "no Knight token with banding was printed for Errand of Duty",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

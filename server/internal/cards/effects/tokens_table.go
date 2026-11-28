@@ -303,6 +303,7 @@ var TokenTable = map[string]game.Card{
 	"2/4 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 4, Colors: []string{"W"}},
 	"2/2 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}}, // Signaling Roar (#5175)
+	"1/1 white Knight with banding":                                    {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"banding"}},
 	"2/2 white Knight":                                                 {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight Ally":                                            {Name: "Knight Ally", TypeLine: "Token Creature — Knight Ally", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Knight with vigilance":                                  {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
@@ -825,4 +826,11 @@ var TokenTable = map[string]game.Card{
 	// S82 OLD batch 769 (#5628): Spirit Mirror's Reflection and Mongrel Pack's Dogs.
 	"2/2 white Reflection": {Name: "Reflection", TypeLine: "Token Creature — Reflection", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"1/1 green Dog":        {Name: "Dog", TypeLine: "Token Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	// S82 OLD batch 799 (#5633): Goblin Scouts. No token card was printed for it (see
+	// knownUnmatchedTokens); the template follows the oracle text.
+	"1/1 red Goblin Scout with mountainwalk": {Name: "Goblin Scout", TypeLine: "Token Creature — Goblin Scout", Power: 1, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"mountainwalk"}},
+
+	// S82 OLD batch 813 (#5633): Jungle Patrol's Wood and Basalt Golem's Wall.
+	"0/1 green Wall with defender named Wood":   {Name: "Wood", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"defender"}},
+	"0/2 colorless Wall artifact with defender": {Name: "Wall", TypeLine: "Token Artifact Creature — Wall", Power: 0, Toughness: 2, Keywords: []string{"defender"}},
 }

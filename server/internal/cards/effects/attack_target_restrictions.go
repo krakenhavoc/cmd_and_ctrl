@@ -235,6 +235,7 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 				r.ControllerMustControlMore = game.PermanentQueriesThroughTextOf(r.ControllerMustControlMore, source)
 				r.ControllerMustControl = game.PermanentQueriesThroughTextOf(r.ControllerMustControl, source)
 				r.ControllerMustControlAnother = game.PermanentQueriesThroughTextOf(r.ControllerMustControlAnother, source)
+				r.AnotherOnBattlefieldForbids = game.PermanentQueriesThroughTextOf(r.AnotherOnBattlefieldForbids, source)
 			}
 			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
 		},

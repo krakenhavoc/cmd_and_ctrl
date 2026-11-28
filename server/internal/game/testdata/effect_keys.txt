@@ -87,6 +87,7 @@ body bns-b52/taeko-cant-be-blocked
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body borborygmos-and-fblthp/damage
+body bounty-of-the-hunt/remove-counters
 body brass-infiniscope/draw-and-gain-half-x
 body breathkeeper-seraph/may-return-the-object
 body breeches/blast
@@ -453,6 +454,10 @@ body old-b639/planeswalkers-mischief-return
 body old-b793/sabertooth-cobra-poison
 body old-b795/acidic-dagger-destroy
 body old-b795/acidic-dagger-sacrifice
+body old-b804/cycle-of-life-counter
+body old-b813/basalt-golem-sacrifice-the-blocker
+body old-b814/draw-n-at-next-upkeep
+body old-b814/return-the-object-under-its-owners-control
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -597,6 +602,8 @@ body s82-old-b789/song-of-blood-attacker-pump
 body s82-old-b791/brood-of-cockroaches-return
 body s82-old-b792/three-wishes-unplayed-to-graveyard
 body s82-old-b797/barreling-attack-boost-per-blocker
+body s82-old-b800/sapphire-charm-target-player-draws
+body s82-old-b808/grinning-totem-graveyard
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1556,6 +1563,13 @@ choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-b607-wrench-mind-the-one
 choose choose-cards/old-b607-wrench-mind-two-or-artifact
 choose choose-cards/old-b795-tainted-specter-damage
+choose choose-cards/old-b813-preferred-selection-bottom
+choose choose-cards/old-b813-preferred-selection-hand
+choose choose-cards/old-b814-discard-one-of-them
+choose choose-cards/old-b814-lat-nams-legacy-pick
+choose choose-cards/old-b815-ashnods-cylix-pick
+choose choose-cards/old-b815-gusthas-scepter-exile
+choose choose-cards/old-b815-gusthas-scepter-return
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -1848,6 +1862,7 @@ choose choose-cards/s82-old-b788-dream-tides-choose
 choose choose-cards/s82-old-b788-equipoise-phase-out
 choose choose-cards/s82-old-b791-waterspout-djinn-return-an-untapped-island
 choose choose-cards/s82-old-b798-sealed-fate-exile
+choose choose-cards/s82-old-b809-purgatory-return
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2127,6 +2142,7 @@ choose resolution-cast/vaan-street-thief-after-cast
 choose resolution-cast/yennett-draw-if-not-cast
 choose sticker/choose-object
 choose take/old-b051-the-biblioplex
+coinflip coin-flip/aleatory
 coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
@@ -2160,6 +2176,7 @@ coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/s82-old-b671-fickle-efreet
 coinflip coin-flip/s82-old-b704-goblin-festival
 coinflip coin-flip/s82-old-b780-goblin-bomb
+coinflip coin-flip/s82-old-b808-frenetic-efreet
 coinflip coin-flip/scoria-wurm-upkeep
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
@@ -2468,6 +2485,7 @@ confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/old-b271-covenant-of-minds
 confirm confirm/old-b586-choice-of-damnations
+confirm confirm/old-b814-that-player-may-draw
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -2640,6 +2658,7 @@ confirm confirm/zagorka-sanctum
 confirm confirm/zareth-san-reanimate
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
+confirm harbor-guardian/draw
 confirm may/alania-divergent-storm-draw-and-copy
 confirm may/carpet-of-flowers-add-mana
 confirm may/cemetery-tampering-mill
@@ -2798,6 +2817,7 @@ number number/forgotten-ancient-move-counters
 number number/glissa-sunslayer-remove-counters
 number number/goldberry-river-daughter-move-counters
 number number/gremlin-mine-remove-charge-counters
+number number/illicit-auction-won
 number number/incinerator-of-the-guilty-collect-evidence-x
 number number/life-bidding-opening-bid
 number number/life-bidding-raise
@@ -3070,6 +3090,7 @@ option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
 option option-pick/realms-uncharted-opponent
 option option-pick/regnas-sanction-friend-or-foe
+option option-pick/reign-of-terror-green-or-white
 option option-pick/rejoinder-tap-or-untap
 option option-pick/remorseless-punishment
 option option-pick/remove-a-counter-of-your-choice
@@ -3077,6 +3098,7 @@ option option-pick/reselect-attack
 option option-pick/resolution-exit
 option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
+option option-pick/rogue-skycaptain-opponent
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bns-b45-alchemists-gift-keyword
 option option-pick/s82-bro-b11-argivian-avenger-keyword
@@ -3119,6 +3141,7 @@ option option-pick/s82-old-b777-sacrifice-this-unless-you-sacrifice-a-forest
 option option-pick/s82-old-b783-discard-at-random-or-sacrifice
 option option-pick/s82-old-b783-sacrifice-this-unless-you-sacrifice-a-forest
 option option-pick/s82-old-b784-sacrifice-this-unless-you-sacrifice-an-island
+option option-pick/s82-old-b818-natures-blessing
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3346,6 +3369,7 @@ payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
 payunless pay-unless/elven-bow-token-and-attach
 payunless pay-unless/embereth-skyblazer-pump
+payunless pay-unless/emberwilde-djinn-gain-control
 payunless pay-unless/emiel-the-blessed-counters
 payunless pay-unless/endless-ranks-of-hydra-return
 payunless pay-unless/energy-create-servo
@@ -3508,6 +3532,9 @@ payunless pay-unless/old-b623-dwarven-scorcher-1
 payunless pay-unless/old-b686-unnatural-hunger-damage
 payunless pay-unless/old-b694-gain-2-life
 payunless pay-unless/old-b719-sacrifice-the-enchanted-creature
+payunless pay-unless/old-b809-gain-1-life
+payunless pay-unless/old-b809-sirocco-discard
+payunless pay-unless/old-b813-preferred-selection
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -3525,6 +3552,7 @@ payunless pay-unless/power-sink-tap-lands
 payunless pay-unless/power-taint-lose-2
 payunless pay-unless/primal-adversary-times
 payunless pay-unless/proft-consulting-detective-counter-and-draw
+payunless pay-unless/purgatory-return
 payunless pay-unless/pyre-zombie-return
 payunless pay-unless/pyrewild-shaman-return
 payunless pay-unless/quantum-entanglement-blink
@@ -3546,6 +3574,7 @@ payunless pay-unless/rise-of-the-hobgoblins-goblins
 payunless pay-unless/rith-the-awakener-saprolings
 payunless pay-unless/roar-of-resistance-pump
 payunless pay-unless/rodolf-duskbringer-return
+payunless pay-unless/rogue-skycaptain-wages
 payunless pay-unless/rohgahh-kher-keep-overlord-dragon
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
@@ -3593,6 +3622,11 @@ payunless pay-unless/s82-old-b786-lightning-cloud-damage
 payunless pay-unless/s82-old-b788-dream-tides-untap
 payunless pay-unless/s82-old-b791-wand-of-denial-mill
 payunless pay-unless/s82-old-b798-flash-sacrifice
+payunless pay-unless/s82-old-b800-merfolk-seer-draw
+payunless pay-unless/s82-old-b804-ravenous-vampire
+payunless pay-unless/s82-old-b805-energy-vortex-damage
+payunless pay-unless/s82-old-b805-purraj-counter
+payunless pay-unless/s82-old-b806-vaporous-djinn-phase-out
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -3760,6 +3794,7 @@ run engine/explore-each-pick
 run gap-b55-birthing-ritual/sacrifice
 run gap/tragic-lesson-return-a-land-or-discard
 run giant-opportunity/sacrifice-two-foods
+run old-b814/lord-of-tresserhorn-sacrifice-two
 run permanents-pick/s82-old-b432-sunken-hope-bounce
 run prompt-run/ace-fearless-rebel-sacrifice
 run prompt-run/acererak-the-archlich-sacrificed
@@ -4530,6 +4565,7 @@ tail cumulative-upkeep/corrosion-cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/dystopia-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/earthen-goo-cumulative-upkeep-r-or-g
 tail cumulative-upkeep/elephant-grass-cumulative-upkeep-1
 tail cumulative-upkeep/firestorm-hellkite-cumulative-upkeep-u-r
@@ -4551,6 +4587,8 @@ tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/kjeldoran-javelineer-cumulative-upkeep-1
 tail cumulative-upkeep/krovikan-whispers-cumulative-upkeep-u-or-b
 tail cumulative-upkeep/magmatic-core-cumulative-upkeep-1
+tail cumulative-upkeep/malignant-growth-cumulative-upkeep-1
+tail cumulative-upkeep/mind-harness-cumulative-upkeep-1
 tail cumulative-upkeep/morinfen-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/mwonvuli-ooze-cumulative-upkeep-2
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
@@ -4562,13 +4600,18 @@ tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
 tail cumulative-upkeep/psychic-vortex-cumulative-upkeep-draw-a-card
 tail cumulative-upkeep/revered-unicorn-cumulative-upkeep-1
 tail cumulative-upkeep/ronom-hulk-cumulative-upkeep-1
+tail cumulative-upkeep/royal-decree-cumulative-upkeep-w
 tail cumulative-upkeep/sheltering-ancient-cumulative-upkeep-put-a-1-1-counter-on-a-creature-an-opponent-controls
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
+tail cumulative-upkeep/splinter-cumulative-upkeep-g
 tail cumulative-upkeep/survivor-of-the-unseen-cumulative-upkeep-2
 tail cumulative-upkeep/sustaining-spirit-cumulative-upkeep-1-w
+tail cumulative-upkeep/thought-lash-cumulative-upkeep-exile-the-top-card-of-your-library
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
+tail cumulative-upkeep/tornado-cumulative-upkeep-g
 tail cumulative-upkeep/uktabi-efreet-cumulative-upkeep-g
+tail cumulative-upkeep/varchild-s-war-riders-cumulative-upkeep-have-an-opponent-create-a-1-1-red-survivor-creature-token
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
 tail cumulative-upkeep/volunteer-reserves-cumulative-upkeep-1
 tail cumulative-upkeep/wall-of-shards-cumulative-upkeep-an-opponent-gains-1-life
@@ -5133,8 +5176,10 @@ tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
 tail mass/rampage-of-the-clans-centaurs
+tail mass/reign-of-terror-life-loss
 tail mass/s82-old-b023-gain-two-life-for-each
 tail mass/s82-old-b672-calming-verse-then
+tail mass/seeds-of-innocence-life
 tail mass/settle-the-wreckage-fetch-basics
 tail mass/shai-hulud-search
 tail mass/shredders-technique-enchantment-loss
@@ -5271,6 +5316,7 @@ tail old-b639/planeswalkers-mischief-exiled
 tail old-hob/token-haste-and-destroy
 tail old-rutstein/after-mill
 tail olorins-searing-light/mastery-damage
+tail omen-of-fire/sacrifice
 tail oona-queen-of-the-fae/after-mill
 tail orcus-prince-of-undeath/gain-haste-until-eot
 tail oriq-loremage/instant-or-sorcery-counter
@@ -5396,6 +5442,7 @@ tail rionya-fire-dancer/exile-the-copies
 tail ripples-of-undeath/after-mill
 tail risen-reef/rest-into-hand
 tail riverwheel-sweep/choose-one
+tail rogue-skycaptain/pay-wages
 tail rohirrim-chargers/attach-then-rest
 tail role-tokens/attach-to-host
 tail rona-tolarian-obliterator/exiled
@@ -5459,6 +5506,7 @@ tail s82-old-b779/destroy-the-two-targets
 tail s82-old-b779/shuffle-graveyard-into-library
 tail s82-old-b789/song-of-blood-milled
 tail s82-old-b791/waterspout-djinn-after-return
+tail s82-old-b808/grinning-totem-grant
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
@@ -6105,6 +6153,9 @@ tail then/old-b499-sphinx-named
 tail then/old-b605-grim-reminder
 tail then/old-b607-myr-incubator
 tail then/old-b607-timesifter-judge
+tail then/old-b813-basalt-golem-wall
+tail then/old-b813-preferred-selection-take
+tail then/old-b814-lat-nams-legacy-tucked
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
@@ -6218,6 +6269,9 @@ tail then/s82-old-b787-foreshadow-milled
 tail then/s82-old-b787-foreshadow-named
 tail then/s82-old-b798-natural-balance-search
 tail then/s82-old-b798-sealed-fate-order-rest
+tail then/s82-old-b799-prismatic-lace-becomes-colors
+tail then/s82-old-b799-stupor-discard-a-card
+tail then/s82-old-b800-zirilan-haste-and-exile
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take

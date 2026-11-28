@@ -686,6 +686,10 @@ func deepenCard(out *Card) {
 	if len(out.Colors) > 0 {
 		out.Colors = append([]string(nil), out.Colors...)
 	}
+	// S82 OLD b814: Soldevi Sentry's shields' players.
+	if len(out.RegenerationDrawers) > 0 {
+		out.RegenerationDrawers = append([]uuid.UUID(nil), out.RegenerationDrawers...)
+	}
 	if len(out.AttractionLights) > 0 {
 		out.AttractionLights = append([]int(nil), out.AttractionLights...)
 	}
