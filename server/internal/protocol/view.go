@@ -10892,9 +10892,9 @@ func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
 	if len(card.NextUntapSkips) == 0 && len(wide) == 0 {
 		return nil
 	}
-	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips)+len(wide))
-	players := make([]string, 0, len(card.NextUntapSkips)+len(wide))
-	keyed := make([]uuid.UUID, 0, len(card.NextUntapSkips)+len(wide))
+	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
+	players := make([]string, 0, len(card.NextUntapSkips))
+	keyed := make([]uuid.UUID, 0, len(card.NextUntapSkips))
 	for _, skip := range card.NextUntapSkips {
 		if skip.While != nil {
 			// A hold is projected as Static by stampNoUntap.

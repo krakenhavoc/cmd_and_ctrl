@@ -175,7 +175,7 @@ func mergedCatalogDef(key string) *CardDef {
 	// #1859: removal parts ("-replacement:0") are not grants; they are
 	// applied to the base definition after the merge.
 	grants, removed := splitRemovedRows(tail)
-	parts := make([]*CardDef, 0, 1+len(grants))
+	parts := make([]*CardDef, 0, len(grants))
 	parts = append(parts, lookupPart(base))
 	for _, g := range grants {
 		parts = append(parts, lookupPart(g))
