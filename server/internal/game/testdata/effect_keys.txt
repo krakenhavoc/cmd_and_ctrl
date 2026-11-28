@@ -2103,6 +2103,7 @@ choose resolution-cast/vaan-street-thief-after-cast
 choose resolution-cast/yennett-draw-if-not-cast
 choose sticker/choose-object
 choose take/old-b051-the-biblioplex
+coinflip coin-flip/aleatory
 coinflip coin-flip/bbd-flip-until-you-lose
 coinflip coin-flip/boompile
 coinflip coin-flip/breeches-the-blastmaker
@@ -2605,6 +2606,7 @@ confirm confirm/zagorka-sanctum
 confirm confirm/zareth-san-reanimate
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
+confirm harbor-guardian/draw
 confirm may/alania-divergent-storm-draw-and-copy
 confirm may/carpet-of-flowers-add-mana
 confirm may/cemetery-tampering-mill
