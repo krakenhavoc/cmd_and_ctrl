@@ -590,6 +590,7 @@ body s82-old-b771/damage-listed-cards
 body s82-old-b778/phase-out-listed
 body s82-old-b779/gain-control-of-blocker
 body s82-old-b789/song-of-blood-attacker-pump
+body s82-old-b791/brood-of-cockroaches-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1838,6 +1839,7 @@ choose choose-cards/s82-old-b781-cruel-fate
 choose choose-cards/s82-old-b783-sacrifice-unless-discard-land
 choose choose-cards/s82-old-b788-dream-tides-choose
 choose choose-cards/s82-old-b788-equipoise-phase-out
+choose choose-cards/s82-old-b791-waterspout-djinn-return-an-untapped-island
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3578,6 +3580,7 @@ payunless pay-unless/s82-old-b779-tariff-sacrifice
 payunless pay-unless/s82-old-b780-liege-of-the-hollows
 payunless pay-unless/s82-old-b786-lightning-cloud-damage
 payunless pay-unless/s82-old-b788-dream-tides-untap
+payunless pay-unless/s82-old-b791-wand-of-denial-mill
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -5439,6 +5442,7 @@ tail s82-old-b778/return-the-died-card
 tail s82-old-b779/destroy-the-two-targets
 tail s82-old-b779/shuffle-graveyard-into-library
 tail s82-old-b789/song-of-blood-milled
+tail s82-old-b791/waterspout-djinn-after-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
