@@ -1824,6 +1824,7 @@ choose choose-cards/s82-old-b735-goblin-war-cry
 choose choose-cards/s82-old-b735-harmony-of-nature
 choose choose-cards/s82-old-b752-phyrexian-grimoire-picked
 choose choose-cards/s82-old-b761-oracle-en-vec
+choose choose-cards/s82-old-b826-forget-discarded
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2135,6 +2136,7 @@ coinflip coin-flip/s82-old-b626-planar-chaos-sacrifice
 coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/s82-old-b671-fickle-efreet
 coinflip coin-flip/s82-old-b704-goblin-festival
+coinflip coin-flip/s82-old-b826-winter-sky
 coinflip coin-flip/scoria-wurm-upkeep
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
@@ -2799,6 +2801,7 @@ number number/store-the-life-paid-as-it-enters
 number number/suppression-ray-stun-counters
 number number/temporary-truce-draw-up-to-two
 number number/territorial-aetherkite-damage-each-other-creature
+number number/truce-draw-up-to-two
 number number/volcano-hellion-damage-to-you-and-target
 number number/wheel-of-potential-paid
 number number/wrath-of-the-skies-destroy-up-to-that-value
@@ -4203,6 +4206,7 @@ steps then-steps/tivit-seller-of-secrets-tokens
 steps then-steps/transpose-after-discard
 steps then-steps/trap-the-trespassers-stun
 steps then-steps/travel-through-caradhras-votes
+steps then-steps/truce-rest
 steps then-steps/truth-or-consequences-votes
 steps then-steps/twilight-prophet-drain
 steps then-steps/will-of-the-jeskai-may-wheel
