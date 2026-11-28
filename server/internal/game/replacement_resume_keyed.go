@@ -489,6 +489,9 @@ var replacementEventFields = map[string]replacementEventField{
 	"EntersTributePaid":         repFieldCarried,
 	"EntersWithHaste":           repFieldCarried,
 	"EntersWithHasteTillEOT":    repFieldCarried,
+	"EntersWithBasePT":          repFieldCarried,
+	"EntersBasePower":           repFieldCarried,
+	"EntersBaseToughness":       repFieldCarried,
 	"lookAhead":                 repFieldCache,
 	"entryRefused":              repFieldCarried,
 	"EntersUnlocked":            repFieldCarried,
@@ -832,6 +835,9 @@ type replacementEventSnapshot struct {
 	EntersTributePaid         bool                `json:"entersTributePaid,omitempty"`
 	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
 	EntersWithHasteTillEOT    bool                `json:"entersWithHasteTillEOT,omitempty"`
+	EntersWithBasePT          bool                `json:"entersWithBasePT,omitempty"`
+	EntersBasePower           int                 `json:"entersBasePower,omitempty"`
+	EntersBaseToughness       int                 `json:"entersBaseToughness,omitempty"`
 	EntryRefused              bool                `json:"entryRefused,omitempty"`
 	EntersUnlocked            DoorMask            `json:"entersUnlocked,omitempty"`
 	EntersAttacking           *uuid.UUID          `json:"entersAttacking,omitempty"`
@@ -1319,6 +1325,9 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntersTributePaid:         ev.EntersTributePaid,
 		EntersWithHaste:           ev.EntersWithHaste,
 		EntersWithHasteTillEOT:    ev.EntersWithHasteTillEOT,
+		EntersWithBasePT:          ev.EntersWithBasePT,
+		EntersBasePower:           ev.EntersBasePower,
+		EntersBaseToughness:       ev.EntersBaseToughness,
 		EntryRefused:              ev.entryRefused,
 		EntersUnlocked:            ev.EntersUnlocked,
 		EntersAttacking:           uuidPtrOrNil(ev.EntersAttacking),
@@ -1507,6 +1516,9 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		EntersTributePaid:         s.EntersTributePaid,
 		EntersWithHaste:           s.EntersWithHaste,
 		EntersWithHasteTillEOT:    s.EntersWithHasteTillEOT,
+		EntersWithBasePT:          s.EntersWithBasePT,
+		EntersBasePower:           s.EntersBasePower,
+		EntersBaseToughness:       s.EntersBaseToughness,
 		entryRefused:              s.EntryRefused,
 		EntersUnlocked:            s.EntersUnlocked,
 		EntersAttacking:           uuidOrNil(s.EntersAttacking),

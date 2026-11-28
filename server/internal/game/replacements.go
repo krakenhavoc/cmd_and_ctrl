@@ -669,6 +669,21 @@ type ReplacementEvent struct {
 	// Except clause; read by every battlefield landing beside EntersWithHaste.
 	EntersWithHasteTillEOT bool
 
+	// EntersWithBasePT is "this creature's power becomes the total power of
+	// those creatures and its toughness becomes their total toughness"
+	// (Dracoplasm, S82 OLD batch 768): EntersBasePower and EntersBaseToughness
+	// are the sizes the permanent has once it is on the battlefield, as a
+	// layer 7b set effect that never ends (CR 611.2a, 613.4b). Set by the
+	// declaration's Then once the sacrifice has settled, from the sacrificed
+	// creatures' last-known power and toughness (CR 608.2h), and read by every
+	// battlefield landing beside EntersWithHaste: an indefinite record pinned
+	// to the permanent once its entry has been stamped and before EventETB
+	// (grantEntryBasePTLocked), so nothing sees the permanent at its printed
+	// size. Rides the event for EntersTapped's reason. Only meaningful when
+	// NewZone == ZoneBattlefield.
+	EntersWithBasePT                     bool
+	EntersBasePower, EntersBaseToughness int
+
 	// lookAhead caches the CR 614.12 look-ahead for this entry
 	// (entry_lookahead.go), so the gather, which runs once per pass of
 	// the apply-loop, does not run a dry layer pass every time. It is
