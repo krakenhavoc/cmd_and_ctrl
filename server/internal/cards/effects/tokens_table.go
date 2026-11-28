@@ -606,6 +606,10 @@ var TokenTable = map[string]game.Card{
 	// placeholder, set to X as it is created).
 	"0/0 green Elemental": {Name: "Elemental", TypeLine: "Token Creature — Elemental", Colors: []string{"G"}, PrintedPTKnown: true},
 
+	// S82 OLD batch 827: Broken Visage's black Spirit (no token card was printed; a 0/0
+	// placeholder, set to the destroyed creature's power and toughness as it is created).
+	"0/0 black Spirit": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Colors: []string{"B"}, PrintedPTKnown: true},
+
 	// S82 OLD batch 350: Kin-Tree Invocation's X/X black and green Spirit Warrior (printed */*; a
 	// 0/0 placeholder, set to the greatest toughness among your creatures as it is created).
 	"0/0 black and green Spirit Warrior": {Name: "Spirit Warrior", TypeLine: "Token Creature — Spirit Warrior", Colors: []string{"B", "G"}, PrintedPTKnown: true},
