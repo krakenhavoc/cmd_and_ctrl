@@ -27,7 +27,7 @@ func init() {
 		OracleID:     "da4cab2d-0068-440f-ba7c-f2d4e5fa976e",
 		Name:         "Aleatory",
 		Completeness: effects.CompletenessFull,
-		Purpose:      game.Purpose{Draws: 1},
+		Purpose:      game.Purpose{Draws: 1, Targets: game.ForTargets(effects.BenefitUntilEOT(0, 1, 1))},
 		CastCondition: func(g *game.Game, player uuid.UUID, c game.Card) bool {
 			return effects.OldB681AfterBlockersAreDeclared(g, player, c.InstanceID)
 		},

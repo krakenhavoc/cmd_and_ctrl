@@ -24,7 +24,6 @@ func init() {
 		OracleID:     "daa86c76-aacb-4244-9639-81f758c634b2",
 		Name:         "Kaervek's Purge",
 		Completeness: effects.CompletenessFull,
-		XMatters:     true,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      effects.TargetCreature("target creature with mana value X").WithManaValueEqualsX(),
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {

@@ -18,7 +18,7 @@ func init() {
 		Name:           "Surge of Strength",
 		Completeness:   effects.CompletenessFull,
 		AdditionalCost: effects.DiscardColorCost("a red or green card", "R", "G"),
-		Purpose:        game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(effects.PowerXUntilEOT(0, "trample"))},
+		Purpose:        game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(effects.BenefitUntilEOT(0, 0, 0, "trample"))},
 		Targets:        effects.TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
 			id, ok := effects.B16FirstLegalTargetCard(ctx)

@@ -252,6 +252,11 @@ var knownUnmatchedTokens = map[string]string{
 	// printed as a token card; the templates follow the oracle text.
 	"0/1 green Wall with defender named Wood":   "no Wood token card was printed for Jungle Patrol (S82 OLD b813)",
 	"0/2 colorless Wall artifact with defender": "no 0/2 Wall artifact token card was printed for Basalt Golem (S82 OLD b813)",
+
+	// Errand of Duty (Alliances, 1996, S82 OLD batch 817) creates "a 1/1 white Knight
+	// creature token with banding"; no Knight token with banding was ever printed, as
+	// token cards start in 2007. The template follows the oracle text.
+	"1/1 white Knight with banding": "no Knight token with banding was printed for Errand of Duty",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
