@@ -1864,6 +1864,7 @@ choose choose-cards/s82-old-b788-equipoise-phase-out
 choose choose-cards/s82-old-b791-waterspout-djinn-return-an-untapped-island
 choose choose-cards/s82-old-b798-sealed-fate-exile
 choose choose-cards/s82-old-b809-purgatory-return
+choose choose-cards/s82-old-b822-retribution
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -2850,6 +2851,7 @@ number number/s82-old-b411-bioshift-move
 number number/s82-old-b459-hex-parasite-remove
 number number/s82-old-b629-squees-revenge
 number number/s82-old-b705-scrying-glass
+number number/s82-old-b822-clockwork-put-counters
 number number/sacrifice-a-random-pile-each
 number number/slippery-bogbonder-move-counters
 number number/store-the-life-paid-as-it-enters
@@ -6282,6 +6284,7 @@ tail then/s82-old-b798-sealed-fate-order-rest
 tail then/s82-old-b799-prismatic-lace-becomes-colors
 tail then/s82-old-b799-stupor-discard-a-card
 tail then/s82-old-b800-zirilan-haste-and-exile
+tail then/s82-old-b822-retribution-counter
 tail then/s82-one-b06-proliferate-if-done
 tail then/s82-rpr-b25-jace-architect-searched
 tail then/s82-rpr-b25-jace-architect-take
