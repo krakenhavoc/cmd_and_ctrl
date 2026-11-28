@@ -1462,6 +1462,7 @@ type DivideView struct {
 	Total       int            `json:"total,omitempty"`
 	FromX       bool           `json:"from_x,omitempty"`
 	DoubleFromX int            `json:"double_from_x,omitempty"`
+	PlusFromX   int            `json:"plus_from_x,omitempty"`
 	UpTo        bool           `json:"up_to,omitempty"`
 	ByUnattach  map[string]int `json:"by_unattach,omitempty"`
 }
@@ -1473,7 +1474,7 @@ func divideView(d *game.DivideSpec) *DivideView {
 	if d == nil {
 		return nil
 	}
-	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, UpTo: d.UpTo}
+	return &DivideView{Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, PlusFromX: d.PlusFromX, UpTo: d.UpTo}
 }
 
 // TargetDifferenceView is the wire shape of game.TargetDifference: the

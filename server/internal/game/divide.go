@@ -57,6 +57,11 @@ type DivideSpec struct {
 	// is twice X. 0 means never.
 	DoubleFromX int
 
+	// PlusFromX, with FromX, adds a fixed amount to X: "X plus 1 damage
+	// divided as you choose" (Meteor Shower). Added after the doubling
+	// check, which reads X itself.
+	PlusFromX int
+
 	// AmountKey names a registered amount RULE (#1657) — "X is the
 	// number of lands you control" (Ureni, the Song Unending), "damage
 	// equal to its power" (Orca, Siege Demon), "up to that many" where
@@ -183,7 +188,7 @@ func (g *Game) divideAmountLocked(d *DivideSpec, a DivideAmountArgs) *DivideSpec
 	out := DivideSpec{UpTo: d.UpTo}
 	if ok {
 		r := fn(g, a)
-		out.Total, out.FromX, out.DoubleFromX = r.Total, r.FromX, r.DoubleFromX
+		out.Total, out.FromX, out.DoubleFromX, out.PlusFromX = r.Total, r.FromX, r.DoubleFromX, r.PlusFromX
 		if out.Total < 0 {
 			out.Total = 0
 		}
@@ -263,9 +268,9 @@ func (d *DivideSpec) TotalFor(x int) int {
 		x = 0
 	}
 	if d.DoubleFromX > 0 && x >= d.DoubleFromX {
-		return 2 * x
+		return 2*x + d.PlusFromX
 	}
-	return x
+	return x + d.PlusFromX
 }
 
 // Dividing marks the clause "divided as you choose among" its targets.

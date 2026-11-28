@@ -850,8 +850,9 @@ export function divideTotal(
   }
   if (!d.from_x) return d.total ?? 0;
   const x = Math.max(0, xValue ?? 0);
-  if (d.double_from_x && d.double_from_x > 0 && x >= d.double_from_x) return 2 * x;
-  return x;
+  const plus = d.plus_from_x ?? 0;
+  if (d.double_from_x && d.double_from_x > 0 && x >= d.double_from_x) return 2 * x + plus;
+  return x + plus;
 }
 
 // evenSplit is the division the picker opens with, and the one the

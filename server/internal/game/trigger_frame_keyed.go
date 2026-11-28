@@ -479,6 +479,7 @@ type boundDivideSnapshot struct {
 	Total       int  `json:"total"`
 	FromX       bool `json:"fromX,omitempty"`
 	DoubleFromX int  `json:"doubleFromX,omitempty"`
+	PlusFromX   int  `json:"plusFromX,omitempty"`
 	UpTo        bool `json:"upTo,omitempty"`
 }
 
@@ -531,7 +532,7 @@ func snapshotTargetWalkOf(c *PendingChoice, cen *ContinuationCensus) *targetWalk
 	for i := range f.steps {
 		if d := f.steps[i].Clause.Divide; d != nil {
 			out.Divides = append(out.Divides, boundDivideSnapshot{
-				Step: i, Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, UpTo: d.UpTo,
+				Step: i, Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, PlusFromX: d.PlusFromX, UpTo: d.UpTo,
 			})
 		}
 	}
@@ -570,7 +571,7 @@ func (g *Game) rebuildTargetWalkLocked(s *targetWalkSnapshot) (*pickTargetFrame,
 		dividing++
 		// The steps hold clause copies (AnnouncedClauses), so this never
 		// touches the catalog's clause, as bindDivideAmountsLocked.
-		steps[i].Clause.Divide = &DivideSpec{Total: b.Total, FromX: b.FromX, DoubleFromX: b.DoubleFromX, UpTo: b.UpTo}
+		steps[i].Clause.Divide = &DivideSpec{Total: b.Total, FromX: b.FromX, DoubleFromX: b.DoubleFromX, PlusFromX: b.PlusFromX, UpTo: b.UpTo}
 	}
 	if dividing != len(bound) {
 		return nil, false
