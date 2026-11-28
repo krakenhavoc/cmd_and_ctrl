@@ -130,6 +130,14 @@ type ActivationAbility struct {
 	// (#5843). Derived from ActivatedAbilityShape.Cycling by
 	// ActivationAbilityOf, never set by a card file.
 	Cycling bool
+
+	// TapCost reports that the ability's cost includes {T} (CR 602.5; the
+	// cost's Tap bit, a mana ability's too), because Katabatic Winds'
+	// clause names it: "their activated abilities with {T} in their costs
+	// can't be activated". Derived from the shape's cost by
+	// ActivationAbilityOf and by each mana-ability call site, never set by
+	// a card file.
+	TapCost bool
 }
 
 // ActivationAbilityOf is the one place an activated ability's shape
@@ -149,6 +157,7 @@ func ActivationAbilityOf(ab ActivatedAbilityShape) ActivationAbility {
 		Equip:        ab.Equip,
 		PowerUp:      ab.PowerUp,
 		Cycling:      ab.Cycling,
+		TapCost:      ab.Cost.Tap,
 	}
 }
 

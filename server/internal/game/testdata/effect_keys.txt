@@ -582,6 +582,7 @@ body s82-old-b673/return-this-to-hand-at-end-of-combat
 body s82-old-b677/destroy-listed-objects
 body s82-old-b688/tuck-at-end-of-combat
 body s82-old-b751/return-the-objects-to-hands
+body s82-old-b791/brood-of-cockroaches-return
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -1802,6 +1803,7 @@ choose choose-cards/s82-old-b714-wei-assassins-destroy
 choose choose-cards/s82-old-b714-wu-spy-graveyard
 choose choose-cards/s82-old-b723-scythe-pick
 choose choose-cards/s82-old-b734-sacrifice-unless-discard-creature
+choose choose-cards/s82-old-b791-waterspout-djinn-return-an-untapped-island
 choose choose-cards/s82-rpr-b30-delver-reveal
 choose choose-cards/s82-rpr-b30-urge-to-feed-tap
 choose choose-cards/s82-snc-turf-war-take
@@ -3511,6 +3513,7 @@ payunless pay-unless/s82-old-b671-shrouded-serpent-unblockable
 payunless pay-unless/s82-old-b678-aether-barrier-sacrifice
 payunless pay-unless/s82-old-b678-rootwater-thief-search
 payunless pay-unless/s82-old-b696-rishadan-sacrifice
+payunless pay-unless/s82-old-b791-wand-of-denial-mill
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
@@ -5336,6 +5339,7 @@ tail s82-old-b694-renounce/gain
 tail s82-old-b697/clear-the-land-exile
 tail s82-old-b699/midnight-ritual-zombies
 tail s82-old-b705/academy-rector-exiled
+tail s82-old-b791/waterspout-djinn-after-return
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
