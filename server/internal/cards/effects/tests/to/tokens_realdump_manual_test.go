@@ -235,6 +235,11 @@ var knownUnmatchedTokens = map[string]string{
 	// templates follow the oracle text.
 	"2/2 white Reflection": "no 2/2 white Reflection token card was printed for Spirit Mirror",
 	"1/1 green Dog":        "no 1/1 green Dog token card was printed for Mongrel Pack",
+	// Caribou Range (Ice Age, S82 OLD batch 828) creates "a 0/1 white Caribou
+	// creature token". The card is from 1995 and its token was never printed as
+	// a token card; the dump has no Caribou token. The template follows the oracle
+	// text.
+	"0/1 white Caribou": "no 0/1 white Caribou token card was printed for Caribou Range",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
