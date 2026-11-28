@@ -452,6 +452,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 761 (#5458).
 	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
 	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
+
+	// S82 OLD batch 766 (#5628).
+	"Sacred Guide": "exiles only the cards it revealed from the top of its controller's own library, never a permanent",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
