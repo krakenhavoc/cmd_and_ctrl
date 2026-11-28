@@ -3034,6 +3034,7 @@ option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
 option option-pick/realms-uncharted-opponent
 option option-pick/regnas-sanction-friend-or-foe
+option option-pick/reign-of-terror-green-or-white
 option option-pick/rejoinder-tap-or-untap
 option option-pick/remorseless-punishment
 option option-pick/remove-a-counter-of-your-choice
@@ -5062,6 +5063,7 @@ tail mass/phasing-of-zhalfir-phyrexians
 tail mass/phyrexian-rebirth-horror
 tail mass/rain-of-daggers-lose-life
 tail mass/rampage-of-the-clans-centaurs
+tail mass/reign-of-terror-life-loss
 tail mass/s82-old-b023-gain-two-life-for-each
 tail mass/s82-old-b672-calming-verse-then
 tail mass/settle-the-wreckage-fetch-basics
