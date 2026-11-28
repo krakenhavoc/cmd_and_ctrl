@@ -844,13 +844,9 @@ var items = []Item{
 	{
 		Slug: "cumulative-upkeep", Name: "Cumulative upkeep", Kind: KindMechanic, Status: StatusPartial,
 		Summary: "At your upkeep a permanent with cumulative upkeep gets an age counter, and you pay its cost once per counter or sacrifice it.",
-		Missing: "Mana, a discard, a sacrifice, life and flipping coins all work as the payment; cumulative upkeep paid another way, such as by exiling cards from the top of your library as Thought Lash's is, isn't supported yet.",
+		Missing: "Mana, a discard, a sacrifice, life, flipping coins and exiling cards from the top of your library (Thought Lash) all work as the payment; other payments a card prints may still be missing.",
 		Rules:   []string{"702.24"},
 		Issue:   567,
-		// ADR 0109 §7 (#1902): Thought Lash's activated "Exile the top
-		// card of your library" cost shipped; its cumulative upkeep is
-		// that exile as a pay-or-sacrifice payment.
-		Waiting: []string{"Thought Lash"},
 		Printed: printedLine("cumulative upkeep"),
 		Phrases: []string{"cumulative upkeep"},
 	},
