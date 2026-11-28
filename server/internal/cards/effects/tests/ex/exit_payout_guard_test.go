@@ -204,7 +204,7 @@ var exitPayoutAllowlist = map[string]string{
 		"payout gate: the damage is gated on the zone check right after it, that the creature is in a " +
 		"graveyard (\"if a white creature dies this way\"), so a destroy that was replaced or not done pays " +
 		"nothing.",
-	"s82_old_b842_helpers.go:140": "Icequake's and Thermokarst's `wasSnow` gates on the land's supertype, not " +
+	"s82_old_b842_helpers.go:115": "Icequake's and Thermokarst's `wasSnow` gates on the land's supertype, not " +
 		"on the destruction (S82 OLD b842): \"If that land was a snow land\" has no \"if you do\", so an " +
 		"indestructible or regenerated snow land still pays the rider. The supertype is read before " +
 		"the destroy because that is the last moment the land is guaranteed findable (CR 608.2h), " +
