@@ -20,11 +20,6 @@ func init() {
 		Completeness:    effects.CompletenessFull,
 		CantBeCountered: true,
 		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepAllPermanents, How: game.SweepDestroy, Partial: true}},
-		OnResolve: func(_ *game.StackItem, ctx *effects.Context) error {
-			return effects.DestroyAllMatching{
-				Match:             effects.Or(effects.Artifact(), effects.Creature(), effects.Land()),
-				CantBeRegenerated: true,
-			}.Apply(ctx)
-		},
+		OnResolve:       effects.S82OldB842DestroyArtifactsCreaturesAndLands,
 	})
 }
