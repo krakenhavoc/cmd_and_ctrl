@@ -588,6 +588,7 @@ body s82-old-b751/return-the-objects-to-hands
 body s82-old-b771/damage-listed-cards
 body s82-old-b778/phase-out-listed
 body s82-old-b779/gain-control-of-blocker
+body s82-old-b824/source-deals-two-to-the-creature
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
