@@ -638,6 +638,8 @@ var TokenTemplates = []tokenTemplateBuilder{
 	// S82 OLD batch 560: Sound the Call's Wolf ("gets +1/+1 for each card named
 	// Sound the Call in each graveyard").
 	PrintedOldB560SoundTheCallWolf,
+	// Splintering Wind's Splinter (S82 OLD batch 818, #5634).
+	PrintedOldB818Splinter,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

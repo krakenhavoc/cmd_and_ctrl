@@ -3041,6 +3041,7 @@ option option-pick/reselect-attack
 option option-pick/resolution-exit
 option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
+option option-pick/rogue-skycaptain-opponent
 option option-pick/rottenmouth-viper-punisher
 option option-pick/s82-bns-b45-alchemists-gift-keyword
 option option-pick/s82-bro-b11-argivian-avenger-keyword
@@ -3079,6 +3080,7 @@ option option-pick/s82-old-b704-goblin-festival-opponent
 option option-pick/s82-old-b716-walking-sponge-keyword
 option option-pick/s82-old-b743-carnophage-pay-or-tap
 option option-pick/s82-old-b759-flowstone-sculpture
+option option-pick/s82-old-b818-natures-blessing
 option option-pick/s82-rpr-b25-jace-architect-splitter
 option option-pick/sacrifice-this-unless-you-sacrifice-a-creature
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
@@ -3506,6 +3508,7 @@ payunless pay-unless/rise-of-the-hobgoblins-goblins
 payunless pay-unless/rith-the-awakener-saprolings
 payunless pay-unless/roar-of-resistance-pump
 payunless pay-unless/rodolf-duskbringer-return
+payunless pay-unless/rogue-skycaptain-wages
 payunless pay-unless/rohgahh-kher-keep-overlord-dragon
 payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
@@ -4471,6 +4474,7 @@ tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/dystopia-cumulative-upkeep-pay-1-life
 tail cumulative-upkeep/earthen-goo-cumulative-upkeep-r-or-g
 tail cumulative-upkeep/freyalise-s-radiance-cumulative-upkeep-2
 tail cumulative-upkeep/gallowbraid-cumulative-upkeep-pay-1-life
@@ -4494,13 +4498,18 @@ tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creatu
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
 tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
 tail cumulative-upkeep/ronom-hulk-cumulative-upkeep-1
+tail cumulative-upkeep/royal-decree-cumulative-upkeep-w
 tail cumulative-upkeep/sheltering-ancient-cumulative-upkeep-put-a-1-1-counter-on-a-creature-an-opponent-controls
 tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
+tail cumulative-upkeep/splinter-cumulative-upkeep-g
 tail cumulative-upkeep/survivor-of-the-unseen-cumulative-upkeep-2
 tail cumulative-upkeep/sustaining-spirit-cumulative-upkeep-1-w
+tail cumulative-upkeep/thought-lash-cumulative-upkeep-exile-the-top-card-of-your-library
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
+tail cumulative-upkeep/tornado-cumulative-upkeep-g
 tail cumulative-upkeep/uktabi-efreet-cumulative-upkeep-g
+tail cumulative-upkeep/varchild-s-war-riders-cumulative-upkeep-have-an-opponent-create-a-1-1-red-survivor-creature-token
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
 tail cumulative-upkeep/wall-of-shards-cumulative-upkeep-an-opponent-gains-1-life
 tail cumulative-upkeep/yavimaya-ants-cumulative-upkeep-g-g
@@ -5323,6 +5332,7 @@ tail rionya-fire-dancer/exile-the-copies
 tail ripples-of-undeath/after-mill
 tail risen-reef/rest-into-hand
 tail riverwheel-sweep/choose-one
+tail rogue-skycaptain/pay-wages
 tail rohirrim-chargers/attach-then-rest
 tail role-tokens/attach-to-host
 tail rona-tolarian-obliterator/exiled
