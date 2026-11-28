@@ -470,6 +470,8 @@ var reviewedNotAWipe = map[string]string{
 	"Zombie Mob": "exiles the creature cards in its controller's own graveyard as it enters: it touches no permanent, so there is no board to wipe",
 	// S82 OLD batch 814 (#5634).
 	"Scarab of the Unseen": "returns only the Auras attached to the one permanent its controller owns to their owners' hands, not a board",
+	// S82 OLD batch 817 (#5634).
+	"Omen of Fire": "returns only the Islands, then each player sacrifices as many Plains or white permanents as they control white ones: no sweep class names Islands alone",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
