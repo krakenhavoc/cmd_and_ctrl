@@ -477,6 +477,9 @@ var reviewedNotAWipe = map[string]string{
 
 	// S82 OLD batch 842 (#5636).
 	"Kjeldoran Frostbeast": "destroys only the creatures blocking or blocked by itself at end of combat, never a board",
+
+	// S82 OLD batch 854 (#5637).
+	"Vodalian War Machine": "its dies trigger destroys only the Merfolk that were tapped to pay for its own abilities this turn, never a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.

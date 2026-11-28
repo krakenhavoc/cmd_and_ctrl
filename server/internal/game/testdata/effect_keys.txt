@@ -121,6 +121,7 @@ body claim-the-kingdom/indestructible
 body clockwork/remove-a-plus-one-counter-at-end-of-combat
 body clone-saga/copy-creature-spell-not-legendary
 body codie-vociferous-codex/exile-until-lesser-instant-or-sorcery
+body combat/flotilla-first-strike
 body combat/untap-and-remove-the-payload
 body commander/return-listed-to-command-zone
 body conduit-of-emrakul/add-colorless
@@ -2183,6 +2184,7 @@ coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
 coinflip coin-flip/old-b033-goblin-traprunner
 coinflip coin-flip/old-b832-amulet-of-quoz
+coinflip coin-flip/orcish-captain
 coinflip coin-flip/plasma-caster
 coinflip coin-flip/puppets-verdict
 coinflip coin-flip/ral-monsoon-mage
@@ -2249,6 +2251,7 @@ condition combat-damage/a-salamander-to-a-player
 condition combat-damage/dovin-grand-arbiter-creature-connects
 condition combat-damage/subira-small-creature-connects
 condition combat/each-attacker-not-blocked
+condition combat/flotilla-blocks-or-is-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/s82-old-b782-attacker-hits-you
 condition combat/that-creature-dealt-combat-damage
@@ -2577,6 +2580,7 @@ confirm confirm/s82-old-b780-goblin-bomb-flip
 confirm confirm/s82-old-b783-shuffle-then-draw
 confirm confirm/s82-old-b843-shyft
 confirm confirm/s82-old-b851-game-of-chaos-again
+confirm confirm/s82-old-b854-necrite-sacrifice
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -3449,6 +3453,7 @@ payunless pay-unless/genesis-return-creature-card
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-dirigible-untap
+payunless pay-unless/goblin-flotilla-first-strike
 payunless pay-unless/goblin-vandal-destroy-artifact
 payunless pay-unless/goblin-war-wagon-untap
 payunless pay-unless/graveyard-return-this-card-to-battlefield
@@ -5590,6 +5595,7 @@ tail s82-old-b789/song-of-blood-milled
 tail s82-old-b791/waterspout-djinn-after-return
 tail s82-old-b808/grinning-totem-grant
 tail s82-old-b843/shyft-colors
+tail s82-old-b854/necrite-destroy
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
