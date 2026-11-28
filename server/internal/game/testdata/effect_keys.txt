@@ -162,6 +162,7 @@ body decayed/schedule
 body delayed/biolume-egg-return-transformed
 body delayed/daretti-scrap-savant-return
 body delayed/old-b443-return-this-card-transformed
+body delayed/old-b846-seraph-return
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
 body departed/token-copies-of-artifacts-and-creatures
@@ -5143,6 +5144,7 @@ tail jacob-frye/copy-and-cast
 tail janice-rand-essential-aide/reveal-until-land
 tail jarads-orders/choose
 tail jaya-fiery-negotiator/choose-exiled
+tail jesters-mask/search-for-that-many
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail journey-to-the-lost-city/exiled
 tail journey-to-the-lost-city/table
