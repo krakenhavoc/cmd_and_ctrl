@@ -3065,6 +3065,7 @@ option option-pick/old-b240-unesh-splitter
 option option-pick/old-b387-order-of-succession-direction
 option option-pick/old-b586-blood-clock
 option option-pick/old-b606-loxodon-peacekeeper
+option option-pick/old-b827-chain-stasis-tap-or-untap
 option option-pick/olivia-crimson-bride-attack
 option option-pick/opponent-mode-chooser
 option option-pick/opponent-target-chooser
@@ -3547,6 +3548,9 @@ payunless pay-unless/old-b809-gain-1-life
 payunless pay-unless/old-b809-sirocco-discard
 payunless pay-unless/old-b813-preferred-selection
 payunless pay-unless/old-b812-warping-wurm-phase-out
+payunless pay-unless/old-b827-chain-stasis-copy
+payunless pay-unless/old-b827-giant-albatross-destroy
+payunless pay-unless/old-b827-giant-albatross-paid
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
@@ -6173,6 +6177,8 @@ tail then/old-b607-timesifter-judge
 tail then/old-b813-basalt-golem-wall
 tail then/old-b813-preferred-selection-take
 tail then/old-b814-lat-nams-legacy-tucked
+tail then/old-b827-broken-visage-create-spirit
+tail then/old-b827-broken-visage-sacrifice-spirit
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill
