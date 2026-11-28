@@ -32,6 +32,12 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (s *TargetSpec) playerChooserAdmits(g *Game, src TargetSource, p *Player) bool {
+	if !s.moreCardsInHandThanChooserAdmits(g, src, p) {
+		return false
+	}
+	if !s.moreLandsThanChooserAdmits(g, src, p) {
+		return false
+	}
 	if !s.MoreCreaturesThanChooser && !s.FewerCreatureCardsInGraveyardThanChooser {
 		return true
 	}

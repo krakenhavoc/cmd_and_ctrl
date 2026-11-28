@@ -487,6 +487,13 @@ type PermissionFilter struct {
 	// (#4834). Empty constrains nothing. Additive.
 	Subtype string `json:"subtype,omitempty"`
 
+	// EnchantsCreatureOnly is Rootwater Shaman's "Aura spells with enchant
+	// creature": the card is an Aura whose own enchant clause is the plain
+	// "enchant creature" (its catalog target clause is a creature clause
+	// labelled so, CatalogTargetSpec). An Aura that enchants anything else,
+	// and a card the catalog does not know, do not qualify. Additive.
+	EnchantsCreatureOnly bool `json:"enchantsCreatureOnly,omitempty"`
+
 	// NotSubtype is a subtype a qualifying card must NOT have, read the
 	// same way: Iroh, Grand Lotus's "each non-Lesson instant and sorcery
 	// card" (#4459). Empty constrains nothing. Additive.
@@ -596,6 +603,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.Subtype != "" && !c.HasSubtype(f.Subtype) {
+		return false
+	}
+	if f.EnchantsCreatureOnly && !c.auraEnchantsCreature() {
 		return false
 	}
 	if f.ArtifactOrSubtype != "" && !c.IsArtifact() && !c.HasSubtype(f.ArtifactOrSubtype) {
@@ -3824,4 +3834,19 @@ func cardHasCyclingAbility(c Card) bool {
 		}
 	}
 	return false
+}
+
+// auraEnchantsCreature is "an Aura spell with enchant creature": an Aura whose
+// catalog enchant clause is the plain creature clause (PermissionFilter.
+// EnchantsCreatureOnly).
+func (c Card) auraEnchantsCreature() bool {
+	if !c.HasSubtype("Aura") || CatalogTargetSpec == nil {
+		return false
+	}
+	key := catalogAbilityKeyOf(&c)
+	if key == "" {
+		return false
+	}
+	spec := CatalogTargetSpec(key)
+	return spec != nil && spec.Mode == "creature" && spec.Label == "enchant creature"
 }

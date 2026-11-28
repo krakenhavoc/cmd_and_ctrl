@@ -158,8 +158,10 @@ var TokenTable = map[string]game.Card{
 	"1/1 colorless Hero":                                            {Name: "Hero", TypeLine: "Token Creature — Hero", Power: 1, Toughness: 1},
 	"1/1 white Human":                                               {Name: "Human", TypeLine: "Token Creature — Human", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 colorless Insect artifact with flying":                     {Name: "Insect", TypeLine: "Token Artifact Creature — Insect", Power: 1, Toughness: 1, Keywords: []string{"flying"}},
+	"1/1 colorless Hornet Insect artifact with flying and haste":    {Name: "Hornet", TypeLine: "Token Artifact Creature — Insect", Power: 1, Toughness: 1, Keywords: []string{"flying", "haste"}}, // Hornet Cannon (#5627)
 	"1/1 colorless Myr artifact":                                    {Name: "Myr", TypeLine: "Token Artifact Creature — Myr", Power: 1, Toughness: 1},
 	"1/1 colorless Sliver":                                          {Name: "Sliver", TypeLine: "Token Creature — Sliver", Power: 1, Toughness: 1},
+	"1/1 green Spike":                                               {Name: "Spike", TypeLine: "Token Creature — Spike", Power: 1, Toughness: 1, Colors: []string{"G"}}, // Spike Breeder (#5627)
 	"1/1 black Assassin with deathtouch and haste":                  {Name: "Assassin", TypeLine: "Token Creature — Assassin", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch", "haste"}},
 	"1/1 black Assassin with menace":                                {Name: "Assassin", TypeLine: "Token Creature — Assassin", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace"}}, // Ratonhnhaké꞉ton (#5948)
 	"1/1 black Snake with deathtouch":                               {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},

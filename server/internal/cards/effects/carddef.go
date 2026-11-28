@@ -321,6 +321,7 @@ func BuildDef(spec Spec) *game.CardDef {
 		LoyaltyCostAdd:                      spec.LoyaltyCostAdd,
 		CommanderTaxInLife:                  spec.CommanderTaxInLife,
 		XCeiling:                            spec.XCeiling,
+		XFloor:                              spec.XFloor,
 		CastPermissions:                     standingCastPermissions(spec.CastPermissions),
 		GatedCastPermissions:                gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                         spec.CastTimings,

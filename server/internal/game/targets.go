@@ -234,6 +234,19 @@ func (s TargetSource) loyalty() (int, bool) {
 	return 0, false
 }
 
+// counterCount is the number of counters of `kind` on the source: the live
+// object's, or a departed source's last-known count (CR 608.2h). ok is false
+// when the walk has no source object.
+func (s TargetSource) counterCount(kind string) (int, bool) {
+	switch {
+	case s.Object != nil:
+		return s.Object.Counters[kind], true
+	case s.Departed != nil:
+		return s.Departed.Counters[kind], true
+	}
+	return 0, false
+}
+
 // ObjectRef names the object this walk is relative to, as the
 // {instance, epoch} a Card.ExiledWith link records: the live source's
 // own epoch, or a departed source's last-known record (CR 608.2h,
@@ -1016,6 +1029,36 @@ type TargetSpec struct {
 	// it with effects.WithFewerCreatureCardsInGraveyardThanTheChooser.
 	FewerCreatureCardsInGraveyardThanChooser bool
 
+	// MoreCardsInHandThanChooser is "target player who has more cards in
+	// hand than they do and is their opponent" on a ChosenByTriggerActor
+	// clause (Oath of Scholars, S82 OLD batch 742): a player candidate must
+	// be someone other than the chooser who has more cards in hand than the
+	// chooser does. DATA, judged beside MoreCreaturesThanChooser in
+	// playerChooserAdmits (more_cards_in_hand_than_chooser.go). Meaningless
+	// without ChosenByTriggerActor; effects.Register refuses it alone. Build
+	// it with effects.WithMoreCardsInHandThanTheChooser.
+	MoreCardsInHandThanChooser bool
+
+	// MoreLandsThanChooser is "target player who controls more lands than
+	// they do and is their opponent" on a ChosenByTriggerActor clause (Oath of
+	// Lieges, S82 OLD batch 743): a player candidate must be someone other
+	// than the chooser who controls more lands than the chooser does. DATA,
+	// judged beside MoreCreaturesThanChooser in playerChooserAdmits
+	// (more_lands_than_chooser.go). Meaningless without ChosenByTriggerActor;
+	// effects.Register refuses it alone. Build it with
+	// effects.WithMoreLandsThanTheChooser.
+	MoreLandsThanChooser bool
+
+	// ItemTargetsOnlySource is "target spell or ability that targets only
+	// this creature" on a stack clause (Silver Wyvern): the stack item the
+	// clause picks has at least one target and every one of them is the
+	// clause's own source object. DATA, judged in the shared walks (the
+	// spell zone walk through sourceAdmits, the ability walk and the
+	// announce / resolution re-check), so the legal set and CR 608.2b's
+	// re-check are one answer; a walk with no source admits nothing. Build
+	// it with effects.TargetsOnlyThisCreature.
+	ItemTargetsOnlySource bool
+
 	// DealtCombatDamageBySource is "target player who was dealt combat
 	// damage by this creature this turn" (Hope of Ghirapur): a player
 	// candidate must have been dealt combat damage this turn by the
@@ -1789,6 +1832,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 			if spec.AbilityOK != nil && !spec.AbilityOK(g, src.Controller, item) {
 				continue
 			}
+			if !spec.itemTargetsOnlySourceAdmits(g, src, item.ID) {
+				continue
+			}
 			// "another": an ability of the clause's own source is not offered
 			// (The Peregrine Dynamo's "from another legendary source").
 			if spec.excludesSource(src, item.SourceCardID) {
@@ -2032,6 +2078,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 		if spec.Abilities {
 			if item := g.StackMeta[ref.ID]; item != nil && item.Kind != StackItemSpell {
 				return (spec.AbilityOK == nil || spec.AbilityOK(g, src.Controller, item)) &&
+					spec.itemTargetsOnlySourceAdmits(g, src, item.ID) &&
 					!spec.excludesSource(src, item.SourceCardID)
 			}
 		}
@@ -2096,6 +2143,14 @@ const (
 	// the Unforgiving). The loyalty is the live object's while it stands
 	// and its last-known record's once it has left (CR 608.2h).
 	SourceManaValueVsLoyalty SourceStat = "mana_value_vs_loyalty"
+	// SourcePowerVsCounters compares the CANDIDATE's power with the number
+	// of counters of the kind SourceComparison.Counter on the SOURCE:
+	// "target creature with power less than or equal to the number of
+	// treasure counters on this enchantment" (Legacy's Allure). The count
+	// is the live object's while it stands and its last-known record's once
+	// it has left (CR 608.2h), as it must be for an ability whose cost
+	// sacrificed the source.
+	SourcePowerVsCounters SourceStat = "power_vs_counters"
 	// SourceSameName is "with the same name as this creature" (Callidus
 	// Assassin): the candidate's name equals the source's. It has no Cmp.
 	// Read from the live object's name, or the last-known snapshot's.
@@ -2118,6 +2173,9 @@ const (
 type SourceComparison struct {
 	Stat SourceStat `json:"stat"`
 	Cmp  SourceCmp  `json:"cmp"`
+	// Counter is the counter kind a SourcePowerVsCounters comparison counts
+	// on the source. Empty for every other stat.
+	Counter string `json:"counter,omitempty"`
 }
 
 // holds reports whether candidate c satisfies the comparison against
@@ -2639,7 +2697,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) {
+	if !s.chooserAdmits(src, c) || !s.modeChooserAdmits(src, c) || !s.otherThanChooserAdmits(src, c) || !s.eventObjectTypeAdmits(g, src, c) || !s.eventObjectManaValueAdmits(g, src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventLeaveAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.sameNameAsExiledWithAdmits(g, src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.sourceOwnerAdmits(src, c) || !s.opponentSlotAdmits(g, src, c) || !s.asCastOpponentAdmits(g, src, c) || !s.tappedAsCastAdmits(src, c) || !s.attachedToTheSourceAdmits(src, c) || !s.itemTargetsOnlySourceAdmits(g, src, c.InstanceID) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
@@ -2651,6 +2709,13 @@ func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
 		if sc.Stat == SourceSameName {
 			name, nameOK := src.name()
 			if !nameOK || name == "" || c.Name != name {
+				return false
+			}
+			continue
+		}
+		if sc.Stat == SourcePowerVsCounters {
+			n, nOK := src.counterCount(sc.Counter)
+			if !nOK || !sc.holds(c, n, 0) {
 				return false
 			}
 			continue

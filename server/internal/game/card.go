@@ -505,6 +505,17 @@ type Card struct {
 	// does not live in Card.Counters. Added in #667.
 	RegenerationShields int
 
+	// RegenerationCounterShields is how many of RegenerationShields carry
+	// Skeleton Scavengers' rider, "When it regenerates this way, put a
+	// +1/+1 counter on it": the shield an activation of that ability
+	// created. A shield that is used up while any are left is read as one
+	// of them (the controller may choose which replacement to apply, and
+	// takes the counter), and the regeneration's EventRegenerated then
+	// carries Amount 1 for the card's trigger to read. Never above
+	// RegenerationShields; cleared with them (the cleanup step and the
+	// battlefield exit). Not a counter (CR 122). Added in S82 OLD b748.
+	RegenerationCounterShields int
+
 	// FaceDown lives in the bool block at the end of Card, for alignment.
 
 	// KnownBy is the per-instance "who currently knows this card's

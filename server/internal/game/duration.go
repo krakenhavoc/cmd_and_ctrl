@@ -485,6 +485,15 @@ const (
 	// enum's integer values are written into snapshot files.
 	WhilePlayerIsMonarch
 
+	// WhilePinnedIsEnchanted — "for as long as that creature is
+	// enchanted" (Rootwater Matriarch, #5628): the pinned permanent has
+	// at least one Aura attached to it, whoever controls the Aura. Once
+	// the last Aura has gone the effect is over for good (CR 611.2b),
+	// even if the permanent is enchanted again later. Appended, never
+	// inserted: the enum's integer values are written into snapshot
+	// files.
+	WhilePinnedIsEnchanted
+
 	// durationConditionEnd is a sentinel, not a condition. Keep it
 	// LAST, for the reason durationKindEnd gives: an unknown condition
 	// would otherwise fall through to a bare "source on battlefield".
@@ -498,7 +507,7 @@ func (c DurationCondition) Known() bool { return c >= 0 && c < durationCondition
 // using it must name one.
 func (c DurationCondition) readsPin() bool {
 	return c == WhilePinnedHasCounter || c == WhilePinnedRemainsTapped || c == WhilePinnedPowerAtMostSource ||
-		c == WhileSourceAttachedToPinned
+		c == WhileSourceAttachedToPinned || c == WhilePinnedIsEnchanted
 }
 
 // Known reports whether this binary can interpret the duration: its
@@ -1209,6 +1218,20 @@ func (g *Game) ForAsLongAsPinnedTappedDuration(object uuid.UUID) (Duration, bool
 	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedRemainsTapped}, object), true
 }
 
+// ForAsLongAsPinnedEnchantedDuration is "for as long as that creature is
+// enchanted" (Rootwater Matriarch, #5628), pinned to `object` as the object
+// it is now (CR 400.7). Returns false when `object` is not on the
+// battlefield or is not enchanted: the duration never starts (CR 611.2b),
+// so the caller registers nothing.
+//
+// Caller must hold g.mu.
+func (g *Game) ForAsLongAsPinnedEnchantedDuration(object uuid.UUID) (Duration, bool) {
+	if _, ok := g.battlefieldCardLocked(object); !ok || !g.isEnchantedLocked(object) {
+		return Duration{}, false
+	}
+	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedIsEnchanted}, object), true
+}
+
 // WhileAttachedToDuration is "for as long as <source> is attached to
 // <host>" (#2709): Dinosaur Headdress's copy of the equipped creature,
 // pinned to the host. False, so nothing is registered, when the source
@@ -1604,6 +1627,9 @@ func (g *Game) conditionHoldsLocked(d Duration, cond DurationCondition) bool {
 		return src.IsAttachedTo(c.InstanceID)
 	case WhilePlayerIsMonarch:
 		return d.Player != uuid.Nil && g.Monarch == d.Player
+	case WhilePinnedIsEnchanted:
+		c, ok := g.pinnedOnBattlefieldLocked(d)
+		return ok && g.isEnchantedLocked(c.InstanceID)
 	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhileSourceOnceItLands:
 		return g.sourceConditionHoldsLocked(d, cond)
 	}

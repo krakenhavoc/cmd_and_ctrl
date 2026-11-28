@@ -224,6 +224,11 @@ var knownUnmatchedTokens = map[string]string{
 	// Keeper of the Beasts (Exodus, 1998) creates "a 2/2 green Beast creature
 	// token"; no Beast token card of that size was printed for it.
 	"2/2 green Beast": "no 2/2 green Beast token card was printed for Keeper of the Beasts",
+	// Spike Breeder (Stronghold, S82 OLD batch 748) creates "a 1/1 green Spike
+	// creature token". The card is from 1998 and its token was never printed as
+	// a token card; the dump has no Spike token. The template follows the oracle
+	// text.
+	"1/1 green Spike": "no 1/1 green Spike token card was printed for Spike Breeder",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.

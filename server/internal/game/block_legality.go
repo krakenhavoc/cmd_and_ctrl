@@ -291,7 +291,11 @@ func (g *Game) BlockPairRefusalLocked(attacker, blocker *Card) BlockRefusal {
 	if HasKeyword(attacker, "intimidate") && !blocker.IsArtifact() && !sharesColor(attacker, blocker) {
 		return BlockRefusal{Reason: BlockReasonIntimidate, Source: attacker.InstanceID}
 	}
-	if attackerShadow, blockerShadow := HasKeyword(attacker, "shadow"), HasKeyword(blocker, "shadow"); attackerShadow != blockerShadow {
+	if attackerShadow, blockerShadow := HasKeyword(attacker, "shadow"), HasKeyword(blocker, "shadow"); attackerShadow != blockerShadow &&
+		// CR 702.28b bent by "This creature can block creatures with shadow as
+		// though it had shadow" (Heartwood Dryad): the one restriction a blocker
+		// without shadow meets from an attacker that has it.
+		!(attackerShadow && g.blockerShadowAgainstLocked(blocker)) {
 		source := attacker.InstanceID
 		if !attackerShadow {
 			source = blocker.InstanceID
