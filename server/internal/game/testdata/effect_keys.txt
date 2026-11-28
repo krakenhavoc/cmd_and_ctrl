@@ -3546,6 +3546,7 @@ payunless pay-unless/s82-old-b696-rishadan-sacrifice
 payunless pay-unless/s82-old-b742-fade-away-sacrifice
 payunless pay-unless/s82-old-b748-crovax-the-cursed
 payunless pay-unless/s82-old-b752-carrionette-exile
+payunless pay-unless/s82-old-b806-vaporous-djinn-phase-out
 payunless pay-unless/s82-one-b06-proliferate
 payunless pay-unless/s82-rpr-b25-myrsmith-myr
 payunless pay-unless/saheeli-radiant-creator-copy
