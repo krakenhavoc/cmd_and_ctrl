@@ -2160,6 +2160,7 @@ coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/s82-old-b671-fickle-efreet
 coinflip coin-flip/s82-old-b704-goblin-festival
 coinflip coin-flip/s82-old-b780-goblin-bomb
+coinflip coin-flip/s82-old-b851-game-of-chaos-flip
 coinflip coin-flip/scoria-wurm-upkeep
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
@@ -2531,6 +2532,7 @@ confirm confirm/s82-old-b778-angelic-renewal-sacrifice
 confirm confirm/s82-old-b779-goblin-grenadiers-sacrifice
 confirm confirm/s82-old-b780-goblin-bomb-flip
 confirm confirm/s82-old-b783-shuffle-then-draw
+confirm confirm/s82-old-b851-game-of-chaos-again
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
