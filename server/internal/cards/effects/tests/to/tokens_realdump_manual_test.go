@@ -257,6 +257,11 @@ var knownUnmatchedTokens = map[string]string{
 	// creature token with banding"; no Knight token with banding was ever printed, as
 	// token cards start in 2007. The template follows the oracle text.
 	"1/1 white Knight with banding": "no Knight token with banding was printed for Errand of Duty",
+
+	// Homarid Spawning Bed (Fallen Empires, 1994) creates "X 1/1 blue Camarid
+	// creature tokens". No Camarid token card was ever printed (token cards start in
+	// 2007) and the dump has none. The template follows the oracle text.
+	"1/1 blue Camarid": "no token card was ever printed for Homarid Spawning Bed's Camarid",
 }
 
 // printedToken is the slice of a Scryfall record this match needs.
