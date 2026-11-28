@@ -2,7 +2,6 @@ package cardsw
 
 import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Wizard Mentor — Creature — Human Wizard {2}{U}, 2/2 (Jumpstart 2022, #5948):
@@ -25,17 +24,7 @@ func init() {
 			Label:   "{T}: Return this creature and target creature you control to their owner's hand.",
 			Cost:    effects.TapCost(),
 			Targets: effects.TargetCreature("target creature you control", effects.YouControl()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := effects.NewContext(g, item)
-				// Both return at once; the target is read and returned
-				// first so no clause waits on the Mentor's own move.
-				if id, ok := effects.B16FirstLegalTargetCard(ctx); ok && id != item.SourceCardID {
-					if err := (effects.BounceToHand{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return effects.BounceToHand{Target: item.SourceCardID}.Apply(ctx)
-			},
+			Effect:  effects.BounceThisAndTargetB831,
 		}},
 	})
 }
