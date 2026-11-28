@@ -2486,6 +2486,7 @@ confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/old-b271-covenant-of-minds
 confirm confirm/old-b586-choice-of-damnations
 confirm confirm/old-b814-that-player-may-draw
+confirm confirm/old-b847-soldevi-golem-untap
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -3535,6 +3536,7 @@ payunless pay-unless/old-b719-sacrifice-the-enchanted-creature
 payunless pay-unless/old-b809-gain-1-life
 payunless pay-unless/old-b809-sirocco-discard
 payunless pay-unless/old-b813-preferred-selection
+payunless pay-unless/old-b847-talisman-untap
 payunless pay-unless/olivia-mobilized-for-war-discarded
 payunless pay-unless/oloro-draw-and-drain
 payunless pay-unless/order-of-the-golden-cricket-flying
