@@ -599,6 +599,7 @@ body s82-old-b791/brood-of-cockroaches-return
 body s82-old-b792/three-wishes-unplayed-to-graveyard
 body s82-old-b797/barreling-attack-boost-per-blocker
 body s82-old-b800/sapphire-charm-target-player-draws
+body s82-old-b808/grinning-totem-graveyard
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body saheeli-radiant-creator/copy
@@ -2163,6 +2164,7 @@ coinflip coin-flip/s82-old-b629-squees-revenge
 coinflip coin-flip/s82-old-b671-fickle-efreet
 coinflip coin-flip/s82-old-b704-goblin-festival
 coinflip coin-flip/s82-old-b780-goblin-bomb
+coinflip coin-flip/s82-old-b808-frenetic-efreet
 coinflip coin-flip/scoria-wurm-upkeep
 coinflip coin-flip/skyclaw-thrash
 coinflip coin-flip/sorcerers-strongbox
@@ -5472,6 +5474,7 @@ tail s82-old-b779/destroy-the-two-targets
 tail s82-old-b779/shuffle-graveyard-into-library
 tail s82-old-b789/song-of-blood-milled
 tail s82-old-b791/waterspout-djinn-after-return
+tail s82-old-b808/grinning-totem-grant
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
