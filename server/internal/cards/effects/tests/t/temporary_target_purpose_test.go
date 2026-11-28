@@ -157,6 +157,10 @@ var untilEndOfTurnExempt = map[string]string{
 	// from it until end of turn, which is a harm; the pattern reads "loses" as
 	// a benefit (Urborg's case).
 	"Burning Palm Efreet": "removes an ability from its target; the check reads 'loses' as a benefit",
+
+	// Ice Age (S82 OLD batch 840): "+3/-2" raises power and lowers toughness, a
+	// mixed change no single direction describes.
+	"Minion of Tevesh Szat": "the change is mixed: +3 power and -2 toughness",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
