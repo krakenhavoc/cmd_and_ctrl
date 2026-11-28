@@ -607,6 +607,7 @@ body s82-old-b797/barreling-attack-boost-per-blocker
 body s82-old-b800/sapphire-charm-target-player-draws
 body s82-old-b808/grinning-totem-graveyard
 body s82-old-b824/source-deals-two-to-the-creature
+body s82-old-b843/krovikan-vampire-sacrifice
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
 body sacrifice/old-b834-the-object
@@ -2301,6 +2302,7 @@ condition pit-automaton/next-exhaust-activation
 condition ray-of-command/lost-control-of-the-creature
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 condition s82-bns-b27/you-cast-a-dinosaur
+condition s82-old-b843/krovikan-vampire-lost
 condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 condition the-pandorica/untapped-or-left
@@ -2563,6 +2565,7 @@ confirm confirm/s82-old-b778-angelic-renewal-sacrifice
 confirm confirm/s82-old-b779-goblin-grenadiers-sacrifice
 confirm confirm/s82-old-b780-goblin-bomb-flip
 confirm confirm/s82-old-b783-shuffle-then-draw
+confirm confirm/s82-old-b843-shyft
 confirm confirm/s82-rpr-b25-goblin-razerunners-damage
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sanctuary-wall-stun
@@ -5569,6 +5572,7 @@ tail s82-old-b779/shuffle-graveyard-into-library
 tail s82-old-b789/song-of-blood-milled
 tail s82-old-b791/waterspout-djinn-after-return
 tail s82-old-b808/grinning-totem-grant
+tail s82-old-b843/shyft-colors
 tail s82-one-b08/expand-the-sphere-rest
 tail s82-snc/life-of-the-party-goad-then-next
 tail sacrificed-one/braids-frightful-return/each-opponent-discards
