@@ -448,6 +448,8 @@ body old-b507/quenchable-fire-damage
 body old-b516-skeletonize/skeleton
 body old-b532/wicker-warcrawler-minus-one-counter-at-end-of-combat
 body old-b639/planeswalkers-mischief-return
+body old-b814/draw-n-at-next-upkeep
+body old-b814/return-the-object-under-its-owners-control
 body old-man-willow/shrink
 body old/s82-b565-frostweb-spider-counter-at-end-of-combat
 body ondu-rising/attacker-gains-lifelink
@@ -1543,6 +1545,8 @@ choose choose-cards/old-b493-attach-equipment
 choose choose-cards/old-b499-sphinx-picked
 choose choose-cards/old-b607-wrench-mind-the-one
 choose choose-cards/old-b607-wrench-mind-two-or-artifact
+choose choose-cards/old-b814-discard-one-of-them
+choose choose-cards/old-b814-lat-nams-legacy-pick
 choose choose-cards/old-man-willow-sacrifice
 choose choose-cards/old-one-eye-discard-two
 choose choose-cards/omnispell-adept-cast
@@ -2438,6 +2442,7 @@ confirm confirm/old-b051-the-biblioplex-graveyard
 confirm confirm/old-b159-shuffle-then-draw
 confirm confirm/old-b271-covenant-of-minds
 confirm confirm/old-b586-choice-of-damnations
+confirm confirm/old-b814-that-player-may-draw
 confirm confirm/opening-hand-offer
 confirm confirm/opening-hand-reveal
 confirm confirm/ophidian-draw
@@ -3710,6 +3715,7 @@ run engine/explore-each-pick
 run gap-b55-birthing-ritual/sacrifice
 run gap/tragic-lesson-return-a-land-or-discard
 run giant-opportunity/sacrifice-two-foods
+run old-b814/lord-of-tresserhorn-sacrifice-two
 run permanents-pick/s82-old-b432-sunken-hope-bounce
 run prompt-run/ace-fearless-rebel-sacrifice
 run prompt-run/acererak-the-archlich-sacrificed
@@ -6022,6 +6028,7 @@ tail then/old-b499-sphinx-named
 tail then/old-b605-grim-reminder
 tail then/old-b607-myr-incubator
 tail then/old-b607-timesifter-judge
+tail then/old-b814-lat-nams-legacy-tucked
 tail then/old-man-willow-sacrificed
 tail then/olivia-crimson-bride-grant
 tail then/one-ring-to-rule-them-all-mill

@@ -370,6 +370,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.MarkedLethalByDeathtouch = false
 		c.RegenerationShields = 0
 		c.RegenerationCounterShields = 0
+		c.RegenerationDrawers = nil
 		c.AttackingTarget = uuid.Nil
 		c.ExertOnAttack = false
 		c.EnlistOnAttack = uuid.Nil

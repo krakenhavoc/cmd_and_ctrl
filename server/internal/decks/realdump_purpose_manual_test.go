@@ -452,6 +452,9 @@ var reviewedNotAWipe = map[string]string{
 	// S82 OLD batch 761 (#5458).
 	"Duplicity":     "exiles only its controller's own library cards and hand face down, then returns them to that hand; no opponent loses anything",
 	"Oracle en-Vec": "destroys only the creatures the target opponent chose that then didn't attack, not a board",
+
+	// S82 OLD batch 814 (#5634).
+	"Scarab of the Unseen": "returns only the Auras attached to the one permanent its controller owns to their owners' hands, not a board",
 }
 
 // anyPurpose reports whether a spec declares a purpose in any slot.
